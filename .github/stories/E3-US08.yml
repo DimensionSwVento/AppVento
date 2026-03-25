@@ -1,0 +1,30 @@
+id: US08
+title: "[US08] Gestión de Usuarios (CRUD)"
+epic: "E3-Admin"
+epic_label: "epic:E3-Admin"
+priority: media
+priority_label: "priority:media"
+milestone: "Primera Entrega"
+depends_on: ["US-KEY", "US01", "US-DDD"]
+unlocks: ""
+week: 4
+body: |
+  ## Historia de Usuario
+  Como administrador, quiero gestionar los usuarios de la plataforma desde una interfaz integrada en Vento para no depender exclusivamente de la consola de Keycloak.
+
+  **Épica:** E3 — Admin y CRUD de Usuarios
+
+  ## Criterios de Aceptación
+  1. Crear usuario (via Keycloak Admin API o consola)
+  2. Listar usuarios con tabla: nombre, correo, fecha creación, estado, rol
+  3. Búsqueda por nombre o correo
+  4. Paginación si >20 usuarios
+  5. Editar datos de usuario: nombre, estado (activo/inactivo), rol
+  6. Eliminar/desactivar usuario con confirmación
+  7. Solo accesible por usuario con rol `admin`
+  8. Error claro si se intenta crear usuario con correo duplicado
+
+  > **Nota:** Evaluar si para primera entrega basta con Keycloak admin console directamente, y la UI integrada en Vento se pospone. Decisión del equipo.
+
+  ## Dependencias
+  US-KEY, US01, US-DDD

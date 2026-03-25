@@ -1,0 +1,27 @@
+id: US-CI
+title: "[US-CI] Pipeline CI Mínimo"
+epic: "E0-Fundacion"
+epic_label: "epic:E0-Fundacion"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Primera Entrega"
+depends_on: ["US-MONO"]
+unlocks: "Calidad de código garantizada en todo el proyecto"
+week: 3
+body: |
+  ## Historia de Usuario
+  Como equipo de desarrollo, necesito un pipeline CI configurado para que cada push y PR sea validado automáticamente antes de llegar a main.
+
+  **ADR relacionado:** ADR-007
+  **Épica:** E0 — Fundación e Infraestructura
+
+  ## Criterios de Aceptación
+  1. GitHub Actions ejecuta en cada push y pull request
+  2. Stage de calidad: lint + type-check + tests unitarios
+  3. Stage de build: verificar que el proyecto compila correctamente
+  4. Stage de seguridad: audit de dependencias + scan de secretos (gitleaks)
+  5. Branch protection activo en `main` y `develop` — no se permite push directo
+  6. Review obligatorio: mínimo 1 aprobación antes de merge
+  7. Pipeline documenta claramente errores cuando falla
+
+  > **Nota:** Puede implementarse en paralelo con las demás historias de E0

@@ -1,0 +1,25 @@
+id: US03-AC5
+title: "[US03-AC5] Hexágonos No Disponibles (Decorativos)"
+epic: "E2-Mapa-SIG"
+epic_label: "epic:E2-Mapa-SIG"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Primera Entrega"
+depends_on: ["US03"]
+unlocks: ""
+week: 3
+body: |
+  ## Historia de Usuario
+  Como analista, quiero que las zonas excluidas del análisis se muestren visualmente diferenciadas para entender el alcance geográfico del estudio.
+
+  **Épica:** E2 — Mapa SIG Interactivo
+
+  ## Criterios de Aceptación
+  1. Hexágonos con tipo_celda="excluida" se renderizan visualmente
+  2. Estilo visual diferenciado (gris, opacidad reducida, o similar)
+  3. No son interactuables (sin click, sin popup)
+  4. No participan en cálculos ni en el mapa de calor
+  5. No son seleccionables
+
+  ## Dependencias
+  US03

@@ -1,0 +1,23 @@
+id: US03-AC7
+title: "[US03-AC7] Metadata de Variables"
+epic: "E2-Mapa-SIG"
+epic_label: "epic:E2-Mapa-SIG"
+priority: media
+priority_label: "priority:media"
+milestone: "Primera Entrega"
+depends_on: ["US03-AC6", "US03-AC2"]
+unlocks: ""
+week: 4
+body: |
+  ## Historia de Usuario
+  Como analista, quiero ver la fuente y vigencia de cada variable para saber qué tan confiables y actualizados son los datos que estoy visualizando.
+
+  **Épica:** E2 — Mapa SIG Interactivo (datos)
+
+  ## Criterios de Aceptación
+  1. Cada variable muestra metadatos de origen (fuente de datos)
+  2. Cada variable muestra vigencia (fecha/periodo de los datos)
+  3. Accesible desde la interfaz (tooltip, panel lateral, o dentro del popup)
+
+  ## Dependencias
+  US03-AC6, US03-AC2
