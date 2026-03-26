@@ -5,9 +5,7 @@
 Un convenio entre **ANH** (Agencia Nacional de Hidrocarburos) y **EAFIT** para acelerar la transicion energetica del pais.
 
 ---
-
 ## Que es Vento?
-
 Vento es una aplicacion web que muestra un **mapa interactivo de Colombia** dividido en miles de hexagonos. Cada hexagono tiene un **puntaje de viabilidad** que indica que tan factible es instalar un parque eolico en esa zona.
 
 | Pregunta | Respuesta |
@@ -16,7 +14,7 @@ Vento es una aplicacion web que muestra un **mapa interactivo de Colombia** divi
 | Para quien es? | Analistas de energia, investigadores y tomadores de decisiones de ANH/EAFIT. |
 | Que muestra el mapa? | Un mapa de calor donde los colores indican viabilidad: zonas rojas/calidas = alto potencial, zonas frias = bajo potencial. |
 | Que dimensiones evalua? | 5: Tecnica, Ambiental, Regulatoria, Socioeconomica y Macroeconomica. |
-| De donde vienen los datos? | El equipo de investigacion genera archivos `.h3.parquet` con los datos ya procesados por un modelo multicriterio. |
+| De donde vienen los datos? | El equipo de investigacion genera archivos `.h3.parquet` con los datos ya procesados por un modelo multicriterio  |
 
 ---
 
@@ -58,7 +56,7 @@ Vento es una aplicacion web que muestra un **mapa interactivo de Colombia** divi
 
 ### Paso a paso
 
-| # | Paso | Que hace el usuario | Que hace Vento | Entrega |
+| # | Paso | Que hace el usuarios | Que hace Vento | Entrega |
 |---|------|---------------------|----------------|---------|
 | 1 | **Login** | Ingresa correo institucional y contrasena | Valida dominio autorizado (ANH/EAFIT), emite token JWT | Primera |
 | 2 | **Ver mapa** | Navega, hace zoom y pan sobre Colombia | Renderiza ~4,500-31,000 hexagonos H3 con mapa de calor por score general | Primera |
