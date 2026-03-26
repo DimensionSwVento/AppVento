@@ -14,13 +14,14 @@ pnpm dev
 bun dev
 ```
 
+
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Librerías de Visualización Geoespacial
+## Librerías de Visualización Geoespaciales
 
 Vento renderiza entre 4.500 y 31.000 hexágonos H3 sobre el mapa de Colombia con un mapa de calor interactivo por variables de viabilidad eólica. Para esto se usa **deck.gl** como motor de renderizado WebGL — permite escalar a resoluciones H3 más altas en el futuro sin cambiar de stack. **react-map-gl** con **maplibre-gl** provee el mapa base (tiles de Colombia) sin necesidad de API key. **h3-js** se usa en cliente para convertir coordenadas geográficas a índices H3 y calcular geometrías de hexágonos.
 
@@ -53,3 +54,4 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
 
+# test

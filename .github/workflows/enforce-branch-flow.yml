@@ -8,6 +8,7 @@ name: Enforce Branch Flow (dev → test → main)
 # ═══════════════════════════════════════════════════════════
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [test, main]
 

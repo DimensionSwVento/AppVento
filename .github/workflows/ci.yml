@@ -8,8 +8,9 @@ name: CI Pipeline
 # ═══════════════════════════════════════════════════════════
 
 on:
+  workflow_dispatch:
   push:
-    branches: [dev, develop]
+    branches: [dev, develop, test, main]
     paths-ignore:
       - "**.md"
       - ".github/stories/**"
