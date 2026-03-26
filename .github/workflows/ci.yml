@@ -1,0 +1,110 @@
+name: CI Pipeline
+
+# ═══════════════════════════════════════════════════════════
+# Flujo de ramas: dev → PR → test → PR → main
+#
+# - Push a dev o PR hacia test/main: ejecuta quality + build + security
+# - Solo PRs pueden llegar a test y main (branch protection manual)
+# ═══════════════════════════════════════════════════════════
+
+on:
+  push:
+    branches: [dev, develop]
+    paths-ignore:
+      - "**.md"
+      - ".github/stories/**"
+      - "_bmad/**"
+      - "_bmad-output/**"
+      - "docs/**"
+  pull_request:
+    branches: [test, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: Vento
+
+jobs:
+  # ─────────────────────────────────────
+  # Stage 1: Calidad — lint + types + tests
+  # ─────────────────────────────────────
+  quality:
+    name: "Lint + TypeCheck + Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Vento/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Tests unitarios
+        run: npm test --if-present
+
+  # ─────────────────────────────────────
+  # Stage 2: Build — compilación correcta
+  # ─────────────────────────────────────
+  build:
+    name: "Build"
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Vento/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Build Next.js
+        run: npm run build
+
+  # ─────────────────────────────────────
+  # Stage 3: Seguridad — audit + secretos
+  # ─────────────────────────────────────
+  security:
+    name: "Audit + Secrets Scan"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Vento/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Audit de dependencias
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Scan de secretos (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

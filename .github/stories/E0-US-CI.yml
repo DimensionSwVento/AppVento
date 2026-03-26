@@ -1,0 +1,28 @@
+id: US-CI
+title: "[US-CI] Pipeline CI + Flujo de Ramas"
+epic: "E0-Fundacion"
+epic_label: "epic:E0-Fundacion"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Primera Entrega"
+depends_on: ["US-MONO"]
+unlocks: "Calidad de código garantizada en todo el proyecto"
+week: 3
+body: |
+  ## Historia de Usuario
+  Como equipo de desarrollo, necesito un pipeline CI y flujo de ramas configurado para que cada push y PR sea validado automáticamente y el código llegue a producción de forma controlada.
+
+  **Épica:** E0 — Fundación e Infraestructura
+
+  ## Criterios de Aceptación
+  1. GitHub Actions ejecuta en cada push a dev y en PRs hacia test/main
+  2. Stage de calidad: lint + type-check (tsc --noEmit) + tests unitarios
+  3. Stage de build: verificar que Next.js compila correctamente
+  4. Stage de seguridad: audit de dependencias + scan de secretos (gitleaks)
+  5. Flujo de ramas forzado: dev → test → main (validado por workflow)
+  6. Branch protection en test y main: PR obligatorio + 1 aprobación + checks verdes
+  7. Pipeline documenta claramente errores cuando falla
+  8. Auto-labels en PRs según archivos modificados y rama destino
+  9. Concurrency configurada para cancelar CI duplicados
+
+  > **Nota:** Branch protection (criterios 5-6) se configura manualmente en GitHub Settings

@@ -1,0 +1,41 @@
+name: Enforce Branch Flow (dev → test → main)
+
+# ═══════════════════════════════════════════════════════════
+# Valida que los PRs sigan el flujo obligatorio:
+#   dev → test → main
+#
+# PRs desde ramas no permitidas se marcan como fallidos
+# ═══════════════════════════════════════════════════════════
+
+on:
+  pull_request:
+    branches: [test, main]
+
+jobs:
+  validate-branch-flow:
+    name: "Validate PR Source Branch"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar origen del PR
+        run: |
+          TARGET="${{ github.base_ref }}"
+          SOURCE="${{ github.head_ref }}"
+
+          echo "PR: $SOURCE → $TARGET"
+
+          if [ "$TARGET" = "test" ]; then
+            # Solo dev/develop pueden ir a test
+            if [[ "$SOURCE" != "dev" && "$SOURCE" != "develop" ]]; then
+              echo "::error::❌ Solo se puede hacer PR a 'test' desde 'dev' o 'develop'. Origen: '$SOURCE'"
+              exit 1
+            fi
+            echo "✅ Flujo válido: $SOURCE → test"
+
+          elif [ "$TARGET" = "main" ]; then
+            # Solo test puede ir a main
+            if [ "$SOURCE" != "test" ]; then
+              echo "::error::❌ Solo se puede hacer PR a 'main' desde 'test'. Origen: '$SOURCE'"
+              exit 1
+            fi
+            echo "✅ Flujo válido: test → main"
+          fi

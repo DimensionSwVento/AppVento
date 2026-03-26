@@ -1,0 +1,24 @@
+id: US03-AC4
+title: "[US03-AC4] Dato Central Visible en Hexágono"
+epic: "E2-Mapa-SIG"
+epic_label: "epic:E2-Mapa-SIG"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Primera Entrega"
+depends_on: ["US03-AC1"]
+unlocks: ""
+week: 4
+body: |
+  ## Historia de Usuario
+  Como analista, quiero ver el valor numérico de score directamente sobre cada hexágono en el mapa para leer datos sin hacer click.
+
+  **Épica:** E2 — Mapa SIG Interactivo
+
+  ## Criterios de Aceptación
+  1. Cada hexágono activo muestra un valor numérico central
+  2. El valor corresponde al dato que determina el color (score general o variable filtrada)
+  3. Texto legible según nivel de zoom (se oculta en zoom alejado)
+  4. Valor se actualiza cuando se cambia el filtro de variable
+
+  ## Dependencias
+  US03-AC1

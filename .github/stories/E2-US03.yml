@@ -1,0 +1,30 @@
+id: US03
+title: "[US03] Mapa Base + Renderizado Hexágonos H3"
+epic: "E2-Mapa-SIG"
+epic_label: "epic:E2-Mapa-SIG"
+priority: critica
+priority_label: "priority:critica"
+milestone: "Primera Entrega"
+depends_on: ["US-MONO"]
+unlocks: "US03-AC1, US03-AC2, US03-AC3, US03-AC5, US03-AC4, US03-AC9"
+week: 2
+body: |
+  ## Historia de Usuario
+  Como analista, quiero ver un mapa interactivo de Colombia con hexágonos H3 para seleccionar áreas de análisis de viabilidad eólica de forma precisa.
+
+  **Épica:** E2 — Mapa SIG Interactivo
+
+  ## Criterios de Aceptación
+  1. Carga de mapa base de Colombia centrado con zoom apropiado (OpenStreetMap o similar)
+  2. Mapa soporta interacciones: zoom, paneo, responsivo
+  3. Hexágonos H3 (res 5-6, ~4,500-31,000) renderizados sobre el territorio usando Canvas renderer
+  4. Click en hexágono convierte a ID hexagonal H3
+  5. Hexágonos seleccionados se pintan con estilo diferenciado
+  6. Tiempo de carga inicial <5s, sin lag al pan/zoom
+  7. Indicador de progreso/spinner mientras cargan hexágonos (NFR13)
+  8. Mensaje de error claro si falla la carga de datos (NFR11)
+
+  > **Nota:** Incluye validación técnica (spike) de que el stack H3+Leaflet+Canvas funciona con datos reales.
+
+  ## Dependencias
+  US-MONO (scaffold frontend + Leaflet)

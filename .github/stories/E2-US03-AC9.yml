@@ -1,0 +1,25 @@
+id: US03-AC9
+title: "[US03-AC9] Panel de Control: Leyenda + Selector de Variables"
+epic: "E2-Mapa-SIG"
+epic_label: "epic:E2-Mapa-SIG"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Primera Entrega"
+depends_on: ["US03-AC1", "US03-AC2"]
+unlocks: ""
+week: 4
+body: |
+  ## Historia de Usuario
+  Como analista, quiero un panel de control visible en el mapa con leyenda y selector de variables para controlar la visualización sin conocer la interfaz de antemano.
+
+  **Épica:** E2 — Mapa SIG Interactivo
+
+  ## Criterios de Aceptación
+  1. Panel visible (sidebar o overlay) con leyenda de colores y escala min/max
+  2. Dropdown para cambiar entre "Score General" y variables críticas
+  3. Indicador de variable actualmente visualizada
+  4. Panel colapsable/minimizable para no obstruir el mapa
+  5. Cambio de variable actualiza simultáneamente: mapa, leyenda y datos centrales
+
+  ## Dependencias
+  US03-AC1, US03-AC2
