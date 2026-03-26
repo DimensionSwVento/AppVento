@@ -1,0 +1,21 @@
+# Configuración del labeler — asigna labels según archivos modificados
+
+"frontend":
+  - changed-files:
+      - any-glob-to-any-file: "Vento/src/**"
+
+"api":
+  - changed-files:
+      - any-glob-to-any-file: "Vento/src/app/api/**"
+
+"ci":
+  - changed-files:
+      - any-glob-to-any-file: ".github/workflows/**"
+
+"docs":
+  - changed-files:
+      - any-glob-to-any-file: "docs/**"
+
+"stories":
+  - changed-files:
+      - any-glob-to-any-file: ".github/stories/**"
