@@ -1,5 +1,5 @@
 id: US-MONO
-title: "[US-MONO] Estructura Monorepo del Proyecto"
+title: "[US-MONO] Estructura del Proyecto Next.js"
 epic: "E0-Fundacion"
 epic_label: "epic:E0-Fundacion"
 priority: critica
@@ -10,20 +10,19 @@ unlocks: "Todas las demás historias"
 week: 1
 body: |
   ## Historia de Usuario
-  Como desarrollador del equipo, necesito una estructura de monorepo configurada para que todos los servicios convivan en un solo repositorio con herramientas compartidas.
+  Como desarrollador del equipo, necesito el proyecto Next.js inicializado con la estructura base para que todos los módulos (páginas, API routes, componentes) convivan en un solo proyecto.
 
-  **ADR relacionado:** ADR-007
   **Épica:** E0 — Fundación e Infraestructura
 
   ## Criterios de Aceptación
-  1. Repositorio organizado como monorepo con workspaces (npm/yarn/pnpm)
-  2. Estructura: `apps/web/` (frontend), `apps/api/` (backend), `packages/shared-types/`, `packages/h3-processor/`, `infra/`
-  3. Herramienta monorepo configurada (Turborepo si React, Nx si Angular)
-  4. Comando único `docker-compose up` levanta todos los servicios (frontend, backend, PostgreSQL+PostGIS, Keycloak)
-  5. Scripts compartidos: `dev`, `build`, `test`, `lint` desde la raíz
-  6. Tipos TypeScript compartidos entre frontend y backend via `packages/shared-types/`
-  7. Proyecto frontend inicializado con stack definido + Leaflet como dependencia
-  8. Configuración de linting y formateo
+  1. Proyecto Next.js 16+ (App Router) con TypeScript y Tailwind CSS
+  2. Estructura: `src/app/` (páginas), `src/app/api/` (API routes backend), `src/types/` (tipos compartidos)
+  3. React Compiler habilitado en next.config.ts
+  4. Scripts funcionales: `dev`, `build`, `start`, `lint` desde package.json
+  5. deck.gl + react-map-gl + maplibre-gl + h3-js como dependencias del mapa
+  6. ESLint configurado con eslint-config-next
+  7. Rutas base creadas: login, dashboard, area-selection, dimensions
+  8. API routes base: /api/health, /api/hexagons, /api/users
 
   ## Desbloquea
   Todas las demás historias
