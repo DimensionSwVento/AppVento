@@ -1,4 +1,34 @@
+"use client";
+
+import { useAuth } from "@/providers/AuthProvider";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
 export default function LoginPage() {
+  const { initialized, authenticated, login, register } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (initialized && authenticated) {
+      router.replace("/auth-test");
+    }
+  }, [initialized, authenticated, router]);
+
+  if (!initialized) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+          <p className="text-sm text-gray-500">Conectando con el servicio de autenticación...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (authenticated) {
+    return null;
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm rounded-lg bg-white p-8 shadow-md">
@@ -9,41 +39,26 @@ export default function LoginPage() {
           Plataforma de viabilidad eólica
         </p>
 
-        <form className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Correo electrónico
-            </label>
-            <input
-              id="email"
-              type="email"
-              placeholder="usuario@correo.com"
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Contraseña
-            </label>
-            <input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
+        <div className="space-y-3">
           <button
-            type="submit"
-            className="w-full rounded-md bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            type="button"
+            onClick={() => login()}
+            className="w-full rounded-md bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
           >
             Iniciar sesión
           </button>
-        </form>
+
+          <button
+            type="button"
+            onClick={() => register()}
+            className="w-full rounded-md border border-gray-300 bg-white py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Crear cuenta
+          </button>
+        </div>
 
         <p className="mt-4 text-center text-xs text-gray-400">
-          Autenticación gestionada por Keycloak
+          Autenticación gestionada por Keycloak (OIDC)
         </p>
       </div>
     </main>

@@ -1,0 +1,192 @@
+:root {
+  --vento-primary: #2563eb;
+  --vento-primary-hover: #1d4ed8;
+  --vento-primary-light: #eff6ff;
+  --vento-bg: #f8fafc;
+  --vento-card-bg: #ffffff;
+  --vento-text: #1e293b;
+  --vento-text-secondary: #64748b;
+  --vento-border: #e2e8f0;
+  --vento-error: #dc2626;
+  --vento-success: #16a34a;
+}
+
+/* Background */
+body.kcBodyClass {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f0fdf4 100%) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif !important;
+}
+
+/* Login card */
+#kc-form {
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.kcFormCardClass,
+#kc-login,
+.card-pf {
+  background: var(--vento-card-bg) !important;
+  border: 1px solid var(--vento-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+  padding: 2rem !important;
+}
+
+/* Header area */
+.kcFormHeaderClass,
+#kc-header-wrapper {
+  text-align: center !important;
+  margin-bottom: 1.5rem !important;
+}
+
+#kc-header-wrapper {
+  color: var(--vento-primary) !important;
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.025em;
+}
+
+/* Add subtitle under the header */
+.kcFormHeaderClass::after {
+  content: "Plataforma de Viabilidad Eólica";
+  display: block;
+  font-size: 0.875rem;
+  color: var(--vento-text-secondary);
+  font-weight: 400;
+  margin-top: 0.25rem;
+}
+
+/* Form labels */
+.kcLabelClass,
+label[for] {
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  color: var(--vento-text) !important;
+}
+
+/* Form inputs */
+.kcInputClass,
+input[type="text"],
+input[type="password"],
+input[type="email"] {
+  border: 1px solid var(--vento-border) !important;
+  border-radius: 8px !important;
+  padding: 0.625rem 0.75rem !important;
+  font-size: 0.875rem !important;
+  transition: border-color 0.15s, box-shadow 0.15s !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.kcInputClass:focus,
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus {
+  border-color: var(--vento-primary) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+  outline: none !important;
+}
+
+/* Primary button (Login, Register, Submit) */
+.kcButtonPrimaryClass,
+input[type="submit"].kcButtonPrimaryClass,
+button.kcButtonPrimaryClass,
+#kc-login {
+  background-color: var(--vento-primary) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  padding: 0.625rem 1.25rem !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s !important;
+  width: 100% !important;
+}
+
+.kcButtonPrimaryClass:hover,
+input[type="submit"].kcButtonPrimaryClass:hover,
+button.kcButtonPrimaryClass:hover {
+  background-color: var(--vento-primary-hover) !important;
+}
+
+/* Links */
+a.kcFormOptionsBottomClass,
+.kcFormOptionsClass a,
+a {
+  color: var(--vento-primary) !important;
+  text-decoration: none !important;
+  font-size: 0.875rem !important;
+}
+
+a:hover {
+  text-decoration: underline !important;
+}
+
+/* Error messages */
+.kcAlertClass,
+.kcFeedbackErrorIcon,
+.kc-feedback-text,
+.alert-error {
+  color: var(--vento-error) !important;
+  background-color: #fef2f2 !important;
+  border: 1px solid #fecaca !important;
+  border-radius: 8px !important;
+  padding: 0.75rem !important;
+  font-size: 0.875rem !important;
+}
+
+/* Success messages */
+.alert-success {
+  color: var(--vento-success) !important;
+  background-color: #f0fdf4 !important;
+  border: 1px solid #bbf7d0 !important;
+  border-radius: 8px !important;
+  padding: 0.75rem !important;
+  font-size: 0.875rem !important;
+}
+
+/* Footer / powered by */
+.kcFormOptionsClass {
+  margin-top: 1rem !important;
+  text-align: center !important;
+}
+
+/* Social login buttons */
+.kcFormSocialAccountSectionClass {
+  margin-top: 1.5rem !important;
+}
+
+/* Separator */
+.kcFormSocialAccountSectionClass::before {
+  border-top-color: var(--vento-border) !important;
+}
+
+/* Registration link area */
+#kc-registration {
+  margin-top: 1rem !important;
+  text-align: center !important;
+}
+
+#kc-registration span {
+  font-size: 0.875rem !important;
+  color: var(--vento-text-secondary) !important;
+}
+
+/* Content info (bottom links) */
+#kc-info,
+.kcContentWrapperClass {
+  text-align: center !important;
+}
+
+#kc-info-message {
+  font-size: 0.875rem !important;
+  color: var(--vento-text-secondary) !important;
+}
+
+/* Locale selector */
+.kcLocaleMainClass {
+  font-size: 0.75rem !important;
+}

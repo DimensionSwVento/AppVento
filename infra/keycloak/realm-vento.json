@@ -1,0 +1,97 @@
+{
+  "realm": "vento",
+  "enabled": true,
+  "displayName": "Vento",
+  "displayNameHtml": "<strong>Vento</strong>",
+  "loginTheme": "vento",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "verifyEmail": false,
+  "bruteForceProtected": true,
+  "maxFailureWaitSeconds": 900,
+  "failureFactor": 5,
+  "permanentLockout": false,
+  "sslRequired": "none",
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "noreply@vento.dev",
+    "fromDisplayName": "Vento",
+    "ssl": "false",
+    "starttls": "false",
+    "auth": "false"
+  },
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Administrador del sistema Vento"
+      },
+      {
+        "name": "analista",
+        "description": "Analista de viabilidad eólica"
+      }
+    ]
+  },
+  "defaultRoles": ["analista"],
+  "clients": [
+    {
+      "clientId": "vento-web",
+      "name": "Vento Web Application",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*"
+      },
+      "fullScopeAllowed": true
+    }
+  ],
+  "users": [
+    {
+      "username": "admin@vento.dev",
+      "email": "admin@vento.dev",
+      "firstName": "Admin",
+      "lastName": "Vento",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin", "analista"]
+    },
+    {
+      "username": "analista@vento.dev",
+      "email": "analista@vento.dev",
+      "firstName": "Analista",
+      "lastName": "Prueba",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "analista123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["analista"]
+    }
+  ]
+}
