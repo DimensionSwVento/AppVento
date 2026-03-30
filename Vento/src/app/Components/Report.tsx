@@ -1,4 +1,5 @@
 import Card from "./Card";
+import NextStepButton from "./NextStepButton";
 
 const REPORT_ITEMS = [
   { title: "Puntuación general", description: "Índice compuesto de viabilidad eólica para la zona seleccionada" },
@@ -16,6 +17,7 @@ export default function Report() {
       {REPORT_ITEMS.map((item) => (
         <Card key={item.title} title={item.title} description={item.description} />
       ))}
+      <NextStepButton />
     </div>
   );
 }

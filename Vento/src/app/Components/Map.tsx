@@ -8,8 +8,10 @@ import { luma } from "@luma.gl/core";
 import { webgl2Adapter } from "@luma.gl/webgl";
 import { useCachedImage } from "../Utils/useCachedImage";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
+import { cellToParent } from "h3-js";
 import {
   type HexData,
+  type IndexedHex,
   INITIAL_VIEW_STATE,
   MAP_STYLE,
   MAX_BOUNDS,
@@ -36,6 +38,7 @@ export default function MapView() {
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const { accion } = useAprincipal();
   const [hexData, setHexData] = useState<HexData[]>([]);
+  const { selectedHexes, setSelectedHexes } = useAprincipal();
   const [dataReady, setDataReady] = useState(false);   // fetch de H3 completado
   const [mapReady, setMapReady] = useState(false);     // MapGL tiles cargados
   const loading = !dataReady || !mapReady;             // mapa no listo hasta ambos
@@ -163,10 +166,62 @@ export default function MapView() {
     }
   };
 
-  // construimos la capa con los hexagonos
+  // toggle selección de hexágono
+  const toggleHex = useCallback((h3Index: string) => {
+    setSelectedHexes((prev) => {
+      const next = new Set(prev);
+      if (next.has(h3Index)) {
+        next.delete(h3Index);
+      } else {
+        next.add(h3Index);
+      }
+      return next;
+    });
+  }, [setSelectedHexes]);
+
+  // computar ratio de selección por hexágono visible (hijos seleccionados / hijos totales)
+  // si el hex está directamente seleccionado → ratio 1.0
+  // si es padre de hexágonos seleccionados a otra resolución → ratio proporcional
+  const selectionRatioMap = (() => {
+    if (selectedHexes.size === 0) return new Map<string, number>();
+
+    const ratios = new Map<string, number>();
+
+    // contar cuántos hijos originales (res 8) tiene cada hex visible
+    const totalChildren = new Map<string, number>();
+    const selectedChildren = new Map<string, number>();
+
+    for (const d of hexData) {
+      let parent: string;
+      try { parent = targetRes === 8 ? d.h3_index : cellToParent(d.h3_index, targetRes); }
+      catch { continue; }
+      totalChildren.set(parent, (totalChildren.get(parent) ?? 0) + 1);
+      if (selectedHexes.has(d.h3_index) || selectedHexes.has(parent)) {
+        selectedChildren.set(parent, (selectedChildren.get(parent) ?? 0) + 1);
+      }
+    }
+
+    for (const hex of visibleHex) {
+      const total = totalChildren.get(hex.h3_index) ?? 0;
+      const selected = selectedChildren.get(hex.h3_index) ?? 0;
+      if (selected > 0 && total > 0) {
+        ratios.set(hex.h3_index, selected / total);
+      }
+    }
+
+    return ratios;
+  })();
+
+  // hexágonos con selección (directa o parcial)
+  const selectedVisible: (IndexedHex & { ratio: number })[] = visibleHex
+    .filter((h) => selectionRatioMap.has(h.h3_index))
+    .map((h) => ({ ...h, ratio: selectionRatioMap.get(h.h3_index)! }));
+
+  // construimos las capas: cuadrícula base + seleccionados con relleno proporcional
   const layers = [
+    // capa base: todos los hexágonos visibles, solo borde
     new H3HexagonLayer<HexData>({
-      id: "h3-hexagons",
+      id: "h3-grid",
       data: visibleHex,
       getHexagon: (d) => d.h3_index,
       getFillColor: [0, 0, 0, 0],
@@ -176,6 +231,23 @@ export default function MapView() {
       getLineColor: [204, 204, 204, 78],
       lineWidthMinPixels: 2,
       pickable: true,
+    }),
+    // capa de selección: relleno con alpha proporcional al ratio de hijos seleccionados
+    new H3HexagonLayer<(typeof selectedVisible)[number]>({
+      id: "h3-selected",
+      data: selectedVisible,
+      getHexagon: (d) => d.h3_index,
+      getFillColor: (d) => [0, 180, 255, Math.round(d.ratio * 160)],
+      extruded: false,
+      filled: true,
+      stroked: true,
+      getLineColor: (d) => [0, 180, 255, Math.round(d.ratio * 220)],
+      lineWidthMinPixels: 2,
+      pickable: false,
+      updateTriggers: {
+        getFillColor: [selectedHexes.size],
+        getLineColor: [selectedHexes.size],
+      },
     }),
   ];
 
@@ -262,6 +334,10 @@ export default function MapView() {
             }
             controller={true}
             layers={layers}
+            onClick={(info) => {
+              const hex = info.object as HexData | undefined;
+              if (hex) toggleHex(hex.h3_index);
+            }}
             getTooltip={({ object }: { object?: HexData }) =>
               object
                 ? `H3: ${object.h3_index}\nScore: ${(object.score_general * 100).toFixed(0)}%\nTipo: ${object.tipo_celda}`
