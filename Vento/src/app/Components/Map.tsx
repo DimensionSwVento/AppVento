@@ -22,13 +22,7 @@ import {
 } from "../Utils/h3Resolution";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-// TODO: quitar console.log antes de push de rama
-try {
-  luma.registerAdapters([webgl2Adapter]);
-  console.log("[MAP] luma: adapter WebGL2 registrado");
-} catch (e) {
-  console.warn("[MAP] luma: adapter no disponible, reintentará al montar", e);
-}
+try { luma.registerAdapters([webgl2Adapter]); } catch { /* retry on mount */ }
 
 // gradiente de color por score — se usará cuando se active el mapa de calor (AC1)
 // function getColor(score: number): [number, number, number, number] {
@@ -82,8 +76,7 @@ export default function MapView() {
       inner = requestAnimationFrame(() => {
         const allAtRes = getResolutionLevel(hexData, cache, targetRes);
         const filtered = filterByViewport(allAtRes, viewState);
-        console.log(`[MAP] render: res=${targetRes}, visibles=${filtered.length}/${allAtRes.length}`); // TODO: quitar antes de push
-        setVisibleHex(filtered);
+          setVisibleHex(filtered);
         setUpdating(false);
       });
     });
@@ -96,17 +89,15 @@ export default function MapView() {
 
   // effect único: carga datos H3 + listener fullscreen
   useEffect(() => {
-    console.log("[MAP] mount: iniciando carga de datos y listeners"); // TODO: quitar antes de push
     const ctrl = new AbortController();
 
     fetchHexData(ctrl.signal)
       .then((data) => {
-        console.log("[MAP] mount: datos H3 cargados, total:", data.length); // TODO: quitar antes de push
         setHexData(data);
         setDataReady(true);
       })
       .catch((err) => {
-        if (err.name !== "AbortError") console.error("[MAP] mount: error cargando datos H3:", err);
+        if (err.name !== "AbortError") console.error("Error cargando datos H3:", err);
         setDataReady(true);
       });
 
@@ -116,7 +107,6 @@ export default function MapView() {
     document.addEventListener("fullscreenchange", onFsChange);
 
     return () => {
-      console.log("[MAP] unmount: limpiando fetch y listeners"); // TODO: quitar antes de push
       ctrl.abort();
       document.removeEventListener("fullscreenchange", onFsChange);
     };
@@ -125,10 +115,8 @@ export default function MapView() {
   // freeze/unfreeze según la fase activa
   useEffect(() => {
     if (shouldFreeze && mapState === "active") {
-      console.log("[MAP] fase: congelando mapa (salió de seleccion-area)"); // TODO: quitar antes de push
       freeze();
     } else if (!shouldFreeze && mapState === "frozen") {
-      console.log("[MAP] fase: descongelando mapa (volvió a seleccion-area)"); // TODO: quitar antes de push
       unfreeze();
     }
   }, [shouldFreeze]);
@@ -139,8 +127,6 @@ export default function MapView() {
 
     const canvases = container.querySelectorAll("canvas");
     if (canvases.length === 0) return;
-
-    console.log("[MAP] freeze: capturando snapshot de", canvases.length, "canvases"); // TODO: quitar antes de push
 
     const composite = document.createElement("canvas");
     composite.width = canvases[0].width;
@@ -154,14 +140,12 @@ export default function MapView() {
     const objectUrl = await saveToCache(dataUri, SNAPSHOT_KEY);
     setSnapshot(objectUrl);
     setMapState("frozen");
-    console.log("[MAP] freeze: snapshot guardado en cache"); // TODO: quitar antes de push
   }, [mapState, saveToCache]);
 
   const unfreeze = useCallback(async () => {
     await clearCache(SNAPSHOT_KEY);
     setSnapshot(null);
     setMapState("active");
-    console.log("[MAP] unfreeze: mapa reactivado"); // TODO: quitar antes de push
   }, [clearCache]);
 
   const zoomIn = () => setViewState((v) => ({ ...v, zoom: Math.min(v.zoom + 1, 18) }));
@@ -288,10 +272,7 @@ export default function MapView() {
               mapStyle={MAP_STYLE}
               maxBounds={MAX_BOUNDS}
               canvasContextAttributes={{ preserveDrawingBuffer: true }}
-              onLoad={() => {
-                console.log("[MAP] MapGL: tiles cargados"); // TODO: quitar antes de push
-                setMapReady(true);
-              }}
+              onLoad={() => setMapReady(true)}
             />
           </DeckGL>
         </>

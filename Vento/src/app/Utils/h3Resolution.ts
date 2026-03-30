@@ -44,19 +44,13 @@ export function createResolutionCache(): ResolutionCache {
  * Si ya está en cache, retorna inmediatamente.
  * Si no, computa solo ese nivel, lo cachea y retorna.
  */
-// TODO: quitar console.log antes de push de rama
 export function getResolutionLevel(
   data: HexData[],
   cache: ResolutionCache,
   targetRes: number
 ): IndexedHex[] {
   const cached = cache.get(targetRes);
-  if (cached) {
-    console.log(`[MAP] getResolutionLevel: res ${targetRes} desde cache (${cached.length} hex)`);
-    return cached;
-  }
-
-  console.log(`[MAP] getResolutionLevel: computando res ${targetRes} desde ${data.length} hexágonos...`);
+  if (cached) return cached;
 
   // res 8 = datos originales con lat/lng
   if (targetRes === 8) {
@@ -65,7 +59,6 @@ export function getResolutionLevel(
       return { ...d, lat, lng };
     });
     cache.set(8, indexed);
-    console.log(`[MAP] getResolutionLevel: res 8 listo (${indexed.length} hex)`);
     return indexed;
   }
 
@@ -96,7 +89,6 @@ export function getResolutionLevel(
   }
 
   cache.set(targetRes, aggregated);
-  console.log(`[MAP] getResolutionLevel: res ${targetRes} listo (${aggregated.length} hex)`);
   return aggregated;
 }
 
@@ -124,13 +116,9 @@ export function zoomToH3Res(zoom: number): number {
 
 // --- fetch ---
 
-// TODO: quitar console.log antes de push de rama
 export async function fetchHexData(signal: AbortSignal): Promise<HexData[]> {
-  console.log("[MAP] fetchHexData: iniciando fetch a /api/hexagons");
   const res = await fetch("/api/hexagons", { signal });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  console.log("[MAP] fetchHexData: response OK, parseando JSON...");
   const data = await res.json();
-  console.log("[MAP] fetchHexData: datos recibidos, hexágonos:", data.hexagons?.length ?? 0);
   return data.hexagons ?? [];
 }
