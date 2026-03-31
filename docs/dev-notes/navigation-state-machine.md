@@ -1,9 +1,9 @@
 ---
-version: 1.0
-date: 2026-03-30
+version: 2.0
+date: 2026-03-31
 status: activo
 autor: wessley - mavalan software
-scope: Máquina de estados de navegación, SideBar, subpáginas y ciclo de vida de componentes
+scope: Máquina de estados de navegación, SideBar, subpáginas, selección y ciclo de vida
 ---
 
 # Notas de Desarrollo — Navegación por Estado Global
@@ -15,6 +15,7 @@ La aplicación Vento utiliza un estado global (`AccionPrincipalContext`) como m�
 - Qué subpágina se renderiza junto al SideBar.
 - Si el mapa está activo (interactivo) o congelado (snapshot estático).
 - Qué items del SideBar están habilitados o deshabilitados.
+- Qué hexágonos H3 están seleccionados en el mapa (compartido entre Map y SideBar).
 
 ---
 
@@ -28,42 +29,53 @@ type Aprincipal = "seleccion-area" | "dimensiones" | "caracteristicas" | "inform
 
 Estado inicial: `"seleccion-area"`
 
-### 2.2 Diagrama de Transiciones
+### 2.2 Contexto Global (`AccionPrincipalContext`)
 
-```
-                    ┌──────────────────────────────────────────────┐
-                    │              AVANCE (solo +1 paso)           │
-                    ▼                                              │
-  ┌─────────────────┐    ┌──────────────┐    ┌────────────────┐    ┌─────────┐
-  │ seleccion-area  │───▶│ dimensiones  │───▶│ caracteristicas│───▶│ informe │
-  └─────────────────┘    └──────────────┘    └────────────────┘    └─────────┘
-          ▲                    │ ▲                  │ ▲                 │
-          │                    │ │                  │ │                 │
-          └────────────────────┘ └──────────────────┘ └─────────────────┘
-                         RETROCESO (libre a cualquier paso anterior)
+```typescript
+interface AprincipalContext {
+  accion: Aprincipal;
+  setAccion: (accion: Aprincipal) => void;
+  selectedHexes: Set<string>;           // hexágonos seleccionados en el mapa
+  setSelectedHexes: Dispatch<SetStateAction<Set<string>>>;
+}
 ```
 
-**Reglas de navegación (implementadas en `SideBar.tsx:21-26`):**
+`selectedHexes` se comparte entre:
+- **Map.tsx** — escribe al seleccionar/deseleccionar hexágonos
+- **SideBar.tsx** — lee para habilitar avance a `dimensiones`
 
-- **Avanzar:** Solo al paso inmediato siguiente (`pasoDestino === pasoActual + 1`).
-- **Retroceder:** Libre a cualquier paso anterior (`pasoDestino <= pasoActual`).
-- **Saltar pasos adelante:** Bloqueado.
+### 2.3 Diagrama de Transiciones
 
-### 2.3 Habilitación Visual (implementada en `SideBar.tsx:29-32`)
+```
+   ┌─────────────────┐    ┌──────────────┐    ┌────────────────┐    ┌─────────┐
+   │ seleccion-area  │───▶│ dimensiones  │───▶│ caracteristicas│───▶│ informe │
+   └─────────────────┘    └──────────────┘    └────────────────┘    └─────────┘
+           │                    │ ▲                  │ ▲                 │
+           │ SOLO si hay        │ │                  │ │                 │
+           │ hexágonos          └─┘                  └─┘                 │
+           │ seleccionados       RETROCESO (libre por click en sidebar)  │
+           │                                                             │
+           └─────────────────────────────────────────────────────────────┘
+                              RETROCESO (libre)
+```
+
+**Reglas de navegación:**
+
+- **Retroceder:** Libre — click en cualquier paso anterior en el SideBar
+- **Avanzar desde `seleccion-area`:** Solo si `selectedHexes.size > 0` — click en "Dimensiones" en SideBar
+- **Avanzar desde otras fases:** Solo mediante el botón `NextStepButton` al final de la subpágina (children)
+- **Saltar pasos adelante:** Bloqueado
+
+### 2.4 Habilitación Visual (implementada en `SideBar.tsx`)
 
 ```typescript
 function habilitado(paso) {
   const idx = ORDEN.indexOf(paso);
-  return idx <= pasoActual || idx === pasoActual + 1;
+  if (idx < pasoActual) return true;  // retroceso siempre habilitado
+  if (paso === "dimensiones" && accion === "seleccion-area" && haySeleccion) return true;
+  return false;
 }
 ```
-
-| Estado actual      | seleccion-area | dimensiones | caracteristicas | informe |
-|--------------------|:-:|:-:|:-:|:-:|
-| seleccion-area     | activo | habilitado | deshabilitado | deshabilitado |
-| dimensiones        | habilitado | activo | habilitado | deshabilitado |
-| caracteristicas    | habilitado | habilitado | activo | habilitado |
-| informe            | habilitado | habilitado | habilitado | activo |
 
 Items deshabilitados: `cursor-not-allowed opacity-40`.
 Item activo: `bg-blue-800`.
@@ -77,36 +89,43 @@ Item activo: `bg-blue-800`.
 ```
 layout.tsx
   └─ Providers.tsx
-       └─ AprincipalProvider  (estado global: accion + setAccion)
+       └─ AprincipalProvider  (accion, setAccion, selectedHexes, setSelectedHexes)
             └─ dashboard/page.tsx
-                 ├─ SideBar (lee accion, controla navegación)
+                 ├─ SideBar (lee accion + selectedHexes, controla retroceso)
                  │    └─ children (subpágina según accion)
-                 └─ MapView (lee accion, freeze/unfreeze)
+                 │         └─ NextStepButton (avanza al paso siguiente)
+                 └─ MapView (lee accion para freeze, escribe selectedHexes)
 ```
 
 ### 3.2 Renderizado Condicional de Subpáginas (implementado en `dashboard/page.tsx`)
 
 ```typescript
 switch (accion) {
-  case "seleccion-area": return undefined    // sin panel lateral, solo mapa
-  case "dimensiones":    return <Dimensions />
-  case "informe":        return <Report />
+  case "seleccion-area": return undefined       // sin panel lateral, solo mapa
+  case "dimensiones":    return <Dimensions />  // incluye NextStepButton
+  case "informe":        return <Report />      // incluye NextStepButton
   default:               return null
 }
 ```
 
-El SideBar recibe el resultado como `children` y lo muestra en un panel de `w-[25rem] bg-[#cce1eeff]` solo si `accion !== "seleccion-area"`.
+MapView se carga con `dynamic({ ssr: false })` para evitar hidratación WebGL.
 
-### 3.3 Efecto sobre el Mapa
+El SideBar recibe el resultado como `children` y lo muestra en un panel de `w-[30rem] h-full overflow-y-auto bg-[#cce1eeff]` con scroll vertical.
 
-El `MapView` siempre está montado en el DOM. La transición de estado afecta su comportamiento:
+### 3.3 NextStepButton (`Components/NextStepButton.tsx`)
+
+Card blanca al final de cada subpágina con:
+- Texto "Siguiente paso" a la izquierda
+- Icono `/next.svg` a la derecha
+- Se oculta automáticamente en el último paso (informe)
+- Avanza al paso siguiente vía `setAccion`
+
+### 3.4 Efecto sobre el Mapa
 
 | Transición | Efecto en MapView |
 |-----------|-------------------|
 | Entrar a `seleccion-area` | `unfreeze()` — limpia snapshot, reactiva DeckGL+MapLibre |
 | Salir de `seleccion-area` | `freeze()` — captura canvas, muestra imagen estática |
-
-Detalle completo en `docs/dev-notes/map-rendering.md`.
 
 ---
 
@@ -116,23 +135,28 @@ Detalle completo en `docs/dev-notes/map-rendering.md`.
 
 ```
 SideBar (flex row, bg-[#165170ff])
-  ├─ Panel de navegación (w-[10rem], flex-col justify-between)
+  ├─ Panel de navegación (w-[15rem], flex-col justify-between)
+  │    ├─ Logo (vento_logo.png, 111x36px)
   │    ├─ Sección superior
   │    │    ├─ "ACCIONES PRINCIPALES"
-  │    │    │    ├─ Selección de área
-  │    │    │    ├─ Dimensiones
-  │    │    │    ├─ Características del proyecto
-  │    │    │    └─ Informe de viabilidad
-  │    │    └─ "Histórico de viabilidad"
-  │    └─ Sección inferior (justify-between lo empuja abajo)
+  │    │    │    ├─ 📍 Selección de área (area.png 20x20)
+  │    │    │    ├─ 📊 Dimensiones (dim.png 20x20)
+  │    │    │    ├─ ⚙️ Características del proyecto (caracteristicas.png 20x20)
+  │    │    │    └─ 📋 Informe de viabilidad (viab.png 20x20)
+  │    │    └─ 📁 Histórico de viabilidad (hist.png 20x20)
+  │    └─ Sección inferior
   │         ├─ "GESTIÓN Y AYUDA DE USUARIO"
-  │         │    ├─ Configuraciones
-  │         │    ├─ Manual de uso
-  │         │    └─ Soporte
-  │         └─ Email del usuario
-  └─ Panel de contenido (w-[25rem], bg-[#cce1eeff]) — solo visible fuera de seleccion-area
-       └─ {children} → Dimensions | Report | null
+  │         │    ├─ Configuraciones (config.png 20x20)
+  │         │    ├─ Manual de uso (manual.png 20x20)
+  │         │    └─ Soporte (soporte.png 20x20)
+  │         └─ Email del usuario (user.png 20x20)
+  └─ Panel de contenido (w-[30rem], overflow-y-auto, bg-[#cce1eeff])
+       └─ {children} → Dimensions + NextStepButton | Report + NextStepButton | null
 ```
+
+### 4.2 Selección de Hexágonos como Gate
+
+En la fase `seleccion-area`, el item "Dimensiones" se habilita visualmente y permite click solo si `selectedHexes.size > 0`. Esto conecta la interacción del mapa (seleccionar hexágonos) con la navegación del SideBar.
 
 ---
 
@@ -140,69 +164,48 @@ SideBar (flex row, bg-[#165170ff])
 
 ### 5.1 Persistencia de Estado en Refresh
 
-**Estado actual:** El estado vive en `useState` — un refresh del navegador reinicia a `"seleccion-area"`. No hay persistencia.
+**Estado actual:** El estado vive en `useState` — un refresh reinicia a `"seleccion-area"` y pierde selección.
 
 **Pendiente:**
 - Decidir si persistir en `sessionStorage`, `localStorage` o URL params.
-- Si se persiste, restaurar el estado al montar `AprincipalProvider`.
-- Evaluar si los datos de configuración de dimensiones/características también deben persistirse entre fases.
+- Persistir también `selectedHexes`.
 
-### 5.2 Validación de Avance Condicional
+### 5.2 Subpágina "Caracteristicas"
 
-**Estado actual:** El avance de `seleccion-area` → `dimensiones` siempre está permitido. Hay un TODO en `SideBar.tsx:28`:
-
-```
-// to DO: avanzar de seleccion de area solo si hay hexagonos selecionados
-```
+**Estado actual:** No hay componente implementado. Cae al `default: return null`.
 
 **Pendiente:**
-- Bloquear avance si no hay hexágonos seleccionados en el mapa.
-- Requiere que `MapView` comunique al contexto global qué hexágonos están seleccionados.
-- Evaluar si extender `AccionPrincipalContext` o crear un contexto separado para selección.
+- Crear componente de configuración (turbinas, capacidad MW, etc.).
+- Definir qué datos recibe de la fase "dimensiones".
 
-### 5.3 Subpágina "Caracteristicas"
+### 5.3 Histórico de Viabilidad
 
-**Estado actual:** No hay componente `Caracteristicas` implementado. En `dashboard/page.tsx`, el case `"caracteristicas"` cae al `default: return null`.
-
-**Pendiente:**
-- Crear componente de configuración de características del proyecto (turbinas, capacidad MW, etc.).
-- Definir qué datos recibe de la fase anterior (dimensiones configuradas).
-
-### 5.4 Histórico de Viabilidad
-
-**Estado actual:** El item "Histórico de viabilidad" existe en el SideBar como texto estático. No tiene `onClick` ni funcionalidad.
+**Estado actual:** Texto estático sin funcionalidad.
 
 **Pendiente:**
-- Decidir si es una fase adicional o una vista independiente (modal/drawer).
-- Requiere almacenamiento de informes previos (actualmente no existe persistencia de informes).
+- Decidir si es vista independiente (modal/drawer) o fase adicional.
+- Requiere almacenamiento de informes previos.
 
-### 5.5 Gestión y Ayuda de Usuario
+### 5.4 Gestión y Ayuda de Usuario
 
-**Estado actual:** Los items "Configuraciones", "Manual de uso" y "Soporte" existen como texto estático sin funcionalidad.
+**Estado actual:** Items estáticos sin funcionalidad.
 
-**Pendiente:**
-- Definir qué configuraciones se exponen al usuario.
-- Manual de uso: enlace externo o contenido in-app.
-- Soporte: formulario, email directo o integración externa.
+**Pendiente:** Definir configuraciones, manual de uso, soporte.
 
-### 5.6 Autenticación y Email Real
+### 5.5 Autenticación y Email Real
 
-**Estado actual:** El email está hardcodeado como `"test@gmail.com"` en `SideBar.tsx:34`. No hay flujo de login funcional (`login/page.tsx` está vacío).
+**Estado actual:** Email hardcodeado `"test@gmail.com"`. Login vacío.
 
-**Pendiente:**
-- Integración con Keycloak (ADR-005).
-- Obtener email del usuario autenticado.
-- Proteger ruta `/dashboard` para usuarios no autenticados.
+**Pendiente:** Integración Keycloak (ADR-005).
 
-### 5.7 Flujo de Datos entre Fases
+### 5.6 Flujo de Datos entre Fases
 
-**Estado actual:** Cada fase es independiente. No hay datos que fluyan de una fase a la siguiente.
+**Estado actual:** `selectedHexes` se comparte. No hay otros datos entre fases.
 
 **Pendiente:**
-- `seleccion-area` → `dimensiones`: pasar hexágonos seleccionados y área geográfica.
-- `dimensiones` → `caracteristicas`: pasar configuración de variables/pesos por dimensión.
-- `caracteristicas` → `informe`: pasar todas las configuraciones para generar el informe de viabilidad.
-- Evaluar si todo vive en el contexto global o en contextos separados por fase.
+- `seleccion-area` → `dimensiones`: hexágonos seleccionados ya disponibles vía contexto.
+- `dimensiones` → `caracteristicas`: configuración de variables/pesos.
+- `caracteristicas` → `informe`: todas las configuraciones para generar informe.
 
 ---
 
@@ -210,13 +213,14 @@ SideBar (flex row, bg-[#165170ff])
 
 | Archivo | Estado | Responsabilidad |
 |---------|--------|----------------|
-| `Utils/AccionPrincipalContext.tsx` | Implementado | Estado global, tipo `Aprincipal`, provider y hook |
-| `Providers.tsx` | Implementado | Composición de providers (actualmente solo AccionPrincipal) |
+| `Utils/AccionPrincipalContext.tsx` | Implementado | Estado global: accion, selectedHexes |
+| `Providers.tsx` | Implementado | Composición de providers |
 | `layout.tsx` | Implementado | Root layout, wrapping con Providers |
-| `dashboard/page.tsx` | Implementado | Switch de subpáginas, composición SideBar + MapView |
-| `Components/SideBar.tsx` | Implementado | Navegación secuencial, habilitación, layout flex |
-| `Components/Map.tsx` | Implementado | Consume `accion` para freeze/unfreeze |
-| `Components/Dimensions.tsx` | Implementado (datos estáticos) | 6 cards de dimensiones hardcodeadas |
-| `Components/Report.tsx` | Implementado (datos estáticos) | 6 cards de informe hardcodeadas |
+| `dashboard/page.tsx` | Implementado | Dynamic import MapView, switch subpáginas |
+| `Components/SideBar.tsx` | Implementado | Retroceso libre, avance condicional, iconos, logo |
+| `Components/NextStepButton.tsx` | Implementado | Botón de avance al final de cada subpágina |
+| `Components/Map.tsx` | Implementado | Selección de hexágonos, freeze/unfreeze por fase |
+| `Components/Dimensions.tsx` | Implementado (datos estáticos) | 5 cards + NextStepButton |
+| `Components/Report.tsx` | Implementado (datos estáticos) | 6 cards + NextStepButton |
 | `Components/Card.tsx` | Implementado | Card reutilizable (title + description) |
-| `login/page.tsx` | Vacío | Pendiente: flujo de autenticación |
+| `login/page.tsx` | Vacío | Pendiente: autenticación |

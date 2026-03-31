@@ -1,177 +1,167 @@
 ---
-version: 1.0
-date: 2026-03-30
+version: 2.0
+date: 2026-03-31
 status: activo
 autor: wessley - mavalan software
-scope: Mapa SIG — Gestión de recursos GPU, navegación y rendimiento H3
+scope: Mapa SIG — Gestión de recursos GPU, tile-based rendering y rendimiento
 ---
 
 # Notas de Desarrollo — Renderizado del Mapa y Gestión de Recursos
 
-## 1. Contexto del Problema
+## 1. Contexto
 
-La aplicación Vento utiliza DeckGL + MapLibre para renderizar un mapa SIG interactivo con una capa de hexágonos H3 (resolución 8). DeckGL opera creando un **device WebGL** que renderiza directamente en la GPU del navegador a través de un elemento `<canvas>`. Esto implica que:
+Vento utiliza DeckGL + MapLibre para un mapa SIG interactivo con hexágonos H3. DeckGL opera con un **device WebGL** que renderiza directamente en la GPU. En v2.0 se migró a una arquitectura **tile-based** para resolver problemas de rendimiento con el dataset de 126 MB.
 
-- Los recursos de GPU se reservan mientras el componente exista en el DOM.
-- Múltiples capas o datos masivos saturan la memoria de video (VRAM).
-- El device WebGL puede no estar disponible inmediatamente al montar el componente (error `maxTextureDimension2D`).
+### 1.1 Problemas Resueltos en v2.0
 
-## 2. Arquitectura de Navegación y Ciclo de Vida del Mapa
+| Problema | Causa | Solución |
+|----------|-------|----------|
+| `maxTextureDimension2D` undefined | Device WebGL no listo en SSR | `dynamic({ ssr: false })` en dashboard |
+| Error de hidratación SSR/CSR | MapView se renderizaba en servidor | `dynamic({ ssr: false })` |
+| Mapa crashea con todos los hexágonos | ~150K hexágonos res 8 de golpe | Arquitectura tile-based |
+| `NS_BINDING_ABORTED` | Parseo lento, deck.gl cancela requests | Endpoint `/api/tiles/warmup` |
+| `Maximum call stack size exceeded` | Spread operator con arrays grandes | Eliminado con arquitectura tile |
 
-### 2.1 Navegación por Estado Global
+---
 
-El dashboard maneja un estado global (`AccionPrincipalContext`) que controla la subpágina activa:
+## 2. Arquitectura Tile-Based — Implementado
+
+### 2.1 Principios Aplicados
+
+1. **Solo tiles visibles** — deck.gl `TileLayer` carga/descarga tiles automáticamente según viewport
+2. **Límites de concurrencia** — `maxRequests: 4`, `maxCacheSize: 64`
+3. **Agrupación server-side** — Resolución H3 por zoom se computa en el servidor, no en el cliente
+4. **Memoización** — `useMemo` en `tileLayer` para no recrear la capa en cada render
+5. **Warmup** — Pre-cargar índice antes de activar tiles
+
+### 2.2 Componente MapView — Estructura
 
 ```
-seleccion-area → dimensiones → caracteristicas → informe
+MapView (dynamic import, ssr: false)
+  ├─ Estado: viewState, mapReady, dataReady, mapState, selectedHexes
+  ├─ useEffect: warmup + fullscreen listener
+  ├─ useEffect: freeze/unfreeze por fase
+  ├─ useMemo: tileLayer (TileLayer + PolygonLayer)
+  └─ Render:
+       ├─ Overlay "... cargando mapa" (while !mapReady || !dataReady)
+       ├─ Snapshot congelado (if frozen)
+       └─ DeckGL + MapGL (siempre montado para onLoad)
+            ├─ TileLayer (solo si dataReady)
+            │    ├─ PolygonLayer grid (todos los hex del tile)
+            │    └─ PolygonLayer selected (hex seleccionados)
+            └─ MapGL (CartoDB Positron, maxBounds Sudamérica)
 ```
 
-- El `SideBar` controla la navegación: avance secuencial, retroceso libre.
-- La subpágina seleccionada se renderiza como `children` del SideBar, al lado del mapa.
-- El mapa (`MapView`) siempre está montado en el DOM del dashboard.
+### 2.3 Rendering Pipeline
 
-### 2.2 Ciclo de Vida del Mapa por Fase
+```
+Usuario mueve/zoom el mapa
+         │
+         ▼
+DeckGL detecta tiles visibles nuevos
+         │
+         ▼
+TileLayer.getTileData(z, x, y)
+  → fetch /api/tiles/z/x/y
+  → servidor filtra hexágonos por bbox
+  → retorna TileHex[] (JSON compacto)
+         │
+         ▼
+TileLayer.renderSubLayers(tileData)
+  → PolygonLayer grid: cellToBoundary(h, true) → polígonos WebGL
+  → PolygonLayer selected: solo hex en selectedHexes Set
+         │
+         ▼
+GPU renderiza polígonos (fill + stroke)
+```
 
-| Fase               | Estado del Mapa     | Recursos GPU |
+---
+
+## 3. Ciclo de Vida del Mapa por Fase — Implementado
+
+| Fase | Estado del Mapa | Recursos GPU |
 |--------------------|---------------------|--------------|
-| `seleccion-area`   | Activo (interactivo) | En uso       |
-| `dimensiones`      | Congelado (snapshot) | Liberados    |
-| `caracteristicas`  | Congelado (snapshot) | Liberados    |
-| `informe`          | Congelado (snapshot) | Liberados    |
+| `seleccion-area` | Activo (interactivo) | En uso |
+| `dimensiones` | Congelado (snapshot) | Liberados |
+| `caracteristicas` | Congelado (snapshot) | Liberados |
+| `informe` | Congelado (snapshot) | Liberados |
 
-**Decisión:** Cuando el usuario sale de `seleccion-area`, se captura un snapshot compuesto de todos los canvases (MapLibre base + DeckGL hexágonos), se almacena en Cache API y se reemplaza el mapa interactivo por una imagen estática.
+### 3.1 Proceso de Freeze/Unfreeze
 
-## 3. Gestión del Snapshot y Cache de Canvas
+**Congelar** (al salir de `seleccion-area`):
+1. Obtener todos los `<canvas>` del contenedor (MapLibre + DeckGL)
+2. Componer en un canvas temporal (base map primero, hexágonos después)
+3. Convertir a `dataURI` PNG
+4. Almacenar en Cache API vía `useCachedImage`
+5. Mostrar imagen estática, DeckGL deja de renderizar
 
-### 3.1 Proceso de Congelamiento
+**Descongelar** (al volver a `seleccion-area`):
+1. Limpiar Cache API y revocar `objectURL`
+2. Restaurar mapa interactivo con estado de vista preservado
 
-1. Se obtienen todos los `<canvas>` del contenedor del mapa.
-2. Se componen en un canvas temporal (base map primero, hexágonos después).
-3. Se convierte a `dataURI` formato PNG.
-4. Se almacena en Cache API (`vento-map-snapshots`) vía `useCachedImage`.
-5. Se muestra la imagen estática y se destruye el renderizado activo.
+---
 
-### 3.2 Riesgos y Mitigaciones
+## 4. Selección de Hexágonos — Implementado
+
+### 4.1 Mecanismo
+
+- Click en hexágono → `toggleHex(h3Index)` → toggle en `selectedHexes` Set
+- `selectedHexes` vive en `AccionPrincipalContext` (compartido con SideBar)
+- DeckGL distingue click de drag internamente — no interfiere con pan
+
+### 4.2 Render de Selección
+
+Cada tile renderiza dos sub-layers:
+1. **Grid base** — Todos los hexágonos, relleno gris transparente `[180,180,180,25]`, pickable
+2. **Seleccionados** — Solo hex en `selectedHexes`, relleno azul `[0,180,255,140]`, no pickable
+
+`updateTriggers.renderSubLayers: [selectedHexes.size]` fuerza re-render de sublayers cuando cambia la selección.
+
+---
+
+## 5. Gestión de Carga — Implementado
+
+### 5.1 Secuencia de Inicialización
+
+```
+1. Dashboard monta MapView (dynamic, ssr: false)
+2. MapGL empieza a cargar tiles base
+3. useEffect llama GET /api/tiles/warmup
+   → Servidor parsea parquet + construye índice
+4. MapGL dispara onLoad → setMapReady(true)
+5. Warmup responde "ready" → setDataReady(true)
+6. loading = false → overlay desaparece, botones visibles
+7. TileLayer se activa (layers={dataReady ? [tileLayer] : []})
+8. Tiles H3 empiezan a cargarse por viewport
+```
+
+### 5.2 ¿Por qué no H3HexagonLayer?
+
+`H3HexagonLayer` es un `CompositeLayer` que no puede usarse dentro de `TileLayer` (también `CompositeLayer`). Se usa `PolygonLayer` + `cellToBoundary()` de h3-js para convertir cada H3 index a polígono de coordenadas.
+
+---
+
+## 6. Riesgos y Mitigaciones
 
 | Riesgo | Mitigación |
 |--------|-----------|
-| Acumulación de snapshots en Cache API | `clearCache()` elimina la entrada anterior antes de guardar una nueva. Revocar `objectURL` al limpiar. |
-| Canvas temporal no liberado | El canvas compuesto es una variable local — el GC lo recoge al salir del scope de `freeze()`. |
-| `preserveDrawingBuffer` consume memoria extra | Necesario para capturar el canvas de MapLibre. Solo activo mientras el mapa está en modo `active`. |
-| Snapshot desactualizado al reactivar | Al descongelar (`unfreeze`), se limpia el cache y se restaura el mapa interactivo con el estado de vista preservado. |
+| Acumulación de tiles en memoria | `maxCacheSize: 64` limita tiles cacheados |
+| Requests concurrentes saturan servidor | `maxRequests: 4` limita peticiones simultáneas |
+| Warmup tarda y usuario ve mapa vacío | Overlay "... cargando mapa" hasta warmup + onLoad |
+| Snapshot no se limpia al descongelar | `clearCache()` + `URL.revokeObjectURL()` en unfreeze |
+| `preserveDrawingBuffer` consume memoria | Solo activo en canvas de MapLibre para snapshot |
 
-### 3.3 Registro de Adaptadores WebGL
+---
 
-```typescript
-try {
-  luma.registerAdapters([webgl2Adapter]);
-} catch {
-  // device no disponible aún — DeckGL reintenta al montar
-}
-```
-
-El `try-catch` es necesario porque en SSR o en montaje inicial el contexto WebGL puede no existir. DeckGL resuelve internamente al crear su propio contexto.
-
-## 4. Rendimiento con Datos H3 Masivos
-
-### 4.1 El Problema
-
-El archivo `master_variables.h3.parquet` tiene **126 MB** con hexágonos a resolución 8 (~460m de lado). Renderizar todos los hexágonos simultáneamente:
-
-- **Crashea el navegador** por exceso de geometría enviada al GPU.
-- **Satura la memoria** si se deserializa el parquet completo con todas las columnas.
-- El spread operator (`...data`) con arrays grandes causa `Maximum call stack size exceeded`.
-
-### 4.2 Estrategia de Rendimiento: Lectura Selectiva de Columnas
-
-En la API route (`/api/hexagons`), `hyparquet` lee solo las columnas necesarias para el mapa:
-
-```typescript
-columns: ["h3_index", "hex_id", "score_general", "score", "tipo_celda", "cell_type"]
-```
-
-Las columnas de variables numéricas adicionales (decenas de métricas) se excluyen del payload inicial. Se cargarán bajo demanda cuando el usuario inspeccione un hexágono específico.
-
-### 4.3 Estrategia de Rendimiento: Agrupación por Resolución
-
-Se pre-computan **7 niveles de agrupación** (res 2 a res 8) una sola vez cuando llegan los datos:
-
-```
-Zoom ≥ 10 → Res 7  (hexágonos ~1.2 km)
-Zoom ≥ 8  → Res 6  (hexágonos ~3.2 km)
-Zoom ≥ 7  → Res 5  (hexágonos ~8.5 km)
-Zoom ≥ 6  → Res 4  (hexágonos ~22 km)
-Zoom ≥ 5  → Res 3  (hexágonos ~59 km)
-Zoom < 5  → Res 2  (hexágonos ~158 km)
-```
-
-Cada nivel padre se calcula con `cellToParent()` desde los datos originales (res 8), y el `score_general` se **promedia** entre todos los hijos que pertenecen a ese padre.
-
-**Costo:** La pre-computación ocurre una vez (`useMemo` sobre `hexData`). Al cambiar de zoom, solo se hace un `Map.get(res)` — O(1).
-
-### 4.4 Estrategia de Rendimiento: Filtrado por Viewport
-
-Además de la agrupación por resolución, solo se envían al GPU los hexágonos **visibles en el viewport actual**:
-
-1. Cada hexágono tiene `lat`/`lng` pre-computados con `cellToLatLng()` (almacenados en el cache de resolución).
-2. Se estima el bounding box visible a partir del `viewState` (latitud, longitud, zoom) con un margen del 30%.
-3. Se filtran los hexágonos cuyo centro cae fuera del bounding box.
-
-**Resultado:** En zoom bajo (país completo), se renderizan ~50-200 hexágonos (res 2-3) en vez de cientos de miles.
-
-### 4.5 Cache en Memoria del Servidor
-
-La API route utiliza `h3DataCache` (cache en memoria de Node.js) para evitar re-parsear el parquet en cada request. El parseo ocurre solo en la primera solicitud; las siguientes sirven desde memoria.
-
-> **Nota:** Este cache es temporal. Migrar a PostgreSQL + PostGIS cuando se implemente la épica E6.
-
-## 5. Flujo Completo de Datos
-
-```
-master_variables.h3.parquet (126 MB, res 8)
-         │
-         ▼
-  API Route /api/hexagons
-  (parseH3Parquet: solo columnas esenciales)
-  (h3DataCache: cache en memoria)
-         │
-         ▼
-  JSON response: { hexagons[], totalCount, parsedAt }
-         │
-         ▼
-  MapView: fetch al montar (solo si activo y sin datos)
-         │
-         ▼
-  buildResolutionCache(): pre-computa res 2..8 con lat/lng
-         │
-         ▼
-  zoomToH3Res(zoom) → selecciona nivel
-         │
-         ▼
-  filterByViewport() → solo hexágonos en pantalla
-         │
-         ▼
-  H3HexagonLayer: renderiza con borde azul opaco (#165170)
-  getFillColor por score_general (gradiente rojo→amarillo→azul)
-```
-
-## 6. Archivos Involucrados
+## 7. Archivos Involucrados
 
 | Archivo | Responsabilidad |
 |---------|----------------|
-| `Components/Map.tsx` | Mapa interactivo, capas H3, freeze/unfreeze, agrupación por zoom, filtrado viewport |
-| `Utils/parseH3Parquet.ts` | Parseo del .parquet con hyparquet (solo columnas esenciales) |
-| `Utils/h3DataCache.ts` | Cache temporal en memoria del servidor |
-| `Utils/useCachedImage.ts` | Hook para almacenar/recuperar snapshots en Cache API del navegador |
-| `Utils/AccionPrincipalContext.tsx` | Estado global de navegación (fase activa) |
-| `api/hexagons/route.ts` | API route que sirve datos H3 como JSON |
-| `Components/SideBar.tsx` | Navegación secuencial entre fases |
-| `dashboard/page.tsx` | Layout principal: SideBar + MapView |
-
-## 7. Puntos Criticos a Monitorear
-
-1. **Memory leaks en Cache API:** Asegurar que `clearCache` se ejecute siempre al descongelar. Los `objectURL` no revocados persisten en memoria.
-2. **Device WebGL huérfano:** Si el componente se desmonta sin descongelar, verificar que DeckGL libere el device internamente.
-3. **Tamaño del JSON response:** Con ~126 MB de parquet, el JSON resultante (solo columnas esenciales) debe mantenerse bajo control. Monitorear el tamaño del payload.
-4. **Pre-computación bloqueante:** `buildResolutionCache` itera todos los hexágonos 7 veces. Si el dataset crece, considerar mover a Web Worker.
-5. **Datos de variables bajo demanda:** Las columnas de variables numéricas no se cargan inicialmente. Cuando se implemente la inspección de hexágonos individuales, crear un endpoint dedicado que lea solo las variables de un `h3_index` específico.
+| `Components/Map.tsx` | TileLayer + PolygonLayer, selección, freeze/unfreeze, warmup |
+| `Utils/h3TileIndex.ts` | Índice espacial server-side, bbox filtering, agrupación por res |
+| `Utils/h3Resolution.ts` | Constantes: INITIAL_VIEW_STATE, MAX_BOUNDS, MAP_STYLE, SNAPSHOT_KEY |
+| `Utils/useCachedImage.ts` | Hook para snapshot en Cache API del navegador |
+| `Utils/AccionPrincipalContext.tsx` | Estado global: accion, selectedHexes |
+| `api/tiles/warmup/route.ts` | Pre-carga del índice H3 |
+| `api/tiles/[z]/[x]/[y]/route.ts` | API tile-server |
+| `dashboard/page.tsx` | Dynamic import de MapView (ssr: false) |
