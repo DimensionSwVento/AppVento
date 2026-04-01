@@ -1,1 +1,8 @@
 node_modules
+
+# Claude Code memory (local per developer)
+.claude/
+
+# Backend separado (repo propio)
+AppVento---Backend/
+AppVento---Backend

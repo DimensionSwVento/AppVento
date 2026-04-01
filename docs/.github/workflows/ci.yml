@@ -80,6 +80,8 @@ jobs:
 
       - name: Build Next.js
         run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
 
   # ─────────────────────────────────────
   # Stage 3: Seguridad — audit + secretos

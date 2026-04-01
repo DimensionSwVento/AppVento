@@ -1,118 +1,148 @@
 ---
 id: ADR-007
-title: Backend en Primera Entrega con Arquitectura Limpia, DDD y Estructura Monorepo
+title: Backend FastAPI con Arquitectura Limpia, DDD y Estructura Monorepo
 status: aceptado
-date: 2026-03-24
-supersedes: ADR-003 (parcialmente)
+date: 2026-03-31
+supersedes: ADR-003 (parcialmente), ADR-007 (2026-03-24, tecnología pendiente)
 ---
 
-# ADR-007: Backend en Primera Entrega con Arquitectura Limpia, DDD y Estructura Monorepo
+# ADR-007: Backend FastAPI con Arquitectura Limpia, DDD y Estructura Monorepo
 
 ## Contexto
 
-El ADR-003 original decidió no construir backend API en la primera entrega. Sin embargo, con la incorporación de Keycloak (ADR-005) y la escala real del proyecto (50+ personas, agencia nacional, usuarios profesionales de todo el país), se reconsidera esta decisión:
+El ADR-003 original decidió no construir backend API en la primera entrega. Con la incorporación de Keycloak (ADR-005), la arquitectura tile-based (ADR-008) y la escala del proyecto (50+ personas, agencia nacional), se requiere backend desde el inicio.
 
-1. **El frontend necesita un backend** para: validar tokens Keycloak, exponer endpoints de datos, servir como intermediario seguro
-2. **La escala del proyecto exige estructura profesional** desde el inicio — no se puede empezar con código ad-hoc y refactorear después
-3. **Monorepo vs repos separados:** con múltiples áreas y equipos, un monorepo facilita coordinación
+**Actualización (2026-03-31):** Se confirma **FastAPI (Python)** como tecnología de backend. La infraestructura es **AccuWeb Cloud** con Apache como reverse proxy (ADR-006 v2). Se descarta NestJS/Express.
 
 ## Decisión
 
-### 1. Backend en Primera Entrega
+### 1. Tecnología: FastAPI (Python)
 
-**SÍ construir backend desde la primera entrega**, pero con alcance controlado:
+**Confirmado.** Razones:
 
+| Factor | FastAPI | NestJS/Express |
+|--------|---------|----------------|
+| Ecosistema geoespacial | h3, pandas, pyarrow, geopandas — nativos | h3-js existe pero sin pandas/pyarrow |
+| Pipeline de datos | El equipo de investigación usa Python — mismo lenguaje | Requiere bridge Python↔Node |
+| Compatibilidad parquet | pyarrow lee .parquet nativo | hyparquet limitado (bugs con datasets grandes) |
+| PostGIS | psycopg2 + SQLAlchemy maduro | TypeORM/Prisma soportan PostGIS pero menos maduro |
+| Async | Nativo (ASGI, uvicorn) | Nativo |
+| Clean Architecture | Viable con inyección de dependencias | Más natural con NestJS pero no justifica el trade-off |
+
+### 2. Alcance Primera Entrega
+
+- Tile-server: `GET /api/tiles/{z}/{x}/{y}` (migra de Next.js API routes)
+- Warmup: `GET /api/tiles/warmup` (pre-carga índice H3)
 - Validación de tokens Keycloak (middleware)
-- Endpoints para servir datos geoespaciales (proxy/cache del JSON)
-- Endpoints protegidos para funcionalidad admin que exceda Keycloak
-- Health checks y logging básico
+- Health checks
+- CRUD usuarios (proxy a Keycloak Admin API)
 
-### 2. Arquitectura Limpia + DDD
-
-El backend debe seguir **Clean Architecture** (Robert C. Martin) con principios de **Domain-Driven Design**:
+### 3. Arquitectura Limpia + DDD
 
 ```
 backend/
 ├── src/
-│   ├── domain/              # Entidades, value objects, interfaces de repositorio
-│   │   ├── entities/        # User, Hexagon, AnalysisArea, etc.
-│   │   ├── value-objects/   # H3Index, Score, Coordinate, etc.
-│   │   └── ports/           # Interfaces (contratos) de repositorios y servicios externos
+│   ├── domain/              # Entidades, value objects, interfaces
+│   │   ├── entities/        # User, Hexagon, AnalysisArea
+│   │   ├── value_objects/   # H3Index, Score, Coordinate, TileBBox
+│   │   └── ports/           # Interfaces de repositorios y servicios
 │   │
-│   ├── application/         # Casos de uso / servicios de aplicación
-│   │   ├── use-cases/       # LoginUser, GetHexagons, FilterByVariable, etc.
-│   │   └── dto/             # Data Transfer Objects
+│   ├── application/         # Casos de uso
+│   │   ├── use_cases/       # GetTileHexagons, WarmupIndex, FilterByVariable
+│   │   └── dto/             # TileHex, HexagonDetail, TileRequest
 │   │
 │   ├── infrastructure/      # Implementaciones concretas
-│   │   ├── persistence/     # Repositorios PostgreSQL/PostGIS
-│   │   ├── auth/            # Integración Keycloak (adapter)
-│   │   ├── data/            # Lectura JSON/Parquet (adapter)
-│   │   └── http/            # Controllers/Routes (Express, Fastify, FastAPI)
+│   │   ├── persistence/     # PostgreSQL/PostGIS repos (SQLAlchemy)
+│   │   ├── auth/            # Keycloak adapter (python-keycloak)
+│   │   ├── data/            # Lector parquet (pandas + pyarrow)
+│   │   ├── spatial/         # H3 tile index, agrupación por resolución
+│   │   └── http/            # FastAPI routers
 │   │
-│   └── shared/              # Utilidades cross-cutting (logging, errors, config)
+│   └── shared/              # Logging, errors, config
+│
+├── pyproject.toml
+├── requirements.txt
+└── Dockerfile
 ```
 
-**Principios obligatorios:**
-- Dependencias apuntan hacia adentro (domain no depende de infrastructure)
-- Domain es puro — sin frameworks, sin I/O
-- Casos de uso orquestan, no implementan detalles
-- Ports & Adapters: interfaces en domain, implementaciones en infrastructure
-
-### 3. Estructura Monorepo
+### 4. Estructura Monorepo
 
 ```
 Vento/
 ├── apps/
-│   ├── web/                 # Frontend (Angular/React)
-│   └── api/                 # Backend (Clean Architecture + DDD)
+│   ├── web/                 # Frontend (Next.js → next export)
+│   └── api/                 # Backend (FastAPI + Clean Architecture)
 ├── packages/
-│   ├── shared-types/        # Tipos TypeScript compartidos (H3, scores, DTOs)
-│   └── h3-processor/        # Scripts Python de pre-procesamiento
+│   └── h3-processor/        # Scripts Python de pre-procesamiento parquet
 ├── infra/
-│   ├── docker/              # Dockerfiles por servicio
-│   ├── keycloak/            # Configuración realm Keycloak
-│   └── ci/                  # Configuración CI/CD
-├── docs/                    # Documentación (existente)
-├── .env.example             # Variables de entorno
+│   ├── docker/              # Dockerfiles
+│   ├── keycloak/            # Configuración realm
+│   ├── apache/              # Config reverse proxy
+│   └── ci/                  # CI/CD (GitHub Actions)
+├── docs/                    # Documentación
 ├── docker-compose.yml       # Orquestación local
-├── turbo.json / nx.json     # Config monorepo (según framework)
-└── package.json             # Root workspace
+└── .env.example
 ```
 
-**Herramienta monorepo:** Turborepo (si React) o Nx (si Angular). Para Python, directorio con `pyproject.toml` propio.
+**Nota:** El monorepo actual (`Vento/`) no está estructurado así aún. La migración a esta estructura se hará progresivamente.
+
+### 5. Deploy en AccuWeb Cloud
+
+```
+Apache (:80/:443)
+  ├─ /           → archivos estáticos (next export)
+  └─ /api/*      → reverse proxy → FastAPI (:8000, uvicorn)
+
+FastAPI (:8000)
+  └─ conecta a PostgreSQL + PostGIS (AccuWeb)
+  └─ valida tokens con Keycloak (AccuWeb)
+```
 
 ## Justificación
 
+### ¿Por qué FastAPI y no NestJS?
+- El equipo de investigación trabaja en Python — unificar lenguaje reduce fricción
+- pandas + pyarrow resuelven el parseo del parquet de 126 MB sin los bugs de hyparquet (stack overflow, etc.)
+- h3 (Python) es la librería oficial de Uber — más estable que h3-js para server-side
+- FastAPI + uvicorn tiene rendimiento comparable a Node.js para I/O async
+
 ### ¿Por qué backend desde el inicio?
-- Keycloak necesita un backend que valide tokens y sirva como resource server
-- Servir datos JSON directamente desde el frontend es inseguro y no escalable
-- Migrar de "sin backend" a "con backend" después es más costoso que empezar con uno ligero bien estructurado
+- Keycloak necesita un resource server que valide tokens
+- La arquitectura tile-based requiere computación server-side (agrupación por resolución, filtrado por bbox)
+- `next export` (estático) no puede tener API routes — se necesita un servidor
 
 ### ¿Por qué Clean Architecture + DDD?
-- Proyecto de escala nacional con 50+ personas — no se puede improvisar estructura
-- DDD alinea el código con el dominio del negocio (hexágonos, scores, dimensiones, análisis)
-- Clean Architecture permite cambiar infraestructura (BD, auth, formato datos) sin tocar lógica de negocio
+- Proyecto de escala nacional — no se puede improvisar estructura
+- DDD alinea el código con el dominio (hexágonos, scores, dimensiones, tiles)
+- Clean Architecture permite cambiar de parquet a PostGIS sin tocar lógica de negocio
 - Facilita testing: domain y use-cases se testean sin infraestructura
 
-### ¿Por qué monorepo?
-- Un solo repositorio para frontend + backend + scripts + infra
-- Tipos compartidos entre frontend y backend (TypeScript)
-- CI/CD unificado — un pipeline, múltiples targets
-- Onboarding simple: `git clone` → `docker-compose up` → todo funciona
-- 50+ personas coordinándose necesitan una fuente de verdad, no fragmentación
+## Migración de Next.js API Routes → FastAPI
+
+| Next.js (actual, temporal) | FastAPI (target) |
+|---------------------------|------------------|
+| `api/tiles/[z]/[x]/[y]/route.ts` | `GET /api/tiles/{z}/{x}/{y}` |
+| `api/tiles/warmup/route.ts` | `GET /api/tiles/warmup` |
+| `api/hexagons/route.ts` (deprecado) | Eliminado |
+| `api/health/route.ts` | `GET /api/health` |
+| `api/users/route.ts` (stub) | `GET/POST /api/users` (Keycloak Admin) |
+| `h3TileIndex.ts` | `infrastructure/spatial/tile_index.py` |
+| `h3DataCache.ts` | Cache en memoria → PostgreSQL (E6) |
+| `parseH3Parquet.ts` | `infrastructure/data/parquet_reader.py` |
 
 ## Consecuencias
 
-- **Supersede parcialmente ADR-003:** Ahora SÍ hay backend en primera entrega, pero con scope controlado
-- Se requiere definir tecnología de backend: FastAPI (Python) o NestJS/Express (Node.js/TypeScript)
-- La estructura DDD agrega complejidad inicial pero reduce deuda técnica a largo plazo
-- El monorepo requiere configuración de workspaces (npm/yarn/pnpm workspaces)
-- El equipo debe familiarizarse con los principios de Clean Architecture
+- El frontend pasa a `next export` — archivos estáticos servidos por Apache
+- FastAPI corre como proceso persistente (uvicorn) detrás de Apache
+- La lógica de tiles se migra 1:1 de TypeScript a Python
+- PostgreSQL + PostGIS reemplazará el cache en memoria cuando se implemente E6
+- El monorepo se reestructura progresivamente
 
 ## Relación con Otros ADRs
 
 | ADR | Relación |
 |-----|----------|
-| ADR-003 | Supersedido parcialmente — ahora hay backend |
-| ADR-005 | Backend valida tokens Keycloak como resource server |
-| ADR-006 | Backend puede servir como proxy/cache de datos geoespaciales |
+| ADR-003 | Supersedido — ahora hay backend FastAPI |
+| ADR-005 | FastAPI valida tokens Keycloak como resource server |
+| ADR-006 | FastAPI sirve tiles H3, AccuWeb Cloud como infra |
+| ADR-008 | FastAPI implementa el tile-server de la arquitectura tile-based |
