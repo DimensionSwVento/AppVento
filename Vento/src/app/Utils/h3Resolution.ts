@@ -10,6 +10,7 @@ export const INITIAL_VIEW_STATE = {
   bearing: 0,
 };
 
-export const MAX_BOUNDS: [number, number, number, number] = [-120, -60, -20, 20];
+// Colombia + vecinos (Panamá, Ecuador, Venezuela, parte de Brasil/Perú)
+export const MAX_BOUNDS: [number, number, number, number] = [-82, -5, -66, 14];
 
 export const SNAPSHOT_KEY = "map-snapshot";

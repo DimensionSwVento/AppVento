@@ -5,7 +5,6 @@ import parseH3Parquet from "../../../../../Utils/parseH3Parquet";
 import { getH3Data, storeH3Data } from "../../../../../Utils/h3DataCache";
 import { initTileIndex, getHexagonsForTile, isIndexReady } from "../../../../../Utils/h3TileIndex";
 
-// inicializar el índice si no está listo
 async function ensureIndex() {
   if (isIndexReady()) return true;
 
@@ -17,12 +16,12 @@ async function ensureIndex() {
     storeH3Data(data);
   }
 
-  initTileIndex(data.hexagons);
+  initTileIndex(data.hexagons, data.variableNames);
   return true;
 }
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ z: string; x: string; y: string }> }
 ) {
   try {
@@ -36,17 +35,16 @@ export async function GET(
     }
 
     const ready = await ensureIndex();
-    if (!ready) {
-      return NextResponse.json([], { status: 404 });
-    }
+    if (!ready) return NextResponse.json([], { status: 404 });
 
-    const hexagons = getHexagonsForTile(zi, xi, yi);
+    // query param ?var=nombre_columna para AC2 filtrado
+    const url = new URL(req.url);
+    const varName = url.searchParams.get("var") ?? undefined;
 
-    // headers de cache — tiles no cambian frecuentemente
+    const hexagons = getHexagonsForTile(zi, xi, yi, varName);
+
     return NextResponse.json(hexagons, {
-      headers: {
-        "Cache-Control": "public, max-age=3600, s-maxage=3600",
-      },
+      headers: { "Cache-Control": "public, max-age=3600, s-maxage=3600" },
     });
   } catch (error) {
     console.error("Error serving tile:", error);

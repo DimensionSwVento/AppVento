@@ -21,8 +21,18 @@ export async function GET() {
       storeH3Data(data);
     }
 
-    initTileIndex(data.hexagons);
-    return NextResponse.json({ status: "ready", count: data.totalCount });
+    // debug: verificar qué variables se parsearon y un hexágono de muestra
+    const sample = data.hexagons[0];
+    console.log("[WARMUP] variableNames:", data.variableNames);
+    console.log("[WARMUP] sample hex:", JSON.stringify(sample).slice(0, 500));
+
+    initTileIndex(data.hexagons, data.variableNames);
+    return NextResponse.json({
+      status: "ready",
+      count: data.totalCount,
+      variableNames: data.variableNames,
+      sampleHex: sample ? { h3: sample.h3_index, score: sample.score_general, vars: Object.keys(sample.variables) } : null,
+    });
   } catch (error) {
     console.error("Error warming up tile index:", error);
     return NextResponse.json({ status: "error" }, { status: 500 });

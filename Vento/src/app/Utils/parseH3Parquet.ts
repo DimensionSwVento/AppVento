@@ -5,22 +5,49 @@ export interface H3HexagonData {
   h3_index: string;
   score_general: number;
   tipo_celda: string;
-  variables: Record<string, number>;
-  metadata?: Record<string, string>;
+  variables: Record<string, string | number | null>;
 }
 
 export interface H3DataSet {
   hexagons: H3HexagonData[];
   totalCount: number;
   parsedAt: string;
+  variableNames: string[];  // lista de variables disponibles (para selector AC2)
 }
 
-// columnas mínimas para renderizar el mapa
-const MAP_COLUMNS = ["h3_index", "hex_id", "score_general", "score", "tipo_celda", "cell_type"];
+// columnas auxiliares a ignorar — no son variables del modelo
+const IGNORE_COLUMNS = new Set([
+  "h3_index", "hex_id", "score_general", "score", "tipo_celda", "cell_type",
+]);
+
+const IGNORE_PREFIXES = ["divipola_csv", "lat_lon_csv", "municipios_csv"];
+
+function shouldIgnore(col: string): boolean {
+  if (IGNORE_COLUMNS.has(col)) return true;
+  return IGNORE_PREFIXES.some((p) => col.startsWith(p));
+}
+
+// nombres legibles para las variables del parquet
+const VARIABLE_LABELS: Record<string, string> = {
+  "001_velocidad_de_viento": "Velocidad de Viento (m/s)",
+  "004_densidad_energ": "Densidad Energética Eólica (W/m²)",
+  "009_profundidad_roca": "Profundidad de Roca",
+  "soc_022_sr": "Zonas Reserva Campesina (ha)",
+  "soc_025_er": "Cigarrillos Ilegales (%)",
+};
+
+export function getVariableLabel(colName: string): string {
+  for (const [prefix, label] of Object.entries(VARIABLE_LABELS)) {
+    if (colName.startsWith(prefix)) return label;
+  }
+  // fallback: extraer nombre del path
+  const parts = colName.split("/");
+  return parts[0].replace(/_/g, " ");
+}
 
 /**
- * Parsea un archivo .h3.parquet y retorna solo los datos necesarios para el mapa.
- * Lee únicamente las columnas esenciales para evitar saturar memoria con un archivo de 126MB.
+ * Parsea un archivo .h3.parquet y retorna todos los datos incluyendo variables.
+ * Lee todas las columnas para soportar AC2 (filtrado) y AC3 (popup).
  */
 export default async function parseH3Parquet(
   filePath: string
@@ -35,23 +62,45 @@ export default async function parseH3Parquet(
 
   await parquetRead({
     file: arrayBuffer,
-    columns: MAP_COLUMNS,
     rowFormat: "object",
     onComplete: (data: Record<string, unknown>[]) => {
       rows = data;
     },
   });
 
-  const hexagons: H3HexagonData[] = rows.map((row) => ({
-    h3_index: String(row.h3_index ?? row.hex_id ?? ""),
-    score_general: Number(row.score_general ?? row.score ?? 0),
-    tipo_celda: String(row.tipo_celda ?? row.cell_type ?? "activa"),
-    variables: {},
-  }));
+  // detectar columnas de variables (excluyendo auxiliares)
+  const variableNames: string[] = [];
+  if (rows.length > 0) {
+    for (const key of Object.keys(rows[0])) {
+      if (!shouldIgnore(key)) variableNames.push(key);
+    }
+  }
+
+  const hexagons: H3HexagonData[] = rows.map((row) => {
+    const variables: Record<string, string | number | null> = {};
+    for (const col of variableNames) {
+      const val = row[col];
+      if (val === null || val === undefined) {
+        variables[col] = null;
+      } else if (typeof val === "number") {
+        variables[col] = val;
+      } else {
+        variables[col] = String(val);
+      }
+    }
+
+    return {
+      h3_index: String(row.h3_index ?? row.hex_id ?? ""),
+      score_general: Number(row.score_general ?? row.score ?? 0),
+      tipo_celda: String(row.tipo_celda ?? row.cell_type ?? "activa"),
+      variables,
+    };
+  });
 
   return {
     hexagons,
     totalCount: hexagons.length,
     parsedAt: new Date().toISOString(),
+    variableNames,
   };
 }
