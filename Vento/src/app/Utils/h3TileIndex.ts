@@ -2,7 +2,7 @@
  * Índice espacial de hexágonos H3 organizado por tiles z/x/y.
  * Almacena todas las variables para soportar AC2 (filtrado) y AC3 (popup).
  */
-import { cellToLatLng, cellToParent } from "h3-js";
+import { cellToLatLng, cellToParent, cellToChildren, getResolution } from "h3-js";
 import type { H3HexagonData } from "./parseH3Parquet";
 
 // tile response compacto — datos base + variable filtrada opcional
@@ -31,8 +31,7 @@ function zoomToH3Res(z: number): number {
   if (z >= 8) return 6;
   if (z >= 7) return 5;
   if (z >= 6) return 4;
-  if (z >= 5) return 3;
-  return 2;
+  return 3;
 }
 
 // convertir tile z/x/y a bounding box [west, south, east, north]
@@ -120,20 +119,44 @@ let variableRanges: Map<string, { min: number; max: number }> | null = null;
 // nombres de variables disponibles
 let availableVariables: string[] = [];
 
+// Polígono simplificado Colombia continental + mares territoriales [lng, lat]
+const COL_POLY: [number, number][] = [
+  [-77.5,8.6],[-77.4,9.0],[-76.8,9.6],[-76.0,10.0],[-75.5,11.2],[-74.8,11.5],
+  [-73.5,12.8],[-72.0,12.5],[-71.0,12.0],[-71.3,11.0],[-72.2,7.6],[-72.4,7.1],
+  [-72.0,6.8],[-67.5,6.2],[-67.0,4.0],[-67.8,2.0],[-69.8,-0.5],[-70.0,-4.2],
+  [-73.5,-1.5],[-75.2,-0.1],[-77.6,0.8],[-78.8,1.4],[-79.2,2.0],[-78.5,3.5],
+  [-78.0,4.2],[-77.8,5.5],[-78.5,6.5],[-77.5,8.6],
+];
+
+function isInColombia(lat: number, lng: number): boolean {
+  if (lat < -4.3 || lat > 13.5 || lng < -82 || lng > -66.5) return false;
+  if (lat >= 12.0 && lat <= 13.5 && lng >= -82.0 && lng <= -81.0) return true;
+  if (lat >= 3.5 && lat <= 4.2 && lng >= -82.0 && lng <= -81.0) return true;
+  let inside = false;
+  for (let i = 0, j = COL_POLY.length - 1; i < COL_POLY.length; j = i++) {
+    const [xi, yi] = COL_POLY[i];
+    const [xj, yj] = COL_POLY[j];
+    if (((yi > lat) !== (yj > lat)) && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+
 /**
- * Inicializa el índice con los datos del parquet.
+ * Inicializa el índice: calcula lat/lng, filtra Colombia, calcula scores.
  */
 export function initTileIndex(hexagons: H3HexagonData[], variableNames: string[]): void {
+  console.time("[TILE_INDEX] init");
   availableVariables = variableNames;
 
-  indexedData = hexagons.map((h, i) => {
+  const all: IndexedHex[] = [];
+  for (const h of hexagons) {
     const [lat, lng] = cellToLatLng(h.h3_index);
-    // si no hay score_general del parquet, calcular temporal
+    if (!isInColombia(lat, lng)) continue;
     const score = h.score_general > 0 ? h.score_general : calcTempViability(h.variables);
-    // debug: log primer hexágono
-    if (i === 0) console.log("[TILE_INDEX] primer hex score:", score, "original:", h.score_general, "vars keys:", Object.keys(h.variables).length);
-    return { h3_index: h.h3_index, score_general: score, tipo_celda: h.tipo_celda, lat, lng, variables: h.variables };
-  });
+    all.push({ h3_index: h.h3_index, score_general: score, tipo_celda: h.tipo_celda, lat, lng, variables: h.variables });
+  }
+  indexedData = all;
+  console.log(`[TILE_INDEX] ${all.length} hex Colombia de ${hexagons.length} totales`);
 
   // lookup para detalle O(1)
   hexLookup = new Map();
@@ -166,6 +189,7 @@ export function initTileIndex(hexagons: H3HexagonData[], variableNames: string[]
 
   resolutionCache.clear();
   resolutionCache.set(8, indexedData);
+  console.timeEnd("[TILE_INDEX] init");
 }
 
 /**
@@ -276,19 +300,40 @@ export function getHexagonsForTile(z: number, x: number, y: number, varName?: st
 
 /**
  * Retorna detalle completo de un hexágono por h3_index (AC3 popup).
+ * Busca primero en res 8 (datos originales), luego en caches de resolución agregada.
  */
 export function getHexDetail(h3Index: string): HexDetail | null {
   if (!hexLookup) return null;
+
+  // buscar en datos originales (res 8)
   const h = hexLookup.get(h3Index);
-  if (!h) return null;
-  return {
-    h3_index: h.h3_index,
-    score_general: h.score_general,
-    tipo_celda: h.tipo_celda,
-    lat: h.lat,
-    lng: h.lng,
-    variables: h.variables,
-  };
+  if (h) {
+    return {
+      h3_index: h.h3_index,
+      score_general: h.score_general,
+      tipo_celda: h.tipo_celda,
+      lat: h.lat,
+      lng: h.lng,
+      variables: h.variables,
+    };
+  }
+
+  // buscar en caches de resolución agregada (res 2-7)
+  for (const [, cached] of resolutionCache) {
+    const found = cached.find((c) => c.h3_index === h3Index);
+    if (found) {
+      return {
+        h3_index: found.h3_index,
+        score_general: found.score_general,
+        tipo_celda: found.tipo_celda,
+        lat: found.lat,
+        lng: found.lng,
+        variables: found.variables,
+      };
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -316,18 +361,44 @@ export function getGlobalCounts(
 ): { total: number; selected: number; aboveThreshold: number } {
   const targetRes = zoomToH3Res(zoom);
   const allAtRes = getAtResolution(targetRes);
-  const selectedSet = new Set(selectedHexes);
+
+  // Pre-mapear seleccionados a la resolución actual para O(1) lookup
+  const selectedAtRes = new Set<string>();
+  for (const sh of selectedHexes) {
+    const sRes = getResolution(sh);
+    if (sRes === targetRes) {
+      selectedAtRes.add(sh);
+    } else if (sRes > targetRes) {
+      // hijo seleccionado → mapear a su parent en targetRes
+      try { selectedAtRes.add(cellToParent(sh, targetRes)); } catch { /* ignorar */ }
+    }
+    // si sRes < targetRes (padre seleccionado), expandir sería costoso,
+    // lo contamos comparando parents en el loop
+  }
+
+  // Set de padres seleccionados (res menor que targetRes)
+  const selectedParents = new Set<string>();
+  for (const sh of selectedHexes) {
+    if (getResolution(sh) < targetRes) selectedParents.add(sh);
+  }
 
   let selected = 0;
   let aboveThreshold = 0;
-
   const range = varName ? variableRanges?.get(varName) : null;
 
   for (const h of allAtRes) {
-    // contar seleccionados (directos o por parentesco)
-    if (selectedSet.has(h.h3_index)) selected++;
+    // match directo o por parent pre-mapeado
+    let isSelected = selectedAtRes.has(h.h3_index);
+    if (!isSelected && selectedParents.size > 0) {
+      // verificar si algún parent está seleccionado
+      for (const sp of selectedParents) {
+        try {
+          if (cellToParent(h.h3_index, getResolution(sp)) === sp) { isSelected = true; break; }
+        } catch { /* ignorar */ }
+      }
+    }
+    if (isSelected) selected++;
 
-    // contar sobre umbral
     if (varName && range) {
       const val = h.variables[varName];
       const num = typeof val === "number" ? val : (typeof val === "string" ? parseFloat(val) : NaN);
@@ -336,7 +407,6 @@ export function getGlobalCounts(
         if (ratio > 0.33) aboveThreshold++;
       }
     } else {
-      // sin variable: usar score_general
       if (h.score_general > 0.33) aboveThreshold++;
     }
   }

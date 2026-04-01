@@ -12,14 +12,12 @@ export interface H3DataSet {
   hexagons: H3HexagonData[];
   totalCount: number;
   parsedAt: string;
-  variableNames: string[];  // lista de variables disponibles (para selector AC2)
+  variableNames: string[];
 }
 
-// columnas auxiliares a ignorar — no son variables del modelo
 const IGNORE_COLUMNS = new Set([
   "h3_index", "hex_id", "score_general", "score", "tipo_celda", "cell_type",
 ]);
-
 const IGNORE_PREFIXES = ["divipola_csv", "lat_lon_csv", "municipios_csv"];
 
 function shouldIgnore(col: string): boolean {
@@ -27,7 +25,6 @@ function shouldIgnore(col: string): boolean {
   return IGNORE_PREFIXES.some((p) => col.startsWith(p));
 }
 
-// nombres legibles para las variables del parquet
 const VARIABLE_LABELS: Record<string, string> = {
   "001_velocidad_de_viento": "Velocidad de Viento (m/s)",
   "004_densidad_energ": "Densidad Energética Eólica (W/m²)",
@@ -40,18 +37,14 @@ export function getVariableLabel(colName: string): string {
   for (const [prefix, label] of Object.entries(VARIABLE_LABELS)) {
     if (colName.startsWith(prefix)) return label;
   }
-  // fallback: extraer nombre del path
   const parts = colName.split("/");
   return parts[0].replace(/_/g, " ");
 }
 
-/**
- * Parsea un archivo .h3.parquet y retorna todos los datos incluyendo variables.
- * Lee todas las columnas para soportar AC2 (filtrado) y AC3 (popup).
- */
 export default async function parseH3Parquet(
   filePath: string
 ): Promise<H3DataSet> {
+  console.time("[PARQUET] lectura");
   const buffer = readFileSync(filePath);
   const arrayBuffer = buffer.buffer.slice(
     buffer.byteOffset,
@@ -59,7 +52,6 @@ export default async function parseH3Parquet(
   );
 
   let rows: Record<string, unknown>[] = [];
-
   await parquetRead({
     file: arrayBuffer,
     rowFormat: "object",
@@ -67,8 +59,9 @@ export default async function parseH3Parquet(
       rows = data;
     },
   });
+  console.timeEnd("[PARQUET] lectura");
+  console.log(`[PARQUET] filas: ${rows.length}`);
 
-  // detectar columnas de variables (excluyendo auxiliares)
   const variableNames: string[] = [];
   if (rows.length > 0) {
     for (const key of Object.keys(rows[0])) {
@@ -88,7 +81,6 @@ export default async function parseH3Parquet(
         variables[col] = String(val);
       }
     }
-
     return {
       h3_index: String(row.h3_index ?? row.hex_id ?? ""),
       score_general: Number(row.score_general ?? row.score ?? 0),

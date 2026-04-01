@@ -10,7 +10,7 @@ export const INITIAL_VIEW_STATE = {
   bearing: 0,
 };
 
-// Colombia + vecinos (Panamá, Ecuador, Venezuela, parte de Brasil/Perú)
-export const MAX_BOUNDS: [number, number, number, number] = [-82, -5, -66, 14];
+// Colombia + mares circundantes (San Andrés, Malpelo, Caribe, Pacífico)
+export const MAX_BOUNDS: [number, number, number, number] = [-82, -4.3, -66.5, 13.5];
 
 export const SNAPSHOT_KEY = "map-snapshot";

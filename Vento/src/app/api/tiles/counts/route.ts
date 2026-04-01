@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getGlobalCounts, isIndexReady } from "../../../Utils/h3TileIndex";
 
 export async function GET(req: Request) {
+  console.log("[API counts] GET llamado, indexReady:", isIndexReady());
   if (!isIndexReady()) {
     return NextResponse.json({ total: 0, selected: 0, aboveThreshold: 0 });
   }

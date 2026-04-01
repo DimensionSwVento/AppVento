@@ -1,57 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Vento Frontend
 
-## Getting Started
+Frontend del proyecto Vento — aplicacion web de analisis de viabilidad eolica para Colombia. Renderiza hexagonos H3 sobre un mapa interactivo con mapa de calor por variables de viabilidad.
 
-First, run the development server:
+Este proyecto es exclusivamente el **frontend**. Para que los hexagonos se rendericen correctamente, debe conectarse al backend en FastAPI que procesa y sirve los datos geoespaciales.
+
+## Stack
+
+- **Next.js 16+** (App Router, TypeScript, Tailwind CSS)
+- **deck.gl** + **react-map-gl** + **maplibre-gl** (renderizado WebGL)
+- **h3-js** (indices H3, geometria hexagonos)
+
+## Arquitectura
+
+```
+  ┌──────────────┐       ┌──────────────────┐       ┌──────────┐
+  │   Frontend   │──────>│  FastAPI Backend  │──────>│ Parquet  │
+  │   (Next.js)  │ HTTP  │  (Python)        │       │  / BD    │
+  └──────────────┘       └──────────────────┘       └──────────┘
+```
+
+El frontend consume endpoints REST del backend. Sin el backend corriendo, el mapa no mostrara hexagonos.
+
+## Desarrollo local
+
+### 1. Levantar el backend
+
+Ver el README del repositorio `AppVento---Backend` para instrucciones completas. Resumen rapido:
 
 ```bash
+cd AppVento---Backend/api
+pip install -r requirements.txt
+PYTHONPATH=. PARQUET_PATH=../../Vento/src/app/Utils/master_variables.h3.parquet uvicorn main:app --port 8000
+```
+
+Verificar que responde:
+```bash
+curl http://localhost:8000/health
+```
+
+### 2. Configurar el frontend
+
+```bash
+# En Vento/.env.local
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+### 3. Levantar el frontend
+
+```bash
+cd Vento
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
+Abre `http://localhost:3000` — el mapa cargara los hexagonos desde el backend en `:8000`.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## API Endpoints consumidos
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Todos provistos por el backend FastAPI:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Endpoint | Descripcion |
+|----------|-------------|
+| `GET /api/tiles/warmup` | Carga parquet e inicializa indice espacial |
+| `GET /api/tiles/{z}/{x}/{y}?var=` | Hexagonos para un tile (zoom/x/y) |
+| `GET /api/tiles/detail/{h3}` | Detalle completo de un hexagono |
+| `GET /api/tiles/variables` | Variables disponibles con rangos min/max |
+| `GET /api/tiles/counts?zoom=&var=&selected=` | Conteos globales por resolucion |
 
-## Librerías de Visualización Geoespaciales
+## Variables de entorno
 
-Vento renderiza entre 4.500 y 31.000 hexágonos H3 sobre el mapa de Colombia con un mapa de calor interactivo por variables de viabilidad eólica. Para esto se usa **deck.gl** como motor de renderizado WebGL — permite escalar a resoluciones H3 más altas en el futuro sin cambiar de stack. **react-map-gl** con **maplibre-gl** provee el mapa base (tiles de Colombia) sin necesidad de API key. **h3-js** se usa en cliente para convertir coordenadas geográficas a índices H3 y calcular geometrías de hexágonos.
+| Variable | Descripcion | Default |
+|----------|-------------|---------|
+| `NEXT_PUBLIC_API_URL` | URL del backend FastAPI (requerido) | — |
 
-### Instalación
+## Notas
 
-```bash
-# Motor de renderizado WebGL — H3HexagonLayer, HeatmapLayer
-npm install deck.gl @deck.gl/react @deck.gl/geo-layers @deck.gl/layers
-
-# Mapa base — tiles OpenStreetMap, sin API key requerida
-npm install react-map-gl maplibre-gl
-
-# Cálculos H3 en cliente — coords ↔ h3index, geometría hexágonos
-npm install h3-js
-```
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-
-# test
+- El archivo `master_variables.h3.parquet` no se sube al repo (`.gitignore`). Lo consume el backend, no el frontend.
+- Los hexagonos se filtran a Colombia y sus mares circundantes (lat [-4.3, 13.5], lng [-82, -66.5]).
+- La autenticacion se maneja via Keycloak (realm `vento`, client `vento-frontend`). El backend valida los tokens JWT.

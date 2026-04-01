@@ -3,6 +3,7 @@ import { getAvailableVariables, getVariableRange, isIndexReady } from "../../../
 import { getVariableLabel } from "../../../Utils/parseH3Parquet";
 
 export async function GET() {
+  console.log("[API variables] GET llamado, indexReady:", isIndexReady());
   if (!isIndexReady()) {
     return NextResponse.json({ error: "Índice no inicializado" }, { status: 503 });
   }

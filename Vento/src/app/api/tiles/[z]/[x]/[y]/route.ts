@@ -35,13 +35,14 @@ export async function GET(
     }
 
     const ready = await ensureIndex();
+    console.log(`[API tile] ${zi}/${xi}/${yi} indexReady:${ready}`);
     if (!ready) return NextResponse.json([], { status: 404 });
 
-    // query param ?var=nombre_columna para AC2 filtrado
     const url = new URL(req.url);
     const varName = url.searchParams.get("var") ?? undefined;
 
     const hexagons = getHexagonsForTile(zi, xi, yi, varName);
+    console.log(`[API tile] ${zi}/${xi}/${yi} → ${hexagons.length} hex`);
 
     return NextResponse.json(hexagons, {
       headers: { "Cache-Control": "public, max-age=3600, s-maxage=3600" },

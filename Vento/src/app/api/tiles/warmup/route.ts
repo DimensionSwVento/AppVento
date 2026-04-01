@@ -6,6 +6,7 @@ import { getH3Data, storeH3Data } from "../../../Utils/h3DataCache";
 import { initTileIndex, isIndexReady } from "../../../Utils/h3TileIndex";
 
 export async function GET() {
+  console.log("[API warmup] GET llamado, indexReady:", isIndexReady());
   if (isIndexReady()) {
     return NextResponse.json({ status: "ready" });
   }
@@ -14,19 +15,20 @@ export async function GET() {
     let data = getH3Data();
     if (!data) {
       const filePath = path.join(process.cwd(), "src/app/Utils/master_variables.h3.parquet");
+      console.log("[API warmup] Buscando parquet en:", filePath, "existe:", existsSync(filePath));
       if (!existsSync(filePath)) {
         return NextResponse.json({ status: "no_data" }, { status: 404 });
       }
+      console.log("[API warmup] Parseando parquet...");
       data = await parseH3Parquet(filePath);
       storeH3Data(data);
+      console.log("[API warmup] Parquet parseado:", data.hexagons.length, "hex");
     }
 
-    // debug: verificar qué variables se parsearon y un hexágono de muestra
-    const sample = data.hexagons[0];
-    console.log("[WARMUP] variableNames:", data.variableNames);
-    console.log("[WARMUP] sample hex:", JSON.stringify(sample).slice(0, 500));
-
+    console.log("[API warmup] Inicializando tile index...");
     initTileIndex(data.hexagons, data.variableNames);
+    console.log("[API warmup] Index listo");
+    const sample = data.hexagons[0];
     return NextResponse.json({
       status: "ready",
       count: data.totalCount,
