@@ -1,14 +1,20 @@
-"use client";
-
-import { signIn } from "next-auth/react";
+import { signIn } from "@/auth";
 
 export default function SignInButton() {
   return (
-    <button
-      onClick={() => signIn("keycloak", { callbackUrl: "/dashboard" })}
-      className="w-full rounded-lg bg-white px-6 py-3 text-sm font-semibold text-[#0b2a3c] shadow-md transition-colors hover:bg-gray-100"
+    <form
+      action={async () => {
+        "use server";
+        await signIn("keycloak", { redirectTo: "/dashboard" });
+      }}
+      className="w-full"
     >
-      Iniciar sesión
-    </button>
+      <button
+        type="submit"
+        className="w-full rounded-lg bg-white px-6 py-3 text-sm font-semibold text-[#0b2a3c] shadow-md transition-colors hover:bg-gray-100"
+      >
+        Iniciar sesión
+      </button>
+    </form>
   );
 }
