@@ -1,11 +1,14 @@
 "use client";
+import { useSession, signOut } from "next-auth/react";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
+import { keycloakLogoutUrl } from "../Utils/keycloakLogout";
 
 export default function SideBar({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { data: session } = useSession();
   const { accion, setAccion, selectedHexes } = useAprincipal();
 
   // orden de pasos: solo avanzar al siguiente, retroceder libre
@@ -36,9 +39,8 @@ export default function SideBar({
     return false;
   }
 
-  let mail = "test@gmail.com";
+  const mail = session?.user?.email ?? "";
   return (
-    // opciones de menu lateral
     <div className="flex  bg-[#165170ff]">
       <div className="h-full text-[12px] w-[15  rem] flex flex-col justify-between">
         <div>
@@ -111,9 +113,25 @@ export default function SideBar({
 
         <hr className="mx-[1rem]" />
 
-          <div className="flex items-center">
-            <img src="/user.png" alt="" className="w-[20px] h-[20px] ml-[0.5rem]" />
-            <p className="text-[17px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]"> {mail}</p>
+          <div className="flex items-center justify-between px-[0.5rem]">
+            <div className="flex items-center min-w-0">
+              <img src="/user.png" alt="" className="w-[20px] h-[20px] shrink-0" />
+              <p className="text-[14px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem] truncate"> {mail}</p>
+            </div>
+            <button
+              onClick={async () => {
+                const idToken = session?.idToken;
+                const origin = typeof window !== "undefined" ? window.location.origin : "";
+                await signOut({ redirect: false });
+                const kc = idToken ? keycloakLogoutUrl(idToken, origin) : null;
+                if (kc) window.location.href = kc;
+                else window.location.href = "/";
+              }}
+              className="shrink-0 rounded px-2 py-1 text-[11px] text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+              title="Cerrar sesión"
+            >
+              Salir
+            </button>
           </div>
         </div>
       </div>
