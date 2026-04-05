@@ -77,4 +77,4 @@ Todos provistos por el backend FastAPI:
 
 - El archivo `master_variables.h3.parquet` no se sube al repo (`.gitignore`). Lo consume el backend, no el frontend.
 - Los hexagonos se filtran a Colombia y sus mares circundantes (lat [-4.3, 13.5], lng [-82, -66.5]).
-- La autenticacion se maneja via Keycloak (realm `vento`, client `vento-frontend`). El backend valida los tokens JWT.
+- La autenticacion se maneja via Keycloak (realm `vento`, client `vento-web`). El backend valida los tokens JWT.
