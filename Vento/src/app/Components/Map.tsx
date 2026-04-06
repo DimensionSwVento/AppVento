@@ -35,20 +35,33 @@ interface TileHex {
   h: string; s: number; t: string; la: number; ln: number; v?: number | null;
 }
 
+/** Variables negativas: alto valor = perjudicial para viabilidad eólica */
+const NEGATIVE_VARS = ["soc_022_sr", "soc_025_er"];
+
+/** Score general y positivas: transparente → azul → amarillo → verde */
 function getColorByRatio(ratio: number): [number, number, number, number] {
-  if (ratio > 0.66) return [220, 50, 50, 160];
-  if (ratio > 0.33) return [240, 180, 50, 140];
-  return [50, 130, 220, 120];
+  const t = Math.max(0, Math.min(1, ratio));
+  if (t < 0.05) return [180, 180, 180, 20];       // casi transparente
+  if (t < 0.33) return [30, 60, 160, 130];         // azul oscuro
+  if (t < 0.66) return [240, 200, 20, 160];        // amarillo
+  return [34, 160, 34, 180];                        // verde
 }
 
-function getVariableColor(val: number | null | undefined, min: number, max: number): [number, number, number, number] {
+/** Negativas: transparente → azul → amarillo → rojo */
+function getColorNegative(ratio: number): [number, number, number, number] {
+  const t = Math.max(0, Math.min(1, ratio));
+  if (t < 0.05) return [180, 180, 180, 20];
+  if (t < 0.33) return [30, 60, 160, 130];
+  if (t < 0.66) return [240, 200, 20, 160];
+  return [210, 40, 40, 180];                        // rojo
+}
+
+function getVariableColor(val: number | null | undefined, min: number, max: number, negative: boolean): [number, number, number, number] {
   if (val === null || val === undefined || isNaN(val)) return [180, 180, 180, 25];
   const range = max - min;
   if (range === 0) return [180, 180, 180, 80];
   const ratio = Math.max(0, Math.min(1, (val - min) / range));
-  if (ratio > 0.66) return [220, 50, 50, 160];
-  if (ratio > 0.33) return [240, 180, 50, 140];
-  return [50, 130, 220, 120];
+  return negative ? getColorNegative(ratio) : getColorByRatio(ratio);
 }
 
 export default function MapView() {
@@ -195,6 +208,7 @@ export default function MapView() {
       if (!data || !Array.isArray(data) || data.length === 0) return null;
       const hexes = data as unknown as TileHex[];
       const hasVar = activeVar && varRange;
+      const isNeg = activeVar ? NEGATIVE_VARS.some((p) => activeVar.startsWith(p)) : false;
       const selected: TileHex[] = [];
       const ancestors: TileHex[] = [];
       for (const d of hexes) {
@@ -207,7 +221,7 @@ export default function MapView() {
           id: `${props.id}-grid`, data: hexes,
           getPolygon: (d) => cellToBoundary(d.h, true),
           getFillColor: hasVar
-            ? ((d: TileHex) => getVariableColor(d.v, varRange.min, varRange.max))
+            ? ((d: TileHex) => getVariableColor(d.v, varRange.min, varRange.max, isNeg))
             : ((d: TileHex) => getColorByRatio(d.s)),
           getLineColor: [204, 204, 204, 78], getLineWidth: 1, lineWidthMinPixels: 1,
           filled: true, stroked: true, pickable: true,
@@ -215,7 +229,7 @@ export default function MapView() {
         new PolygonLayer<TileHex>({
           id: `${props.id}-ancestor`, data: ancestors,
           getPolygon: (d) => cellToBoundary(d.h, true),
-          getFillColor: [255, 165, 0, 40], getLineColor: [255, 165, 0, 200],
+          getFillColor: [15, 30, 100, 50], getLineColor: [15, 30, 100, 180],
           getLineWidth: 1, lineWidthMinPixels: 2, filled: true, stroked: true, pickable: false,
         }),
         new PolygonLayer<TileHex>({
@@ -277,6 +291,26 @@ export default function MapView() {
             <>
               <VariableSelector selected={activeVar} onSelect={setActiveVar} />
               <button onClick={freeze} className="absolute top-3 right-3 z-10 rounded bg-gray-800 px-3 py-1.5 text-sm text-white shadow hover:bg-gray-900">Congelar mapa</button>
+              {/* Leyenda de colores */}
+              <div className="absolute bottom-4 left-3 z-10 rounded bg-black/70 px-3 py-2 text-xs text-white shadow backdrop-blur min-w-[130px]">
+                <div className="mb-1 text-gray-400">{activeVar ? (NEGATIVE_VARS.some((p) => activeVar.startsWith(p)) ? "Impacto negativo" : "Impacto positivo") : "Viabilidad"}</div>
+                {(activeVar && NEGATIVE_VARS.some((p) => activeVar.startsWith(p))) ? (
+                  <>
+                    <div className="flex items-center gap-2"><span className="inline-block w-4 h-3 rounded" style={{ background: "rgb(210,40,40)" }} />Alto</div>
+                    <div className="flex items-center gap-2"><span className="inline-block w-4 h-3 rounded" style={{ background: "rgb(240,200,20)" }} />Medio</div>
+                    <div className="flex items-center gap-2"><span className="inline-block w-4 h-3 rounded" style={{ background: "rgb(30,60,160)" }} />Bajo</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2"><span className="inline-block w-4 h-3 rounded" style={{ background: "rgb(34,160,34)" }} />Alto</div>
+                    <div className="flex items-center gap-2"><span className="inline-block w-4 h-3 rounded" style={{ background: "rgb(240,200,20)" }} />Medio</div>
+                    <div className="flex items-center gap-2"><span className="inline-block w-4 h-3 rounded" style={{ background: "rgb(30,60,160)" }} />Bajo</div>
+                  </>
+                )}
+                <hr className="my-1 border-gray-600" />
+                <div className="flex items-center gap-2"><span className="inline-block w-4 h-3 rounded" style={{ background: "rgb(0,180,255)" }} />Seleccionado</div>
+                <div className="flex items-center gap-2"><span className="inline-block w-4 h-3 rounded" style={{ background: "rgb(15,30,100)" }} />Bajo umbral</div>
+              </div>
               <div className="absolute bottom-4 right-4 z-10 flex flex-col items-end gap-2">
                 <LayerInfo resolution={currentRes} total={layerCounts.total} selectedCount={layerCounts.selected} aboveThresholdCount={layerCounts.aboveThreshold} />
                 <button onClick={zoomIn} className="flex h-8 w-8 items-center justify-center rounded bg-white text-lg font-bold text-black shadow hover:bg-gray-100" title="Acercar">+</button>

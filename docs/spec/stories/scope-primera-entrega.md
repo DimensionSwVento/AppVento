@@ -352,8 +352,10 @@ DEPENDENCIAS:
 | 🟡 Alta | US-CACHE | Cache Datos Geoespaciales | E2 |
 | 🟢 Media | US03-AC7 | Metadata de Variables | E2 |
 | 🟢 Media | US08 | CRUD Usuarios (Admin) | E3 |
+| 🟡 Alta | US03-AC1-FIX01 | Revisión Colores + Leyenda (feedback datos) | E2 |
+| 🔴 Crítica | US-KEY-01 | Realm y Client dedicado Keycloak | E0/E1 |
 
-**Total historias:** 18
+**Total historias:** 20
 
 ## Historias eliminadas (por Keycloak — ADR-005)
 
@@ -374,6 +376,46 @@ Semana 4:  US03-AC4 + AC9 + US-CACHE + US03-AC7 + US08
 ```
 
 > **Nota:** La ruta es una sugerencia de secuencia, NO sprints. El equipo puede reorganizar según capacidad y bloqueos reales.
+
+---
+
+## Historias Adicionales (surgidas durante implementación)
+
+---
+
+### US03-AC1-FIX01 — Revisión de Colores y Leyenda con Feedback del Equipo de Datos
+- **Prioridad:** 🟡 Alta
+- **Épica origen:** E2 (Mapa SIG)
+- **Dependencia:** US03-AC1, US03-AC2
+- **Tipo:** Fix / Refinamiento
+- **Contexto:** El equipo de datos revisó el avance del mapa de calor y retroalimentó que la escala de colores debe reflejar si una variable es beneficiosa o perjudicial para el potencial eólico. Se requiere sesión de feedback para validar el renderizado actual contra las expectativas del equipo de investigación.
+- **Criterios de Aceptación:**
+  1. Variables positivas (velocidad viento, densidad energética, score general) usan gradiente: transparente → azul → amarillo → verde (alto = bueno)
+  2. Variables negativas (cigarrillos ilegales, zona reserva campesina) usan gradiente: transparente → azul → amarillo → rojo (alto = malo)
+  3. Leyenda visible en el mapa que refleja la escala activa y cambia dinámicamente según la variable seleccionada
+  4. Leyenda indica si la variable visualizada es de impacto positivo o negativo
+  5. Hexágonos seleccionados mantienen borde azul diferenciado
+  6. Hexágonos bajo umbral / con hijos seleccionados usan azul oscuro distinguible del gradiente de datos
+  7. Sesión de demo con equipo de datos realizada — feedback documentado y aplicado
+
+---
+
+### US-KEY-01 — Configuración Realm y Client Dedicado para Vento en Keycloak
+- **Prioridad:** 🔴 Crítica
+- **Épica origen:** E0 (Fundación) / E1 (Login)
+- **Dependencia:** US-KEY
+- **ADR:** ADR-005
+- **Contexto:** El equipo validó que se creará un realm y client propio en Keycloak para la aplicación. El frontend se comunicará con Keycloak vía OIDC (Authorization Code + PKCE), no directamente con la consola de administración. Esto requiere configurar el client como público con los redirect URIs correctos.
+- **Criterios de Aceptación:**
+  1. Realm "vento" creado en Keycloak con configuración de sesión y tokens adecuada
+  2. Client "vento-frontend" configurado como público (public) con flujo Authorization Code + PKCE
+  3. Redirect URIs configurados para desarrollo local (`http://localhost:3000/*`) y producción
+  4. Roles `admin` y `analista` creados en el realm y asignables a usuarios
+  5. Al menos un usuario de prueba creado con cada rol para validación
+  6. Export del realm (`realm-export.json`) versionado en el repositorio para reproducibilidad
+  7. Documentación de las variables de entorno necesarias: `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID`
+  8. Backend FastAPI valida tokens emitidos por este realm/client específico (ya implementado en `keycloak_guard.py`, verificar compatibilidad)
+- **Desbloquea:** US01 (Login via Keycloak), US-AUTH-GUARD
 
 ---
 
