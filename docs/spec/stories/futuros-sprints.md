@@ -164,6 +164,29 @@ Estas historias corresponden a los pasos 3-6 del flujo de usuario declarado que 
 
 ---
 
+---
+
+## Prioridad Media — UX del Mapa (post-entrega)
+
+### US-F-MAP-AB — Pruebas A/B de Modos de Visualización del Mapa
+- **Módulo:** Mapa SIG / UX
+- **Origen:** Sesión de planning con cliente — dos modos identificados con casos de uso distintos
+- **Prioridad:** 🟡 Alta (post-entrega)
+- **Contexto:** Durante la implementación se identificaron dos modos de uso del mapa con perfiles de usuario diferentes:
+  - **Modo dirigido** (Opción A): el usuario sabe exactamente dónde quiere el informe — mapa en blanco para selección, hexágonos coloreados solo en estado dimensiones
+  - **Modo exploratorio** (Opción B): el usuario explora el territorio guiado por variables/dimensiones — heatmap visible siempre durante la selección
+- **Criterios de Aceptación:**
+  1. Implementar toggle entre los dos modos en preferencias de usuario
+  2. Modo dirigido: en `seleccion-area` el mapa muestra solo basemap + hexágonos seleccionados, sin heatmap
+  3. Modo exploratorio: en `seleccion-area` el heatmap está visible (comportamiento actual)
+  4. Ambos modos en `dimensiones` muestran heatmap completo con leyenda y filtros
+  5. Diseñar y ejecutar prueba A/B con usuarios reales (analistas ANH/EAFIT)
+  6. Métricas: tiempo de selección de área, satisfacción, errores de selección, tasa de re-selección
+  7. Documentar resultados y elegir modo por defecto basado en evidencia
+- **Requiere:** Primera entrega completada + base de usuarios para pruebas
+
+---
+
 ## Resumen Backlog Futuro
 
 | Grupo | Cantidad | Prerequisito |
@@ -173,5 +196,6 @@ Estas historias corresponden a los pasos 3-6 del flujo de usuario declarado que 
 | Motor Multicriterio | 6 historias | Modelo completo del equipo investigación |
 | Expansión Geoespacial | 3 historias | Definir proceso offshore |
 | Pipeline y Datos | 4 historias | Backend API + pipeline Python |
+| UX del Mapa (A/B) | 1 historia | Primera entrega completada |
 
 **Total historias futuras:** 19
