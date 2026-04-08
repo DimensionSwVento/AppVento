@@ -2,6 +2,7 @@
 import { useSession, signOut } from "next-auth/react";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
 import { keycloakLogoutUrl } from "../Utils/keycloakLogout";
+import { usePathname, useRouter } from "next/navigation";
 
 export default function SideBar({
   children,
@@ -10,6 +11,10 @@ export default function SideBar({
 }>) {
   const { data: session } = useSession();
   const { accion, setAccion, selectedHexes } = useAprincipal();
+  const pathname = usePathname();
+  const router = useRouter();
+  const isAdmin = session?.roles?.includes("admin");
+  const isAdminPage = pathname?.startsWith("/admin");
 
   // orden de pasos: solo avanzar al siguiente, retroceder libre
   const ORDEN = [
@@ -95,8 +100,19 @@ export default function SideBar({
         </div>
         </div>
         <div className="">
-          <div className="mx-[0.5rem] text-gray-400 text-[12px]"> GESTIÓN Y AYUDA DE USUARIO</div>
-          <div className="flex items-center">
+          <div className="mx-[0.5rem] text-gray-400 text-[12px] mt-4"> GESTIÓN Y AYUDA DE USUARIO</div>
+          {isAdmin && (
+            <div 
+              onClick={() => router.push('/admin/users')}
+              className={`flex items-center cursor-pointer ${isAdminPage ? "bg-blue-800" : ""}`}
+            >
+              <img src="/user.png" alt="" className="w-[20px] h-[20px] ml-[0.5rem]" />
+              <p className="text-[17px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]">
+                Gestión de usuarios
+              </p>
+            </div>
+          )}
+          <div className="flex items-center mt-2 cursor-not-allowed opacity-50">
             <img src="/config.png" alt="" className="w-[20px] h-[20px] ml-[0.5rem]" />
             <p className="text-[17px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]">
               Configuraciones
@@ -135,7 +151,7 @@ export default function SideBar({
           </div>
         </div>
       </div>
-      {accion == "seleccion-area" ? null : (
+      {isAdminPage || accion == "seleccion-area" ? null : (
         <div className="w-[30rem] h-full overflow-y-auto bg-[#cce1eeff]">{children}</div>
       )}
     </div>

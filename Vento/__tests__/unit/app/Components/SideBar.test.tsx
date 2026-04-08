@@ -9,6 +9,11 @@ vi.mock("next-auth/react", () => ({
   signOut: (...args: unknown[]) => signOutMock(...args),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => "/dashboard",
+}));
+
 vi.mock("@/app/Utils/AccionPrincipalContext", () => ({
   useAprincipal: () => ({
     accion: "seleccion-area",

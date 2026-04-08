@@ -78,3 +78,17 @@ Todos provistos por el backend FastAPI:
 - El archivo `master_variables.h3.parquet` no se sube al repo (`.gitignore`). Lo consume el backend, no el frontend.
 - Los hexagonos se filtran a Colombia y sus mares circundantes (lat [-4.3, 13.5], lng [-82, -66.5]).
 - La autenticacion se maneja via Keycloak (realm `vento`, client `vento-web`). El backend valida los tokens JWT.
+
+## Configuración de Keycloak para Gestión de Usuarios
+
+Para que el panel de administración de usuarios (ruta `/admin/users`) funcione correctamente comunicándose con la Admin REST API de Keycloak, el cliente definido en `AUTH_KEYCLOAK_ID` (`vento-web` por defecto) debe tener los siguientes requisitos en la consola de Keycloak:
+
+1. **Client Authentication**: Debe estar en "On" (para que requiera client secret).
+2. **Service Accounts Enabled**: Debe estar activo (permite al cliente usar Client Credentials Grant).
+3. **Roles de Service Account**:
+   - Ir a la pestaña "Service accounts roles" del cliente.
+   - Presionar "Assign role".
+   - Filtrar por "Filter by clients".
+   - Buscar el cliente `realm-management` y asignarle el rol **`manage-users`**.
+
+Adicionalmente, se recomienda que existan dos Realm Roles configurados llamados exactamente `"admin"` y `"analista"`.
