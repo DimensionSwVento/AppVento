@@ -1,9 +1,9 @@
 ---
-version: 2.0
-date: 2026-03-31
+version: 3.0
+date: 2026-04-09
 status: activo
 autor: wessley - mavalan software
-scope: Pipeline de datos H3 — arquitectura tile-based, del parquet al render por tiles
+scope: Pipeline de datos H3 — dos modos (client-side grid + API heatmap), del parquet al render
 ---
 
 # Notas de Desarrollo — Pipeline de Datos H3
@@ -55,9 +55,16 @@ interface TileHex {
 
 ### 2.3 Visualización Actual
 
-- **Hexágonos base:** Relleno gris muy transparente `[180, 180, 180, 25]` + borde gris `[204, 204, 204, 78]`
-- **Hexágonos seleccionados:** Relleno azul `[0, 180, 255, 140]` + borde azul `[0, 180, 255, 220]`
-- **Gradiente por score:** Comentado, disponible para activar en AC1 (mapa de calor)
+**Map.tsx (modo esencial — cuadrícula client-side):**
+- **Grid:** Transparente `[0,0,0,0]` + borde gris-azulado `[90,110,140,100]`
+- **Seleccionados:** Relleno gris-azulado `[90,110,140,160]` + borde `[70,90,120,220]`
+- **Sin API** — hexágonos generados con `polygonToCells(COLOMBIA_POLYGON, res)`
+
+**HeatmapDemo.tsx (modo demo — API tiles):**
+- **Positivas** (velocidad viento, densidad, score): azul → amarillo → verde (alto = bueno)
+- **Negativas** (cigarrillos ilegales, zona campesina): azul → amarillo → rojo (alto = malo)
+- **Seleccionados:** Azul `[0,180,255,140]`
+- **Ancestor:** Azul oscuro `[15,30,100]`
 
 ---
 
@@ -208,11 +215,14 @@ Pendiente: integración con Keycloak Admin API.
 
 ### 5.1 Carga de Variables Bajo Demanda
 
-**Estado actual:** El campo `variables` no se carga. El tile solo trae `h`, `s`, `t`, `la`, `ln`.
+**Estado actual:** Implementado en HeatmapDemo.tsx:
+- Endpoint `GET /api/tiles/detail/[h3_index]` retorna variables completas para un hexágono.
+- `GET /api/tiles/variables` retorna lista de variables con rangos min/max.
+- Tile response incluye `v` (valor variable filtrada) cuando se pide con `?var=nombre`.
+- HexPopup muestra score + variables + H3 ID al hacer long-press.
 
-**Pendiente:**
-- Endpoint `GET /api/tiles/detail/[h3_index]` que lea variables del parquet para un hexágono.
-- Se activaría al hacer click sobre un hexágono seleccionado.
+**Pendiente para Map.tsx (esencial):**
+- En fase dimensiones, usar `/api/tiles/detail/{h3}` para colorear solo los hexágonos seleccionados.
 
 ### 5.2 Validación de Integridad del Parquet (AC6)
 
@@ -277,4 +287,5 @@ Pendiente: integración con Keycloak Admin API.
 | `api/tiles/warmup/route.ts` | Implementado | Pre-carga del índice antes de servir tiles |
 | `api/tiles/[z]/[x]/[y]/route.ts` | Implementado | API tile-server: sirve hexágonos por tile |
 | `api/hexagons/route.ts` | Deprecado | API monolítica anterior (aún funcional) |
-| `Components/Map.tsx` | Implementado | TileLayer + PolygonLayer + selección + freeze/unfreeze |
+| `Components/Map.tsx` | Implementado | Cuadrícula client-side (polygonToCells + COLOMBIA_POLYGON) + selección |
+| `Components/HeatmapDemo.tsx` | Implementado (demo) | TileLayer API + heatmap colores pos/neg + leyenda + selector + popup |
