@@ -144,5 +144,6 @@ export default function SideBar({
         <div className="w-[30rem] h-full overflow-y-auto bg-[#cce1eeff]">{children}</div>
       )}
     </div>
+    </div>
   );
 }
