@@ -99,18 +99,34 @@ async function refreshAccessToken(
     typeof refreshed.id_token === "string"
       ? refreshed.id_token
       : token.idToken;
+  const newRefreshToken =
+    typeof refreshed.refresh_token === "string"
+      ? refreshed.refresh_token
+      : token.refreshToken;
+
+  const expiresIn = Number(refreshed.expires_in);
+  const expiresAt =
+    Number.isFinite(expiresIn) && expiresIn > 0
+      ? Math.floor(Date.now() / 1000) + expiresIn
+      : undefined;
+
+  if (expiresAt === undefined) {
+    return {
+      ...token,
+      accessToken,
+      refreshToken: newRefreshToken,
+      expiresAt: token.expiresAt,
+      idToken: newIdToken,
+      roles: realmRolesFromOidcTokens(accessToken, newIdToken),
+      error: "RefreshTokenError",
+    };
+  }
 
   return {
     ...token,
     accessToken,
-    refreshToken:
-      typeof refreshed.refresh_token === "string"
-        ? refreshed.refresh_token
-        : token.refreshToken,
-    expiresAt:
-      typeof refreshed.expires_in === "number"
-        ? Math.floor(Date.now() / 1000) + refreshed.expires_in
-        : undefined,
+    refreshToken: newRefreshToken,
+    expiresAt,
     idToken: newIdToken,
     roles: realmRolesFromOidcTokens(accessToken, newIdToken),
     error: undefined,
