@@ -7,7 +7,7 @@ import {
   assignRealmRole,
   KeycloakAdminError,
 } from "../../../../Utils/keycloakAdmin";
-import { UpdateUserPayload } from "../../../../types/user";
+import { UpdateUserPayload, APP_ROLES } from "../../../../types/user";
 
 export async function PUT(
   request: Request,
@@ -34,35 +34,34 @@ export async function PUT(
 
     // 2. Manage roles if provided
     if (payload.role !== undefined) {
-      // Get current realm roles
+      // Validate before touching Keycloak: an unknown/null value would otherwise
+      // strip all app roles without assigning a replacement.
+      if (!APP_ROLES.includes(payload.role)) {
+        return NextResponse.json(
+          { error: `Rol inválido. Los valores permitidos son: ${APP_ROLES.join(", ")}` },
+          { status: 400 }
+        );
+      }
+
+      const targetRole = payload.role;
+
       const currentRoles = await getUserRoles(id);
       const currentRoleNames = currentRoles.map((r) => r.name);
 
-      // We only care about managing our known custom roles (e.g. admin, analista)
-      // If we are changing to a new role, we probably want to remove other app roles.
-      // For simplicity, we just handle direct mapping: if there is a role and we map it.
-      
-      // If we are giving a specific role, we might want to ensure they don't have conflicting ones?
-      // For this user story, if they pass a role, we'll assign it. If they want to change it, 
-      // we'll remove the old ones. Usually roles are: admin / analista.
-      const appRoles = ["admin", "analista"];
-      
-      const targetRole = payload.role;
-
-      // Remove any existing app roles that don't match the new role
+      // Remove any existing app roles that differ from the target
       for (const existing of currentRoleNames) {
-        if (appRoles.includes(existing) && existing !== targetRole) {
+        if ((APP_ROLES as readonly string[]).includes(existing) && existing !== targetRole) {
           try {
             await removeRealmRole(id, existing);
-          } catch (e) {
-             console.error(`Error removing role ${existing} from user ${id}`);
+          } catch {
+            console.error(`Error removing role ${existing} from user ${id}`);
           }
         }
       }
 
-      // Assign the new role if it's an app role and not already assigned
-      if (targetRole && appRoles.includes(targetRole) && !currentRoleNames.includes(targetRole)) {
-         await assignRealmRole(id, targetRole);
+      // Assign the target role only if not already present
+      if (!currentRoleNames.includes(targetRole)) {
+        await assignRealmRole(id, targetRole);
       }
     }
 

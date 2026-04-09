@@ -33,17 +33,20 @@ export interface KeycloakRole {
   containerId: string;
 }
 
+export const APP_ROLES = ["admin", "analista"] as const;
+export type AppRole = (typeof APP_ROLES)[number];
+
 export interface CreateUserPayload {
   firstName: string;
   lastName: string;
   email: string;
   password?: string;
-  role?: string;
+  role?: AppRole;
 }
 
 export interface UpdateUserPayload {
   firstName?: string;
   lastName?: string;
   enabled?: boolean;
-  role?: string;
+  role?: AppRole;
 }
