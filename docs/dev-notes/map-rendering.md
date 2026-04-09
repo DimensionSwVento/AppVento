@@ -1,26 +1,29 @@
 ---
-version: 2.0
-date: 2026-03-31
+version: 3.0
+date: 2026-04-09
 status: activo
 autor: wessley - mavalan software
-scope: Mapa SIG — Gestión de recursos GPU, tile-based rendering y rendimiento
+scope: Mapa SIG — Dos modos de renderizado (esencial + demo), gestión GPU y rendimiento
 ---
 
 # Notas de Desarrollo — Renderizado del Mapa y Gestión de Recursos
 
 ## 1. Contexto
 
-Vento utiliza DeckGL + MapLibre para un mapa SIG interactivo con hexágonos H3. DeckGL opera con un **device WebGL** que renderiza directamente en la GPU. En v2.0 se migró a una arquitectura **tile-based** para resolver problemas de rendimiento con el dataset de 126 MB.
+Vento utiliza DeckGL + MapLibre para un mapa SIG interactivo con hexágonos H3. En v3.0 se separó el mapa en dos componentes:
 
-### 1.1 Problemas Resueltos en v2.0
+- **`Map.tsx`** (esencial/contrato): cuadrícula H3 client-side sobre Colombia, sin API, solo selección.
+- **`HeatmapDemo.tsx`** (features demo): heatmap con API tiles, leyenda, selector variables, popup, freeze.
+
+### 1.1 Problemas Resueltos
 
 | Problema | Causa | Solución |
 |----------|-------|----------|
-| `maxTextureDimension2D` undefined | Device WebGL no listo en SSR | `dynamic({ ssr: false })` en dashboard |
-| Error de hidratación SSR/CSR | MapView se renderizaba en servidor | `dynamic({ ssr: false })` |
-| Mapa crashea con todos los hexágonos | ~150K hexágonos res 8 de golpe | Arquitectura tile-based |
-| `NS_BINDING_ABORTED` | Parseo lento, deck.gl cancela requests | Endpoint `/api/tiles/warmup` |
-| `Maximum call stack size exceeded` | Spread operator con arrays grandes | Eliminado con arquitectura tile |
+| `maxTextureDimension2D` undefined | Device WebGL no listo en SSR | `"use client"` + import directo (no dynamic) |
+| Error de hidratación SSR/CSR | MapView se renderizaba en servidor | `"use client"` directiva |
+| Mapa crashea con todos los hexágonos | ~150K hexágonos res 8 de golpe | TileLayer tile-based |
+| `dynamic()` rompe rendering | useEffect no ejecuta con next/dynamic | Import directo confirmado |
+| Zoom lento con PolygonLayer monolítico | Toda Colombia renderizada de golpe | TileLayer client-side con `polygonToCells` + cache por tile |
 
 ---
 
@@ -34,22 +37,41 @@ Vento utiliza DeckGL + MapLibre para un mapa SIG interactivo con hexágonos H3. 
 4. **Memoización** — `useMemo` en `tileLayer` para no recrear la capa en cada render
 5. **Warmup** — Pre-cargar índice antes de activar tiles
 
-### 2.2 Componente MapView — Estructura
+### 2.2 Map.tsx (Esencial) — Estructura
 
 ```
-MapView (dynamic import, ssr: false)
-  ├─ Estado: viewState, mapReady, dataReady, mapState, selectedHexes
-  ├─ useEffect: warmup + fullscreen listener
-  ├─ useEffect: freeze/unfreeze por fase
-  ├─ useMemo: tileLayer (TileLayer + PolygonLayer)
+MapView (import directo, "use client")
+  ├─ Estado: viewState, mapReady, fullscreen, selectedHexes
+  ├─ useMemo: gridTileLayer (TileLayer client-side con polygonToCells)
+  ├─ useMemo: selectedLayer (PolygonLayer top-level)
   └─ Render:
-       ├─ Overlay "... cargando mapa" (while !mapReady || !dataReady)
+       ├─ Overlay "... cargando mapa" (while !mapReady)
+       ├─ Zoom +/- y fullscreen (siempre visibles)
+       └─ DeckGL + MapGL
+            ├─ gridTileLayer (cuadrícula Colombia, transparente, clickeable)
+            ├─ selectedLayer (hexágonos seleccionados, gris-azulado)
+            └─ MapGL (CartoDB Positron, bounds Colombia)
+```
+
+### 2.3 HeatmapDemo.tsx (Features Demo) — Estructura
+
+```
+HeatmapDemo (import directo, "use client")
+  ├─ Estado: viewState, mapReady, dataReady, mapState, activeVar, varRange, popup, layerCounts
+  ├─ useEffect: warmup API + fullscreen
+  ├─ useEffect: fetch counts + fetch variables
+  ├─ useEffect: freeze/unfreeze por fase
+  ├─ useMemo: tileLayer (TileLayer via API con heatmap colores pos/neg)
+  └─ Render:
+       ├─ Overlay "... cargando mapa"
        ├─ Snapshot congelado (if frozen)
-       └─ DeckGL + MapGL (siempre montado para onLoad)
-            ├─ TileLayer (solo si dataReady)
-            │    ├─ PolygonLayer grid (todos los hex del tile)
-            │    └─ PolygonLayer selected (hex seleccionados)
-            └─ MapGL (CartoDB Positron, maxBounds Sudamérica)
+       ├─ VariableSelector + Congelar + Leyenda dinámica + LayerInfo
+       └─ DeckGL + MapGL
+            ├─ TileLayer (API /api/tiles/{z}/{x}/{y})
+            │    ├─ PolygonLayer grid (coloreado por score/variable pos/neg)
+            │    ├─ PolygonLayer ancestor (azul oscuro)
+            │    └─ PolygonLayer selected (azul)
+            └─ MapGL (CartoDB Positron)
 ```
 
 ### 2.3 Rendering Pipeline
@@ -111,11 +133,14 @@ GPU renderiza polígonos (fill + stroke)
 
 ### 4.2 Render de Selección
 
-Cada tile renderiza dos sub-layers:
-1. **Grid base** — Todos los hexágonos, relleno gris transparente `[180,180,180,25]`, pickable
-2. **Seleccionados** — Solo hex en `selectedHexes`, relleno azul `[0,180,255,140]`, no pickable
+**Map.tsx (esencial):**
+- **Grid cuadrícula** — Transparente `[0,0,0,0]` + borde gris-azulado `[90,110,140,100]`, pickable
+- **Seleccionados** — Relleno gris-azulado `[90,110,140,160]` + borde `[70,90,120,220]`, top-level layer
 
-`updateTriggers.renderSubLayers: [selectedHexes.size]` fuerza re-render de sublayers cuando cambia la selección.
+**HeatmapDemo.tsx (demo):**
+- **Grid heatmap** — Coloreado por score (positivas: azul→amarillo→verde, negativas: azul→amarillo→rojo)
+- **Ancestor** — Azul oscuro `[15,30,100]` para hexágonos con hijos seleccionados
+- **Seleccionados** — Azul `[0,180,255,140]`
 
 ---
 
@@ -157,11 +182,12 @@ Cada tile renderiza dos sub-layers:
 
 | Archivo | Responsabilidad |
 |---------|----------------|
-| `Components/Map.tsx` | TileLayer + PolygonLayer, selección, freeze/unfreeze, warmup |
-| `Utils/h3TileIndex.ts` | Índice espacial server-side, bbox filtering, agrupación por res |
-| `Utils/h3Resolution.ts` | Constantes: INITIAL_VIEW_STATE, MAX_BOUNDS, MAP_STYLE, SNAPSHOT_KEY |
-| `Utils/useCachedImage.ts` | Hook para snapshot en Cache API del navegador |
+| `Components/Map.tsx` | Cuadrícula client-side (polygonToCells + COLOMBIA_POLYGON) + selección. Sin API |
+| `Components/HeatmapDemo.tsx` | Features demo: TileLayer via API, heatmap, leyenda, selector, popup, freeze |
+| `Utils/h3TileIndex.ts` | Índice espacial server-side, bbox filtering, agrupación por res (usado por HeatmapDemo) |
+| `Utils/h3Resolution.ts` | Constantes: INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGON, SNAPSHOT_KEY |
+| `Utils/useCachedImage.ts` | Hook para snapshot en Cache API del navegador (usado por HeatmapDemo) |
 | `Utils/AccionPrincipalContext.tsx` | Estado global: accion, selectedHexes |
-| `api/tiles/warmup/route.ts` | Pre-carga del índice H3 |
-| `api/tiles/[z]/[x]/[y]/route.ts` | API tile-server |
-| `dashboard/page.tsx` | Dynamic import de MapView (ssr: false) |
+| `api/tiles/warmup/route.ts` | Pre-carga del índice H3 (usado por HeatmapDemo) |
+| `api/tiles/[z]/[x]/[y]/route.ts` | API tile-server (usado por HeatmapDemo) |
+| `dashboard/page.tsx` | Import directo de MapView (sin dynamic) |

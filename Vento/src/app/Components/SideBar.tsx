@@ -36,86 +36,91 @@ export default function SideBar({
     return false;
   }
 
-  let mail = "test@gmail.com";
+  let name = "Fernanda Martinez";
+  let mail = "Fernanda.test@gmail.com";
   return (
     // opciones de menu lateral
     <div className="flex  bg-[#165170ff]">
-      <div className="h-full text-[12px] w-[15  rem] flex flex-col justify-between">
+      <div className="h-full text-[10.5px] w-[15  rem] flex flex-col justify-between">
         <div>
         <img src="/vento_logo.png" alt="Logo" className="w-[111px] my-[1rem] ml-[1rem] h-[36px]" />
         <hr className="mx-[1rem]" />
-        <div className="mx-[0.5rem] my-[1rem] text-gray-400 text-[12px]"> ACCIONES PRINCIPALES</div>
+        <div className="mx-[0.5rem] my-[1rem] text-gray-400 text-[10.5px]"> ACCIONES PRINCIPALES</div>
 
         <div
           onClick={() => navegar("seleccion-area")}
-          className={`flex items-center cursor-pointer ${accion === "seleccion-area" ? "bg-blue-800" : ""}`}
+          className={`flex items-center cursor-pointer ${accion === "seleccion-area" ? "bg-gray-400" : ""}`}
         >
-          <img src="/area.png" alt="" className="w-[20px] h-[20px] ml-[0.5rem]" />
-          <p className="text-[17px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]">
-            Seleción de área
+          <img src="/area.png" alt="" className="w-[15px] h-[15px] ml-[0.5rem]" />
+          <p className="text-[14px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]">
+            Selección de área
           </p>
         </div>
         <div
           onClick={() => habilitado("dimensiones") && navegar("dimensiones")}
-          className={`flex items-center ${habilitado("dimensiones") ? "cursor-pointer" : "cursor-not-allowed opacity-40"} ${accion === "dimensiones" ? "bg-blue-800" : ""}`}
+          className={`flex items-center ${habilitado("dimensiones") ? "cursor-pointer" : "cursor-not-allowed opacity-40"} ${accion === "dimensiones" ? "bg-gray-400" : ""}`}
         >
-          <img src="/dim.png" alt="" className="w-[20px] h-[20px] ml-[0.5rem]" />
-          <p className="text-[17px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]">
-            Dimenciones
+          <img src="/dim.png" alt="" className="w-[15px] h-[15px] ml-[0.5rem]" />
+          <p className="text-[14px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]">
+            Dimensiones
           </p>
         </div>
         <div
           onClick={() =>
             habilitado("caracteristicas") && navegar("caracteristicas")
           }
-          className={`flex items-center ${habilitado("caracteristicas") ? "cursor-pointer" : "cursor-not-allowed opacity-40"} ${accion === "caracteristicas" ? "bg-blue-800" : ""}`}
+          className={`flex items-center ${habilitado("caracteristicas") ? "cursor-pointer" : "cursor-not-allowed opacity-40"} ${accion === "caracteristicas" ? "bg-gray-400" : ""}`}
         >
-          <img src="/caracteristicas.png" alt="" className="w-[20px] h-[20px] ml-[0.5rem]" />
-          <p className="text-[17px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]">
-            Caracteristicas del proyecto
+          <img src="/caracteristicas.png" alt="" className="w-[15px] h-[15px] ml-[0.5rem]" />
+          <p className="text-[14px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]">
+            Características del proyecto
           </p>
         </div>
         <div
           onClick={() => habilitado("informe") && navegar("informe")}
-          className={`flex items-center ${habilitado("informe") ? "cursor-pointer" : "cursor-not-allowed opacity-40"} ${accion === "informe" ? "bg-blue-800" : ""}`}
+          className={`flex items-center ${habilitado("informe") ? "cursor-pointer" : "cursor-not-allowed opacity-40"} ${accion === "informe" ? "bg-gray-400" : ""}`}
         >
-          <img src="/viab.png" alt="" className="w-[20px] h-[20px] ml-[0.5rem]" />
-          <p className="text-[17px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]">
+          <img src="/viab.png" alt="" className="w-[15px] h-[15px] ml-[0.5rem]" />
+          <p className="text-[14px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]">
             Informe de viabilidad
           </p>
         </div>
         <hr className="mx-[1rem]" />
         <div className="flex items-center">
-          <img src="/hist.png" alt="" className="w-[20px] h-[20px] ml-[0.5rem]" />
-          <p className="text-[17px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]">
+          <img src="/hist.png" alt="" className="w-[15px] h-[15px] ml-[0.5rem]" />
+          <p className="text-[14px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]">
             Histórico de viabilidad
           </p>
         </div>
         </div>
-        <div className="">
-          <div className="mx-[0.5rem] text-gray-400 text-[12px]"> GESTIÓN Y AYUDA DE USUARIO</div>
+        <div >
+          <div className="mx-[0.5rem] text-gray-400 text-[10.5px]"> GESTIÓN Y AYUDA DE USUARIO</div>
           <div className="flex items-center">
-            <img src="/config.png" alt="" className="w-[20px] h-[20px] ml-[0.5rem]" />
-            <p className="text-[17px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]">
+            <img src="/config.png" alt="" className="w-[15px] h-[15px] ml-[0.5rem]" />
+            <p className="text-[14px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]">
               Configuraciones
             </p>
           </div>
           <div className="flex items-center">
-            <img src="/manual.png" alt="" className="w-[20px] h-[20px] ml-[0.5rem]" />
-            <p className="text-[17px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]"> Manual de uso</p>
+            <img src="/manual.png" alt="" className="w-[15px] h-[15px] ml-[0.5rem]" />
+            <p className="text-[14px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]"> Manual de uso</p>
           </div>
           <div className="flex items-center">
-            <img src="/soporte.png" alt="" className="w-[20px] h-[20px] ml-[0.5rem]" />
-            <p className="text-[17px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]"> Soporte</p>
+            <img src="/soporte.png" alt="" className="w-[15px] h-[15px] ml-[0.5rem]" />
+            <p className="text-[14px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]"> Soporte</p>
           </div>
 
         <hr className="mx-[1rem]" />
 
-          <div className="flex items-center">
-            <img src="/user.png" alt="" className="w-[20px] h-[20px] ml-[0.5rem]" />
-            <p className="text-[17px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem]"> {mail}</p>
+          <div className="flex h-[4rem] items-center">
+            <img src="/user.png" alt="" className="w-[15px] h-[15px] ml-[0.5rem]" />
+            <div>
+            <p className="text-[10px] mx-[0.5rem] text-white "> {name}</p>
+            <p className="text-[10px] mx-[0.5rem] text-gray-400 "> {mail}</p>
+            </div>
           </div>
         </div>
+
       </div>
       {accion == "seleccion-area" ? null : (
         <div className="w-[30rem] h-full overflow-y-auto bg-[#cce1eeff]">{children}</div>

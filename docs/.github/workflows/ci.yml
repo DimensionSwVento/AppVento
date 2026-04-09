@@ -57,7 +57,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Tests unitarios
-        run: npm test --if-present
+        run: npm run test:run
 
   # ─────────────────────────────────────
   # Stage 2: Build — compilación correcta

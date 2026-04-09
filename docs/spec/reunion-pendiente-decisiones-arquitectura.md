@@ -59,5 +59,5 @@ Todo lo discutido en esta reunión está documentado como decisiones ADR. Sin em
 | Monorepo (ADR-007) | ✅ Sí — US-MONO | Lista para implementar |
 | CI Pipeline (ADR-007) | ✅ Sí — US-CI | Lista para implementar |
 | Variables de entorno (ADR-007) | ✅ Sí — US-ENV | Lista para implementar |
-| Tecnología backend específica | ❌ No aún | Requiere decisión equipo |
-| Herramienta monorepo específica | ❌ No aún | Requiere decisión equipo |
+| Tecnología backend específica | ✅ Decidido | FastAPI (Python) con Clean Architecture |
+| Herramienta monorepo específica | ✅ Descartado | Repos separados (frontend Next.js + backend FastAPI) |

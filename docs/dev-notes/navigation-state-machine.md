@@ -1,6 +1,6 @@
 ---
-version: 2.0
-date: 2026-03-31
+version: 3.0
+date: 2026-04-09
 status: activo
 autor: wessley - mavalan software
 scope: Máquina de estados de navegación, SideBar, subpáginas, selección y ciclo de vida
@@ -108,7 +108,7 @@ switch (accion) {
 }
 ```
 
-MapView se carga con `dynamic({ ssr: false })` para evitar hidratación WebGL.
+MapView se importa directamente (`"use client"` + import estándar — `dynamic()` se descartó porque rompía el rendering).
 
 El SideBar recibe el resultado como `children` y lo muestra en un panel de `w-[30rem] h-full overflow-y-auto bg-[#cce1eeff]` con scroll vertical.
 
@@ -194,9 +194,9 @@ En la fase `seleccion-area`, el item "Dimensiones" se habilita visualmente y per
 
 ### 5.5 Autenticación y Email Real
 
-**Estado actual:** Email hardcodeado `"test@gmail.com"`. Login vacío.
+**Estado actual:** PR de auth mergeado con NextAuth + Keycloak. SideBar muestra el email real del usuario autenticado. Login implementado en `page.tsx` (landing) con `SignInButton` que redirige a Keycloak.
 
-**Pendiente:** Integración Keycloak (ADR-005).
+**Pendiente:** Enviar Bearer token en fetches a FastAPI cuando `AUTH_ENABLED=true` (US-AUTH-GUARD).
 
 ### 5.6 Flujo de Datos entre Fases
 
@@ -219,8 +219,12 @@ En la fase `seleccion-area`, el item "Dimensiones" se habilita visualmente y per
 | `dashboard/page.tsx` | Implementado | Dynamic import MapView, switch subpáginas |
 | `Components/SideBar.tsx` | Implementado | Retroceso libre, avance condicional, iconos, logo |
 | `Components/NextStepButton.tsx` | Implementado | Botón de avance al final de cada subpágina |
-| `Components/Map.tsx` | Implementado | Selección de hexágonos, freeze/unfreeze por fase |
+| `Components/Map.tsx` | Implementado | Cuadrícula client-side + selección (sin API, sin heatmap) |
+| `Components/HeatmapDemo.tsx` | Implementado (demo) | Features heatmap: tiles API, leyenda, selector, popup, freeze |
 | `Components/Dimensions.tsx` | Implementado (datos estáticos) | 5 cards + NextStepButton |
 | `Components/Report.tsx` | Implementado (datos estáticos) | 6 cards + NextStepButton |
 | `Components/Card.tsx` | Implementado | Card reutilizable (title + description) |
-| `login/page.tsx` | Vacío | Pendiente: autenticación |
+| `login/page.tsx` | Vacío | Login se maneja desde page.tsx (landing) con NextAuth + Keycloak |
+| `Components/Map.test.tsx` | Implementado | Test unitario del mapa (Vitest + mocks DeckGL/MapLibre) |
+| `Components/SideBar.test.tsx` | Implementado | Test unitario navegación SideBar |
+| `Components/NextStepButton.test.tsx` | Implementado | Test unitario avance entre estados |
