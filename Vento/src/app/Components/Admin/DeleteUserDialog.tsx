@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from "react";
 import { User } from "../../types/user";
 
@@ -17,8 +19,10 @@ export default function DeleteUserDialog({ user, onClose, onConfirm }: DeleteUse
     try {
       await onConfirm(user.id);
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Error al desactivar el usuario");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Error desconocido";
+      setError(errorMessage || "Error al desactivar el usuario");
+    } finally {
       setLoading(false);
     }
   };

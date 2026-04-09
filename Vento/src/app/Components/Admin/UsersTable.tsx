@@ -1,3 +1,5 @@
+'use client';
+
 import { User } from "../../types/user";
 
 interface UsersTableProps {
@@ -31,9 +33,6 @@ export default function UsersTable({
               Correo Electrónico
             </th>
             <th scope="col" className="px-6 py-3">
-              Roles
-            </th>
-            <th scope="col" className="px-6 py-3">
               Estado
             </th>
             <th scope="col" className="px-6 py-3">
@@ -51,28 +50,6 @@ export default function UsersTable({
                 {user.firstName} {user.lastName}
               </td>
               <td className="px-6 py-4">{user.email}</td>
-              <td className="px-6 py-4">
-                {user.roles && user.roles.length > 0 ? (
-                  <div className="flex gap-1 flex-wrap">
-                    {user.roles.map((r) => (
-                      <span
-                        key={r}
-                        className={`text-xs px-2 py-0.5 rounded ${
-                          r === "admin"
-                            ? "bg-purple-100 text-purple-800"
-                            : r === "analista"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {r}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-gray-400 italic">Sin rol</span>
-                )}
-              </td>
               <td className="px-6 py-4">
                 {user.enabled ? (
                   <span className="bg-green-100 text-green-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">
@@ -114,7 +91,7 @@ export default function UsersTable({
           ))}
           {users.length === 0 && (
             <tr>
-              <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+              <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
                 No se encontraron usuarios.
               </td>
             </tr>

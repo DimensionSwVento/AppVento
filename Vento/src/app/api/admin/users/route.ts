@@ -6,7 +6,6 @@ import {
   assignRealmRole,
   resetUserPassword,
   KeycloakAdminError,
-  getUserRoles,
 } from "../../../Utils/keycloakAdmin";
 import { CreateUserPayload, User } from "../../../types/user";
 
@@ -32,33 +31,17 @@ export async function GET(request: Request) {
   try {
     const keycloakUsers = await getUsers(search, page, limit);
 
-    // To get roles for the table, we might need a separate call for each user, 
-    // or assume we return them simply mapped.
-    // Making n individual calls to get roles might be slow for a table of 20,
-    // but the Keycloak API `/users` doesn't always return realm roles directly safely depending on version.
-    // For simplicity, we will fetch roles for each user in the returned patch since limit is max 20.
-    
-    const users: User[] = await Promise.all(
-      keycloakUsers.map(async (u) => {
-        let userRoles: string[] = [];
-        try {
-          const roles = await getUserRoles(u.id);
-          userRoles = roles.map((r) => r.name);
-        } catch {
-          // ignore role fetch error per user
-        }
-
-        return {
-          id: u.id,
-          firstName: u.firstName || "",
-          lastName: u.lastName || "",
-          email: u.email || "",
-          enabled: u.enabled,
-          createdTimestamp: u.createdTimestamp,
-          roles: userRoles,
-        };
-      })
-    );
+    // Roles are NOT fetched here to avoid N+1 Keycloak requests per page.
+    // Use GET /api/admin/users/[id]/roles to load roles on demand (e.g. when
+    // opening the edit modal).
+    const users: User[] = keycloakUsers.map((u) => ({
+      id: u.id,
+      firstName: u.firstName || "",
+      lastName: u.lastName || "",
+      email: u.email || "",
+      enabled: u.enabled,
+      createdTimestamp: u.createdTimestamp,
+    }));
 
     return NextResponse.json({ users });
   } catch (err: any) {

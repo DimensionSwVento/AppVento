@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from "react";
 import { CreateUserPayload } from "../../types/user";
 
@@ -22,8 +24,9 @@ export default function CreateUserModal({ onClose, onSubmit }: CreateUserModalPr
     try {
       await onSubmit({ firstName, lastName, email, password, role });
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Error al crear el usuario");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Error desconocido";
+      setError(errorMessage || "Error al crear el usuario");
     } finally {
       setLoading(false);
     }

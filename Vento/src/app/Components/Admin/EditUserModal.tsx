@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+'use client';
+
+import { useEffect, useState } from "react";
 import { User, UpdateUserPayload } from "../../types/user";
 
 interface EditUserModalProps {
@@ -11,12 +13,29 @@ export default function EditUserModal({ user, onClose, onSubmit }: EditUserModal
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
   const [enabled, setEnabled] = useState(user.enabled);
-  // Default to analista if no roles or if multiple roles just pick the first main one we know
-  const defaultRole = user.roles?.includes("admin") ? "admin" : "analista";
-  const [role, setRole] = useState(defaultRole);
-  
+  const [role, setRole] = useState("analista");
+  const [rolesLoading, setRolesLoading] = useState(true);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const res = await fetch(`/api/admin/users/${user.id}/roles`);
+        if (res.ok) {
+          const data = await res.json();
+          const roles: string[] = data.roles ?? [];
+          setRole(roles.includes("admin") ? "admin" : "analista");
+        }
+      } catch {
+        // keep default "analista"
+      } finally {
+        setRolesLoading(false);
+      }
+    };
+    fetchRoles();
+  }, [user.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,8 +44,9 @@ export default function EditUserModal({ user, onClose, onSubmit }: EditUserModal
     try {
       await onSubmit(user.id, { firstName, lastName, enabled, role });
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Error al actualizar el usuario");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Error desconocido";
+      setError(errorMessage || "Error al actualizar el usuario");
     } finally {
       setLoading(false);
     }
@@ -77,7 +97,12 @@ export default function EditUserModal({ user, onClose, onSubmit }: EditUserModal
             </div>
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-900">Rol</label>
-              <select value={role} onChange={(e) => setRole(e.target.value)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                disabled={rolesLoading}
+                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 disabled:opacity-50 disabled:cursor-wait"
+              >
                 <option value="analista">Analista</option>
                 <option value="admin">Administrador</option>
               </select>
