@@ -1,0 +1,60 @@
+{
+  "realm": "vento",
+  "enabled": true,
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "resetPasswordAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "verifyEmail": false,
+  "editUsernameAllowed": false,
+  "rememberMe": true,
+  "loginTheme": "keycloakify-starter",
+  "sslRequired": "external",
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Administrador del sistema Vento"
+      },
+      {
+        "name": "analista",
+        "description": "Analista de viabilidad eolica"
+      }
+    ]
+  },
+  "defaultRoles": ["analista"],
+  "clients": [
+    {
+      "clientId": "vento-web",
+      "name": "Vento Web Application",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "dev-secret-change-in-production",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "redirectUris": [
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:3000/*",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "backchannel.logout.session.required": "true",
+        "login_theme": "keycloakify-starter"
+      }
+    }
+  ],
+  "scopeMappings": [
+    {
+      "client": "vento-web",
+      "roles": ["analista"]
+    }
+  ]
+}

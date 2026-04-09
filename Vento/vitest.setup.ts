@@ -1,7 +1,12 @@
+import { cleanup } from "@testing-library/react";
+import { afterEach, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
-import { vi } from "vitest";
 
-// jsdom no implementa estas APIs que MapLibre/DeckGL pueden tocar
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
+
 if (typeof window !== "undefined") {
   Object.defineProperty(window, "matchMedia", {
     writable: true,

@@ -1,4 +1,5 @@
 node_modules
+.env
 
 # Claude Code memory (local per developer)
 .claude/
