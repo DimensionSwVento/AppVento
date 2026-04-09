@@ -1,6 +1,6 @@
 ---
-version: 2.0
-date: 2026-03-24
+version: 3.0
+date: 2026-04-09
 project: Vento
 author: mavalan Software
 ---
@@ -13,16 +13,17 @@ author: mavalan Software
 |---------|--------|---------|
 | Clasificación del proyecto | ✅ Definido | Web App — Plataforma Análisis Geoespacial, dominio Energía |
 | Flujo de usuario | ✅ Documentado | 6 pasos: Login → Mapa → Config variables → Input técnico → Reporte → Historial |
-| Stack tecnológico | ⚠️ Propuesto (por confirmar) | Angular/React + Leaflet + PostgreSQL/PostGIS + H3 + Keycloak |
-| Arquitectura | ✅ Actualizado | Backend Clean Architecture + DDD + Monorepo desde 1ra entrega (ADR-007, supersede ADR-003) |
-| Identidad/Auth | ✅ Definido | Keycloak OIDC como proveedor de identidad (ADR-005) |
-| Storage/Cache geoespacial | ✅ Definido | Service Worker + HTTP Cache; storage definitivo pendiente (ADR-006) |
-| Historias de usuario (scope) | ✅ Consolidado v2 | 18 HU para primera entrega — organizado por épica y prioridad (sin sprints) |
-| Historias de usuario (futuras) | ✅ Definido | 19 HU en backlog futuro |
+| Stack tecnológico | ✅ Confirmado | Next.js 16 + React 19 + DeckGL + MapLibre + FastAPI + H3 + Keycloak |
+| Arquitectura | ✅ Actualizado | Frontend Next.js + Backend FastAPI (repos separados), conectados via API_BASE |
+| Identidad/Auth | ✅ Implementado | Keycloak OIDC via NextAuth — realm "vento", client "vento-frontend" (PR auth mergeado) |
+| Storage/Cache geoespacial | ✅ Parcial | TileLayer cache (64 tiles) + HTTP Cache-Control; storage definitivo pendiente (ADR-006) |
+| Historias de usuario (scope) | ✅ Consolidado v3 | 20 HU para primera entrega — organizado por épica y prioridad (sin sprints) |
+| Historias de usuario (futuras) | ✅ Definido | 20 HU en backlog futuro |
 | Épicas formales | ✅ Generado | 11 épicas (5 primera entrega + 6 futuras) via workflow BMAD |
 | Viabilidad equipo/plazo | ✅ Analizado | 230h de 320h disponibles. Viable con 28% margen |
+| Testing unitario | ✅ Configurado | Vitest + React Testing Library — 5 tests co-located |
 | PRD formal | 🔴 Pendiente | Workflow PRD interrumpido en paso 2 |
-| UX Design | 🔴 Pendiente | Existen diseños Figma del discovery |
+| UX Design | ✅ Hecho | Diseños Figma del discovery |
 | Sprint Planning | 🔴 Pendiente | Scope definido por prioridad; falta asignación formal |
 | Decisiones pendientes con equipo | ⚠️ Documentado | Ver reunion-pendiente-decisiones-arquitectura.md |
 
@@ -98,26 +99,28 @@ author: mavalan Software
 
 | # | Historia | Épica | Prioridad | Estado |
 |---|----------|-------|-----------|--------|
-| 19 | US-MONO — Estructura Monorepo | E0 Fundación | 🔴 Crítica | 🔴 Pendiente |
-| 20 | US-ENV — Variables de Entorno | E0 Fundación | 🟡 Alta | 🔴 Pendiente |
-| 21 | US-DDD — Backend Clean Arch + DDD | E0 Fundación | 🔴 Crítica | 🔴 Pendiente |
-| 22 | US-KEY — Integración Keycloak | E0 Fundación | 🔴 Crítica | 🔴 Pendiente |
-| 23 | US-CI — Pipeline CI Mínimo | E0 Fundación | 🟡 Alta | 🔴 Pendiente |
-| 24 | US01 — Login via Keycloak | E1 Login | 🔴 Crítica | 🔴 Pendiente |
-| 25 | US-AUTH-GUARD — Protección Rutas | E1 Login | 🔴 Crítica | 🔴 Pendiente |
-| 26 | US03 — Mapa Base + Hexágonos H3 | E2 Mapa | 🔴 Crítica | 🔴 Pendiente |
-| 27 | US03-AC6 — Ingesta .parquet → JSON | E2 Mapa | 🔴 Crítica | 🔴 Pendiente |
-| 28 | US03-AC1 — Mapa de Calor por Score | E2 Mapa | 🔴 Crítica | 🔴 Pendiente |
-| 29 | US03-AC2 — Filtrado por Variable | E2 Mapa | 🔴 Crítica | 🔴 Pendiente |
-| 30 | US03-AC3 — Popup Hexágono | E2 Mapa | 🔴 Crítica | 🔴 Pendiente |
-| 31 | US03-AC5 — Hexágonos Decorativos | E2 Mapa | 🟡 Alta | 🔴 Pendiente |
-| 32 | US03-AC4 — Dato Central en Hexágono | E2 Mapa | 🟡 Alta | 🔴 Pendiente |
-| 33 | US03-AC9 — Panel Control (Leyenda + Selector) | E2 Mapa | 🟡 Alta | 🔴 Pendiente |
-| 34 | US-CACHE — Cache Datos Geoespaciales | E2 Mapa | 🟡 Alta | 🔴 Pendiente |
-| 35 | US03-AC7 — Metadata de Variables | E2 Mapa | 🟢 Media | 🔴 Pendiente |
-| 36 | US08 — CRUD Usuarios (Admin) | E3 Admin | 🟢 Media | 🔴 Pendiente |
-| 37 | Testing E2E + QA + bugs | Integración | — | 🔴 Pendiente |
-| 38 | Deploy v1.0 | Integración | — | 🔴 Pendiente |
+| 19 | US-MONO — Estructura Monorepo | E0 Fundación | 🔴 Crítica | ⚠️ Adaptado | Repos separados (no monorepo). Frontend Next.js + Backend FastAPI |
+| 20 | US-ENV — Variables de Entorno | E0 Fundación | 🟡 Alta | ⚠️ Parcial | `.env.example` en Vento/ e infra/keycloak/. CI inyecta 7 secrets |
+| 21 | US-DDD — Backend Clean Arch + DDD | E0 Fundación | 🔴 Crítica | ✅ Hecho | FastAPI con domain/application/infrastructure/shared |
+| 22 | US-KEY — Integración Keycloak | E0 Fundación | 🔴 Crítica | ✅ Hecho | NextAuth + Keycloak, realm-export, docker-compose, backend JWT guard |
+| 23 | US-CI — Pipeline CI Mínimo | E0 Fundación | 🟡 Alta | ⚠️ Parcial | Build + lint + TypeCheck + Vitest + gitleaks. Falta branch protection |
+| 24 | US01 — Login via Keycloak | E1 Login | 🔴 Crítica | ✅ Hecho | PR auth: NextAuth OIDC, SignInButton, redirect a dashboard |
+| 25 | US-AUTH-GUARD — Protección Rutas | E1 Login | 🔴 Crítica | ⚠️ Parcial | middleware.ts protege /dashboard. Falta Bearer header en fetches |
+| 26 | US03 — Mapa Base + Hexágonos H3 | E2 Mapa | 🔴 Crítica | ✅ Hecho | DeckGL + MapLibre + TileLayer client-side con COLOMBIA_POLYGON |
+| 27 | US03-AC6 — Ingesta .parquet → JSON | E2 Mapa | 🔴 Crítica | ⚠️ Parcial | Parseo con hyparquet funcional. Falta validación y doc de actualización |
+| 28 | US03-AC1 — Mapa de Calor por Score | E2 Mapa | 🔴 Crítica | ✅ Hecho | En HeatmapDemo.tsx — gradiente pos/neg por variable |
+| 29 | US03-AC2 — Filtrado por Variable | E2 Mapa | 🔴 Crítica | ✅ Hecho | En HeatmapDemo.tsx — VariableSelector + re-render |
+| 30 | US03-AC3 — Popup Hexágono | E2 Mapa | 🔴 Crítica | ✅ Hecho | En HeatmapDemo.tsx — HexPopup con score + variables + H3 ID |
+| 31 | US03-AC5 — Hexágonos Decorativos | E2 Mapa | 🟡 Alta | ⚠️ Parcial | tipo_celda se muestra en popup, falta estilo visual diferenciado |
+| 32 | US03-AC4 — Dato Central en Hexágono | E2 Mapa | 🟡 Alta | ❌ Pendiente | No implementado |
+| 33 | US03-AC9 — Panel Control (Leyenda + Selector) | E2 Mapa | 🟡 Alta | ✅ Hecho | En HeatmapDemo.tsx — leyenda dinámica pos/neg + selector + LayerInfo |
+| 34 | US-CACHE — Cache Datos Geoespaciales | E2 Mapa | 🟡 Alta | ⚠️ Parcial | TileLayer cache + HTTP headers. Falta Service Worker |
+| 35 | US03-AC7 — Metadata de Variables | E2 Mapa | 🟢 Media | ❌ Pendiente | No implementado |
+| 36 | US08 — CRUD Usuarios (Admin) | E3 Admin | 🟢 Media | ✅ Resuelto | Decidido usar Keycloak admin console directamente |
+| 37 | US03-AC1-FIX01 — Colores + Leyenda feedback datos | E2 Mapa | 🟡 Alta | ✅ Hecho | Gradiente pos/neg implementado en HeatmapDemo.tsx |
+| 38 | US-KEY-01 — Realm/Client dedicado Keycloak | E0/E1 | 🔴 Crítica | ✅ Hecho | PR auth con realm-export.json + docker-compose |
+| 39 | Testing unitario (Vitest) | Integración | — | ✅ Hecho | 5 tests: Context, SideBar, NextStepButton, Map, dashboard |
+| 40 | Deploy v1.0 | Integración | — | 🔴 Pendiente | — |
 
 ---
 
@@ -125,12 +128,16 @@ author: mavalan Software
 
 | Cambio | Antes | Ahora |
 |--------|-------|-------|
-| Arquitectura backend | Sin backend API (ADR-003) | Clean Architecture + DDD + Monorepo (ADR-007) |
-| Autenticación | Login propio + hasheo + recuperar pwd | Keycloak OIDC — todo delegado (ADR-005) |
-| Cache geoespacial | No definido | Service Worker + HTTP Cache + hash (ADR-006) |
+| Arquitectura backend | Sin backend API (ADR-003) | FastAPI Clean Architecture (repos separados, no monorepo) |
+| Autenticación | Login propio + hasheo + recuperar pwd | Keycloak OIDC via NextAuth (ADR-005) — implementado |
+| Mapa SIG | Leaflet (propuesto) | DeckGL + MapLibre + TileLayer client-side (ADR-008) |
+| Renderizado hexágonos | Fetch monolítico todos los hex | Tile-based: cuadrícula client-side con `polygonToCells` + COLOMBIA_POLYGON |
+| Componente Map.tsx | Todo junto (heatmap + selección + API) | Separado: Map.tsx (esencial) + HeatmapDemo.tsx (features demo) |
+| Cache geoespacial | No definido | TileLayer cache (64 tiles) + HTTP Cache-Control |
+| Testing | Ninguno | Vitest + React Testing Library (5 tests unitarios) |
 | Organización scope | 3 sprints (S1, S2, S3) | Por épica (E0-E3) y prioridad |
-| Historias primera entrega | 11 originales + 6 infra = fragmentado | 18 consolidadas en un solo documento |
-| Historias eliminadas | — | E2.3 (pwd recovery), E2.2 (dominio institucional), E1.6 (micro-API auth propia) |
+| Historias primera entrega | 18 consolidadas | 20 HU (se agregaron US03-AC1-FIX01 y US-KEY-01) |
+| CRUD Usuarios | UI propia planificada | Keycloak admin console (decisión equipo) |
 
 ---
 

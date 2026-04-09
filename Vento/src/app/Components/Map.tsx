@@ -1,26 +1,31 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+/**
+ * Map — versión esencial del contrato:
+ *   - Mapa base de Colombia (MapLibre + CartoDB Positron)
+ *   - Cuadrícula H3 generada client-side a partir del polígono de Colombia
+ *   - Renderizado por tiles (DeckGL TileLayer) — solo dibuja lo visible
+ *   - Click en hexágono → toggle de selección
+ *   - Sin API, sin heatmap
+ *
+ * Para activar el modo demo con heatmap importar `HeatmapDemo.tsx`.
+ */
+
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Map as MapGL, type MapRef } from "react-map-gl/maplibre";
 import { DeckGL } from "@deck.gl/react";
 import { TileLayer } from "@deck.gl/geo-layers";
 import { PolygonLayer } from "@deck.gl/layers";
 import { luma } from "@luma.gl/core";
 import { webgl2Adapter } from "@luma.gl/webgl";
-import { cellToBoundary, cellToParent, cellToChildren, getResolution } from "h3-js";
-import { useCachedImage } from "../Utils/useCachedImage";
+import { cellToBoundary, cellToLatLng, polygonToCells } from "h3-js";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
-import HexPopup from "./HexPopup";
-import VariableSelector from "./VariableSelector";
-import LayerInfo from "./LayerInfo";
-import {
-  INITIAL_VIEW_STATE,
-  MAX_BOUNDS,
-  SNAPSHOT_KEY,
-} from "../Utils/h3Resolution";
-import { API_BASE } from "../Utils/apiUrl";
+import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGON } from "../Utils/h3Resolution";
 import "maplibre-gl/dist/maplibre-gl.css";
 
+try { luma.registerAdapters([webgl2Adapter]); } catch { /* ok */ }
+
+// mismo mapeo que HeatmapDemo (h3TileIndex) para que la cuadrícula coincida visualmente
 function zoomToH3Res(zoom: number): number {
   if (zoom >= 10) return 7;
   if (zoom >= 8) return 6;
@@ -29,139 +34,52 @@ function zoomToH3Res(zoom: number): number {
   return 3;
 }
 
-try { luma.registerAdapters([webgl2Adapter]); } catch { /* ok */ }
-
-interface TileHex {
-  h: string; s: number; t: string; la: number; ln: number; v?: number | null;
+// convertir tile z/x/y a bounding box [west, south, east, north]
+function tileToBBox(z: number, x: number, y: number): [number, number, number, number] {
+  const n = Math.PI - (2 * Math.PI * y) / Math.pow(2, z);
+  const n2 = Math.PI - (2 * Math.PI * (y + 1)) / Math.pow(2, z);
+  const west = (x / Math.pow(2, z)) * 360 - 180;
+  const east = ((x + 1) / Math.pow(2, z)) * 360 - 180;
+  const north = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+  const south = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n2) - Math.exp(-n2)));
+  return [west, south, east, north];
 }
 
-function getColorByRatio(ratio: number): [number, number, number, number] {
-  if (ratio > 0.66) return [220, 50, 50, 160];
-  if (ratio > 0.33) return [240, 180, 50, 140];
-  return [50, 130, 220, 120];
-}
+const MIN_ZOOM = 5;
+const MAX_ZOOM = 10;
 
-function getVariableColor(val: number | null | undefined, min: number, max: number): [number, number, number, number] {
-  if (val === null || val === undefined || isNaN(val)) return [180, 180, 180, 25];
-  const range = max - min;
-  if (range === 0) return [180, 180, 180, 80];
-  const ratio = Math.max(0, Math.min(1, (val - min) / range));
-  if (ratio > 0.66) return [220, 50, 50, 160];
-  if (ratio > 0.33) return [240, 180, 50, 140];
-  return [50, 130, 220, 120];
+// gris azulado
+const SELECTED_FILL: [number, number, number, number] = [224, 215, 221, 100];
+const SELECTED_BORDER: [number, number, number, number] = [70, 90, 120, 220];
+const GRID_BORDER: [number, number, number, number] = [224, 215, 221, 100];
+
+interface HexCell { h: string; }
+interface CachedCell { h: string; lat: number; lng: number; }
+
+// cache de cuadrícula Colombia por resolución, con lat/lng pre-calculados
+const colombiaCellsCache = new Map<number, CachedCell[]>();
+
+function getColombiaCells(resolution: number): CachedCell[] {
+  const cached = colombiaCellsCache.get(resolution);
+  if (cached) return cached;
+  // h3-js polygonToCells con isGeoJson=true espera [lng, lat]
+  const cells = polygonToCells(COLOMBIA_POLYGON as [number, number][], resolution, true);
+  const result: CachedCell[] = cells.map((h) => {
+    const [lat, lng] = cellToLatLng(h);
+    return { h, lat, lng };
+  });
+  colombiaCellsCache.set(resolution, result);
+  return result;
 }
 
 export default function MapView() {
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
-  const { accion, selectedHexes, setSelectedHexes } = useAprincipal();
+  const { selectedHexes, setSelectedHexes } = useAprincipal();
   const [mapReady, setMapReady] = useState(false);
-  const [dataReady, setDataReady] = useState(false);
-  const loading = !mapReady || !dataReady;
-  const [mapState, setMapState] = useState<"active" | "frozen">("active");
   const [fullscreen, setFullscreen] = useState(false);
-  const [snapshot, setSnapshot] = useState<string | null>(null);
-  const { saveToCache, clearCache } = useCachedImage();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapRef>(null);
-  const [activeVar, setActiveVar] = useState<string | null>(null);
-  const [varRange, setVarRange] = useState<{ min: number; max: number } | null>(null);
-  const [popup, setPopup] = useState<{ h3: string; x: number; y: number } | null>(null);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const longPressTriggered = useRef(false);
-  const lastHoveredHex = useRef<{ h: string; x: number; y: number } | null>(null);
-  const currentRes = zoomToH3Res(viewState.zoom);
-  const [layerCounts, setLayerCounts] = useState({ total: 0, selected: 0, aboveThreshold: 0 });
-  const shouldFreeze = accion !== "seleccion-area";
 
-  useEffect(() => {
-    fetch(`${API_BASE}/api/tiles/warmup`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === "ready") setDataReady(true);
-      })
-      .catch(() => setDataReady(true));
-
-    const onFsChange = () => { if (!document.fullscreenElement) setFullscreen(false); };
-    document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
-  }, []);
-
-  useEffect(() => {
-    if (!dataReady) return;
-    const params = new URLSearchParams({ zoom: String(Math.round(viewState.zoom)) });
-    if (activeVar) params.set("var", activeVar);
-    const selectedArr = Array.from(selectedHexes);
-    if (selectedArr.length > 0) params.set("selected", selectedArr.join(","));
-    fetch(`${API_BASE}/api/tiles/counts?${params}`)
-      .then((r) => r.json())
-      .then(setLayerCounts)
-      .catch(() => {});
-  }, [dataReady, viewState.zoom, selectedHexes.size, activeVar]);
-
-  useEffect(() => {
-    if (!activeVar) { setVarRange(null); return; }
-    fetch(`${API_BASE}/api/tiles/variables`)
-      .then((r) => r.json())
-      .then((data) => {
-        const found = data.variables?.find((v: { name: string }) => v.name === activeVar);
-        if (found?.range) setVarRange(found.range);
-      })
-      .catch(() => {});
-  }, [activeVar]);
-
-  useEffect(() => {
-    if (shouldFreeze && mapState === "active") freeze();
-    else if (!shouldFreeze && mapState === "frozen") unfreeze();
-  }, [shouldFreeze]);
-
-  const toggleHex = useCallback((h3Index: string) => {
-    setSelectedHexes((prev) => {
-      const next = new Set(prev);
-      if (next.has(h3Index)) { next.delete(h3Index); } else { next.add(h3Index); }
-      return next;
-    });
-  }, [setSelectedHexes]);
-
-  const getHexSelectionState = useCallback((h3Index: string): "selected" | "ancestor" | "none" => {
-    if (selectedHexes.has(h3Index)) return "selected";
-    const res = getResolution(h3Index);
-    for (let r = res - 1; r >= 3; r--) {
-      try { if (selectedHexes.has(cellToParent(h3Index, r))) return "selected"; } catch { break; }
-    }
-    for (let r = res + 1; r <= 7; r++) {
-      try {
-        const children = cellToChildren(h3Index, r);
-        for (const child of children) { if (selectedHexes.has(child)) return "ancestor"; }
-      } catch { break; }
-    }
-    return "none";
-  }, [selectedHexes]);
-
-  const freeze = useCallback(async () => {
-    const container = containerRef.current;
-    if (!container || mapState === "frozen") return;
-    const canvases = container.querySelectorAll("canvas");
-    if (canvases.length === 0) return;
-    const composite = document.createElement("canvas");
-    composite.width = canvases[0].width;
-    composite.height = canvases[0].height;
-    const ctx = composite.getContext("2d");
-    if (!ctx) return;
-    canvases.forEach((c) => ctx.drawImage(c, 0, 0));
-    const dataUri = composite.toDataURL("image/png");
-    const objectUrl = await saveToCache(dataUri, SNAPSHOT_KEY);
-    setSnapshot(objectUrl);
-    setMapState("frozen");
-  }, [mapState, saveToCache]);
-
-  const unfreeze = useCallback(async () => {
-    await clearCache(SNAPSHOT_KEY);
-    setSnapshot(null);
-    setMapState("active");
-  }, [clearCache]);
-
-  const MIN_ZOOM = 5;
-  const MAX_ZOOM = 10;
   const clampViewState = useCallback((vs: typeof INITIAL_VIEW_STATE) => {
     const [west, south, east, north] = MAX_BOUNDS;
     return {
@@ -172,9 +90,18 @@ export default function MapView() {
     };
   }, []);
 
-  const tileLayer = useMemo(() => new TileLayer<TileHex>({
-    id: "h3-tiles",
-    data: `${API_BASE}/api/tiles/{z}/{x}/{y}`,
+  const toggleHex = useCallback((h3Index: string) => {
+    setSelectedHexes((prev) => {
+      const next = new Set(prev);
+      if (next.has(h3Index)) next.delete(h3Index);
+      else next.add(h3Index);
+      return next;
+    });
+  }, [setSelectedHexes]);
+
+  // capa de cuadrícula con tiles — solo renderiza lo visible, cachea por tile
+  const gridTileLayer = useMemo(() => new TileLayer<HexCell>({
+    id: "colombia-grid-tiles",
     minZoom: 2,
     maxZoom: 10,
     tileSize: 512,
@@ -183,54 +110,60 @@ export default function MapView() {
     refinementStrategy: "best-available",
     getTileData: async (tile) => {
       const { x, y, z } = tile.index;
-      const url = activeVar
-        ? `${API_BASE}/api/tiles/${z}/${x}/${y}?var=${encodeURIComponent(activeVar)}`
-        : `${API_BASE}/api/tiles/${z}/${x}/${y}`;
-      const res = await fetch(url, { signal: tile.signal });
-      if (!res.ok) return [];
-      return res.json();
+      const res = zoomToH3Res(z);
+      const all = getColombiaCells(res);
+      const [west, south, east, north] = tileToBBox(z, x, y);
+      const latMargin = (north - south) * 0.1;
+      const lngMargin = (east - west) * 0.1;
+      const result: HexCell[] = [];
+      for (const c of all) {
+        if (
+          c.lat >= south - latMargin &&
+          c.lat <= north + latMargin &&
+          c.lng >= west - lngMargin &&
+          c.lng <= east + lngMargin
+        ) {
+          result.push({ h: c.h });
+        }
+      }
+      return result as unknown as HexCell;
     },
     renderSubLayers: (props) => {
-      const { data } = props;
-      if (!data || !Array.isArray(data) || data.length === 0) return null;
-      const hexes = data as unknown as TileHex[];
-      const hasVar = activeVar && varRange;
-      const selected: TileHex[] = [];
-      const ancestors: TileHex[] = [];
-      for (const d of hexes) {
-        const state = getHexSelectionState(d.h);
-        if (state === "selected") selected.push(d);
-        else if (state === "ancestor") ancestors.push(d);
-      }
-      return [
-        new PolygonLayer<TileHex>({
-          id: `${props.id}-grid`, data: hexes,
-          getPolygon: (d) => cellToBoundary(d.h, true),
-          getFillColor: hasVar
-            ? ((d: TileHex) => getVariableColor(d.v, varRange.min, varRange.max))
-            : ((d: TileHex) => getColorByRatio(d.s)),
-          getLineColor: [204, 204, 204, 78], getLineWidth: 1, lineWidthMinPixels: 1,
-          filled: true, stroked: true, pickable: true,
-        }),
-        new PolygonLayer<TileHex>({
-          id: `${props.id}-ancestor`, data: ancestors,
-          getPolygon: (d) => cellToBoundary(d.h, true),
-          getFillColor: [255, 165, 0, 40], getLineColor: [255, 165, 0, 200],
-          getLineWidth: 1, lineWidthMinPixels: 2, filled: true, stroked: true, pickable: false,
-        }),
-        new PolygonLayer<TileHex>({
-          id: `${props.id}-selected`, data: selected,
-          getPolygon: (d) => cellToBoundary(d.h, true),
-          getFillColor: [0, 180, 255, 140], getLineColor: [0, 180, 255, 220],
-          getLineWidth: 1, lineWidthMinPixels: 2, filled: true, stroked: true, pickable: false,
-        }),
-      ];
+      const data = props.data as unknown as HexCell[] | null;
+      if (!data || data.length === 0) return null;
+      return new PolygonLayer<HexCell>({
+        id: `${props.id}-grid`,
+        data,
+        getPolygon: (d) => cellToBoundary(d.h, true),
+        getFillColor: [0, 0, 0, 0],
+        getLineColor: GRID_BORDER,
+        getLineWidth: 1,
+        lineWidthMinPixels: 1,
+        filled: true,
+        stroked: true,
+        pickable: true,
+      });
     },
-    updateTriggers: {
-      renderSubLayers: [selectedHexes.size, activeVar, varRange],
-      getTileData: [activeVar],
-    },
-  }), [selectedHexes, activeVar, varRange]);
+  }), []);
+
+  const selectedArr = useMemo<HexCell[]>(
+    () => Array.from(selectedHexes).map((h) => ({ h })),
+    [selectedHexes]
+  );
+
+  // capa de seleccionados — top level, siempre visible (independiente de tiles)
+  const selectedLayer = useMemo(() => new PolygonLayer<HexCell>({
+    id: "selected-hexes",
+    data: selectedArr,
+    getPolygon: (d) => cellToBoundary(d.h, true),
+    getFillColor: SELECTED_FILL,
+    getLineColor: SELECTED_BORDER,
+    getLineWidth: 1,
+    lineWidthMinPixels: 2,
+    filled: true,
+    stroked: true,
+    pickable: false,
+  }), [selectedArr]);
 
   const zoomIn = () => setViewState((v) => clampViewState({ ...v, zoom: v.zoom + 1 }));
   const zoomOut = () => setViewState((v) => clampViewState({ ...v, zoom: v.zoom - 1 }));
@@ -242,86 +175,46 @@ export default function MapView() {
   };
 
   return (
-    <div
-      ref={containerRef}
-      className={`relative h-full w-full ${fullscreen ? "bg-black" : ""}`}
-      onPointerDown={() => {
-        longPressTriggered.current = false;
-        longPressTimer.current = setTimeout(() => {
-          const hovered = lastHoveredHex.current;
-          if (hovered) {
-            longPressTriggered.current = true;
-            setPopup({ h3: hovered.h, x: hovered.x, y: hovered.y });
-          }
-        }, 500);
-      }}
-      onPointerUp={() => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } }}
-      onPointerLeave={() => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } }}
-    >
-      {loading && (
+    <div ref={containerRef} className={`relative h-full w-full ${fullscreen ? "bg-black" : ""}`}>
+      {!mapReady && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-gray-100">
           <p className="text-gray-500 text-lg">... cargando mapa</p>
         </div>
       )}
 
-      {popup && <HexPopup h3Index={popup.h3} x={popup.x} y={popup.y} onClose={() => setPopup(null)} />}
-
-      {mapState === "frozen" && snapshot ? (
-        <>
-          <img src={snapshot} alt="Mapa congelado" className="h-full w-full object-cover" />
-          <button onClick={unfreeze} className="absolute top-3 right-3 z-10 rounded bg-blue-600 px-3 py-1.5 text-sm text-white shadow hover:bg-blue-700">Reactivar mapa</button>
-        </>
-      ) : (
-        <>
-          {!loading && (
-            <>
-              <VariableSelector selected={activeVar} onSelect={setActiveVar} />
-              <button onClick={freeze} className="absolute top-3 right-3 z-10 rounded bg-gray-800 px-3 py-1.5 text-sm text-white shadow hover:bg-gray-900">Congelar mapa</button>
-              <div className="absolute bottom-4 right-4 z-10 flex flex-col items-end gap-2">
-                <LayerInfo resolution={currentRes} total={layerCounts.total} selectedCount={layerCounts.selected} aboveThresholdCount={layerCounts.aboveThreshold} />
-                <button onClick={zoomIn} className="flex h-8 w-8 items-center justify-center rounded bg-white text-lg font-bold text-black shadow hover:bg-gray-100" title="Acercar">+</button>
-                <button onClick={zoomOut} className="flex h-8 w-8 items-center justify-center rounded bg-white text-lg font-bold text-black shadow hover:bg-gray-100" title="Alejar">-</button>
-                <button onClick={toggleFullscreen} className="flex h-8 w-8 items-center justify-center rounded bg-white text-black shadow hover:bg-gray-100" title={fullscreen ? "Salir" : "Pantalla completa"}>
-                  {fullscreen ? (
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 1v4H2M10 1v4h4M6 15v-4H2M10 15v-4h4" /></svg>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" /></svg>
-                  )}
-                </button>
-              </div>
-            </>
-          )}
-          <DeckGL
-            style={{ position: "relative", width: "auto", height: "100%" }}
-            viewState={viewState}
-            onViewStateChange={({ viewState: vs }) => setViewState(clampViewState(vs as typeof INITIAL_VIEW_STATE))}
-            controller={true}
-            layers={dataReady ? [tileLayer] : []}
-            onHover={(info) => {
-              const hex = info.object as TileHex | undefined;
-              if (hex) lastHoveredHex.current = { h: hex.h, x: info.x ?? 0, y: info.y ?? 0 };
-              else lastHoveredHex.current = null;
-            }}
-            onClick={(info) => {
-              if (longPressTriggered.current) { longPressTriggered.current = false; return; }
-              const hex = info.object as TileHex | undefined;
-              if (!hex) { setPopup(null); return; }
-              setPopup(null);
-              toggleHex(hex.h);
-            }}
-            getTooltip={({ object }: { object?: TileHex }) =>
-              object ? `H3: ${object.h}\nViabilidad: ${(object.s * 100).toFixed(1)}%\nTipo: ${object.t}${object.v != null ? `\nVar: ${object.v.toFixed(2)}` : ""}` : null
-            }
-          >
-            <MapGL
-              ref={mapRef}
-              mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
-              canvasContextAttributes={{ preserveDrawingBuffer: true }}
-              onLoad={() => setMapReady(true)}
-            />
-          </DeckGL>
-        </>
+      {mapReady && (
+        <div className="absolute bottom-9 right-4 z-10 flex flex-col items-end gap-2">
+          <button onClick={zoomIn} className="flex h-6 w-6 items-center justify-center rounded  text-lg font-bold text-white shadow bg-[#165170ff]" title="Acercar">+</button>
+          <button onClick={zoomOut} className="flex h-6 w-6 items-center justify-center rounded  text-lg font-bold text-white shadow bg-[#165170ff]" title="Alejar">-</button>
+          <button onClick={toggleFullscreen} className="flex h-6 w-6 items-center justify-center rounded  text-white shadow bg-[#165170ff]" title={fullscreen ? "Salir" : "Pantalla completa"}>
+            {fullscreen ? (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 1v4H2M10 1v4h4M6 15v-4H2M10 15v-4h4" /></svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" /></svg>
+            )}
+          </button>
+        </div>
       )}
+
+      <DeckGL
+        style={{ position: "relative", width: "auto", height: "100%" }}
+        viewState={viewState}
+        onViewStateChange={({ viewState: vs }) => setViewState(clampViewState(vs as typeof INITIAL_VIEW_STATE))}
+        controller={true}
+        layers={[gridTileLayer, selectedLayer]}
+        onClick={(info) => {
+          const cell = info.object as HexCell | undefined;
+          if (!cell) return;
+          toggleHex(cell.h);
+        }}
+      >
+        <MapGL
+          ref={mapRef}
+          mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+          canvasContextAttributes={{ preserveDrawingBuffer: true }}
+          onLoad={() => setMapReady(true)}
+        />
+      </DeckGL>
     </div>
   );
 }
