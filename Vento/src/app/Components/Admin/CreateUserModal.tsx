@@ -13,7 +13,7 @@ export default function CreateUserModal({ onClose, onSubmit }: CreateUserModalPr
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("analista");
+  const [role, setRole] = useState<"admin" | "analista">("analista");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,7 +73,7 @@ export default function CreateUserModal({ onClose, onSubmit }: CreateUserModalPr
             </div>
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-900">Rol</label>
-              <select value={role} onChange={(e) => setRole(e.target.value)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+              <select value={role} onChange={(e) => setRole(e.target.value as "admin" | "analista")} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                 <option value="analista">Analista</option>
                 <option value="admin">Administrador</option>
               </select>

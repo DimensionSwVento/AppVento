@@ -13,7 +13,7 @@ export default function EditUserModal({ user, onClose, onSubmit }: EditUserModal
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
   const [enabled, setEnabled] = useState(user.enabled);
-  const [role, setRole] = useState("analista");
+  const [role, setRole] = useState<"admin" | "analista">("analista");
   const [rolesLoading, setRolesLoading] = useState(true);
 
   const [loading, setLoading] = useState(false);
@@ -99,7 +99,7 @@ export default function EditUserModal({ user, onClose, onSubmit }: EditUserModal
               <label className="block mb-2 text-sm font-medium text-gray-900">Rol</label>
               <select
                 value={role}
-                onChange={(e) => setRole(e.target.value)}
+                onChange={(e) => setRole(e.target.value as "admin" | "analista")}
                 disabled={rolesLoading}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 disabled:opacity-50 disabled:cursor-wait"
               >
