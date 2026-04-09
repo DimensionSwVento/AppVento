@@ -49,7 +49,9 @@ declare module "next-auth/jwt" {
   }
 }
 
-async function refreshAccessToken(token: import("next-auth/jwt").JWT) {
+async function refreshAccessToken(
+  token: import("next-auth/jwt").JWT
+): Promise<import("next-auth/jwt").JWT> {
   if (!token.refreshToken) {
     return { ...token, error: "NoRefreshToken" };
   }
@@ -57,20 +59,35 @@ async function refreshAccessToken(token: import("next-auth/jwt").JWT) {
   const issuer = process.env.AUTH_KEYCLOAK_ISSUER!;
   const tokenUrl = `${issuer}/protocol/openid-connect/token`;
 
-  const response = await fetch(tokenUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      client_id: process.env.AUTH_KEYCLOAK_ID!,
-      client_secret: process.env.AUTH_KEYCLOAK_SECRET!,
-      refresh_token: token.refreshToken,
-    }),
-  });
-
-  const refreshed = await response.json();
+  let response: Response;
+  try {
+    response = await fetch(tokenUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        client_id: process.env.AUTH_KEYCLOAK_ID!,
+        client_secret: process.env.AUTH_KEYCLOAK_SECRET!,
+        refresh_token: token.refreshToken,
+      }),
+    });
+  } catch {
+    return { ...token, error: "RefreshTokenError" };
+  }
 
   if (!response.ok) {
+    return { ...token, error: "RefreshTokenError" };
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    return { ...token, error: "RefreshTokenError" };
+  }
+
+  let refreshed: Record<string, unknown>;
+  try {
+    refreshed = await response.json();
+  } catch {
     return { ...token, error: "RefreshTokenError" };
   }
 
@@ -79,15 +96,21 @@ async function refreshAccessToken(token: import("next-auth/jwt").JWT) {
       ? refreshed.access_token
       : token.accessToken;
   const newIdToken =
-    typeof (refreshed as { id_token?: unknown }).id_token === "string"
-      ? (refreshed as { id_token: string }).id_token
+    typeof refreshed.id_token === "string"
+      ? refreshed.id_token
       : token.idToken;
 
   return {
     ...token,
     accessToken,
-    refreshToken: refreshed.refresh_token ?? token.refreshToken,
-    expiresAt: Math.floor(Date.now() / 1000) + refreshed.expires_in,
+    refreshToken:
+      typeof refreshed.refresh_token === "string"
+        ? refreshed.refresh_token
+        : token.refreshToken,
+    expiresAt:
+      typeof refreshed.expires_in === "number"
+        ? Math.floor(Date.now() / 1000) + refreshed.expires_in
+        : undefined,
     idToken: newIdToken,
     roles: realmRolesFromOidcTokens(accessToken, newIdToken),
     error: undefined,
