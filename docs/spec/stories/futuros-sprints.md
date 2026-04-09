@@ -198,4 +198,4 @@ Estas historias corresponden a los pasos 3-6 del flujo de usuario declarado que 
 | Pipeline y Datos | 4 historias | Backend API + pipeline Python |
 | UX del Mapa (A/B) | 1 historia | Primera entrega completada |
 
-**Total historias futuras:** 19
+**Total historias futuras:** 20
