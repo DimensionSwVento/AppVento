@@ -13,7 +13,7 @@ name: CI Pipeline
 on:
   workflow_dispatch:
   push:
-    branches: [dev, develop, main]
+    branches: [develop, main]
     paths-ignore:
       - "**.md"
       - ".github/stories/**"

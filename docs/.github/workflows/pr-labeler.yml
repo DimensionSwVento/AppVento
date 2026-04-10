@@ -28,8 +28,6 @@ jobs:
           TARGET="${{ github.base_ref }}"
           PR_NUMBER="${{ github.event.pull_request.number }}"
 
-          if [ "$TARGET" = "test" ]; then
-            gh pr edit "$PR_NUMBER" --add-label "env:test"
-          elif [ "$TARGET" = "main" ]; then
+          if [ "$TARGET" = "main" ]; then
             gh pr edit "$PR_NUMBER" --add-label "env:production"
           fi

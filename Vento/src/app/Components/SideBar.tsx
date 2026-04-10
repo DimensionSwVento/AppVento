@@ -47,7 +47,7 @@ export default function SideBar({
   const mail = session?.user?.email ?? "";
   return (
     <div className="flex  bg-[#165170ff]">
-      <div className="h-full text-[10.5px] w-[15rem] flex flex-col justify-between">
+      <div className="h-full text-[10.5px] w-[14rem] flex flex-col justify-between">
         <div>
         <img src="/vento_logo.png" alt="Logo" className="w-[111px] my-[1rem] ml-[1rem] h-[36px]" />
         <hr className="mx-[1rem]" />

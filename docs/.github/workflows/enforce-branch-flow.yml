@@ -1,16 +1,18 @@
-name: Enforce Branch Flow (dev → test → main)
+name: Enforce Branch Flow (develop → main)
 
 # ═══════════════════════════════════════════════════════════
 # Valida que los PRs sigan el flujo obligatorio:
-#   dev → test → main
+#   develop → main
 #
-# PRs desde ramas no permitidas se marcan como fallidos
+# PRs desde ramas no permitidas se marcan como fallidos.
+# Las ramas deploy-test y deploy-prod son generadas por CI,
+# no se permiten PRs hacia ellas.
 # ═══════════════════════════════════════════════════════════
 
 on:
   workflow_dispatch:
   pull_request:
-    branches: [test, main]
+    branches: [main, deploy-test, deploy-prod]
 
 jobs:
   validate-branch-flow:
@@ -24,19 +26,16 @@ jobs:
 
           echo "PR: $SOURCE → $TARGET"
 
-          if [ "$TARGET" = "test" ]; then
-            # Solo dev/develop pueden ir a test
-            if [[ "$SOURCE" != "dev" && "$SOURCE" != "develop" ]]; then
-              echo "::error::❌ Solo se puede hacer PR a 'test' desde 'dev' o 'develop'. Origen: '$SOURCE'"
+          if [ "$TARGET" = "main" ]; then
+            # Solo develop puede ir a main
+            if [[ "$SOURCE" != "develop" ]]; then
+              echo "::error::❌ Solo se puede hacer PR a 'main' desde 'develop'. Origen: '$SOURCE'"
               exit 1
             fi
-            echo "✅ Flujo válido: $SOURCE → test"
+            echo "✅ Flujo válido: develop → main"
 
-          elif [ "$TARGET" = "main" ]; then
-            # Solo test puede ir a main
-            if [ "$SOURCE" != "test" ]; then
-              echo "::error::❌ Solo se puede hacer PR a 'main' desde 'test'. Origen: '$SOURCE'"
-              exit 1
-            fi
-            echo "✅ Flujo válido: test → main"
+          elif [[ "$TARGET" == deploy-* ]]; then
+            # Nadie puede hacer PR a ramas de deploy — solo CI las actualiza
+            echo "::error::❌ Las ramas deploy-* son generadas automáticamente por CI. No se permiten PRs."
+            exit 1
           fi
