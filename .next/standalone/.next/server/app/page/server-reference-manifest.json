@@ -1,0 +1,17 @@
+{
+  "node": {
+    "00efb8f51177e6b9c6b9368abf89b3ec6362c554dd": {
+      "workers": {
+        "app/page": {
+          "moduleId": 98295,
+          "async": false,
+          "exportedName": "$$RSC_SERVER_ACTION_0",
+          "filename": "src/app/Components/SignInButton.tsx"
+        }
+      },
+      "exportedName": "$$RSC_SERVER_ACTION_0",
+      "filename": "src/app/Components/SignInButton.tsx"
+    }
+  },
+  "edge": {}
+}

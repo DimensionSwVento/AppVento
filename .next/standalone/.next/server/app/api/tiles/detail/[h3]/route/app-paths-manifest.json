@@ -1,0 +1,3 @@
+{
+  "/api/tiles/detail/[h3]/route": "app/api/tiles/detail/[h3]/route.js"
+}

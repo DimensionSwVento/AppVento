@@ -15,7 +15,7 @@
 /coverage
 
 # next.js
-/.next/
+#/.next/
 /out/
 
 # production
@@ -44,3 +44,4 @@ next-env.d.ts
 
 # datos geoespaciales pesados
 *.parquet
+node_modules

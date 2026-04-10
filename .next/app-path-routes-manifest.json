@@ -1,0 +1,21 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/admin/users/page": "/admin/users",
+  "/api/admin/users/[id]/roles/route": "/api/admin/users/[id]/roles",
+  "/api/admin/users/[id]/route": "/api/admin/users/[id]",
+  "/api/admin/users/route": "/api/admin/users",
+  "/api/auth/[...nextauth]/route": "/api/auth/[...nextauth]",
+  "/api/health/route": "/api/health",
+  "/api/hexagons/route": "/api/hexagons",
+  "/api/tiles/[z]/[x]/[y]/route": "/api/tiles/[z]/[x]/[y]",
+  "/api/tiles/counts/route": "/api/tiles/counts",
+  "/api/tiles/detail/[h3]/route": "/api/tiles/detail/[h3]",
+  "/api/tiles/variables/route": "/api/tiles/variables",
+  "/api/tiles/warmup/route": "/api/tiles/warmup",
+  "/api/users/route": "/api/users",
+  "/dashboard/page": "/dashboard",
+  "/dimensions/page": "/dimensions",
+  "/favicon.ico/route": "/favicon.ico",
+  "/page": "/"
+}

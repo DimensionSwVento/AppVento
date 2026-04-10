@@ -1,0 +1,21 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin/users/page": "app/admin/users/page.js",
+  "/api/admin/users/[id]/roles/route": "app/api/admin/users/[id]/roles/route.js",
+  "/api/admin/users/[id]/route": "app/api/admin/users/[id]/route.js",
+  "/api/admin/users/route": "app/api/admin/users/route.js",
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/api/health/route": "app/api/health/route.js",
+  "/api/hexagons/route": "app/api/hexagons/route.js",
+  "/api/tiles/[z]/[x]/[y]/route": "app/api/tiles/[z]/[x]/[y]/route.js",
+  "/api/tiles/counts/route": "app/api/tiles/counts/route.js",
+  "/api/tiles/detail/[h3]/route": "app/api/tiles/detail/[h3]/route.js",
+  "/api/tiles/variables/route": "app/api/tiles/variables/route.js",
+  "/api/tiles/warmup/route": "app/api/tiles/warmup/route.js",
+  "/api/users/route": "app/api/users/route.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dimensions/page": "app/dimensions/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/page": "app/page.js"
+}
