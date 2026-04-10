@@ -1,0 +1,25 @@
+name: Enforce Branch Flow v2
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: "Validate PR Flow"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar origen del PR
+        run: |
+          TARGET="${{ github.base_ref }}"
+          SOURCE="${{ github.head_ref }}"
+
+          echo "PR: $SOURCE → $TARGET"
+
+          if [ "$TARGET" = "main" ]; then
+            if [[ "$SOURCE" != "develop" ]]; then
+              echo "::error::Solo se puede hacer PR a 'main' desde 'develop'. Origen: '$SOURCE'"
+              exit 1
+            fi
+            echo "Flujo valido: develop → main"
+          fi
