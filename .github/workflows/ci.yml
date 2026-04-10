@@ -24,7 +24,7 @@ on:
     branches: [main]
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: deploy-v2-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -131,7 +131,10 @@ jobs:
     name: "Deploy Branch"
     runs-on: ubuntu-latest
     needs: [build, security]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    if: |
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main') &&
+      !startsWith(github.ref, 'refs/heads/deploy-')
     steps:
       - uses: actions/checkout@v4
         with:
