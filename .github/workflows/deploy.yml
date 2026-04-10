@@ -4,12 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches: [develop, main]
-    paths-ignore:
-      - "**.md"
-      - ".github/stories/**"
-      - "_bmad/**"
-      - "_bmad-output/**"
-      - "docs/**"
 
 concurrency:
   group: deploy-${{ github.ref }}

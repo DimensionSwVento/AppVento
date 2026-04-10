@@ -2,16 +2,8 @@ name: Unit Tests
 
 on:
   workflow_dispatch:
-  push:
-    branches: [develop, main]
-    paths-ignore:
-      - "**.md"
-      - ".github/stories/**"
-      - "_bmad/**"
-      - "_bmad-output/**"
-      - "docs/**"
   pull_request:
-    branches: [main]
+    branches: [develop, main]
 
 concurrency:
   group: unit-tests-${{ github.ref }}
