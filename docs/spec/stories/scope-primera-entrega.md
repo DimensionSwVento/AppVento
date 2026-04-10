@@ -110,19 +110,23 @@ DEPENDENCIAS:
 
 ---
 
-### US-CI — Pipeline CI Mínimo
+### US-CI — Pipeline CI + Deploy Automático
 - **Prioridad:** 🟡 Alta
 - **ADR:** ADR-007
 - **Épica origen:** E1 (Fundación)
+- **Flujo de ramas:** `develop` → PR → `main`. Deploy automático via ramas limpias (`deploy-test`, `deploy-prod`)
 - **Criterios de Aceptación:**
-  1. GitHub Actions ejecuta en cada push y pull request
-  2. Stage de calidad: lint + type-check + tests unitarios
-  3. Stage de build: verificar que el proyecto compila correctamente
+  1. GitHub Actions ejecuta en cada push a `develop`/`main` y en PRs hacia `main`
+  2. Stage de calidad: lint + type-check + tests unitarios (Vitest)
+  3. Stage de build: verificar que el proyecto compila correctamente con env vars de Keycloak
   4. Stage de seguridad: audit de dependencias + scan de secretos (gitleaks)
-  5. Branch protection activo en `main` y `develop` — no se permite push directo
-  6. Review obligatorio: mínimo 1 aprobación antes de merge
-  7. Pipeline documenta claramente errores cuando falla
-- **Nota:** Puede implementarse en paralelo con las demás historias de E0
+  5. Stage de deploy: genera rama `deploy-test` (desde develop) o `deploy-prod` (desde main) con solo `Vento/` — sin docs, specs, infra
+  6. Branch protection activo en `main` — no se permite push directo, requiere PR
+  7. Review obligatorio: mínimo 1 aprobación antes de merge a `main`
+  8. Pipeline documenta claramente errores cuando falla
+  9. cPanel de AccuWeb apunta a `deploy-test` (staging) y `deploy-prod` (producción) con autodeploy
+  10. Las ramas `deploy-test` y `deploy-prod` son permanentes — no se editan manualmente
+- **Nota:** El flujo anterior `develop → test → main` fue simplificado a `develop → main` con deploy branches automáticas
 
 ---
 
