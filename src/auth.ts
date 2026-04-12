@@ -94,6 +94,14 @@ async function refreshAccessToken(token: import("next-auth/jwt").JWT) {
   };
 }
 
+console.log("[AUTH] ENV CHECK:", {
+  AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST ? "✅" : "❌",
+  AUTH_SECRET: process.env.AUTH_SECRET ? "✅" : "❌",
+  AUTH_KEYCLOAK_ID: process.env.AUTH_KEYCLOAK_ID ?? "❌ missing",
+  AUTH_KEYCLOAK_SECRET: process.env.AUTH_KEYCLOAK_SECRET ? "✅" : "❌",
+  AUTH_KEYCLOAK_ISSUER: process.env.AUTH_KEYCLOAK_ISSUER ?? "❌ missing",
+});
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Keycloak({

@@ -319,17 +319,7 @@ self.__SERVER_FILES_MANIFEST={
       "@luma.gl/webgl",
       "@luma.gl/shadertools"
     ],
-    "distDirRoot": ".next",
-    "_originalRewrites": {
-      "beforeFiles": [],
-      "afterFiles": [
-        {
-          "source": "/api/tiles/:path*",
-          "destination": "http://localhost:8000/api/tiles/:path*"
-        }
-      ],
-      "fallback": []
-    }
+    "distDirRoot": ".next"
   },
   "appDir": "/home/jui43287prehuy/Documents/VP/AppVento",
   "relativeAppDir": "",

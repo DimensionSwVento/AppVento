@@ -6,7 +6,7 @@ type AppRouteHandlerRoutes = "/api/admin/users" | "/api/admin/users/[id]" | "/ap
 type PageRoutes = never
 type LayoutRoutes = "/"
 type RedirectRoutes = never
-type RewriteRoutes = "/api/tiles/[[...path]]"
+type RewriteRoutes = never
 type Routes = AppRoutes | PageRoutes | LayoutRoutes | RedirectRoutes | RewriteRoutes | AppRouteHandlerRoutes
 
 
@@ -19,7 +19,6 @@ interface ParamMap {
   "/api/auth/[...nextauth]": { "nextauth": string[]; }
   "/api/health": {}
   "/api/hexagons": {}
-  "/api/tiles/[[...path]]": { "path"?: string[]; }
   "/api/tiles/[z]/[x]/[y]": { "z": string; "x": string; "y": string; }
   "/api/tiles/counts": {}
   "/api/tiles/detail/[h3]": { "h3": string; }
