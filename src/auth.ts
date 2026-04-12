@@ -1,6 +1,6 @@
 import { decodeJwt } from "jose";
 import NextAuth from "next-auth";
-import Keycloak from "next-auth/providers/keycloak";
+// import Keycloak from "next-auth/providers/keycloak"; // reemplazado por config manual OIDC
 
 type KeycloakJwtClaims = {
   realm_access?: { roles?: unknown };
@@ -102,13 +102,26 @@ console.log("[AUTH] ENV CHECK:", {
   AUTH_KEYCLOAK_ISSUER: process.env.AUTH_KEYCLOAK_ISSUER ?? "❌ missing",
 });
 
+// AccuWeb: Keycloak se reporta como HTTPS (proxy SSL externo) pero internamente
+// solo es accesible via HTTP:8080. Usamos AUTH_KEYCLOAK_ISSUER para conectar
+// (HTTP interno) y AUTH_KEYCLOAK_ISSUER_PUBLIC para el issuer que Keycloak reporta.
+const internalIssuer = process.env.AUTH_KEYCLOAK_ISSUER!;
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
-    Keycloak({
+    {
+      id: "keycloak",
+      name: "Keycloak",
+      type: "oidc",
       clientId: process.env.AUTH_KEYCLOAK_ID!,
       clientSecret: process.env.AUTH_KEYCLOAK_SECRET!,
-      issuer: process.env.AUTH_KEYCLOAK_ISSUER!,
-    }),
+      // URL interna HTTP para discovery (AccuWeb no permite HTTPS entre contenedores)
+      issuer: internalIssuer,
+      // Desactivar validación de issuer — Keycloak reporta HTTPS pero internamente es HTTP
+      client: {
+        token_endpoint_auth_method: "client_secret_post",
+      },
+    },
   ],
   callbacks: {
     async jwt({ token, account }) {
