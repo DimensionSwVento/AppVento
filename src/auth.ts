@@ -1,6 +1,6 @@
 import { decodeJwt } from "jose";
 import NextAuth from "next-auth";
-import Keycloak from "next-auth/providers/keycloak";
+// import Keycloak from "next-auth/providers/keycloak"; // reemplazado por provider OIDC manual
 
 type KeycloakJwtClaims = {
   realm_access?: { roles?: unknown };
@@ -115,6 +115,11 @@ console.log("[AUTH] ISSUER CONFIG:", {
   wellKnownUrl,
 });
 
+// Reescribe URLs HTTPS → HTTP para conexiones internas en AccuWeb
+function httpsToHttp(url: string): string {
+  return url.replace(/^https:\/\//, "http://");
+}
+
 // Pre-fetch para diagnosticar qué devuelve Keycloak
 fetch(wellKnownUrl)
   .then((res) => res.json())
@@ -124,7 +129,9 @@ fetch(wellKnownUrl)
       issuerWeExpect: issuer,
       match: config.issuer === issuer ? "✅" : "❌ MISMATCH",
       tokenEndpoint: config.token_endpoint,
+      tokenEndpointRewritten: httpsToHttp(config.token_endpoint),
       authEndpoint: config.authorization_endpoint,
+      authEndpointRewritten: httpsToHttp(config.authorization_endpoint),
     });
   })
   .catch((err) => {
@@ -133,12 +140,22 @@ fetch(wellKnownUrl)
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
-    Keycloak({
+    {
+      id: "keycloak",
+      name: "Keycloak",
+      type: "oidc",
       clientId: process.env.AUTH_KEYCLOAK_ID!,
       clientSecret: process.env.AUTH_KEYCLOAK_SECRET!,
+      // issuer HTTPS para validación de tokens
       issuer,
-      wellKnown: wellKnownUrl,
-    }),
+      // Endpoints reescritos a HTTP para conexión interna
+      authorization: {
+        url: httpsToHttp(`${issuer}/protocol/openid-connect/auth`),
+        params: { scope: "openid email profile" },
+      },
+      token: httpsToHttp(`${issuer}/protocol/openid-connect/token`),
+      userinfo: httpsToHttp(`${issuer}/protocol/openid-connect/userinfo`),
+    },
   ],
   callbacks: {
     async jwt({ token, account }) {
