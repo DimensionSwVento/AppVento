@@ -18,7 +18,13 @@
   "onMatchHeaders": [],
   "rewrites": {
     "beforeFiles": [],
-    "afterFiles": [],
+    "afterFiles": [
+      {
+        "source": "/api/tiles/:path*",
+        "destination": "http://localhost:8000/api/tiles/:path*",
+        "regex": "^/api/tiles(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$"
+      }
+    ],
     "fallback": []
   },
   "dynamicRoutes": [
