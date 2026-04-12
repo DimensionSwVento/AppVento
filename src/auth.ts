@@ -1,6 +1,6 @@
 import { decodeJwt } from "jose";
 import NextAuth from "next-auth";
-// import Keycloak from "next-auth/providers/keycloak"; // reemplazado por config manual OIDC
+import Keycloak from "next-auth/providers/keycloak";
 
 type KeycloakJwtClaims = {
   realm_access?: { roles?: unknown };
@@ -102,26 +102,43 @@ console.log("[AUTH] ENV CHECK:", {
   AUTH_KEYCLOAK_ISSUER: process.env.AUTH_KEYCLOAK_ISSUER ?? "❌ missing",
 });
 
-// AccuWeb: Keycloak se reporta como HTTPS (proxy SSL externo) pero internamente
-// solo es accesible via HTTP:8080. Usamos AUTH_KEYCLOAK_ISSUER para conectar
-// (HTTP interno) y AUTH_KEYCLOAK_ISSUER_PUBLIC para el issuer que Keycloak reporta.
-const internalIssuer = process.env.AUTH_KEYCLOAK_ISSUER!;
+// AccuWeb: Keycloak reporta HTTPS como issuer pero internamente solo acepta HTTP.
+// AUTH_KEYCLOAK_ISSUER debe ser la URL HTTP interna (ej: http://midominio.com/identity/realms/vento)
+// Reescribimos a HTTPS para que coincida con lo que Keycloak valida en el token.
+const issuerEnv = process.env.AUTH_KEYCLOAK_ISSUER!;
+const issuer = issuerEnv.replace(/^http:\/\//, "https://");
+const wellKnownUrl = `${issuerEnv}/.well-known/openid-configuration`;
+
+console.log("[AUTH] ISSUER CONFIG:", {
+  envOriginal: issuerEnv,
+  issuerRewritten: issuer,
+  wellKnownUrl,
+});
+
+// Pre-fetch para diagnosticar qué devuelve Keycloak
+fetch(wellKnownUrl)
+  .then((res) => res.json())
+  .then((config) => {
+    console.log("[AUTH] DISCOVERY OK:", {
+      issuerFromKeycloak: config.issuer,
+      issuerWeExpect: issuer,
+      match: config.issuer === issuer ? "✅" : "❌ MISMATCH",
+      tokenEndpoint: config.token_endpoint,
+      authEndpoint: config.authorization_endpoint,
+    });
+  })
+  .catch((err) => {
+    console.error("[AUTH] DISCOVERY FETCH FAILED:", err.message);
+  });
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
-    {
-      id: "keycloak",
-      name: "Keycloak",
-      type: "oidc",
+    Keycloak({
       clientId: process.env.AUTH_KEYCLOAK_ID!,
       clientSecret: process.env.AUTH_KEYCLOAK_SECRET!,
-      // URL interna HTTP para discovery (AccuWeb no permite HTTPS entre contenedores)
-      issuer: internalIssuer,
-      // Desactivar validación de issuer — Keycloak reporta HTTPS pero internamente es HTTP
-      client: {
-        token_endpoint_auth_method: "client_secret_post",
-      },
-    },
+      issuer,
+      wellKnown: wellKnownUrl,
+    }),
   ],
   callbacks: {
     async jwt({ token, account }) {
