@@ -1,51 +1,51 @@
 # Vento Frontend
 
-Frontend del proyecto Vento — aplicacion web de analisis de viabilidad eolica para Colombia. Renderiza hexagonos H3 sobre un mapa interactivo con mapa de calor por variables de viabilidad.
-
-Este proyecto es exclusivamente el **frontend**. Para que los hexagonos se rendericen correctamente, debe conectarse al backend en FastAPI que procesa y sirve los datos geoespaciales.
+Frontend del proyecto Vento — aplicación web de análisis de viabilidad eólica para Colombia.
 
 ## Stack
 
 - **Next.js 16+** (App Router, TypeScript, Tailwind CSS)
-- **deck.gl** + **react-map-gl** + **maplibre-gl** (renderizado WebGL)
-- **h3-js** (indices H3, geometria hexagonos)
+- **NextAuth v5** + **Keycloak** (OIDC authentication)
+- **jose** (JWT decoding)
 
 ## Arquitectura
 
 ```
-  ┌──────────────┐       ┌──────────────────┐       ┌──────────┐
-  │   Frontend   │──────>│  FastAPI Backend  │──────>│ Parquet  │
-  │   (Next.js)  │ HTTP  │  (Python)        │       │  / BD    │
-  └──────────────┘       └──────────────────┘       └──────────┘
+  ┌──────────────┐       ┌──────────────────┐       ┌──────────────┐
+  │   Frontend   │──────>│  FastAPI Backend  │──────>│  Parquet/BD  │
+  │   (Next.js)  │ HTTP  │  (Python)        │       │              │
+  └──────┬───────┘       └──────────────────┘       └──────────────┘
+         │
+         ▼
+  ┌──────────────┐
+  │   Keycloak   │
+  │   (OIDC)     │
+  └──────────────┘
 ```
 
-El frontend consume endpoints REST del backend. Sin el backend corriendo, el mapa no mostrara hexagonos.
+## Ramas
+
+| Rama | Propósito |
+|------|-----------|
+| `develop` | Desarrollo activo |
+| `main` | Código estable |
+| `deploy-test` | Staging — solo frontend, sin docs/infra. AccuWeb apunta aquí |
+| `deploy-prod` | Producción — solo frontend, sin docs/infra. AccuWeb apunta aquí |
+
+Las ramas `deploy-*` se generan automáticamente por GitHub Actions. No editar manualmente.
+
+---
 
 ## Desarrollo local
 
-### 1. Levantar el backend
-
-Ver el README del repositorio `AppVento---Backend` para instrucciones completas. Resumen rapido:
+### 1. Keycloak (si necesitas auth)
 
 ```bash
-cd AppVento---Backend/api
-pip install -r requirements.txt
-PYTHONPATH=. PARQUET_PATH=../../Vento/src/app/Utils/master_variables.h3.parquet uvicorn main:app --port 8000
+cd infra/keycloak
+docker-compose up -d
 ```
 
-Verificar que responde:
-```bash
-curl http://localhost:8000/health
-```
-
-### 2. Configurar el frontend
-
-```bash
-# En Vento/.env.local
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
-
-### 3. Levantar el frontend
+### 2. Frontend
 
 ```bash
 cd Vento
@@ -53,42 +53,175 @@ npm install
 npm run dev
 ```
 
-Abre `http://localhost:3000` — el mapa cargara los hexagonos desde el backend en `:8000`.
+### 3. Variables de entorno (`Vento/.env.local`)
 
-## API Endpoints consumidos
+```env
+AUTH_TRUST_HOST=true
+AUTH_SECRET=<openssl rand -base64 32>
+AUTH_KEYCLOAK_ID=vento-web
+AUTH_KEYCLOAK_SECRET=<de Keycloak admin console>
+AUTH_KEYCLOAK_ISSUER=http://localhost:8080/realms/vento
+NEXT_PUBLIC_KEYCLOAK_URL=http://localhost:8080
+NEXT_PUBLIC_KEYCLOAK_REALM=vento
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
 
-Todos provistos por el backend FastAPI:
+---
 
-| Endpoint | Descripcion |
-|----------|-------------|
-| `GET /api/tiles/warmup` | Carga parquet e inicializa indice espacial |
-| `GET /api/tiles/{z}/{x}/{y}?var=` | Hexagonos para un tile (zoom/x/y) |
-| `GET /api/tiles/detail/{h3}` | Detalle completo de un hexagono |
-| `GET /api/tiles/variables` | Variables disponibles con rangos min/max |
-| `GET /api/tiles/counts?zoom=&var=&selected=` | Conteos globales por resolucion |
+## Deploy a producción (Standalone)
 
-## Variables de entorno
+### Proceso completo: del repo al servidor
 
-| Variable | Descripcion | Default |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_API_URL` | URL del backend FastAPI (requerido) | — |
+#### 1. Preparar la rama de deploy
 
-## Notas
+Las ramas `deploy-test` y `deploy-prod` contienen solo el contenido de `Vento/` movido a la raíz. Se generan automáticamente por CI o manualmente así:
 
-- El archivo `master_variables.h3.parquet` no se sube al repo (`.gitignore`). Lo consume el backend, no el frontend.
-- Los hexagonos se filtran a Colombia y sus mares circundantes (lat [-4.3, 13.5], lng [-82, -66.5]).
-- La autenticacion se maneja via Keycloak (realm `vento`, client `vento-web`). El backend valida los tokens JWT.
+```bash
+git checkout deploy-test   # o deploy-prod
+```
 
-## Configuración de Keycloak para Gestión de Usuarios
+Si necesitas generarla manualmente desde develop/main:
 
-Para que el panel de administración de usuarios (ruta `/admin/users`) funcione correctamente comunicándose con la Admin REST API de Keycloak, el cliente definido en `AUTH_KEYCLOAK_ID` (`vento-web` por defecto) debe tener los siguientes requisitos en la consola de Keycloak:
+```bash
+git checkout develop       # o main para prod
+git checkout --orphan deploy-test
+git rm -rf .
+git checkout develop -- Vento/
+shopt -s dotglob
+mv Vento/* .
+rm -rf Vento docs _bmad _bmad-output infra node_modules .next
+git add -A
+git commit -m "deploy: deploy-test"
+git push origin deploy-test --force
+```
 
-1. **Client Authentication**: Debe estar en "On" (para que requiera client secret).
-2. **Service Accounts Enabled**: Debe estar activo (permite al cliente usar Client Credentials Grant).
-3. **Roles de Service Account**:
-   - Ir a la pestaña "Service accounts roles" del cliente.
-   - Presionar "Assign role".
-   - Filtrar por "Filter by clients".
-   - Buscar el cliente `realm-management` y asignarle el rol **`manage-users`**.
+#### 2. Instalar dependencias (solo producción)
 
-Adicionalmente, se recomienda que existan dos Realm Roles configurados llamados exactamente `"admin"` y `"analista"`.
+```bash
+npm install --omit=dev
+```
+
+Esto instala solo las dependencias de `dependencies` (next, react, next-auth, jose) sin las de `devDependencies` (vitest, eslint, etc.).
+
+#### 3. Configurar variables de entorno
+
+Crear `.env.local` o configurar en el panel de AccuWeb:
+
+```env
+AUTH_TRUST_HOST=true
+AUTH_SECRET=<secret seguro generado>
+AUTH_KEYCLOAK_ID=vento-web
+AUTH_KEYCLOAK_SECRET=<secret de Keycloak prod>
+AUTH_KEYCLOAK_ISSUER=https://keycloak.accuweb.cloud/realms/vento
+NEXT_PUBLIC_KEYCLOAK_URL=https://keycloak.accuweb.cloud
+NEXT_PUBLIC_KEYCLOAK_REALM=vento
+NEXT_PUBLIC_API_URL=https://api.accuweb.cloud
+```
+
+#### 4. Build
+
+```bash
+npm run build
+```
+
+Genera `.next/standalone/` con servidor Node.js mínimo (gracias a `output: "standalone"` en `next.config.ts`).
+
+#### 5. Copiar archivos estáticos al standalone
+
+```bash
+cp -r public .next/standalone/public
+cp -r .next/static .next/standalone/.next/static
+```
+
+**Importante:** Standalone NO incluye `public/` ni `.next/static/` automáticamente. Sin este paso la app se ve sin estilos ni imágenes.
+
+#### 6. Arrancar el servidor
+
+```bash
+node .next/standalone/server.js
+```
+
+La app corre en `http://localhost:3000`. En AccuWeb, nginx hace proxy a este puerto.
+
+#### Resumen de comandos
+
+**En el build (CI o máquina local):**
+```bash
+npm install
+npm run build
+cp -r public .next/standalone/public
+cp -r .next/static .next/standalone/.next/static
+```
+
+**En el servidor (AccuWeb):** solo copiar `.next/standalone/` y correr:
+```bash
+node server.js
+```
+
+No se necesita `npm install` en el servidor — standalone incluye todas las dependencias.
+
+#### Variables de entorno en el runtime standalone
+
+**Importante:** El servidor standalone NO lee `.env.local` automáticamente — solo carga variables exportadas en el shell del proceso.
+
+**Dev local con standalone:**
+```bash
+export $(cat .env.local | xargs) && node .next/standalone/server.js
+```
+
+O directo en el comando:
+```bash
+AUTH_TRUST_HOST=true AUTH_SECRET=xxx node .next/standalone/server.js
+```
+
+**En AccuWeb:** configurar las variables en el panel de Node.js App (Environment Variables). El panel las exporta automáticamente al proceso del servidor.
+
+**Diferencia importante:**
+- `npm run build` → sí lee `.env.local` (las `NEXT_PUBLIC_*` se embeben en el bundle)
+- `node .next/standalone/server.js` → NO lee `.env.local`, necesita variables exportadas
+
+---
+
+## Configuración de AccuWeb (cPanel)
+
+### Git Version Control
+
+| Campo | Staging | Producción |
+|-------|---------|------------|
+| Branch | `deploy-test` | `deploy-prod` |
+| Autodeploy | Activado | Activado |
+
+### Variables de entorno
+
+Agregar las 8 variables de `.env.local` en el panel de Node.js App o como archivo `.env.local` en el servidor.
+
+### nginx proxy
+
+nginx debe hacer proxy al puerto 3000 donde corre el standalone server.
+
+---
+
+## Configuración de Keycloak
+
+El cliente `vento-web` en Keycloak requiere:
+
+1. **Client Authentication**: On (requiere client secret)
+2. **Service Accounts Enabled**: Activo (Client Credentials Grant)
+3. **Redirect URIs**: `https://tu-dominio/*` y `http://localhost:3000/*`
+4. **Roles de Service Account**:
+   - Pestaña "Service accounts roles" → Assign role
+   - Filtrar por clients → `realm-management` → asignar **`manage-users`**
+5. **Realm Roles**: `admin` y `analista` creados
+
+---
+
+## Workflows (GitHub Actions)
+
+| Workflow | Archivo | Trigger | Función |
+|----------|---------|---------|---------|
+| Quality | `quality.yml` | PR a develop/main | Lint + TypeCheck |
+| Unit Tests | `unit-tests.yml` | PR a develop/main | Vitest |
+| Deploy | `deploy.yml` | Push a develop/main | Genera deploy-test / deploy-prod |
+| Enforce Flow | `enforce-flow-v2.yml` | PR a main | Valida develop→main |
+| PR Labels | `pr-labeler.yml` | PR abierto | Labels automáticos |
+| Sync Stories | `sync-stories.yml` | Push a .github/stories/ | Issues → Project |

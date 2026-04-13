@@ -10,6 +10,7 @@ const turbopackRoot = path.dirname(fileURLToPath(import.meta.url));
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   turbopack: {
     root: turbopackRoot,
   },

@@ -358,8 +358,10 @@ DEPENDENCIAS:
 | 🟢 Media | US08 | CRUD Usuarios (Admin) | E3 |
 | 🟡 Alta | US03-AC1-FIX01 | Revisión Colores + Leyenda (feedback datos) | E2 |
 | 🔴 Crítica | US-KEY-01 | Realm y Client dedicado Keycloak | E0/E1 |
+| 🔴 Crítica | FIX-DEPLOY-01 | Keycloak Redirect URIs HTTP | E0/E1 |
+| 🔴 Crítica | FIX-DEPLOY-02 | NextAuth Proxy SSL + Cookies Overflow | E1 |
 
-**Total historias:** 20
+**Total historias:** 22
 
 ## Historias eliminadas (por Keycloak — ADR-005)
 
@@ -420,6 +422,35 @@ Semana 4:  US03-AC4 + AC9 + US-CACHE + US03-AC7 + US08
   7. Documentación de las variables de entorno necesarias: `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID`
   8. Backend FastAPI valida tokens emitidos por este realm/client específico (ya implementado en `keycloak_guard.py`, verificar compatibilidad)
 - **Desbloquea:** US01 (Login via Keycloak), US-AUTH-GUARD
+
+---
+
+### FIX-DEPLOY-01 — Keycloak Redirect URIs HTTP
+- **Prioridad:** 🔴 Crítica
+- **Épica origen:** E0 (Fundación) / E1 (Login)
+- **Dependencia:** US-KEY-01
+- **Tipo:** Fix / Configuración
+- **Contexto:** En AccuWeb los contenedores se comunican via HTTP internamente. Keycloak tiene redirect URIs solo en HTTPS, lo que bloquea el callback de NextAuth.
+- **Criterios de Aceptación:**
+  1. Todas las `redirect_uri` en el client `vento-web` del realm "vento" incluyen variantes HTTP además de HTTPS (ej: `http://midominio.com/*` y `https://midominio.com/*`)
+  2. Login completo funciona desde el contenedor del frontend sin error "Invalid parameter: redirect_uri"
+- **Tiempo estimado:** ~15 min (configuración manual en consola Keycloak)
+
+---
+
+### FIX-DEPLOY-02 — NextAuth Proxy SSL + Cookies Overflow
+- **Prioridad:** 🔴 Crítica
+- **Épica origen:** E1 (Login)
+- **Dependencia:** FIX-DEPLOY-01
+- **Tipo:** Fix / Integración
+- **Contexto:** Keycloak está detrás de un proxy SSL externo: se reporta como HTTPS pero internamente solo acepta HTTP. NextAuth falla al conectar via HTTPS y al validar el issuer. Los tokens JWT de Keycloak generan cookies que exceden el límite de nginx (4KB), devolviendo error 400.
+- **Criterios de Aceptación:**
+  1. `auth.ts` reescribe URLs de endpoints OIDC (token, userinfo, authorization) de HTTPS a HTTP para conexiones internas, manteniendo el issuer como HTTPS para validación de tokens
+  2. Provider OIDC manual reemplaza el wrapper `Keycloak()` de NextAuth con endpoints explícitos reescritos a HTTP
+  3. nginx en AccuWeb configurado con `large_client_header_buffers 4 16k` para aceptar cookies de sesión grandes
+  4. La aplicación no crashea con "400 Bad Request — Request Header Or Cookie Too Large" después de múltiples logins/refresh
+  5. Logs de diagnóstico en `auth.ts`: ENV CHECK, ISSUER CONFIG, DISCOVERY
+  6. Variables de entorno documentadas en README.md: `AUTH_KEYCLOAK_ISSUER` (HTTP interno), `AUTH_TRUST_HOST=true`
 
 ---
 
