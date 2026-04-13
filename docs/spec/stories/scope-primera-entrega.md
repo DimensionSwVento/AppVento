@@ -336,32 +336,31 @@ DEPENDENCIAS:
 
 ## Todas las historias ordenadas por prioridad
 
-| Prioridad | ID | Historia | Épica |
-|-----------|----|----------|-------|
-| 🔴 Crítica | US-MONO | Estructura Monorepo | E0 |
-| 🔴 Crítica | US-DDD | Backend Clean Architecture + DDD | E0 |
-| 🔴 Crítica | US-KEY | Integración Keycloak | E0 |
-| 🔴 Crítica | US01 | Login via Keycloak | E1 |
-| 🔴 Crítica | US-AUTH-GUARD | Protección de Rutas | E1 |
-| 🔴 Crítica | US03 | Mapa Base + Hexágonos H3 | E2 |
-| 🔴 Crítica | US03-AC6 | Ingesta .parquet → JSON | E2 |
-| 🔴 Crítica | US03-AC1 | Mapa de Calor por Score | E2 |
-| 🔴 Crítica | US03-AC2 | Filtrado por Variable | E2 |
-| 🔴 Crítica | US03-AC3 | Popup Hexágono | E2 |
-| 🟡 Alta | US-ENV | Variables de Entorno | E0 |
-| 🟡 Alta | US-CI | Pipeline CI Mínimo | E0 |
-| 🟡 Alta | US03-AC5 | Hexágonos Decorativos | E2 |
-| 🟡 Alta | US03-AC4 | Dato Central en Hexágono | E2 |
-| 🟡 Alta | US03-AC9 | Panel de Control (Leyenda + Selector) | E2 |
-| 🟡 Alta | US-CACHE | Cache Datos Geoespaciales | E2 |
-| 🟢 Media | US03-AC7 | Metadata de Variables | E2 |
-| 🟢 Media | US08 | CRUD Usuarios (Admin) | E3 |
-| 🟡 Alta | US03-AC1-FIX01 | Revisión Colores + Leyenda (feedback datos) | E2 |
-| 🔴 Crítica | US-KEY-01 | Realm y Client dedicado Keycloak | E0/E1 |
-| 🔴 Crítica | FIX-DEPLOY-01 | Keycloak Redirect URIs HTTP | E0/E1 |
-| 🔴 Crítica | FIX-DEPLOY-02 | NextAuth Proxy SSL + Cookies Overflow | E1 |
+| Prioridad | ID | Historia | Épica | Estado |
+|-----------|----|----------|-------|--------|
+| 🔴 Crítica | US-MONO | Estructura Repos Separados | E0 | ✅ Adaptado |
+| 🔴 Crítica | US-DDD | Backend Clean Architecture + DDD | E0 | ✅ Hecho |
+| 🔴 Crítica | US-KEY | Integración Keycloak | E0 | ✅ Hecho |
+| 🔴 Crítica | US-KEY-01 | Realm y Client dedicado Keycloak | E0/E1 | ✅ Hecho |
+| 🔴 Crítica | US01 | Login via Keycloak | E1 | ✅ Hecho |
+| 🔴 Crítica | US-AUTH-GUARD | Protección de Rutas | E1 | ✅ Hecho (Bearer → v1.1) |
+| 🔴 Crítica | US03 | Mapa Base + Hexágonos H3 | E2 | ✅ Hecho |
+| 🔴 Crítica | US03-AC6 | Ingesta .parquet → JSON | E2 | ✅ Hecho (backend separado) |
+| 🔴 Crítica | US03-AC1 | Mapa de Calor por Score | E2 | ✅ Hecho (HeatmapDemo) |
+| 🔴 Crítica | US03-AC2 | Filtrado por Variable | E2 | ✅ Hecho (HeatmapDemo) |
+| 🔴 Crítica | US03-AC3 | Popup Hexágono | E2 | ✅ Hecho (HeatmapDemo) |
+| 🟡 Alta | US-ENV | Variables de Entorno | E0 | ✅ Hecho |
+| 🟡 Alta | US-CI | Pipeline CI + Deploy | E0 | ✅ Hecho |
+| 🟡 Alta | US03-AC9 | Panel de Control (Leyenda + Selector) | E2 | ✅ Hecho (HeatmapDemo) |
+| 🟡 Alta | US-CACHE | Cache Datos Geoespaciales | E2 | ✅ Hecho (TileLayer cache) |
+| 🟢 Media | US08 | CRUD Usuarios (Admin) | E3 | ✅ Hecho (Keycloak + UI) |
+| 🟡 Alta | US03-AC1-FIX01 | Revisión Colores + Leyenda | E2 | ✅ Hecho |
+| 🔴 Crítica | FIX-DEPLOY-01 | Keycloak Redirect URIs HTTP | E0/E1 | ⚠️ ~15 min |
+| 🔴 Crítica | FIX-DEPLOY-02 | NextAuth Proxy SSL + Cookies | E1 | ⚠️ ~30 min |
 
-**Total historias:** 22
+**Total historias primera entrega:** 19 (3 movidas a v1.1: US03-AC5, US03-AC4, US03-AC7 + US-AUTH-GUARD-AC4)
+
+**Estado: 17 completadas, 2 pendientes (~45 min de trabajo)**
 
 ## Historias eliminadas (por Keycloak — ADR-005)
 

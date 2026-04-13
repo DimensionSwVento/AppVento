@@ -187,6 +187,47 @@ Estas historias corresponden a los pasos 3-6 del flujo de usuario declarado que 
 
 ---
 
+---
+
+## Movidas desde Primera Entrega (v1.1)
+
+### US03-AC5 — Hexágonos No Disponibles (Decorativos)
+- **Prioridad:** 🟡 Alta
+- **Origen:** Scope primera entrega — pospuesto a v1.1
+- **Criterios de Aceptación:**
+  1. Hexágonos con tipo_celda="excluida" se renderizan visualmente
+  2. Estilo visual diferenciado (gris, opacidad reducida)
+  3. No son interactuables (sin click, sin popup)
+  4. No participan en cálculos ni en el mapa de calor
+  5. No son seleccionables
+
+### US03-AC4 — Dato Central Visible en Hexágono
+- **Prioridad:** 🟡 Alta
+- **Origen:** Scope primera entrega — pospuesto a v1.1
+- **Criterios de Aceptación:**
+  1. Cada hexágono activo muestra un valor numérico central
+  2. El valor corresponde al dato que determina el color (score general o variable filtrada)
+  3. Texto legible según nivel de zoom (se oculta en zoom alejado)
+  4. Valor se actualiza cuando se cambia el filtro de variable
+
+### US03-AC7 — Metadata de Variables
+- **Prioridad:** 🟢 Media
+- **Origen:** Scope primera entrega — pospuesto a v1.1
+- **Criterios de Aceptación:**
+  1. Cada variable muestra metadatos de origen (fuente de datos)
+  2. Cada variable muestra vigencia (fecha/periodo de los datos)
+  3. Accesible desde la interfaz (tooltip, panel lateral, o dentro del popup)
+
+### US-AUTH-GUARD-AC4 — Bearer Token en Fetches al Backend
+- **Prioridad:** 🟡 Alta
+- **Origen:** Scope primera entrega — pospuesto hasta que backend active AUTH_ENABLED=true
+- **Criterios de Aceptación:**
+  1. Todas las llamadas del frontend a `${API_BASE}/api/tiles/*` envían header `Authorization: Bearer <access_token>`
+  2. El access token se extrae de la sesión NextAuth
+  3. Backend FastAPI rechaza peticiones sin token válido cuando `AUTH_ENABLED=true`
+
+---
+
 ## Resumen Backlog Futuro
 
 | Grupo | Cantidad | Prerequisito |
@@ -197,5 +238,6 @@ Estas historias corresponden a los pasos 3-6 del flujo de usuario declarado que 
 | Expansión Geoespacial | 3 historias | Definir proceso offshore |
 | Pipeline y Datos | 4 historias | Backend API + pipeline Python |
 | UX del Mapa (A/B) | 1 historia | Primera entrega completada |
+| Movidas de v1 (mejoras mapa + auth) | 4 historias | Primera entrega completada |
 
-**Total historias futuras:** 20
+**Total historias futuras:** 24
