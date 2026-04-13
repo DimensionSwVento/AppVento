@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { API_BASE } from "../Utils/apiUrl";
+import { authFetch } from "../Utils/authFetch";
 
 // mapa de labels legibles — mismo que en parseH3Parquet pero client-side
 const VARIABLE_LABELS: Record<string, string> = {
@@ -54,7 +55,7 @@ export default function HexPopup({ h3Index, x, y, onClose }: HexPopupProps) {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`${API_BASE}/api/tiles/detail/${h3Index}`)
+    authFetch(`${API_BASE}/api/tiles/detail/${h3Index}`)
       .then((res) => {
         if (!res.ok) throw new Error("Not found");
         return res.json();
