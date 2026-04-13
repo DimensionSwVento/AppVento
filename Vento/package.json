@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest --project unit",
+    "test:run": "vitest run --project unit",
     "test:ci": "vitest run --project unit"
   },
   "dependencies": {

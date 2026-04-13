@@ -55,4 +55,10 @@ describe("SideBar", () => {
     expect(dim.className).toContain("opacity-40");
   });
 
+  it("Dimensiones se habilita cuando hay hexágonos seleccionados", () => {
+    renderSideBar({ accion: "seleccion-area", hexes: ["8a2a1072b59ffff"] });
+    const dim = screen.getByText("Dimensiones").parentElement!;
+    expect(dim.className).toContain("cursor-pointer");
+    expect(dim.className).not.toContain("opacity-40");
+  });
 });
