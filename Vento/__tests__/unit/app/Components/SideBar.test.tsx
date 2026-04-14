@@ -45,7 +45,7 @@ beforeEach(() => {
   };
 });
 
-describe("SideBar", () => {
+describe("SideBar — Auth", () => {
   it("displays the user email from the session", () => {
     render(
       <SideBar>
@@ -94,42 +94,5 @@ describe("SideBar", () => {
     await fireEvent.click(logoutBtn);
 
     expect(signOutMock).toHaveBeenCalledWith({ redirect: false });
-  });
-
-  it("renders the Vento logo", () => {
-    render(
-      <SideBar>
-        <span>child</span>
-      </SideBar>,
-    );
-
-    const logo = screen.getByAltText("Logo");
-    expect(logo).toBeInTheDocument();
-    expect(logo).toHaveAttribute("src", "/vento_logo.png");
-  });
-
-  it("renders main navigation items", () => {
-    render(
-      <SideBar>
-        <span>child</span>
-      </SideBar>,
-    );
-
-    expect(screen.getByText("Seleción de área")).toBeInTheDocument();
-    expect(screen.getByText("Dimenciones")).toBeInTheDocument();
-    expect(
-      screen.getByText("Caracteristicas del proyecto"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Informe de viabilidad")).toBeInTheDocument();
-  });
-
-  it("does not show children panel on seleccion-area action", () => {
-    render(
-      <SideBar>
-        <span data-testid="panel-child">panel content</span>
-      </SideBar>,
-    );
-
-    expect(screen.queryByTestId("panel-child")).not.toBeInTheDocument();
   });
 });
