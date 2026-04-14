@@ -123,7 +123,10 @@ describe("auth.ts — jwt callback", () => {
           refresh_token: "new-rt",
           expires_in: 300,
         }),
-        { status: 200 },
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
       ),
     );
     decodeMock.mockReturnValue({

@@ -22,7 +22,7 @@ export default function NextStepButton() {
         onClick={() => setAccion(siguiente)}
         className="cursor-pointer"
       >
-        <img src="/next.svg" alt="Siguiente" className="w-[32px] h-[32px]" />
+        <img src="/next.png" alt="Siguiente" className="w-[32px] h-[32px]" />
       </button>
     </div>
   );

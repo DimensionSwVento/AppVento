@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { useEffect } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import SideBar from "./SideBar";
 import { AprincipalProvider, useAprincipal } from "../Utils/AccionPrincipalContext";
 
