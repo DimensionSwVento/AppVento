@@ -1,6 +1,6 @@
 import { decodeJwt } from "jose";
 import NextAuth from "next-auth";
-import Keycloak from "next-auth/providers/keycloak";
+// import Keycloak from "next-auth/providers/keycloak"; // reemplazado por provider OIDC manual
 
 type KeycloakJwtClaims = {
   realm_access?: { roles?: unknown };
@@ -133,13 +133,68 @@ async function refreshAccessToken(
   };
 }
 
+console.log("[AUTH] ENV CHECK:", {
+  AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST ? "✅" : "❌",
+  AUTH_SECRET: process.env.AUTH_SECRET ? "✅" : "❌",
+  AUTH_KEYCLOAK_ID: process.env.AUTH_KEYCLOAK_ID ?? "❌ missing",
+  AUTH_KEYCLOAK_SECRET: process.env.AUTH_KEYCLOAK_SECRET ? "✅" : "❌",
+  AUTH_KEYCLOAK_ISSUER: process.env.AUTH_KEYCLOAK_ISSUER ?? "❌ missing",
+});
+
+// AccuWeb: Keycloak reporta HTTPS como issuer pero internamente solo acepta HTTP.
+// AUTH_KEYCLOAK_ISSUER debe ser la URL HTTP interna (ej: http://midominio.com/identity/realms/vento)
+// Reescribimos a HTTPS para que coincida con lo que Keycloak valida en el token.
+const issuerEnv = process.env.AUTH_KEYCLOAK_ISSUER!;
+const issuer = issuerEnv.replace(/^http:\/\//, "https://");
+const wellKnownUrl = `${issuerEnv}/.well-known/openid-configuration`;
+
+console.log("[AUTH] ISSUER CONFIG:", {
+  envOriginal: issuerEnv,
+  issuerRewritten: issuer,
+  wellKnownUrl,
+});
+
+// Reescribe URLs HTTPS → HTTP para conexiones internas en AccuWeb
+function httpsToHttp(url: string): string {
+  return url.replace(/^https:\/\//, "http://");
+}
+
+// Pre-fetch para diagnosticar qué devuelve Keycloak
+fetch(wellKnownUrl)
+  .then((res) => res.json())
+  .then((config) => {
+    console.log("[AUTH] DISCOVERY OK:", {
+      issuerFromKeycloak: config.issuer,
+      issuerWeExpect: issuer,
+      match: config.issuer === issuer ? "✅" : "❌ MISMATCH",
+      tokenEndpoint: config.token_endpoint,
+      tokenEndpointRewritten: httpsToHttp(config.token_endpoint),
+      authEndpoint: config.authorization_endpoint,
+      authEndpointRewritten: httpsToHttp(config.authorization_endpoint),
+    });
+  })
+  .catch((err) => {
+    console.error("[AUTH] DISCOVERY FETCH FAILED:", err.message);
+  });
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
-    Keycloak({
+    {
+      id: "keycloak",
+      name: "Keycloak",
+      type: "oidc",
       clientId: process.env.AUTH_KEYCLOAK_ID!,
       clientSecret: process.env.AUTH_KEYCLOAK_SECRET!,
-      issuer: process.env.AUTH_KEYCLOAK_ISSUER!,
-    }),
+      // issuer HTTPS para validación de tokens
+      issuer,
+      // Endpoints reescritos a HTTP para conexión interna
+      authorization: {
+        url: httpsToHttp(`${issuer}/protocol/openid-connect/auth`),
+        params: { scope: "openid email profile" },
+      },
+      token: httpsToHttp(`${issuer}/protocol/openid-connect/token`),
+      userinfo: httpsToHttp(`${issuer}/protocol/openid-connect/userinfo`),
+    },
   ],
   callbacks: {
     async jwt({ token, account }) {

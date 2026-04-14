@@ -1,5 +1,7 @@
-import { readFileSync } from "fs";
-import { parquetRead } from "hyparquet";
+// import { readFileSync } from "fs";
+// import { parquetRead } from "hyparquet";
+// NOTA: hyparquet deshabilitado — solo se usa en las API routes de tiles/hexagons
+// que se conectarán al backend FastAPI. Habilitar cuando se restaure la API local.
 
 export interface H3HexagonData {
   h3_index: string;
@@ -13,16 +15,6 @@ export interface H3DataSet {
   totalCount: number;
   parsedAt: string;
   variableNames: string[];
-}
-
-const IGNORE_COLUMNS = new Set([
-  "h3_index", "hex_id", "score_general", "score", "tipo_celda", "cell_type",
-]);
-const IGNORE_PREFIXES = ["divipola_csv", "lat_lon_csv", "municipios_csv"];
-
-function shouldIgnore(col: string): boolean {
-  if (IGNORE_COLUMNS.has(col)) return true;
-  return IGNORE_PREFIXES.some((p) => col.startsWith(p));
 }
 
 const VARIABLE_LABELS: Record<string, string> = {
@@ -41,58 +33,5 @@ export function getVariableLabel(colName: string): string {
   return parts[0].replace(/_/g, " ");
 }
 
-export default async function parseH3Parquet(
-  filePath: string
-): Promise<H3DataSet> {
-  console.time("[PARQUET] lectura");
-  const buffer = readFileSync(filePath);
-  const arrayBuffer = buffer.buffer.slice(
-    buffer.byteOffset,
-    buffer.byteOffset + buffer.byteLength
-  );
-
-  let rows: Record<string, unknown>[] = [];
-  await parquetRead({
-    file: arrayBuffer,
-    rowFormat: "object",
-    onComplete: (data: Record<string, unknown>[]) => {
-      rows = data;
-    },
-  });
-  console.timeEnd("[PARQUET] lectura");
-  console.log(`[PARQUET] filas: ${rows.length}`);
-
-  const variableNames: string[] = [];
-  if (rows.length > 0) {
-    for (const key of Object.keys(rows[0])) {
-      if (!shouldIgnore(key)) variableNames.push(key);
-    }
-  }
-
-  const hexagons: H3HexagonData[] = rows.map((row) => {
-    const variables: Record<string, string | number | null> = {};
-    for (const col of variableNames) {
-      const val = row[col];
-      if (val === null || val === undefined) {
-        variables[col] = null;
-      } else if (typeof val === "number") {
-        variables[col] = val;
-      } else {
-        variables[col] = String(val);
-      }
-    }
-    return {
-      h3_index: String(row.h3_index ?? row.hex_id ?? ""),
-      score_general: Number(row.score_general ?? row.score ?? 0),
-      tipo_celda: String(row.tipo_celda ?? row.cell_type ?? "activa"),
-      variables,
-    };
-  });
-
-  return {
-    hexagons,
-    totalCount: hexagons.length,
-    parsedAt: new Date().toISOString(),
-    variableNames,
-  };
-}
+// parseH3Parquet deshabilitado — requiere hyparquet
+// export default async function parseH3Parquet(filePath: string): Promise<H3DataSet> { ... }
