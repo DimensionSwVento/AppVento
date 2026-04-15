@@ -82,7 +82,7 @@ describe("auth.ts — jwt callback", () => {
     jwtCb = (cfg.callbacks as { jwt: JwtCb }).jwt;
   });
 
-  it("persists OIDC tokens on initial sign-in", async () => {
+  it("persists idToken but not accessToken on initial sign-in", async () => {
     decodeMock.mockReturnValue({
       realm_access: { roles: ["admin", "analista"] },
     });
@@ -97,7 +97,7 @@ describe("auth.ts — jwt callback", () => {
       },
     });
 
-    expect(result.accessToken).toBe("at-123");
+    expect(result.accessToken).toBeUndefined();
     expect(result.idToken).toBe("id-456");
     expect(result.refreshToken).toBe("rt-789");
     expect(result.expiresAt).toBe(9999999999);
@@ -106,7 +106,6 @@ describe("auth.ts — jwt callback", () => {
 
   it("returns token as-is when still valid", async () => {
     const token = {
-      accessToken: "at",
       expiresAt: Math.floor(Date.now() / 1000) + 3600,
     };
 
@@ -134,7 +133,6 @@ describe("auth.ts — jwt callback", () => {
     });
 
     const token = {
-      accessToken: "old-at",
       refreshToken: "old-rt",
       expiresAt: 0,
     };
@@ -142,7 +140,8 @@ describe("auth.ts — jwt callback", () => {
     const result = await jwtCb({ token, account: null });
 
     expect(fetchSpy).toHaveBeenCalledOnce();
-    expect(result.accessToken).toBe("new-at");
+    expect(result.accessToken).toBeUndefined();
+    expect(result.idToken).toBe("new-id");
     expect(result.refreshToken).toBe("new-rt");
     expect(result.roles).toEqual(["analista"]);
     expect(result.error).toBeUndefined();
@@ -157,7 +156,6 @@ describe("auth.ts — jwt callback", () => {
     decodeMock.mockReturnValue({});
 
     const token = {
-      accessToken: "old",
       refreshToken: "expired-rt",
       expiresAt: 0,
     };
@@ -169,7 +167,7 @@ describe("auth.ts — jwt callback", () => {
   });
 
   it("returns NoRefreshToken error when refreshToken is missing", async () => {
-    const token = { accessToken: "at", expiresAt: 0 };
+    const token = { expiresAt: 0 };
     const result = await jwtCb({ token, account: null });
     expect(result.error).toBe("NoRefreshToken");
   });
@@ -220,8 +218,7 @@ describe("auth.ts — session callback", () => {
 
     const session: Record<string, unknown> = { user: { name: "test" } };
     const token = {
-      accessToken: "at",
-      idToken: "id",
+      idToken: "id-tok",
       roles: ["admin"],
       error: undefined,
     };
@@ -229,13 +226,13 @@ describe("auth.ts — session callback", () => {
     const result = await sessionCb({ session, token });
     // accessToken se queda server-side en el JWT (cookie reduction)
     expect(result.accessToken).toBeUndefined();
-    expect(result.idToken).toBe("id");
+    expect(result.idToken).toBe("id-tok");
     expect(result.roles).toEqual(["admin"]);
-    // error tampoco se pasa al cliente
+    // error se pasa al cliente — lo usa SessionGuard para detectar refresh expirado
     expect(result.error).toBeUndefined();
   });
 
-  it("no propaga error del token a la sesion del cliente (queda server-side)", async () => {
+  it("propaga error del token a la session (usado por SessionGuard)", async () => {
     const cfg = await importAuth();
     const sessionCb = (cfg.callbacks as { session: SessionCb }).session;
 
@@ -243,6 +240,6 @@ describe("auth.ts — session callback", () => {
     const token = { error: "RefreshTokenError" };
 
     const result = await sessionCb({ session, token });
-    expect(result.error).toBeUndefined();
+    expect(result.error).toBe("RefreshTokenError");
   });
 });

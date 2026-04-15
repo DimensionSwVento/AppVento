@@ -3,9 +3,15 @@ import { auth } from "@/auth";
 import Image from "next/image";
 import SignInButton from "./Components/SignInButton";
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: Readonly<{
+  searchParams: Promise<{ expired?: string }>;
+}>) {
   const session = await auth();
-  if (session) redirect("/dashboard");
+  const { expired } = await searchParams;
+
+  if (session && !expired) redirect("/dashboard");
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#0b2a3c] px-6">
@@ -27,6 +33,12 @@ export default async function Home() {
             Accede al análisis geoespacial de viabilidad eólica en Colombia.
           </p>
         </div>
+
+        {expired === "true" && (
+          <div className="w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center text-sm text-amber-200">
+            Tu sesión ha expirado. Por favor, inicia sesión de nuevo.
+          </div>
+        )}
 
         <SignInButton />
 

@@ -22,7 +22,7 @@ function realmRolesFromKeycloakJwt(jwt: string | undefined | null): string[] {
 /** Realm roles from Keycloak JWTs (access token first, then id token). */
 function realmRolesFromOidcTokens(
   accessToken: string | undefined | null,
-  idToken: string | undefined | null
+  idToken: string | undefined | null,
 ): string[] {
   const fromAccess = realmRolesFromKeycloakJwt(accessToken);
   if (fromAccess.length > 0) return fromAccess;
@@ -31,15 +31,14 @@ function realmRolesFromOidcTokens(
 
 declare module "next-auth" {
   interface Session {
-    // accessToken y error eliminados — se quedan server-side en el JWT
     idToken?: string;
     roles?: string[];
+    error?: string; // para que SessionGuard detecte RefreshTokenError/NoRefreshToken
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
-    accessToken?: string;
     idToken?: string;
     refreshToken?: string;
     expiresAt?: number;
@@ -49,7 +48,7 @@ declare module "next-auth/jwt" {
 }
 
 async function refreshAccessToken(
-  token: import("next-auth/jwt").JWT
+  token: import("next-auth/jwt").JWT,
 ): Promise<import("next-auth/jwt").JWT> {
   if (!token.refreshToken) {
     return { ...token, error: "NoRefreshToken" };
@@ -93,11 +92,9 @@ async function refreshAccessToken(
   const accessToken =
     typeof refreshed.access_token === "string"
       ? refreshed.access_token
-      : token.accessToken;
+      : undefined;
   const newIdToken =
-    typeof refreshed.id_token === "string"
-      ? refreshed.id_token
-      : token.idToken;
+    typeof refreshed.id_token === "string" ? refreshed.id_token : token.idToken;
   const newRefreshToken =
     typeof refreshed.refresh_token === "string"
       ? refreshed.refresh_token
@@ -112,10 +109,9 @@ async function refreshAccessToken(
   if (expiresAt === undefined) {
     return {
       ...token,
-      accessToken,
+      idToken: newIdToken,
       refreshToken: newRefreshToken,
       expiresAt: token.expiresAt,
-      idToken: newIdToken,
       roles: realmRolesFromOidcTokens(accessToken, newIdToken),
       error: "RefreshTokenError",
     };
@@ -123,10 +119,9 @@ async function refreshAccessToken(
 
   return {
     ...token,
-    accessToken,
+    idToken: newIdToken,
     refreshToken: newRefreshToken,
     expiresAt,
-    idToken: newIdToken,
     roles: realmRolesFromOidcTokens(accessToken, newIdToken),
     error: undefined,
   };
@@ -142,14 +137,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, account }) {
-      // Initial sign-in: persist tokens from the OIDC response
       if (account) {
         const idToken = (account as { id_token?: string }).id_token;
         const roles = realmRolesFromOidcTokens(account.access_token, idToken);
 
         return {
           ...token,
-          accessToken: account.access_token,
           idToken,
           refreshToken: account.refresh_token,
           expiresAt: account.expires_at,
@@ -171,8 +164,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // server-side en el JWT cifrado para evitar cookies > 4KB (error 400 nginx).
       // Si en el futuro el frontend necesita llamar APIs con Bearer, usar
       // un proxy API route que lea el token con auth() server-side.
-      session.idToken = token.idToken; // necesario para logout federado en SideBar
-      session.roles = token.roles;     // necesario para RBAC en middleware y UI
+      session.idToken = token.idToken;  // necesario para logout federado en SideBar
+      session.roles = token.roles;      // necesario para RBAC en middleware y UI
+      session.error = token.error;      // SessionGuard detecta RefreshTokenError para sign-out automático
       return session;
     },
   },
