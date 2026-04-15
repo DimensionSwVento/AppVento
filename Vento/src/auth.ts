@@ -31,10 +31,9 @@ function realmRolesFromOidcTokens(
 
 declare module "next-auth" {
   interface Session {
-    accessToken?: string;
+    // accessToken y error eliminados — se quedan server-side en el JWT
     idToken?: string;
     roles?: string[];
-    error?: string;
   }
 }
 
@@ -168,10 +167,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
 
     async session({ session, token }) {
-      session.accessToken = token.accessToken;
-      session.idToken = token.idToken;
-      session.roles = token.roles;
-      session.error = token.error;
+      // Solo lo mínimo al cliente — accessToken y refreshToken se quedan
+      // server-side en el JWT cifrado para evitar cookies > 4KB (error 400 nginx).
+      // Si en el futuro el frontend necesita llamar APIs con Bearer, usar
+      // un proxy API route que lea el token con auth() server-side.
+      session.idToken = token.idToken; // necesario para logout federado en SideBar
+      session.roles = token.roles;     // necesario para RBAC en middleware y UI
       return session;
     },
   },
