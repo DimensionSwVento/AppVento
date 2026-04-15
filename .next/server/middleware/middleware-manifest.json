@@ -18,16 +18,20 @@
         {
           "regexp": "/:nextData(_next/data/[^/]{1,})?/admin/:path*{(\\\\.json)}?",
           "originalSource": "/admin/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/dimensions/:path*{(\\\\.json)}?",
+          "originalSource": "/dimensions/:path*"
         }
       ],
       "wasm": [],
       "assets": [],
       "env": {
-        "__NEXT_BUILD_ID": "sB-ib6fJXtOCm_p_3Te__",
-        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "QaOfdtE0e/ikKyEyiwhUpN1702KQhH4Lp2z7T0qwT2E=",
-        "__NEXT_PREVIEW_MODE_ID": "3e2bf558cef65a16fec1f09faeef27b3",
-        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "4bd7e3bad2f8f57e03813ea265cccfcce1498ba7f4c3fa1e1c774193d51317e1",
-        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "cf0bedf4a0441d12d9f5c7c4374d7d237e3bd768a7e265ebec006daa56716d4e"
+        "__NEXT_BUILD_ID": "2c36z8RiQ70Wp75OXYSDL",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "uDJmJAOsDEpoXb6rJJgvynemnHSSu0xtqm492QV3pnU=",
+        "__NEXT_PREVIEW_MODE_ID": "6d0008b220094af288d15c5f30554078",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "958c2349fa7f88cc5de251d35e5d631910ae36601f6f5fddeb0114ea747c0f7f",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "04be7237b977183da3ea3c31542da931177b6e47f2cb44bb53a24391a17723ee"
       }
     }
   },

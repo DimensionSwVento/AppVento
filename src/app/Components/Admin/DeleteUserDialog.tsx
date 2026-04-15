@@ -28,45 +28,64 @@ export default function DeleteUserDialog({ user, onClose, onConfirm }: DeleteUse
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
-      <div className="relative w-full max-w-md bg-white rounded-lg shadow">
+    /* Backdrop — click outside closes */
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ backgroundColor: "rgba(180,195,210,0.45)", backdropFilter: "blur(2px)" }}
+      onClick={onClose}
+    >
+      {/* Dialog card */}
+      <div
+        className="relative w-full max-w-sm bg-white rounded-2xl shadow-xl px-8 py-7"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close button */}
         <button
           type="button"
-          className="absolute top-3 right-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center"
           onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          aria-label="Cerrar"
         >
-          <svg className="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
-            <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
-          <span className="sr-only">Cerrar modal</span>
         </button>
-        <div className="p-6 text-center">
-          <svg className="mx-auto mb-4 text-gray-400 w-12 h-12" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
-            <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 11V6m0 8h.01M19 10a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-          </svg>
-          <h3 className="mb-5 text-lg font-normal text-gray-500">
-            ¿Está seguro que desea desactivar a {user.firstName} {user.lastName}?
-          </h3>
-          <p className="mb-5 text-sm text-gray-400">
-            El usuario no será eliminado, pero perderá el acceso a la plataforma hasta que un administrador vuelva a activar su cuenta.
-          </p>
-          
-          {error && <div className="mb-4 p-2 text-sm text-red-800 bg-red-100 rounded-lg">{error}</div>}
 
+        {/* Title */}
+        <h3 className="text-base font-semibold text-gray-800 mb-2 pr-6">
+          ¿Deseas eliminar este usuario?
+        </h3>
+
+        {/* Description */}
+        <p className="text-xs text-gray-500 leading-relaxed mb-6">
+          Una vez eliminado no podrás recuperar la información generada, ni los diferentes informes asociados a esta cuenta.
+        </p>
+
+        {error && (
+          <div className="mb-4 p-2.5 text-xs text-red-700 bg-red-50 rounded-lg border border-red-100">
+            {error}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex items-center gap-3">
           <button
             onClick={handleConfirm}
             disabled={loading}
             type="button"
-            className="text-white bg-red-600 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm inline-flex items-center px-5 py-2.5 text-center mr-2 disabled:opacity-50"
+            className="px-5 py-2 rounded-md text-sm font-medium text-white transition-colors disabled:opacity-60"
+            style={{ backgroundColor: "#165170" }}
+            onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#113d56"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#165170"; }}
           >
-            {loading ? "Desactivando..." : "Sí, desactivar"}
+            {loading ? "Eliminando..." : "Eliminar"}
           </button>
           <button
             onClick={onClose}
             type="button"
-            className="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10"
+            className="px-5 py-2 rounded-md text-sm font-medium text-gray-600 border border-gray-300 hover:bg-gray-50 transition-colors"
           >
-            Cancelar
+            Volver
           </button>
         </div>
       </div>

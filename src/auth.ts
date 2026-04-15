@@ -1,6 +1,6 @@
 import { decodeJwt } from "jose";
 import NextAuth from "next-auth";
-// import Keycloak from "next-auth/providers/keycloak"; // reemplazado por provider OIDC manual
+// import Keycloak from "next-auth/providers/keycloak"; // reemplazado por provider OIDC manual con httpsToHttp para AccuWeb
 
 type KeycloakJwtClaims = {
   realm_access?: { roles?: unknown };
@@ -22,7 +22,7 @@ function realmRolesFromKeycloakJwt(jwt: string | undefined | null): string[] {
 /** Realm roles from Keycloak JWTs (access token first, then id token). */
 function realmRolesFromOidcTokens(
   accessToken: string | undefined | null,
-  idToken: string | undefined | null
+  idToken: string | undefined | null,
 ): string[] {
   const fromAccess = realmRolesFromKeycloakJwt(accessToken);
   if (fromAccess.length > 0) return fromAccess;
@@ -31,16 +31,14 @@ function realmRolesFromOidcTokens(
 
 declare module "next-auth" {
   interface Session {
-    accessToken?: string;
     idToken?: string;
     roles?: string[];
-    error?: string;
+    error?: string; // para que SessionGuard detecte RefreshTokenError/NoRefreshToken
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
-    accessToken?: string;
     idToken?: string;
     refreshToken?: string;
     expiresAt?: number;
@@ -49,7 +47,9 @@ declare module "next-auth/jwt" {
   }
 }
 
-async function refreshAccessToken(token: import("next-auth/jwt").JWT) {
+async function refreshAccessToken(
+  token: import("next-auth/jwt").JWT,
+): Promise<import("next-auth/jwt").JWT> {
   if (!token.refreshToken) {
     return { ...token, error: "NoRefreshToken" };
   }
@@ -57,38 +57,71 @@ async function refreshAccessToken(token: import("next-auth/jwt").JWT) {
   const issuer = process.env.AUTH_KEYCLOAK_ISSUER!;
   const tokenUrl = `${issuer}/protocol/openid-connect/token`;
 
-  const response = await fetch(tokenUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      client_id: process.env.AUTH_KEYCLOAK_ID!,
-      client_secret: process.env.AUTH_KEYCLOAK_SECRET!,
-      refresh_token: token.refreshToken,
-    }),
-  });
-
-  const refreshed = await response.json();
+  let response: Response;
+  try {
+    response = await fetch(tokenUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        client_id: process.env.AUTH_KEYCLOAK_ID!,
+        client_secret: process.env.AUTH_KEYCLOAK_SECRET!,
+        refresh_token: token.refreshToken,
+      }),
+    });
+  } catch {
+    return { ...token, error: "RefreshTokenError" };
+  }
 
   if (!response.ok) {
+    return { ...token, error: "RefreshTokenError" };
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    return { ...token, error: "RefreshTokenError" };
+  }
+
+  let refreshed: Record<string, unknown>;
+  try {
+    refreshed = await response.json();
+  } catch {
     return { ...token, error: "RefreshTokenError" };
   }
 
   const accessToken =
     typeof refreshed.access_token === "string"
       ? refreshed.access_token
-      : token.accessToken;
+      : undefined;
   const newIdToken =
-    typeof (refreshed as { id_token?: unknown }).id_token === "string"
-      ? (refreshed as { id_token: string }).id_token
-      : token.idToken;
+    typeof refreshed.id_token === "string" ? refreshed.id_token : token.idToken;
+  const newRefreshToken =
+    typeof refreshed.refresh_token === "string"
+      ? refreshed.refresh_token
+      : token.refreshToken;
+
+  const expiresIn = Number(refreshed.expires_in);
+  const expiresAt =
+    Number.isFinite(expiresIn) && expiresIn > 0
+      ? Math.floor(Date.now() / 1000) + expiresIn
+      : undefined;
+
+  if (expiresAt === undefined) {
+    return {
+      ...token,
+      idToken: newIdToken,
+      refreshToken: newRefreshToken,
+      expiresAt: token.expiresAt,
+      roles: realmRolesFromOidcTokens(accessToken, newIdToken),
+      error: "RefreshTokenError",
+    };
+  }
 
   return {
     ...token,
-    accessToken,
-    refreshToken: refreshed.refresh_token ?? token.refreshToken,
-    expiresAt: Math.floor(Date.now() / 1000) + refreshed.expires_in,
     idToken: newIdToken,
+    refreshToken: newRefreshToken,
+    expiresAt,
     roles: realmRolesFromOidcTokens(accessToken, newIdToken),
     error: undefined,
   };
@@ -146,9 +179,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       type: "oidc",
       clientId: process.env.AUTH_KEYCLOAK_ID!,
       clientSecret: process.env.AUTH_KEYCLOAK_SECRET!,
-      // issuer HTTPS para validación de tokens
+      // issuer HTTPS para validación de tokens (Keycloak devuelve HTTPS en el JWT)
       issuer,
-      // Endpoints reescritos a HTTP para conexión interna
+      // Endpoints reescritos a HTTP para conexión interna (AccuWeb no permite HTTPS entre contenedores)
       authorization: {
         url: httpsToHttp(`${issuer}/protocol/openid-connect/auth`),
         params: { scope: "openid email profile" },
@@ -166,7 +199,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         return {
           ...token,
-          accessToken: account.access_token,
           idToken,
           refreshToken: account.refresh_token,
           expiresAt: account.expires_at,
@@ -184,10 +216,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
 
     async session({ session, token }) {
-      session.accessToken = token.accessToken;
-      session.idToken = token.idToken;
-      session.roles = token.roles;
-      session.error = token.error;
+      // Solo lo mínimo al cliente — accessToken y refreshToken se quedan
+      // server-side en el JWT cifrado para evitar cookies > 4KB (error 400 nginx).
+      // Si en el futuro el frontend necesita llamar APIs con Bearer, usar
+      // un proxy API route que lea el token con auth() server-side.
+      session.idToken = token.idToken;  // necesario para logout federado en SideBar
+      session.roles = token.roles;      // necesario para RBAC en middleware y UI
+      session.error = token.error;      // SessionGuard detecta RefreshTokenError para sign-out automático
       return session;
     },
   },

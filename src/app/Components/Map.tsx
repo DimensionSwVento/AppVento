@@ -11,14 +11,14 @@
  * Para activar el modo demo con heatmap importar `HeatmapDemo.tsx`.
  */
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Map as MapGL, type MapRef } from "react-map-gl/maplibre";
 import { DeckGL } from "@deck.gl/react";
 import { TileLayer } from "@deck.gl/geo-layers";
-import { PolygonLayer } from "@deck.gl/layers";
+import { PolygonLayer, TextLayer } from "@deck.gl/layers";
 import { luma } from "@luma.gl/core";
 import { webgl2Adapter } from "@luma.gl/webgl";
-import { cellToBoundary, cellToLatLng, polygonToCells } from "h3-js";
+import { cellToBoundary, cellToLatLng, getHexagonEdgeLengthAvg, getResolution, polygonToCells } from "h3-js";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
 import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGON } from "../Utils/h3Resolution";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -52,6 +52,16 @@ const MAX_ZOOM = 10;
 const SELECTED_FILL: [number, number, number, number] = [224, 215, 221, 100];
 const SELECTED_BORDER: [number, number, number, number] = [70, 90, 120, 220];
 const GRID_BORDER: [number, number, number, number] = [224, 215, 221, 100];
+// hover — misma familia que selected pero más tenue (alpha bajo) para distinguirse
+const HOVER_FILL: [number, number, number, number] = [224, 215, 221, 60];
+const HOVER_BORDER: [number, number, number, number] = [70, 90, 120, 120];
+const HOVER_TEXT_COLOR: [number, number, number, number] = [70, 90, 120, 220];
+// H3 ID label dentro de los hexágonos seleccionados
+const H3_LABEL_COLOR: [number, number, number, number] = [70, 90, 120, 255];
+// últimos 7 chars del h3 index — suficientemente único y legible
+function shortH3(h: string): string {
+  return h.length > 7 ? "…" + h.slice(-7) : h;
+}
 
 interface HexCell { h: string; }
 interface CachedCell { h: string; lat: number; lng: number; }
@@ -77,8 +87,18 @@ export default function MapView() {
   const { selectedHexes, setSelectedHexes } = useAprincipal();
   const [mapReady, setMapReady] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [hoveredHex, setHoveredHex] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapRef>(null);
+
+  // Detecta mobile (< 768px = md breakpoint de Tailwind)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   const clampViewState = useCallback((vs: typeof INITIAL_VIEW_STATE) => {
     const [west, south, east, north] = MAX_BOUNDS;
@@ -165,6 +185,69 @@ export default function MapView() {
     pickable: false,
   }), [selectedArr]);
 
+  // H3 ID label solo en hexágonos seleccionados — últimos 7 chars
+  // Tamaño en metros proporcional al hex → el texto nunca sale del hexágono.
+  // sizeMinPixels/MaxPixels evitan textos ilegibles o gigantes a zooms extremos.
+  const selectedLabelLayer = useMemo(() => {
+    if (selectedArr.length === 0) return null;
+    return new TextLayer<HexCell>({
+      id: "selected-labels",
+      data: selectedArr,
+      sizeUnits: "meters",
+      getPosition: (d) => {
+        const [lat, lng] = cellToLatLng(d.h);
+        return [lng, lat];
+      },
+      getText: (d) => shortH3(d.h),
+      // edge_length * 0.3 m → el texto ocupa ~70% del ancho del hex
+      getSize: (d) => getHexagonEdgeLengthAvg(getResolution(d.h), "m") * 0.3,
+      sizeMaxPixels: 18,
+      getColor: H3_LABEL_COLOR,
+      fontFamily: "monospace",
+      fontWeight: "bold",
+      getTextAnchor: "middle",
+      getAlignmentBaseline: "center",
+      pickable: false,
+    });
+  }, [selectedArr]);
+
+  // capa de hover — relleno gris transparente del hex bajo el cursor
+  // En mobile no hay cursor real (touch) → se deshabilita
+  const hoverFillLayer = useMemo(() => {
+    if (!hoveredHex || isMobile) return null;
+    return new PolygonLayer<HexCell>({
+      id: "hover-fill",
+      data: [{ h: hoveredHex }],
+      getPolygon: (d) => cellToBoundary(d.h, true),
+      getFillColor: HOVER_FILL,
+      getLineColor: HOVER_BORDER,
+      getLineWidth: 1,
+      lineWidthMinPixels: 2,
+      filled: true,
+      stroked: true,
+      pickable: false,
+    });
+  }, [hoveredHex, isMobile]);
+
+  // símbolo "+" en el centro del hex hovered (solo desktop)
+  const hoverPlusLayer = useMemo(() => {
+    if (!hoveredHex || isMobile) return null;
+    const [lat, lng] = cellToLatLng(hoveredHex);
+    return new TextLayer<HexCell>({
+      id: "hover-plus",
+      data: [{ h: hoveredHex }],
+      getPosition: () => [lng, lat],
+      getText: () => "+",
+      getSize: 28,
+      getColor: HOVER_TEXT_COLOR,
+      fontFamily: "sans-serif",
+      fontWeight: "bold",
+      getTextAnchor: "middle",
+      getAlignmentBaseline: "center",
+      pickable: false,
+    });
+  }, [hoveredHex]);
+
   const zoomIn = () => setViewState((v) => clampViewState({ ...v, zoom: v.zoom + 1 }));
   const zoomOut = () => setViewState((v) => clampViewState({ ...v, zoom: v.zoom - 1 }));
   const toggleFullscreen = () => {
@@ -183,17 +266,32 @@ export default function MapView() {
       )}
 
       {mapReady && (
-        <div className="absolute bottom-9 right-4 z-10 flex flex-col items-end gap-2">
-          <button onClick={zoomIn} className="flex h-6 w-6 items-center justify-center rounded  text-lg font-bold text-white shadow bg-[#165170ff]" title="Acercar">+</button>
-          <button onClick={zoomOut} className="flex h-6 w-6 items-center justify-center rounded  text-lg font-bold text-white shadow bg-[#165170ff]" title="Alejar">-</button>
-          <button onClick={toggleFullscreen} className="flex h-6 w-6 items-center justify-center rounded  text-white shadow bg-[#165170ff]" title={fullscreen ? "Salir" : "Pantalla completa"}>
+        <>
+          {/* Fullscreen: solo mobile, top-derecha */}
+          <button
+            onClick={toggleFullscreen}
+            className="absolute top-3 right-3 z-10 flex h-6 w-6 items-center justify-center rounded text-white shadow bg-[#165170ff] md:hidden"
+            title={fullscreen ? "Salir" : "Pantalla completa"}
+          >
             {fullscreen ? (
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 1v4H2M10 1v4h4M6 15v-4H2M10 15v-4h4" /></svg>
             ) : (
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" /></svg>
             )}
           </button>
-        </div>
+          {/* Zoom + fullscreen: solo desktop, apilados bottom-right */}
+          <div className="absolute bottom-9 right-4 z-10 flex flex-col items-end gap-2 max-md:hidden">
+            <button onClick={toggleFullscreen} className="flex h-6 w-6 items-center justify-center rounded text-white shadow bg-[#165170ff]" title={fullscreen ? "Salir" : "Pantalla completa"}>
+              {fullscreen ? (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 1v4H2M10 1v4h4M6 15v-4H2M10 15v-4h4" /></svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" /></svg>
+              )}
+            </button>
+            <button onClick={zoomIn} className="flex h-6 w-6 items-center justify-center rounded text-lg font-bold text-white shadow bg-[#165170ff]" title="Acercar">+</button>
+            <button onClick={zoomOut} className="flex h-6 w-6 items-center justify-center rounded text-lg font-bold text-white shadow bg-[#165170ff]" title="Alejar">-</button>
+          </div>
+        </>
       )}
 
       <DeckGL
@@ -201,7 +299,12 @@ export default function MapView() {
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => setViewState(clampViewState(vs as typeof INITIAL_VIEW_STATE))}
         controller={true}
-        layers={[gridTileLayer, selectedLayer]}
+        layers={[gridTileLayer, selectedLayer, selectedLabelLayer, hoverFillLayer, hoverPlusLayer]}
+        getCursor={({ isHovering }) => (isHovering ? "pointer" : "grab")}
+        onHover={(info) => {
+          const cell = info.object as HexCell | undefined;
+          setHoveredHex(cell ? cell.h : null);
+        }}
         onClick={(info) => {
           const cell = info.object as HexCell | undefined;
           if (!cell) return;

@@ -155,6 +155,12 @@
       "regex": "^/favicon\\.ico(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/favicon\\.ico(?:/)?$"
+    },
+    {
+      "page": "/not-authorized",
+      "regex": "^/not\\-authorized(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/not\\-authorized(?:/)?$"
     }
   ],
   "dataRoutes": [],

@@ -1,6 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
+/node_modules
+**/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -13,7 +15,7 @@
 /coverage
 
 # next.js
-#/.next/
+/.next/
 /out/
 
 # production
@@ -42,4 +44,3 @@ next-env.d.ts
 
 # datos geoespaciales pesados
 *.parquet
-/node_modules

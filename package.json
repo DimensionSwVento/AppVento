@@ -12,9 +12,10 @@
     "test:ci": "vitest run --project unit"
   },
   "dependencies": {
-    "@deck.gl/geo-layers": "^9.2.11",
-    "@deck.gl/layers": "^9.2.11",
-    "@deck.gl/react": "^9.2.11",
+    "@deck.gl/core": "~9.2.11",
+    "@deck.gl/geo-layers": "~9.2.11",
+    "@deck.gl/layers": "~9.2.11",
+    "@deck.gl/react": "~9.2.11",
     "@luma.gl/core": "~9.2.6",
     "@luma.gl/webgl": "~9.2.6",
     "h3-js": "^4.4.0",

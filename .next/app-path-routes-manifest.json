@@ -17,5 +17,6 @@
   "/dashboard/page": "/dashboard",
   "/dimensions/page": "/dimensions",
   "/favicon.ico/route": "/favicon.ico",
+  "/not-authorized/page": "/not-authorized",
   "/page": "/"
 }
