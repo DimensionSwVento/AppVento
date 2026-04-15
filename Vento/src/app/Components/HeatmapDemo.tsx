@@ -28,7 +28,6 @@ import {
   SNAPSHOT_KEY,
 } from "../Utils/h3Resolution";
 import { API_BASE } from "../Utils/apiUrl";
-import { authFetch } from "../Utils/authFetch";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 function zoomToH3Res(zoom: number): number {
@@ -97,7 +96,7 @@ export default function HeatmapDemo() {
   const shouldFreeze = accion !== "seleccion-area";
 
   useEffect(() => {
-    authFetch(`${API_BASE}/api/tiles/warmup`)
+    fetch(`${API_BASE}/api/tiles/warmup`)
       .then((res) => res.json())
       .then((data) => {
         if (data.status === "ready") setDataReady(true);
@@ -115,7 +114,7 @@ export default function HeatmapDemo() {
     if (activeVar) params.set("var", activeVar);
     const selectedArr = Array.from(selectedHexes);
     if (selectedArr.length > 0) params.set("selected", selectedArr.join(","));
-    authFetch(`${API_BASE}/api/tiles/counts?${params}`)
+    fetch(`${API_BASE}/api/tiles/counts?${params}`)
       .then((r) => r.json())
       .then(setLayerCounts)
       .catch(() => {});
@@ -123,7 +122,7 @@ export default function HeatmapDemo() {
 
   useEffect(() => {
     if (!activeVar) { setVarRange(null); return; }
-    authFetch(`${API_BASE}/api/tiles/variables`)
+    fetch(`${API_BASE}/api/tiles/variables`)
       .then((r) => r.json())
       .then((data) => {
         const found = data.variables?.find((v: { name: string }) => v.name === activeVar);
@@ -209,7 +208,7 @@ export default function HeatmapDemo() {
       const url = activeVar
         ? `${API_BASE}/api/tiles/${z}/${x}/${y}?var=${encodeURIComponent(activeVar)}`
         : `${API_BASE}/api/tiles/${z}/${x}/${y}`;
-      const res = await authFetch(url, { signal: tile.signal });
+      const res = await fetch(url, { signal: tile.signal });
       if (!res.ok) return [];
       return res.json();
     },

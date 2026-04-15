@@ -212,7 +212,7 @@ describe("auth.ts — jwt callback", () => {
 /* ---------- Session callback ---------- */
 
 describe("auth.ts — session callback", () => {
-  it("copies idToken, roles and error into session (not accessToken)", async () => {
+  it("copies only idToken and roles into session (accessToken stays server-side)", async () => {
     const cfg = await importAuth();
     const sessionCb = (cfg.callbacks as { session: SessionCb }).session;
 
@@ -224,13 +224,15 @@ describe("auth.ts — session callback", () => {
     };
 
     const result = await sessionCb({ session, token });
+    // accessToken se queda server-side en el JWT (cookie reduction)
     expect(result.accessToken).toBeUndefined();
     expect(result.idToken).toBe("id-tok");
     expect(result.roles).toEqual(["admin"]);
+    // error se pasa al cliente — lo usa SessionGuard para detectar refresh expirado
     expect(result.error).toBeUndefined();
   });
 
-  it("propagates error from token to session", async () => {
+  it("propaga error del token a la session (usado por SessionGuard)", async () => {
     const cfg = await importAuth();
     const sessionCb = (cfg.callbacks as { session: SessionCb }).session;
 

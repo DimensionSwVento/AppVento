@@ -22,7 +22,7 @@ function realmRolesFromKeycloakJwt(jwt: string | undefined | null): string[] {
 /** Realm roles from Keycloak JWTs (access token first, then id token). */
 function realmRolesFromOidcTokens(
   accessToken: string | undefined | null,
-  idToken: string | undefined | null
+  idToken: string | undefined | null,
 ): string[] {
   const fromAccess = realmRolesFromKeycloakJwt(accessToken);
   if (fromAccess.length > 0) return fromAccess;
@@ -33,7 +33,7 @@ declare module "next-auth" {
   interface Session {
     idToken?: string;
     roles?: string[];
-    error?: string;
+    error?: string; // para que SessionGuard detecte RefreshTokenError/NoRefreshToken
   }
 }
 
@@ -48,7 +48,7 @@ declare module "next-auth/jwt" {
 }
 
 async function refreshAccessToken(
-  token: import("next-auth/jwt").JWT
+  token: import("next-auth/jwt").JWT,
 ): Promise<import("next-auth/jwt").JWT> {
   if (!token.refreshToken) {
     return { ...token, error: "NoRefreshToken" };
@@ -94,9 +94,7 @@ async function refreshAccessToken(
       ? refreshed.access_token
       : undefined;
   const newIdToken =
-    typeof refreshed.id_token === "string"
-      ? refreshed.id_token
-      : token.idToken;
+    typeof refreshed.id_token === "string" ? refreshed.id_token : token.idToken;
   const newRefreshToken =
     typeof refreshed.refresh_token === "string"
       ? refreshed.refresh_token
@@ -162,9 +160,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
 
     async session({ session, token }) {
-      session.idToken = token.idToken;
-      session.roles = token.roles;
-      session.error = token.error;
+      // Solo lo mínimo al cliente — accessToken y refreshToken se quedan
+      // server-side en el JWT cifrado para evitar cookies > 4KB (error 400 nginx).
+      // Si en el futuro el frontend necesita llamar APIs con Bearer, usar
+      // un proxy API route que lea el token con auth() server-side.
+      session.idToken = token.idToken;  // necesario para logout federado en SideBar
+      session.roles = token.roles;      // necesario para RBAC en middleware y UI
+      session.error = token.error;      // SessionGuard detecta RefreshTokenError para sign-out automático
       return session;
     },
   },

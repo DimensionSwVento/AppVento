@@ -78,10 +78,12 @@ Lo que el usuario puede hacer desde el dia uno:
 
 | Modulo | Funcionalidad | Estado |
 |--------|--------------|--------|
-| **Login** | Acceso con correo institucional, recuperacion de contrasena, proteccion de rutas | Por construir |
-| **Mapa interactivo** | Mapa de Colombia con hexagonos H3, mapa de calor, filtrado por variable, popups, seleccion de area | Por construir |
-| **Admin** | Crear, ver, editar y eliminar usuarios del sistema | Por construir |
-| **Infraestructura** | Script de datos, base de datos, Docker, CI/CD, micro-API | Por construir |
+| **Login** | Keycloak OIDC via NextAuth, proteccion de rutas (middleware), logout federado | ✅ Hecho |
+| **Mapa interactivo** | Mapa Colombia con hex H3 client-side, click→H3 ID, seleccion con gris-azulado, hover+responsive | ✅ Hecho |
+| **Admin** | CRUD usuarios via Keycloak Admin API + UI integrada (crear, listar, editar, eliminar) | ✅ Hecho |
+| **Infraestructura** | Docker Compose Keycloak, deploy branches CI, standalone Next.js en AccuWeb | ✅ Hecho |
+| **Restricción dominio correo (US01.2)** | Whitelist en realm Keycloak | ⏳ Pendiente ~15min |
+| **Recovery contraseña (US01.3)** | SMTP en Keycloak | ⏳ Pendiente ~60min |
 
 ### Entregas Futuras (Sprint 5+)
 

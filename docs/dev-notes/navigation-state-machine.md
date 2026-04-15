@@ -1,9 +1,9 @@
 ---
-version: 3.0
-date: 2026-04-09
+version: 4.0
+date: 2026-04-15
 status: activo
 autor: wessley - mavalan software
-scope: Máquina de estados de navegación, SideBar, subpáginas, selección y ciclo de vida
+scope: Navegación + SideBar responsive (mobile hamburguesa, colapsado con subpage, layout overlay)
 ---
 
 # Notas de Desarrollo — Navegación por Estado Global
@@ -126,6 +126,29 @@ Card blanca al final de cada subpágina con:
 |-----------|-------------------|
 | Entrar a `seleccion-area` | `unfreeze()` — limpia snapshot, reactiva DeckGL+MapLibre |
 | Salir de `seleccion-area` | `freeze()` — captura canvas, muestra imagen estática |
+
+---
+
+## 3.5 Layout Responsive (v4.0)
+
+El SideBar y el layout del dashboard se comportan distinto según viewport:
+
+### SideBar
+
+| Viewport | Estado | Comportamiento |
+|---|---|---|
+| Mobile + `seleccion-area` | Oculto | Botón hamburguesa (3 líneas) en top-left abre overlay |
+| Mobile + subpágina activa | Colapsado | Solo iconos (3.5rem ancho), textos ocultos con `hidden md:inline-block` |
+| Desktop (≥768px) | Expandido | Siempre visible, 14rem ancho, textos visibles |
+
+### Dashboard
+
+| Viewport | Layout |
+|---|---|
+| Mobile | Mapa `absolute top-0 h-[60%]` + Subpágina `absolute bottom-0 h-[50%]` (10% overlap) con `rounded-t-2xl` y `border-t-2 border-[#165170ff]` |
+| Desktop | `flex-row` normal: SideBar + Subpágina (30rem) + Mapa (flex-1) |
+
+**Key state:** `hasSubpage = !isAdminPage && accion !== "seleccion-area"` controla todo el modo responsive del sidebar.
 
 ---
 

@@ -15,6 +15,61 @@ Origen: Épicas (epics.md) + ADR-005, ADR-006, ADR-007 + Aclaraciones del equipo
 
 ---
 
+## ⭐ SCOPE CONTRACTUAL SIMPLIFICADO (versión final)
+
+> **Nota crítica (2026-04-15):** Tras revisión con cliente, el scope contractual de la primera entrega se redujo a 3 historias core. Las historias E0 (infraestructura) son requisito técnico pero no entregables visibles. Las demás (heatmap, filtrado, popups, panel control, etc.) quedaron como código de referencia (`HeatmapDemo.tsx`) y se posponen a v1.1.
+
+### Historias contractuales de primera entrega
+
+| ID | Historia | Prioridad | Criterios de Aceptación |
+|---|---|---|---|
+| **US01** | Login Institucional | 🟡 Alta | 1. Validación de campos vacíos<br>2. Restricción por dominio de correo<br>3. Enlace a recuperación de contraseña |
+| **US03** | Selección Territorial H3 (Parte 1) | 🔴 Crítica | 1. Carga de mapa base Colombia<br>2. Conversión de Click a ID Hexagonal H3<br>3. Pintado de hexágonos seleccionados |
+| **US08** | Admin Gestión de Usuarios (Parte 1) | 🟢 Media | 1. CRUD (Crear, Leer, Actualizar, Borrar) |
+
+### Estado actual del scope contractual
+
+| HU | AC | Estado | Notas |
+|---|---|---|---|
+| US01.1 | Validación campos vacíos | ✅ Hecho | Keycloak nativo |
+| US01.2 | Restricción por dominio | ❌ Pendiente | Configurar en realm de Keycloak (whitelist de dominios) |
+| US01.3 | Recuperación contraseña | ⚠️ Parcial | Falta SMTP en Keycloak server |
+| US03.1 | Mapa base Colombia | ✅ Hecho | DeckGL + MapLibre + COLOMBIA_POLYGON |
+| US03.2 | Click → H3 ID | ✅ Hecho | `polygonToCells` + click handler |
+| US03.3 | Pintado hexágonos seleccionados | ✅ Hecho | PolygonLayer top-level |
+| US08.1 | CRUD usuarios | ✅ Hecho | UI admin + Keycloak Admin API |
+
+**Total scope contractual: 7 ACs · ✅ 5 hechos · ⚠️ 1 parcial · ❌ 1 pendiente**
+
+### Pendientes para cerrar el contrato
+
+1. **US01.2** — Configurar restricción por dominio en Keycloak (whitelist de dominios institucionales) — ~15 min
+2. **US01.3** — SMTP funcional en Keycloak para recovery (Keycloak server rescatado ✅) — ~60 min
+
+### Extras entregados (fuera del scope contractual)
+
+- Responsive mobile completo (SideBar hamburguesa/colapsado, subpágina overlay con rounded-top)
+- Hover effect en mapa con `+` (solo desktop)
+- H3 ID visible en hexágonos seleccionados (últimos 7 chars, escala con hex)
+- Truncado de email en sidebar con tooltip
+- Controles de mapa reorganizados mobile vs desktop (fullscreen top-right en mobile)
+- Cookie reduction en auth.ts (accessToken/refreshToken solo server-side)
+- Proxy SSL HTTP↔HTTPS para NextAuth contra Keycloak en AccuWeb
+- Deploy standalone en Node.js (sin npm install en servidor)
+- Pipeline CI/CD con deploy branches automáticas (develop→deploy-test, main→deploy-prod)
+- 17 archivos test cubriendo auth, middleware, keycloak admin, components, routes
+
+---
+
+## Historias adicionales (referencia / v1.1)
+
+> Las siguientes historias **NO son parte del scope contractual de la primera entrega**, pero se mantienen documentadas porque:
+> - Algunas tienen código completo en `HeatmapDemo.tsx` (referencia)
+> - Otras son infraestructura completada (E0)
+> - Otras se acordó posponer a v1.1
+
+---
+
 ## Resumen por Épica
 
 | Épica | Historias | Prioridad dominante | Dependencias |

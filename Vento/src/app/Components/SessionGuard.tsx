@@ -2,13 +2,12 @@
 
 import { useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
-import { syncAccessToken } from "../Utils/authFetch";
 
 /**
- * Keeps the module-level access token in sync with the NextAuth session
- * and forces a full sign-out + redirect when the refresh token is dead.
+ * Detecta si la sesión expiró (refresh token inválido) y fuerza sign-out +
+ * redirect a "/?expired=true" para mostrar aviso en el login.
  *
- * Must be rendered **inside** <SessionProvider>.
+ * Debe renderizarse **dentro** de <SessionProvider>.
  */
 export default function SessionGuard({
   children,
@@ -16,10 +15,6 @@ export default function SessionGuard({
   children: React.ReactNode;
 }>) {
   const { data: session } = useSession();
-
-  useEffect(() => {
-    syncAccessToken(session?.accessToken);
-  }, [session?.accessToken]);
 
   useEffect(() => {
     if (

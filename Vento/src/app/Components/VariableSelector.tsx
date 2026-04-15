@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { API_BASE } from "../Utils/apiUrl";
-import { authFetch } from "../Utils/authFetch";
 
 interface VariableInfo {
   name: string;
@@ -19,7 +18,7 @@ export default function VariableSelector({ selected, onSelect }: VariableSelecto
   const [variables, setVariables] = useState<VariableInfo[]>([]);
 
   useEffect(() => {
-    authFetch(`${API_BASE}/api/tiles/variables`)
+    fetch(`${API_BASE}/api/tiles/variables`)
       .then((res) => res.json())
       .then((data) => {
         if (data.variables) setVariables(data.variables);
