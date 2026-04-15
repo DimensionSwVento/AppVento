@@ -103,6 +103,12 @@
       "namedRegex": "^/api/admin/users(?:/)?$"
     },
     {
+      "page": "/api/auth/kc-logout",
+      "regex": "^/api/auth/kc\\-logout(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/kc\\-logout(?:/)?$"
+    },
+    {
       "page": "/api/health",
       "regex": "^/api/health(?:/)?$",
       "routeKeys": {},

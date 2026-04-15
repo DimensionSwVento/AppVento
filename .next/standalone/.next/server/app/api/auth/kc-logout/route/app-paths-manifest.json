@@ -1,0 +1,3 @@
+{
+  "/api/auth/kc-logout/route": "app/api/auth/kc-logout/route.js"
+}

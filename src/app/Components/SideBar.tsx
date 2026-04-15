@@ -3,7 +3,6 @@ import Link from "next/link";
 import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
-import { keycloakLogoutUrl } from "../Utils/keycloakLogout";
 import { usePathname } from "next/navigation";
 
 export default function SideBar({
@@ -300,17 +299,8 @@ export default function SideBar({
                 </div>
                 <button
                   onClick={async () => {
-                    const idToken = session?.idToken;
-                    const origin =
-                      typeof window !== "undefined"
-                        ? window.location.origin
-                        : "";
                     await signOut({ redirect: false });
-                    const kc = idToken
-                      ? keycloakLogoutUrl(idToken, origin)
-                      : null;
-                    if (kc) window.location.href = kc;
-                    else window.location.href = "/";
+                    window.location.href = "/api/auth/kc-logout";
                   }}
                   className={ExitIconCls}
                   title="Cerrar sesión"

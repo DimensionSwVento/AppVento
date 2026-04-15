@@ -6,6 +6,7 @@
   "/api/admin/users/[id]/route": "app/api/admin/users/[id]/route.js",
   "/api/admin/users/route": "app/api/admin/users/route.js",
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/api/auth/kc-logout/route": "app/api/auth/kc-logout/route.js",
   "/api/health/route": "app/api/health/route.js",
   "/api/hexagons/route": "app/api/hexagons/route.js",
   "/api/tiles/[z]/[x]/[y]/route": "app/api/tiles/[z]/[x]/[y]/route.js",

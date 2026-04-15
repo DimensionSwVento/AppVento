@@ -31,7 +31,6 @@ function realmRolesFromOidcTokens(
 
 declare module "next-auth" {
   interface Session {
-    idToken?: string;
     roles?: string[];
     error?: string; // para que SessionGuard detecte RefreshTokenError/NoRefreshToken
   }
@@ -39,7 +38,6 @@ declare module "next-auth" {
 
 declare module "next-auth/jwt" {
   interface JWT {
-    idToken?: string;
     refreshToken?: string;
     expiresAt?: number;
     roles?: string[];
@@ -94,7 +92,7 @@ async function refreshAccessToken(
       ? refreshed.access_token
       : undefined;
   const newIdToken =
-    typeof refreshed.id_token === "string" ? refreshed.id_token : token.idToken;
+    typeof refreshed.id_token === "string" ? refreshed.id_token : undefined;
   const newRefreshToken =
     typeof refreshed.refresh_token === "string"
       ? refreshed.refresh_token
@@ -109,7 +107,6 @@ async function refreshAccessToken(
   if (expiresAt === undefined) {
     return {
       ...token,
-      idToken: newIdToken,
       refreshToken: newRefreshToken,
       expiresAt: token.expiresAt,
       roles: realmRolesFromOidcTokens(accessToken, newIdToken),
@@ -119,7 +116,6 @@ async function refreshAccessToken(
 
   return {
     ...token,
-    idToken: newIdToken,
     refreshToken: newRefreshToken,
     expiresAt,
     roles: realmRolesFromOidcTokens(accessToken, newIdToken),
@@ -199,7 +195,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         return {
           ...token,
-          idToken,
           refreshToken: account.refresh_token,
           expiresAt: account.expires_at,
           roles,
@@ -216,13 +211,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
 
     async session({ session, token }) {
-      // Solo lo mínimo al cliente — accessToken y refreshToken se quedan
-      // server-side en el JWT cifrado para evitar cookies > 4KB (error 400 nginx).
-      // Si en el futuro el frontend necesita llamar APIs con Bearer, usar
-      // un proxy API route que lea el token con auth() server-side.
-      session.idToken = token.idToken;  // necesario para logout federado en SideBar
-      session.roles = token.roles;      // necesario para RBAC en middleware y UI
-      session.error = token.error;      // SessionGuard detecta RefreshTokenError para sign-out automático
+      // Solo lo mínimo al cliente — idToken/accessToken/refreshToken NO se pasan al cliente
+      // ni se persisten en el JWT cifrado (cookie > 4KB disparaba 400 nginx en AccuWeb).
+      // Logout federado se hace con client_id + post_logout_redirect_uri (sin id_token_hint).
+      session.roles = token.roles;  // necesario para RBAC en middleware y UI
+      session.error = token.error;  // SessionGuard detecta RefreshTokenError para sign-out automático
       return session;
     },
   },
