@@ -5,6 +5,8 @@ vi.mock("next-auth/react", () => ({
   SessionProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="session-provider">{children}</div>
   ),
+  useSession: () => ({ data: null, status: "unauthenticated" }),
+  signOut: vi.fn(),
 }));
 
 vi.mock("@/app/Utils/AccionPrincipalContext", () => ({

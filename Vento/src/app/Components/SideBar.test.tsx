@@ -1,8 +1,23 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { useEffect } from "react";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import SideBar from "./SideBar";
 import { AprincipalProvider, useAprincipal } from "../Utils/AccionPrincipalContext";
+
+vi.mock("next-auth/react", () => ({
+  useSession: () => ({
+    data: {
+      user: { email: "user@example.com", name: "test" },
+      roles: [],
+    },
+    status: "authenticated",
+  }),
+  signOut: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/dashboard",
+}));
 
 /** helper para preparar estado inicial antes de renderizar SideBar */
 function Seed({
@@ -55,10 +70,12 @@ describe("SideBar", () => {
     expect(dim.className).toContain("opacity-40");
   });
 
-  it("Dimensiones se habilita cuando hay hexágonos seleccionados", () => {
+  it("Dimensiones se habilita cuando hay hexágonos seleccionados", async () => {
     renderSideBar({ accion: "seleccion-area", hexes: ["8a2a1072b59ffff"] });
-    const dim = screen.getByText("Dimensiones").parentElement!;
-    expect(dim.className).toContain("cursor-pointer");
-    expect(dim.className).not.toContain("opacity-40");
+    await waitFor(() => {
+      const dim = screen.getByText("Dimensiones").parentElement!;
+      expect(dim.className).toContain("cursor-pointer");
+      expect(dim.className).not.toContain("opacity-40");
+    });
   });
 });

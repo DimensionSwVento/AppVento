@@ -27,6 +27,7 @@ export async function PUT(
     if (payload.firstName !== undefined) updateData.firstName = payload.firstName;
     if (payload.lastName !== undefined) updateData.lastName = payload.lastName;
     if (payload.enabled !== undefined) updateData.enabled = payload.enabled;
+    if (payload.email !== undefined) updateData.email = payload.email;
 
     if (Object.keys(updateData).length > 0) {
       await updateUser(id, updateData);

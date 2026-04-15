@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { AprincipalProvider } from "@/app/Utils/AccionPrincipalContext";
 
-const signOutMock = vi.fn().mockResolvedValue(undefined);
-const useSessionMock = vi.fn();
+const { signOutMock, useSessionMock } = vi.hoisted(() => ({
+  signOutMock: vi.fn().mockResolvedValue(undefined),
+  useSessionMock: vi.fn(),
+}));
 
 vi.mock("next-auth/react", () => ({
   useSession: () => useSessionMock(),
@@ -14,14 +17,6 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard",
 }));
 
-vi.mock("@/app/Utils/AccionPrincipalContext", () => ({
-  useAprincipal: () => ({
-    accion: "seleccion-area",
-    setAccion: vi.fn(),
-    selectedHexes: new Set(),
-  }),
-}));
-
 vi.mock("@/app/Utils/keycloakLogout", () => ({
   keycloakLogoutUrl: vi.fn(
     (idToken: string | undefined, origin: string) =>
@@ -30,6 +25,16 @@ vi.mock("@/app/Utils/keycloakLogout", () => ({
 }));
 
 import SideBar from "@/app/Components/SideBar";
+
+function renderSideBar() {
+  return render(
+    <AprincipalProvider>
+      <SideBar>
+        <span>child</span>
+      </SideBar>
+    </AprincipalProvider>,
+  );
+}
 
 beforeEach(() => {
   useSessionMock.mockReturnValue({
@@ -47,21 +52,13 @@ beforeEach(() => {
 
 describe("SideBar — Auth", () => {
   it("displays the user email from the session", () => {
-    render(
-      <SideBar>
-        <span>child</span>
-      </SideBar>,
-    );
+    renderSideBar();
 
     expect(screen.getByText("user@example.com")).toBeInTheDocument();
   });
 
   it("renders the logout button", () => {
-    render(
-      <SideBar>
-        <span>child</span>
-      </SideBar>,
-    );
+    renderSideBar();
 
     const logoutBtn = screen.getByRole("button", { name: /salir/i });
     expect(logoutBtn).toBeInTheDocument();
@@ -73,26 +70,20 @@ describe("SideBar — Auth", () => {
       data: { user: {} },
     });
 
-    render(
-      <SideBar>
-        <span>child</span>
-      </SideBar>,
-    );
+    renderSideBar();
 
     const logoutBtn = screen.getByRole("button", { name: /salir/i });
     expect(logoutBtn).toBeInTheDocument();
   });
 
   it("calls signOut and redirects to Keycloak logout on click", async () => {
-    render(
-      <SideBar>
-        <span>child</span>
-      </SideBar>,
-    );
+    renderSideBar();
 
     const logoutBtn = screen.getByRole("button", { name: /salir/i });
-    await fireEvent.click(logoutBtn);
+    fireEvent.click(logoutBtn);
 
-    expect(signOutMock).toHaveBeenCalledWith({ redirect: false });
+    await waitFor(() => {
+      expect(signOutMock).toHaveBeenCalledWith({ redirect: false });
+    });
   });
 });

@@ -1,6 +1,14 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import UsersTable from "@/app/Components/Admin/UsersTable";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+// Mock fetch for role fetching
+global.fetch = vi.fn(() =>
+  Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({ roles: ["analista"] }),
+  } as Response)
+);
 
 const mockUsers = [
   {
@@ -24,20 +32,19 @@ const mockUsers = [
 ];
 
 describe("UsersTable", () => {
-  it("renders users correctly", () => {
-    const handleEdit = vi.fn();
-    const handleDelete = vi.fn();
-    const handleActivate = vi.fn();
-    const handlePageChange = vi.fn();
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
+  it("renders users correctly", () => {
     render(
       <UsersTable
         users={mockUsers}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onActivate={handleActivate}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onActivate={vi.fn()}
         page={1}
-        onPageChange={handlePageChange}
+        onPageChange={vi.fn()}
         hasMore={false}
       />
     );
@@ -45,13 +52,13 @@ describe("UsersTable", () => {
     expect(screen.getByText("John Doe")).toBeDefined();
     expect(screen.getByText("john@test.com")).toBeDefined();
     expect(screen.getByText("Activo")).toBeDefined();
-    
+
     expect(screen.getByText("Jane Smith")).toBeDefined();
     expect(screen.getByText("jane@test.com")).toBeDefined();
-    expect(screen.getByText("Inactivo")).toBeDefined();
+    expect(screen.getByText("Desactivado")).toBeDefined();
   });
 
-  it("handles pagination clicks", () => {
+  it("shows pagination when there are more pages", () => {
     const handlePageChange = vi.fn();
 
     render(
@@ -67,7 +74,7 @@ describe("UsersTable", () => {
     );
 
     const prevButton = screen.getByText("Anterior");
-    const nextButton = screen.getByText("Siguiente");
+    const nextButton = screen.getByText("Mostrar más");
 
     fireEvent.click(prevButton);
     expect(handlePageChange).toHaveBeenCalledWith(1);
@@ -76,55 +83,28 @@ describe("UsersTable", () => {
     expect(handlePageChange).toHaveBeenCalledWith(3);
   });
 
-  it("calls onEdit and onDelete for enabled users", () => {
-    const handleEdit = vi.fn();
+  it("calls onDelete when trash icon is clicked", () => {
     const handleDelete = vi.fn();
-    const handleActivate = vi.fn();
-
-    render(
-      <UsersTable
-        users={mockUsers}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onActivate={handleActivate}
-        page={1}
-        onPageChange={vi.fn()}
-        hasMore={false}
-      />
-    );
-
-    const editButtons = screen.getAllByText("Editar");
-    fireEvent.click(editButtons[0]);
-    expect(handleEdit).toHaveBeenCalledWith(mockUsers[0]);
-
-    // Only the enabled user (John) should show "Desactivar"
-    const deactivateButton = screen.getByText("Desactivar");
-    fireEvent.click(deactivateButton);
-    expect(handleDelete).toHaveBeenCalledWith(mockUsers[0]);
-  });
-
-  it("shows 'Activar' button for disabled users and calls onActivate", () => {
-    const handleActivate = vi.fn();
 
     render(
       <UsersTable
         users={mockUsers}
         onEdit={vi.fn()}
-        onDelete={vi.fn()}
-        onActivate={handleActivate}
+        onDelete={handleDelete}
+        onActivate={vi.fn()}
         page={1}
         onPageChange={vi.fn()}
         hasMore={false}
       />
     );
 
-    // Disabled user (Jane) should show "Activar" instead of "Desactivar"
-    const activateButton = screen.getByText("Activar");
-    fireEvent.click(activateButton);
-    expect(handleActivate).toHaveBeenCalledWith(mockUsers[1]);
+    // Find the delete buttons by title
+    const deleteButtons = screen.getAllByTitle("Eliminar usuario");
+    fireEvent.click(deleteButtons[0]);
+    expect(handleDelete).toHaveBeenCalledWith(mockUsers[0]);
   });
 
-  it("shows 'Desactivar' for enabled users and 'Activar' for disabled users", () => {
+  it("enters inline edit mode when edit icon is clicked", () => {
     render(
       <UsersTable
         users={mockUsers}
@@ -137,10 +117,89 @@ describe("UsersTable", () => {
       />
     );
 
-    // John is enabled → "Desactivar"
-    // Jane is disabled → "Activar"
-    expect(screen.getAllByText("Desactivar")).toHaveLength(1);
-    expect(screen.getAllByText("Activar")).toHaveLength(1);
+    // Click the edit button for the first user
+    const editButtons = screen.getAllByTitle("Editar usuario");
+    fireEvent.click(editButtons[0]);
+
+    // The name should now appear in separate input fields
+    const firstNameInput = screen.getByDisplayValue("John");
+    expect(firstNameInput).toBeDefined();
+
+    const lastNameInput = screen.getByDisplayValue("Doe");
+    expect(lastNameInput).toBeDefined();
+
+    // The email should also be in an editable input
+    const emailInput = screen.getByDisplayValue("john@test.com");
+    expect(emailInput).toBeDefined();
+
+    // Should show confirm and cancel buttons
+    expect(screen.getByTitle("Guardar cambios")).toBeDefined();
+    expect(screen.getByTitle("Cancelar")).toBeDefined();
+  });
+
+  it("calls onEdit with updated data when confirmed", () => {
+    const handleEdit = vi.fn();
+
+    render(
+      <UsersTable
+        users={mockUsers}
+        onEdit={handleEdit}
+        onDelete={vi.fn()}
+        onActivate={vi.fn()}
+        page={1}
+        onPageChange={vi.fn()}
+        hasMore={false}
+      />
+    );
+
+    // Enter edit mode
+    const editButtons = screen.getAllByTitle("Editar usuario");
+    fireEvent.click(editButtons[0]);
+
+    // Edit the name
+    const firstNameInput = screen.getByDisplayValue("John");
+    fireEvent.change(firstNameInput, { target: { value: "Juan" } });
+    
+    const lastNameInput = screen.getByDisplayValue("Doe");
+    fireEvent.change(lastNameInput, { target: { value: "Carlos" } });
+
+    // Click confirm
+    fireEvent.click(screen.getByTitle("Guardar cambios"));
+
+    expect(handleEdit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "1",
+        firstName: "Juan",
+        lastName: "Carlos",
+      })
+    );
+  });
+
+  it("cancels edit when cancel button is clicked", () => {
+    render(
+      <UsersTable
+        users={mockUsers}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onActivate={vi.fn()}
+        page={1}
+        onPageChange={vi.fn()}
+        hasMore={false}
+      />
+    );
+
+    // Enter edit mode
+    const editButtons = screen.getAllByTitle("Editar usuario");
+    fireEvent.click(editButtons[0]);
+
+    // Should be in edit mode
+    expect(screen.getByTitle("Cancelar")).toBeDefined();
+
+    // Click cancel
+    fireEvent.click(screen.getByTitle("Cancelar"));
+
+    // Should be back to display mode — name is plain text again
+    expect(screen.getByText("John Doe")).toBeDefined();
   });
 
   it("shows empty state when no users", () => {
@@ -157,5 +216,22 @@ describe("UsersTable", () => {
     );
 
     expect(screen.getByText("No se encontraron usuarios.")).toBeDefined();
+  });
+
+  it("shows 'Activo' badge for enabled users and 'Desactivado' for disabled users", () => {
+    render(
+      <UsersTable
+        users={mockUsers}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onActivate={vi.fn()}
+        page={1}
+        onPageChange={vi.fn()}
+        hasMore={false}
+      />
+    );
+
+    expect(screen.getByText("Activo")).toBeDefined();
+    expect(screen.getByText("Desactivado")).toBeDefined();
   });
 });

@@ -34,18 +34,35 @@ beforeEach(() => {
   redirectMock.mockReset();
 });
 
+const defaultProps = {
+  searchParams: Promise.resolve({} as { expired?: string }),
+};
+
 describe("Home page (src/app/page.tsx)", () => {
   it("redirects to /dashboard when session exists", async () => {
     authMock.mockResolvedValue({ user: { name: "test" } });
 
-    await expect(Home()).rejects.toThrow("NEXT_REDIRECT");
+    await expect(Home(defaultProps)).rejects.toThrow("NEXT_REDIRECT");
     expect(redirectMock).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("does not redirect when session exists but expired param is set", async () => {
+    authMock.mockResolvedValue({ user: { name: "test" } });
+
+    const props = { searchParams: Promise.resolve({ expired: "true" }) };
+    const jsx = await Home(props);
+    render(jsx);
+
+    expect(redirectMock).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(/sesión ha expirado/i),
+    ).toBeInTheDocument();
   });
 
   it("renders the login page when there is no session", async () => {
     authMock.mockResolvedValue(null);
 
-    const jsx = await Home();
+    const jsx = await Home(defaultProps);
     render(jsx);
 
     expect(
@@ -62,7 +79,7 @@ describe("Home page (src/app/page.tsx)", () => {
   it("displays the Vento logo when unauthenticated", async () => {
     authMock.mockResolvedValue(null);
 
-    const jsx = await Home();
+    const jsx = await Home(defaultProps);
     render(jsx);
 
     const logo = screen.getByAltText("Vento");
@@ -73,7 +90,7 @@ describe("Home page (src/app/page.tsx)", () => {
   it("shows the external auth notice", async () => {
     authMock.mockResolvedValue(null);
 
-    const jsx = await Home();
+    const jsx = await Home(defaultProps);
     render(jsx);
 
     expect(

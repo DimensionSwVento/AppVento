@@ -2,6 +2,21 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { AprincipalProvider } from "../Utils/AccionPrincipalContext";
 
+vi.mock("next-auth/react", () => ({
+  useSession: () => ({
+    data: {
+      user: { email: "user@example.com", name: "test" },
+      roles: [],
+    },
+    status: "authenticated",
+  }),
+  signOut: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/dashboard",
+}));
+
 // Mismos mocks que Map.test
 vi.mock("@deck.gl/react", () => ({
   DeckGL: ({ children }: { children: React.ReactNode }) => (
