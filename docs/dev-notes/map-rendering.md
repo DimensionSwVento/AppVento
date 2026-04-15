@@ -1,9 +1,9 @@
 ---
-version: 3.0
-date: 2026-04-09
+version: 4.0
+date: 2026-04-15
 status: activo
 autor: wessley - mavalan software
-scope: Mapa SIG — Dos modos de renderizado (esencial + demo), gestión GPU y rendimiento
+scope: Mapa SIG — Dos modos + UX (hover, H3 labels en seleccionados, responsive mobile/desktop)
 ---
 
 # Notas de Desarrollo — Renderizado del Mapa y Gestión de Recursos
@@ -14,6 +14,16 @@ Vento utiliza DeckGL + MapLibre para un mapa SIG interactivo con hexágonos H3. 
 
 - **`Map.tsx`** (esencial/contrato): cuadrícula H3 client-side sobre Colombia, sin API, solo selección.
 - **`HeatmapDemo.tsx`** (features demo): heatmap con API tiles, leyenda, selector variables, popup, freeze.
+
+### v4.0 — UX y Responsive agregados a Map.tsx
+
+| Feature | Implementación |
+|---|---|
+| **Hover (+ icon)** | PolygonLayer semi-transparente + TextLayer con `+` al pasar el cursor (solo desktop) |
+| **H3 ID labels** | TextLayer en hexágonos **seleccionados**, últimos 7 chars, tamaño en metros (escala con hex) |
+| **Detección mobile** | `useState + useEffect` con `window.innerWidth < 768` → desactiva hover en touch |
+| **Controles responsive** | Zoom +/− solo desktop, Fullscreen en top-right (mobile) o bottom-right (desktop) |
+| **Label size cap** | `sizeUnits: "meters"` + `sizeMaxPixels: 18` → texto no satura mapa |
 
 ### 1.1 Problemas Resueltos
 

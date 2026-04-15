@@ -24,6 +24,9 @@ vi.mock("@deck.gl/layers", () => ({
   PolygonLayer: vi.fn(function (this: object, props: object) {
     Object.assign(this, props);
   }),
+  TextLayer: vi.fn(function (this: object, props: object) {
+    Object.assign(this, props);
+  }),
 }));
 
 vi.mock("@luma.gl/core", () => ({

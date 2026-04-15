@@ -1,6 +1,6 @@
 ---
-version: 3.0
-date: 2026-04-09
+version: 4.0
+date: 2026-04-15
 project: Vento
 author: mavalan Software
 ---
@@ -21,7 +21,9 @@ author: mavalan Software
 | Historias de usuario (futuras) | ✅ Definido | 20 HU en backlog futuro |
 | Épicas formales | ✅ Generado | 11 épicas (5 primera entrega + 6 futuras) via workflow BMAD |
 | Viabilidad equipo/plazo | ✅ Analizado | 230h de 320h disponibles. Viable con 28% margen |
-| Testing unitario | ✅ Configurado | Vitest + React Testing Library — 5 tests co-located |
+| Testing unitario | ✅ Hecho | Vitest + RTL — 17 archivos test (auth, middleware, keycloak admin, Map, SideBar, dashboard, context, routes) |
+| Responsive mobile | ✅ Hecho | SideBar colapsado + subpágina overlay + hamburguesa + fullscreen top-right |
+| Deploy AccuWeb standalone | ✅ Hecho | `output: "standalone"`, proxy SSL HTTP/HTTPS, cookie reduction |
 | PRD formal | 🔴 Pendiente | Workflow PRD interrumpido en paso 2 |
 | UX Design | ✅ Hecho | Diseños Figma del discovery |
 | Sprint Planning | 🔴 Pendiente | Scope definido por prioridad; falta asignación formal |

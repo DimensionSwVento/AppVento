@@ -214,7 +214,7 @@ describe("auth.ts — jwt callback", () => {
 /* ---------- Session callback ---------- */
 
 describe("auth.ts — session callback", () => {
-  it("copies token fields into session", async () => {
+  it("copies only idToken and roles into session (accessToken stays server-side)", async () => {
     const cfg = await importAuth();
     const sessionCb = (cfg.callbacks as { session: SessionCb }).session;
 
@@ -227,13 +227,15 @@ describe("auth.ts — session callback", () => {
     };
 
     const result = await sessionCb({ session, token });
-    expect(result.accessToken).toBe("at");
+    // accessToken se queda server-side en el JWT (cookie reduction)
+    expect(result.accessToken).toBeUndefined();
     expect(result.idToken).toBe("id");
     expect(result.roles).toEqual(["admin"]);
+    // error tampoco se pasa al cliente
     expect(result.error).toBeUndefined();
   });
 
-  it("propagates error from token to session", async () => {
+  it("no propaga error del token a la sesion del cliente (queda server-side)", async () => {
     const cfg = await importAuth();
     const sessionCb = (cfg.callbacks as { session: SessionCb }).session;
 
@@ -241,6 +243,6 @@ describe("auth.ts — session callback", () => {
     const token = { error: "RefreshTokenError" };
 
     const result = await sessionCb({ session, token });
-    expect(result.error).toBe("RefreshTokenError");
+    expect(result.error).toBeUndefined();
   });
 });

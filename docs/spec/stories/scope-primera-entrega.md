@@ -43,9 +43,21 @@ Origen: Épicas (epics.md) + ADR-005, ADR-006, ADR-007 + Aclaraciones del equipo
 
 ### Pendientes para cerrar el contrato
 
-1. **US01.2** — Configurar restricción por dominio en Keycloak (whitelist de dominios institucionales)
-2. **US01.3** — SMTP funcional en Keycloak para recovery (depende de rescatar el server)
-3. **FIX-DEPLOY-01/02** — Cookies y redirect URIs (~45 min)
+1. **US01.2** — Configurar restricción por dominio en Keycloak (whitelist de dominios institucionales) — ~15 min
+2. **US01.3** — SMTP funcional en Keycloak para recovery (Keycloak server rescatado ✅) — ~60 min
+
+### Extras entregados (fuera del scope contractual)
+
+- Responsive mobile completo (SideBar hamburguesa/colapsado, subpágina overlay con rounded-top)
+- Hover effect en mapa con `+` (solo desktop)
+- H3 ID visible en hexágonos seleccionados (últimos 7 chars, escala con hex)
+- Truncado de email en sidebar con tooltip
+- Controles de mapa reorganizados mobile vs desktop (fullscreen top-right en mobile)
+- Cookie reduction en auth.ts (accessToken/refreshToken solo server-side)
+- Proxy SSL HTTP↔HTTPS para NextAuth contra Keycloak en AccuWeb
+- Deploy standalone en Node.js (sin npm install en servidor)
+- Pipeline CI/CD con deploy branches automáticas (develop→deploy-test, main→deploy-prod)
+- 17 archivos test cubriendo auth, middleware, keycloak admin, components, routes
 
 ---
 
