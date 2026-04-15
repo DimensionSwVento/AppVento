@@ -48,5 +48,6 @@ export interface UpdateUserPayload {
   firstName?: string;
   lastName?: string;
   enabled?: boolean;
+  email?: string;
   role?: AppRole;
 }
