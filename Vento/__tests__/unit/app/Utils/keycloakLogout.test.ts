@@ -6,7 +6,7 @@ beforeEach(() => {
 });
 
 describe("keycloakLogoutUrl", () => {
-  it("builds URL using NEXT_PUBLIC_KEYCLOAK_ISSUER", () => {
+  it("builds URL with id_token_hint when idToken is provided", () => {
     vi.stubEnv(
       "NEXT_PUBLIC_KEYCLOAK_ISSUER",
       "https://kc.example.com/realms/vento",
@@ -16,9 +16,24 @@ describe("keycloakLogoutUrl", () => {
 
     expect(url).toBe(
       "https://kc.example.com/realms/vento/protocol/openid-connect/logout" +
-        "?id_token_hint=id-token-123" +
-        "&post_logout_redirect_uri=https%3A%2F%2Fapp.example.com%2F",
+        "?post_logout_redirect_uri=https%3A%2F%2Fapp.example.com%2F" +
+        "&id_token_hint=id-token-123",
     );
+  });
+
+  it("builds URL without id_token_hint when idToken is undefined", () => {
+    vi.stubEnv(
+      "NEXT_PUBLIC_KEYCLOAK_ISSUER",
+      "https://kc.example.com/realms/vento",
+    );
+
+    const url = keycloakLogoutUrl(undefined, "https://app.example.com");
+
+    expect(url).toBe(
+      "https://kc.example.com/realms/vento/protocol/openid-connect/logout" +
+        "?post_logout_redirect_uri=https%3A%2F%2Fapp.example.com%2F",
+    );
+    expect(url).not.toContain("id_token_hint");
   });
 
   it("falls back to NEXT_PUBLIC_KEYCLOAK_URL + REALM when issuer is absent", () => {

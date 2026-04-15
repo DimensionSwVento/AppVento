@@ -24,8 +24,8 @@ vi.mock("@/app/Utils/AccionPrincipalContext", () => ({
 
 vi.mock("@/app/Utils/keycloakLogout", () => ({
   keycloakLogoutUrl: vi.fn(
-    (idToken: string) =>
-      `https://kc.example.com/logout?id_token_hint=${idToken}`,
+    (idToken: string | undefined, origin: string) =>
+      `https://kc.example.com/logout?id_token_hint=${idToken}&post_logout_redirect_uri=${encodeURIComponent(origin)}`,
   ),
 }));
 

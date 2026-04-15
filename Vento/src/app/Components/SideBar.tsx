@@ -162,9 +162,7 @@ export default function SideBar({
                   const origin =
                     typeof window !== "undefined" ? window.location.origin : "";
                   await signOut({ redirect: false });
-                  const kc = idToken
-                    ? keycloakLogoutUrl(idToken, origin)
-                    : null;
+                  const kc = keycloakLogoutUrl(idToken, origin);
                   if (kc) window.location.href = kc;
                   else window.location.href = "/";
                 }}
