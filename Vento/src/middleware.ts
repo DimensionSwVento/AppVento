@@ -12,12 +12,11 @@ export default auth((req) => {
   if (req.nextUrl.pathname.startsWith("/admin")) {
     const isAdmin = req.auth?.roles?.includes("admin");
     if (!isAdmin) {
-      // Si no es admin, no dejarlo cargar la página, enviarlo al dashboard
-      return Response.redirect(new URL("/dashboard", req.nextUrl));
+      return Response.redirect(new URL("/not-authorized", req.nextUrl));
     }
   }
 });
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*"],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/dimensions/:path*"],
 };

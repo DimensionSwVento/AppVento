@@ -31,7 +31,6 @@ function realmRolesFromOidcTokens(
 
 declare module "next-auth" {
   interface Session {
-    accessToken?: string;
     idToken?: string;
     roles?: string[];
     error?: string;
@@ -40,7 +39,6 @@ declare module "next-auth" {
 
 declare module "next-auth/jwt" {
   interface JWT {
-    accessToken?: string;
     idToken?: string;
     refreshToken?: string;
     expiresAt?: number;
@@ -94,7 +92,7 @@ async function refreshAccessToken(
   const accessToken =
     typeof refreshed.access_token === "string"
       ? refreshed.access_token
-      : token.accessToken;
+      : undefined;
   const newIdToken =
     typeof refreshed.id_token === "string"
       ? refreshed.id_token
@@ -113,10 +111,9 @@ async function refreshAccessToken(
   if (expiresAt === undefined) {
     return {
       ...token,
-      accessToken,
+      idToken: newIdToken,
       refreshToken: newRefreshToken,
       expiresAt: token.expiresAt,
-      idToken: newIdToken,
       roles: realmRolesFromOidcTokens(accessToken, newIdToken),
       error: "RefreshTokenError",
     };
@@ -124,10 +121,9 @@ async function refreshAccessToken(
 
   return {
     ...token,
-    accessToken,
+    idToken: newIdToken,
     refreshToken: newRefreshToken,
     expiresAt,
-    idToken: newIdToken,
     roles: realmRolesFromOidcTokens(accessToken, newIdToken),
     error: undefined,
   };
@@ -143,14 +139,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, account }) {
-      // Initial sign-in: persist tokens from the OIDC response
       if (account) {
         const idToken = (account as { id_token?: string }).id_token;
         const roles = realmRolesFromOidcTokens(account.access_token, idToken);
 
         return {
           ...token,
-          accessToken: account.access_token,
           idToken,
           refreshToken: account.refresh_token,
           expiresAt: account.expires_at,
@@ -168,7 +162,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
 
     async session({ session, token }) {
-      session.accessToken = token.accessToken;
       session.idToken = token.idToken;
       session.roles = token.roles;
       session.error = token.error;
