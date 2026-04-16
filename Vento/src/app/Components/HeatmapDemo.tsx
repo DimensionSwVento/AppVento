@@ -31,6 +31,7 @@ import { API_BASE } from "../Utils/apiUrl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 function zoomToH3Res(zoom: number): number {
+  if (zoom >= 12) return 8;
   if (zoom >= 10) return 7;
   if (zoom >= 8) return 6;
   if (zoom >= 7) return 5;
@@ -183,7 +184,7 @@ export default function HeatmapDemo() {
   }, [clearCache]);
 
   const MIN_ZOOM = 5;
-  const MAX_ZOOM = 10;
+  const MAX_ZOOM = 14;
   const clampViewState = useCallback((vs: typeof INITIAL_VIEW_STATE) => {
     const [west, south, east, north] = MAX_BOUNDS;
     return {
@@ -198,7 +199,7 @@ export default function HeatmapDemo() {
     id: "h3-tiles",
     data: `${API_BASE}/api/tiles/{z}/{x}/{y}`,
     minZoom: 2,
-    maxZoom: 10,
+    maxZoom: 14,
     tileSize: 512,
     maxCacheSize: 64,
     maxRequests: 4,

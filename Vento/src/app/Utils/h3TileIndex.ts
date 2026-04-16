@@ -27,6 +27,7 @@ export interface HexDetail {
 
 // mapeo zoom del mapa → resolución H3
 function zoomToH3Res(z: number): number {
+  if (z >= 12) return 8;
   if (z >= 10) return 7;
   if (z >= 8) return 6;
   if (z >= 7) return 5;

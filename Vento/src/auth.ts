@@ -1,6 +1,6 @@
 import { decodeJwt } from "jose";
 import NextAuth from "next-auth";
-import Keycloak from "next-auth/providers/keycloak";
+// import Keycloak from "next-auth/providers/keycloak"; // reemplazado por provider OIDC manual con httpsToHttp para AccuWeb
 
 type KeycloakJwtClaims = {
   realm_access?: { roles?: unknown };
@@ -31,7 +31,6 @@ function realmRolesFromOidcTokens(
 
 declare module "next-auth" {
   interface Session {
-    idToken?: string;
     roles?: string[];
     error?: string; // para que SessionGuard detecte RefreshTokenError/NoRefreshToken
   }
@@ -39,7 +38,6 @@ declare module "next-auth" {
 
 declare module "next-auth/jwt" {
   interface JWT {
-    idToken?: string;
     refreshToken?: string;
     expiresAt?: number;
     roles?: string[];
@@ -94,7 +92,7 @@ async function refreshAccessToken(
       ? refreshed.access_token
       : undefined;
   const newIdToken =
-    typeof refreshed.id_token === "string" ? refreshed.id_token : token.idToken;
+    typeof refreshed.id_token === "string" ? refreshed.id_token : undefined;
   const newRefreshToken =
     typeof refreshed.refresh_token === "string"
       ? refreshed.refresh_token
@@ -109,7 +107,6 @@ async function refreshAccessToken(
   if (expiresAt === undefined) {
     return {
       ...token,
-      idToken: newIdToken,
       refreshToken: newRefreshToken,
       expiresAt: token.expiresAt,
       roles: realmRolesFromOidcTokens(accessToken, newIdToken),
@@ -119,7 +116,6 @@ async function refreshAccessToken(
 
   return {
     ...token,
-    idToken: newIdToken,
     refreshToken: newRefreshToken,
     expiresAt,
     roles: realmRolesFromOidcTokens(accessToken, newIdToken),
@@ -127,23 +123,78 @@ async function refreshAccessToken(
   };
 }
 
+console.log("[AUTH] ENV CHECK:", {
+  AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST ? "✅" : "❌",
+  AUTH_SECRET: process.env.AUTH_SECRET ? "✅" : "❌",
+  AUTH_KEYCLOAK_ID: process.env.AUTH_KEYCLOAK_ID ?? "❌ missing",
+  AUTH_KEYCLOAK_SECRET: process.env.AUTH_KEYCLOAK_SECRET ? "✅" : "❌",
+  AUTH_KEYCLOAK_ISSUER: process.env.AUTH_KEYCLOAK_ISSUER ?? "❌ missing",
+});
+
+// AccuWeb: Keycloak reporta HTTPS como issuer pero internamente solo acepta HTTP.
+// AUTH_KEYCLOAK_ISSUER debe ser la URL HTTP interna (ej: http://midominio.com/identity/realms/vento)
+// Reescribimos a HTTPS para que coincida con lo que Keycloak valida en el token.
+const issuerEnv = process.env.AUTH_KEYCLOAK_ISSUER!;
+const issuer = issuerEnv.replace(/^http:\/\//, "https://");
+const wellKnownUrl = `${issuerEnv}/.well-known/openid-configuration`;
+
+console.log("[AUTH] ISSUER CONFIG:", {
+  envOriginal: issuerEnv,
+  issuerRewritten: issuer,
+  wellKnownUrl,
+});
+
+// Reescribe URLs HTTPS → HTTP para conexiones internas en AccuWeb
+function httpsToHttp(url: string): string {
+  return url.replace(/^https:\/\//, "http://");
+}
+
+// Pre-fetch para diagnosticar qué devuelve Keycloak
+fetch(wellKnownUrl)
+  .then((res) => res.json())
+  .then((config) => {
+    console.log("[AUTH] DISCOVERY OK:", {
+      issuerFromKeycloak: config.issuer,
+      issuerWeExpect: issuer,
+      match: config.issuer === issuer ? "✅" : "❌ MISMATCH",
+      tokenEndpoint: config.token_endpoint,
+      tokenEndpointRewritten: httpsToHttp(config.token_endpoint),
+      authEndpoint: config.authorization_endpoint,
+      authEndpointRewritten: httpsToHttp(config.authorization_endpoint),
+    });
+  })
+  .catch((err) => {
+    console.error("[AUTH] DISCOVERY FETCH FAILED:", err.message);
+  });
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
-    Keycloak({
+    {
+      id: "keycloak",
+      name: "Keycloak",
+      type: "oidc",
       clientId: process.env.AUTH_KEYCLOAK_ID!,
       clientSecret: process.env.AUTH_KEYCLOAK_SECRET!,
-      issuer: process.env.AUTH_KEYCLOAK_ISSUER!,
-    }),
+      // issuer HTTPS para validación de tokens (Keycloak devuelve HTTPS en el JWT)
+      issuer,
+      // Endpoints reescritos a HTTP para conexión interna (AccuWeb no permite HTTPS entre contenedores)
+      authorization: {
+        url: httpsToHttp(`${issuer}/protocol/openid-connect/auth`),
+        params: { scope: "openid email profile" },
+      },
+      token: httpsToHttp(`${issuer}/protocol/openid-connect/token`),
+      userinfo: httpsToHttp(`${issuer}/protocol/openid-connect/userinfo`),
+    },
   ],
   callbacks: {
     async jwt({ token, account }) {
+      // Initial sign-in: persist tokens from the OIDC response
       if (account) {
         const idToken = (account as { id_token?: string }).id_token;
         const roles = realmRolesFromOidcTokens(account.access_token, idToken);
 
         return {
           ...token,
-          idToken,
           refreshToken: account.refresh_token,
           expiresAt: account.expires_at,
           roles,
@@ -160,13 +211,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
 
     async session({ session, token }) {
-      // Solo lo mínimo al cliente — accessToken y refreshToken se quedan
-      // server-side en el JWT cifrado para evitar cookies > 4KB (error 400 nginx).
-      // Si en el futuro el frontend necesita llamar APIs con Bearer, usar
-      // un proxy API route que lea el token con auth() server-side.
-      session.idToken = token.idToken;  // necesario para logout federado en SideBar
-      session.roles = token.roles;      // necesario para RBAC en middleware y UI
-      session.error = token.error;      // SessionGuard detecta RefreshTokenError para sign-out automático
+      // Solo lo mínimo al cliente — idToken/accessToken/refreshToken NO se pasan al cliente
+      // ni se persisten en el JWT cifrado (cookie > 4KB disparaba 400 nginx en AccuWeb).
+      // Logout federado se hace con client_id + post_logout_redirect_uri (sin id_token_hint).
+      session.roles = token.roles;  // necesario para RBAC en middleware y UI
+      session.error = token.error;  // SessionGuard detecta RefreshTokenError para sign-out automático
       return session;
     },
   },

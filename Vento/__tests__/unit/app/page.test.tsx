@@ -84,7 +84,7 @@ describe("Home page (src/app/page.tsx)", () => {
 
     const logo = screen.getByAltText("Vento");
     expect(logo).toBeInTheDocument();
-    expect(logo).toHaveAttribute("src", "/vento_logo.png");
+    expect(logo).toHaveAttribute("src", "/vento_logo.svg");
   });
 
   it("shows the external auth notice", async () => {

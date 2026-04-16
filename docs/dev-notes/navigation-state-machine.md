@@ -159,7 +159,7 @@ El SideBar y el layout del dashboard se comportan distinto según viewport:
 ```
 SideBar (flex row, bg-[#165170ff])
   ├─ Panel de navegación (w-[15rem], flex-col justify-between)
-  │    ├─ Logo (vento_logo.png, 111x36px)
+  │    ├─ Logo (vento_logo.svg, 111x36px)
   │    ├─ Sección superior
   │    │    ├─ "ACCIONES PRINCIPALES"
   │    │    │    ├─ 📍 Selección de área (area.png 20x20)
