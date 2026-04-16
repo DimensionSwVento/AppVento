@@ -120,7 +120,7 @@ export default function AdminUsersPage() {
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-2xl font-semibold text-gray-800">Administrar usuarios</h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-900">
               Gestiona los diferentes usuarios que tienen acceso a la plataforma, y sus diferentes privilegios.
             </p>
           </div>
@@ -129,7 +129,7 @@ export default function AdminUsersPage() {
           <div className="mb-8">
             <button
               onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium text-white transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium text-white transition-colors"
               style={{ backgroundColor: "#165170" }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#113d56"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#165170"; }}

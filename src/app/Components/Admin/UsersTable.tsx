@@ -118,7 +118,7 @@ export default function UsersTable({
   return (
     <div ref={containerRef}>
       {/* Users list */}
-      <div className="divide-y divide-gray-100">
+      <div className="flex flex-col gap-2">
         {users.map((user) => {
           const isSelected = selectedUserId === user.id;
 
@@ -126,10 +126,10 @@ export default function UsersTable({
             <div
               key={user.id}
               className={`
-                relative px-4 py-5 transition-all duration-150 cursor-pointer
+                relative px-4 py-5 rounded-xl transition-all duration-150 cursor-pointer
                 ${isSelected
-                  ? "bg-gray-50 border border-gray-200 rounded-xl my-2 shadow-sm"
-                  : "bg-white hover:bg-gray-50/50"
+                  ? "bg-gray-100 border border-gray-200 shadow-sm"
+                  : "bg-gray-50 hover:bg-gray-100"
                 }
               `}
               onClick={() => !isSelected && handleSelectUser(user)}

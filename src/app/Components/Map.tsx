@@ -27,6 +27,7 @@ try { luma.registerAdapters([webgl2Adapter]); } catch { /* ok */ }
 
 // mismo mapeo que HeatmapDemo (h3TileIndex) para que la cuadrícula coincida visualmente
 function zoomToH3Res(zoom: number): number {
+  if (zoom >= 12) return 8;
   if (zoom >= 10) return 7;
   if (zoom >= 8) return 6;
   if (zoom >= 7) return 5;
@@ -46,7 +47,7 @@ function tileToBBox(z: number, x: number, y: number): [number, number, number, n
 }
 
 const MIN_ZOOM = 5;
-const MAX_ZOOM = 10;
+const MAX_ZOOM = 14;
 
 // gris azulado
 const SELECTED_FILL: [number, number, number, number] = [224, 215, 221, 100];
@@ -123,7 +124,7 @@ export default function MapView() {
   const gridTileLayer = useMemo(() => new TileLayer<HexCell>({
     id: "colombia-grid-tiles",
     minZoom: 2,
-    maxZoom: 10,
+    maxZoom: 14,
     tileSize: 512,
     maxCacheSize: 64,
     maxRequests: 4,

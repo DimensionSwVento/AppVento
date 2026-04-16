@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export default function SideBar({
   children,
@@ -13,6 +13,7 @@ export default function SideBar({
   const { data: session } = useSession();
   const { accion, setAccion, selectedHexes } = useAprincipal();
   const pathname = usePathname();
+  const router = useRouter();
   const isAdmin = session?.roles?.includes("admin");
   const isAdminPage = pathname?.startsWith("/admin");
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -27,6 +28,15 @@ export default function SideBar({
   const haySeleccion = selectedHexes.size > 0;
 
   function navegar(destino: (typeof ORDEN)[number]) {
+    // Desde admin: "seleccion-area" siempre vuelve al dashboard;
+    // los demás pasos solo si están habilitados por la lógica de flujo normal.
+    if (isAdminPage) {
+      if (destino === "seleccion-area" || habilitado(destino)) {
+        setAccion(destino);
+        router.push("/dashboard");
+      }
+      return;
+    }
     const pasoDestino = ORDEN.indexOf(destino);
     if (pasoDestino < pasoActual) {
       setAccion(destino);
@@ -116,7 +126,7 @@ export default function SideBar({
         >
           <div>
             <img
-              src="/vento_logo.png"
+              src="/vento_logo.svg"
               alt="Logo"
               className={`w-[111px] my-[1rem] ml-[1rem] h-[36px] ${labelCls}`}
             />
@@ -129,7 +139,7 @@ export default function SideBar({
 
             <div
               onClick={() => navegar("seleccion-area")}
-              className={`flex items-center cursor-pointer ${accion === "seleccion-area" ? "bg-gray-400" : ""}`}
+              className={`flex items-center cursor-pointer ${!isAdminPage && accion === "seleccion-area" ? "bg-gray-400" : ""}`}
             >
               <img src="/area.png" alt="" className={iconCls} />
               <p
@@ -148,7 +158,7 @@ export default function SideBar({
               onClick={() =>
                 habilitado("dimensiones") && navegar("dimensiones")
               }
-              className={`flex items-center ${habilitado("dimensiones") ? "cursor-pointer" : "cursor-not-allowed opacity-40"} ${accion === "dimensiones" ? "bg-gray-400" : ""}`}
+              className={`flex items-center ${habilitado("dimensiones") ? "cursor-pointer" : "cursor-not-allowed opacity-40"} ${!isAdminPage && accion === "dimensiones" ? "bg-gray-400" : ""}`}
             >
               <img src="/dim.png" alt="" className={iconCls} />
               <p
@@ -167,7 +177,7 @@ export default function SideBar({
               onClick={() =>
                 habilitado("caracteristicas") && navegar("caracteristicas")
               }
-              className={`flex items-center ${habilitado("caracteristicas") ? "cursor-pointer" : "cursor-not-allowed opacity-40"} ${accion === "caracteristicas" ? "bg-gray-400" : ""}`}
+              className={`flex items-center ${habilitado("caracteristicas") ? "cursor-pointer" : "cursor-not-allowed opacity-40"} ${!isAdminPage && accion === "caracteristicas" ? "bg-gray-400" : ""}`}
             >
               <img src="/caracteristicas.png" alt="" className={iconCls} />
               <p
@@ -184,7 +194,7 @@ export default function SideBar({
 
             <div
               onClick={() => habilitado("informe") && navegar("informe")}
-              className={`flex items-center ${habilitado("informe") ? "cursor-pointer" : "cursor-not-allowed opacity-40"} ${accion === "informe" ? "bg-gray-400" : ""}`}
+              className={`flex items-center ${habilitado("informe") ? "cursor-pointer" : "cursor-not-allowed opacity-40"} ${!isAdminPage && accion === "informe" ? "bg-gray-400" : ""}`}
             >
               <img src="/viab.png" alt="" className={iconCls} />
               <p

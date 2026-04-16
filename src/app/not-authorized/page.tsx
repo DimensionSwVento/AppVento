@@ -6,7 +6,7 @@ export default function NotAuthorizedPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#0b2a3c] px-6">
       <div className="flex w-full max-w-md flex-col items-center gap-10">
         <Image
-          src="/vento_logo.png"
+          src="/vento_logo.svg"
           alt="Vento"
           width={180}
           height={58}
