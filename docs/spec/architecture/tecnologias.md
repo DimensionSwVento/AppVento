@@ -261,46 +261,63 @@ status: propuesto — pendiente confirmación con equipo
 
 ## 10. Resumen de Decisiones Tecnológicas
 
-| Capa | Decidido | Por Confirmar | Futuro |
-|------|----------|---------------|--------|
-| Frontend framework | — | Angular 17+ vs React 18+ vs Vue 3 | — |
-| Mapas | Leaflet (recomendado) | MapLibre GL como alternativa | Deck.gl si res 7+ |
-| Base de datos | PostgreSQL + PostGIS + H3 | — | — |
-| Auth/Identidad | Keycloak (ADR-005) | — | Federación AD, MFA |
-| Deploy | Docker | — | Cloud (opcional) |
-| Pre-proceso datos | Python + Pandas + PyArrow | — | — |
-| Backend API | Sí en primera entrega (ADR-007) | FastAPI vs NestJS vs Express | — |
-| Arquitectura Backend | Clean Architecture + DDD (ADR-007) | — | — |
-| Estructura repo | Monorepo (ADR-007) | Turborepo vs Nx | — |
-| Cache frontend | Service Worker + HTTP Cache (ADR-006) | — | CDN edge cache |
-| Storage datos geo | Asset estático (temporal) | Supabase Storage vs BD (ADR-006) | — |
-| Hosting frontend | — | Vercel (recomendado) | — |
-| BD producción | — | Supabase (PostgreSQL + PostGIS) | — |
-| CDN | — | Vercel Edge Network | — |
-| Deploy Keycloak | — | Railway / Render / servidor propio | — |
-| Reportes PDF | — | — | WeasyPrint vs ReportLab vs jsPDF |
+> **Actualización 2026-04-20**: decisiones confirmadas tras implementación. Ver [tech-stack-validation.md](./tech-stack-validation.md) para detalle de validación práctica.
+
+| Capa | Elegido final | Rechazado / por qué | Referencia |
+|------|--------------|--------------------|-----------|
+| Frontend framework | **Next.js 16 + React 19 + TypeScript** | Angular / Vue — por ecosistema de mapas y familiaridad | [ADR-001](../adr/ADR-001-stack-frontend.md) |
+| Mapas | **DeckGL + MapLibre GL + react-map-gl** | Leaflet (propuesto originalmente) — DeckGL tiene H3HexagonLayer nativo y escala mejor | [ADR-008](../adr/ADR-008-arquitectura-tile-based.md) |
+| Indexación H3 | **h3-js** (frontend) + **h3-py** (backend) + h3-pg (preparada) | — | [ADR-002](../adr/ADR-002-resolucion-h3.md) |
+| Base de datos | **PostgreSQL + PostGIS** (preparada, subutilizada v1.0) | Supabase — stopper: cliente usa AccuWeb | [ADR-010](../adr/ADR-010-hosting-accuweb-vs-supabase-vercel.md) |
+| Auth/Identidad | **Keycloak 26.2** + NextAuth v5 client-side | JWT propio, Supabase Auth — por escala y requisitos institucionales | [ADR-005](../adr/ADR-005-keycloak-identidad.md), [infra/keycloak.md](../../infra/keycloak.md) |
+| Pre-proceso datos | **Python + PyArrow + h3-py** en backend FastAPI | Parsing en browser (hyparquet) — por tamaño y memoria | [ADR-011](../adr/ADR-011-parquet-procesamiento-backend-no-browser.md) |
+| Backend API | **FastAPI** Python | NestJS, Django — por continuidad con pipeline Python | [ADR-007](../adr/ADR-007-backend-clean-architecture-ddd-monorepo.md) |
+| Arquitectura Backend | **Clean Architecture + DDD** | — | [ADR-007](../adr/ADR-007-backend-clean-architecture-ddd-monorepo.md) |
+| Estructura repo | **Repos separados** (FE en `AppVento/Vento/`, BE en repo aparte) | Monorepo Turborepo/Nx — ceremonia sin ganancia para equipo pequeño | [tech-stack-validation.md §2](./tech-stack-validation.md#2-scaffold-y-estructura-de-carpetas) |
+| Cache frontend | **TileLayer cache DeckGL + HTTP Cache-Control** | Service Worker — parcial, pendiente | [ADR-006](../adr/ADR-006-storage-cache-datos-geoespaciales.md) |
+| Storage datos geo | **Volume en backend FastAPI** (`.h3.parquet` cargado en memoria) | Supabase Storage, asset estático | [ADR-011](../adr/ADR-011-parquet-procesamiento-backend-no-browser.md) |
+| Hosting frontend | **AccuWeb.cloud** (cPanel) | Vercel — cliente usa AccuWeb institucional | [ADR-010](../adr/ADR-010-hosting-accuweb-vs-supabase-vercel.md) |
+| BD producción | **AccuWeb PostgreSQL** (mínimo uso v1.0) | Supabase | [ADR-010](../adr/ADR-010-hosting-accuweb-vs-supabase-vercel.md) |
+| CDN | **Sin CDN** (AccuWeb sirve directo) | Vercel Edge | [ADR-010](../adr/ADR-010-hosting-accuweb-vs-supabase-vercel.md) |
+| Deploy Keycloak | **Contenedor en AccuWeb** | Railway / Render | [infra/keycloak.md](../../infra/keycloak.md) |
+| Theme Keycloak | **`keycloakify-starter`** (JAR custom) | Theme built-in (base) | [infra/keycloak.md §4](../../infra/keycloak.md#4-theme-custom-keycloakify-starter) |
+| Deploy strategy | **Dual: CI GitHub Actions (orphan branches) + manual fallback** | Vercel auto-deploy, Docker Swarm | [accuweb-runbook.md §4](../../ops/accuweb-runbook.md) |
+| Integración FE↔BE | **Next.js `rewrites` proxy a FastAPI** | Calls directos con CORS | [frontend-backend-integration.md](../../architecture/frontend-backend-integration.md) |
+| Reportes PDF | Pendiente v1.1+ | — | [ADR futuro] |
 
 ### Combinaciones Recomendadas (Stack Completo)
 
-**Stack A — Angular + Leaflet (más estructurado)**
+> Esta sección quedó como **registro histórico de las opciones evaluadas**. El stack final efectivamente implementado se resume en §10 y se detalla en [tech-stack-validation.md](./tech-stack-validation.md).
+
+**Stack A — Angular + Leaflet (más estructurado)** — *rechazado por menor ecosistema de mapas*
 ```
 Angular 17+ / TypeScript / ngx-leaflet / Leaflet / h3-js
 PostgreSQL + PostGIS + H3 / Docker
 Pre-proceso: Python + pandas + pyarrow → JSON estático
 ```
 
-**Stack B — React + Leaflet (más ecosistema mapas)**
+**Stack B — React + Leaflet (más ecosistema mapas)** — *parcialmente adoptado*
 ```
 React 18+ / TypeScript / react-leaflet / Leaflet / h3-js
 PostgreSQL + PostGIS + H3 / Docker
 Pre-proceso: Python + pandas + pyarrow → JSON estático
 ```
 
-**Stack C — Vue 3 + Leaflet (más productivo para equipo pequeño)**
+**Stack C — Vue 3 + Leaflet (más productivo para equipo pequeño)** — *rechazado*
 ```
 Vue 3 / TypeScript / vue-leaflet / Leaflet / h3-js
 PostgreSQL + PostGIS + H3 / Docker
 Pre-proceso: Python + pandas + pyarrow → JSON estático
 ```
 
-**Criterio de decisión final:** Experiencia del equipo de desarrollo. Los tres stacks son viables para el scope de la primera entrega.
+### Stack D — Implementado (2026-04) ✅
+
+```
+Next.js 16 + React 19 + TypeScript + @deck.gl/react + react-map-gl + MapLibre GL + h3-js
+FastAPI (Python) + GeoPandas + h3-py + pyarrow
+PostgreSQL + PostGIS + h3-pg (preparada)
+Keycloak 26.2 + NextAuth v5 (OIDC)
+Docker Compose (dev) + AccuWeb cPanel (prod)
+```
+
+**Criterio de decisión final**: evolucionó con el proyecto. Leaflet inicialmente propuesto se reemplazó por DeckGL al migrar a arquitectura tile-based (ADR-008). Todas las desviaciones quedan justificadas en los ADRs 008-011.

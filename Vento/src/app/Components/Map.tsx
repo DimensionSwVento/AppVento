@@ -20,7 +20,7 @@ import { luma } from "@luma.gl/core";
 import { webgl2Adapter } from "@luma.gl/webgl";
 import { cellToBoundary, cellToLatLng, getHexagonEdgeLengthAvg, getResolution, polygonToCells } from "h3-js";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
-import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGON } from "../Utils/h3Resolution";
+import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS } from "../Utils/h3Resolution";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 try { luma.registerAdapters([webgl2Adapter]); } catch { /* ok */ }
@@ -53,6 +53,8 @@ const MAX_ZOOM = 14;
 const SELECTED_FILL: [number, number, number, number] = [224, 215, 221, 100];
 const SELECTED_BORDER: [number, number, number, number] = [70, 90, 120, 220];
 const GRID_BORDER: [number, number, number, number] = [224, 215, 221, 100];
+// Borde territorio colombiano — distintivo pero no invasivo
+const TERRITORY_BORDER: [number, number, number, number] = [22, 81, 112, 160];
 // hover — misma familia que selected pero más tenue (alpha bajo) para distinguirse
 const HOVER_FILL: [number, number, number, number] = [224, 215, 221, 60];
 const HOVER_BORDER: [number, number, number, number] = [70, 90, 120, 120];
@@ -74,11 +76,18 @@ function getColombiaCells(resolution: number): CachedCell[] {
   const cached = colombiaCellsCache.get(resolution);
   if (cached) return cached;
   // h3-js polygonToCells con isGeoJson=true espera [lng, lat]
-  const cells = polygonToCells(COLOMBIA_POLYGON as [number, number][], resolution, true);
-  const result: CachedCell[] = cells.map((h) => {
-    const [lat, lng] = cellToLatLng(h);
-    return { h, lat, lng };
-  });
+  // Se itera sobre todos los polígonos del territorio (continente + archipiélago)
+  const seen = new Set<string>();
+  const result: CachedCell[] = [];
+  for (const polygon of COLOMBIA_POLYGONS) {
+    const cells = polygonToCells(polygon as [number, number][], resolution, true);
+    for (const h of cells) {
+      if (seen.has(h)) continue;
+      seen.add(h);
+      const [lat, lng] = cellToLatLng(h);
+      result.push({ h, lat, lng });
+    }
+  }
   colombiaCellsCache.set(resolution, result);
   return result;
 }
@@ -165,6 +174,23 @@ export default function MapView() {
         pickable: true,
       });
     },
+  }), []);
+
+  // Capa de borde del territorio colombiano (continente + archipiélago).
+  // Pasa los polígonos sin relleno, solo contorno, para que el usuario vea hasta
+  // dónde puede seleccionar en mar adentro e islas.
+  const territoryBorderLayer = useMemo(() => new PolygonLayer<{ polygon: [number, number][] }>({
+    id: "colombia-territory-border",
+    data: COLOMBIA_POLYGONS.map((polygon) => ({ polygon })),
+    getPolygon: (d) => d.polygon,
+    getFillColor: [0, 0, 0, 0],
+    getLineColor: TERRITORY_BORDER,
+    getLineWidth: 2,
+    lineWidthMinPixels: 1.5,
+    lineWidthMaxPixels: 3,
+    filled: false,
+    stroked: true,
+    pickable: false,
   }), []);
 
   const selectedArr = useMemo<HexCell[]>(
@@ -300,7 +326,7 @@ export default function MapView() {
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => setViewState(clampViewState(vs as typeof INITIAL_VIEW_STATE))}
         controller={true}
-        layers={[gridTileLayer, selectedLayer, selectedLabelLayer, hoverFillLayer, hoverPlusLayer]}
+        layers={[gridTileLayer, territoryBorderLayer, selectedLayer, selectedLabelLayer, hoverFillLayer, hoverPlusLayer]}
         getCursor={({ isHovering }) => (isHovering ? "pointer" : "grab")}
         onHover={(info) => {
           const cell = info.object as HexCell | undefined;

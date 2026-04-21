@@ -1,6 +1,6 @@
 ---
-version: 4.0
-date: 2026-04-15
+version: 5.0
+date: 2026-04-20
 project: Vento
 author: mavalan Software
 ---
@@ -24,6 +24,8 @@ author: mavalan Software
 | Testing unitario | ✅ Hecho | Vitest + RTL — 17 archivos test (auth, middleware, keycloak admin, Map, SideBar, dashboard, context, routes) |
 | Responsive mobile | ✅ Hecho | SideBar colapsado + subpágina overlay + hamburguesa + fullscreen top-right |
 | Deploy AccuWeb standalone | ✅ Hecho | `output: "standalone"`, proxy SSL HTTP/HTTPS, cookie reduction |
+| Feedback cliente post-deploy | ✅ Consolidado | 7 HUs en `feedback-cliente-v1.md`, ADR-009 para stopper SMTP |
+| Documentación técnica detallada | ✅ Hecho | auth-strategy + test-strategy + tech-stack-validation + runbook AccuWeb |
 | PRD formal | 🔴 Pendiente | Workflow PRD interrumpido en paso 2 |
 | UX Design | ✅ Hecho | Diseños Figma del discovery |
 | Sprint Planning | 🔴 Pendiente | Scope definido por prioridad; falta asignación formal |
@@ -54,6 +56,10 @@ author: mavalan Software
 | 10 | ADR-005 Keycloak Identidad | `docs/spec/adr/ADR-005-keycloak-identidad.md` | ✅ Aceptado |
 | 11 | ADR-006 Storage/Cache Geoespacial | `docs/spec/adr/ADR-006-storage-cache-datos-geoespaciales.md` | ✅ Aceptado |
 | 12 | ADR-007 Backend Clean Arch + DDD + Monorepo | `docs/spec/adr/ADR-007-backend-clean-architecture-ddd-monorepo.md` | ✅ Aceptado |
+| 12b | ADR-008 Arquitectura Tile-based | `docs/spec/adr/ADR-008-arquitectura-tile-based.md` | ✅ Aceptado |
+| 12c | ADR-009 Notificaciones Email Pendientes SMTP | `docs/spec/adr/ADR-009-notificaciones-email-pendientes-smtp.md` | ⚠️ Propuesto — bloqueado por stopper externo |
+| 12d | ADR-010 Hosting AccuWeb vs Supabase+Vercel | `docs/spec/adr/ADR-010-hosting-accuweb-vs-supabase-vercel.md` | ✅ Aceptado |
+| 12e | ADR-011 Parquet Backend (no Browser) | `docs/spec/adr/ADR-011-parquet-procesamiento-backend-no-browser.md` | ✅ Aceptado |
 
 ### Épicas, Stories y Planificación
 
@@ -62,7 +68,22 @@ author: mavalan Software
 | 13 | Épicas y Stories (desglose completo) | `_bmad-output/planning-artifacts/epics.md` | ✅ v1.0 generado |
 | 14 | Scope Primera Entrega (guía de desarrollo) | `docs/spec/stories/scope-primera-entrega.md` | ✅ v2.0 consolidado |
 | 15 | Stories — Futuros Sprints | `docs/spec/stories/futuros-sprints.md` | ✅ 19 historias |
+| 15b | Feedback Cliente — Sprint Estabilización | `docs/spec/stories/feedback-cliente-v1.md` | ✅ v1.0 — 7 HUs consolidadas |
 | 16 | Decisiones pendientes reunión equipo | `docs/spec/reunion-pendiente-decisiones-arquitectura.md` | ⚠️ Por resolver |
+
+### Documentación Técnica Detallada
+
+| # | Documento | Ruta | Estado |
+|---|-----------|------|--------|
+| 16a | Estrategia de Autenticación | `docs/security/auth-strategy.md` | ✅ v1.0 |
+| 16b | Estrategia de Testing | `docs/testing/test-strategy.md` | ✅ v1.0 |
+| 16c | Validación del Stack Técnico | `docs/architecture/tech-stack-validation.md` | ✅ v1.0 |
+| 16c2 | Integración Frontend ↔ Backend | `docs/architecture/frontend-backend-integration.md` | ✅ v1.0 |
+| 16d | Runbook AccuWeb | `docs/ops/accuweb-runbook.md` | ✅ v1.0 |
+| 16d2 | Infraestructura Keycloak | `docs/infra/keycloak.md` | ✅ v1.0 |
+| 16e | Dev Notes — H3 Pipeline | `docs/dev-notes/h3-data-pipeline.md` | ✅ Existente |
+| 16f | Dev Notes — Map Rendering | `docs/dev-notes/map-rendering.md` | ✅ Existente |
+| 16g | Dev Notes — Navigation State Machine | `docs/dev-notes/navigation-state-machine.md` | ✅ Existente |
 
 ### Artefactos BMAD
 
