@@ -41,29 +41,46 @@ export default function UsersTable({
   const [rolesCache, setRolesCache] = useState<Record<string, AppRole>>({});
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Fetch roles for a user when selected
+  // Prefetch roles para todos los usuarios visibles en la página.
+  // N+1 consciente — limitado a 20 usuarios por página (limit en page.tsx).
+  // Permite mostrar badge de rol sin esperar a que el admin abra el editor.
+  // Al cambiar la referencia de `users` (p.ej. tras crear/editar) se invalida
+  // el cache completo para que los cambios de rol se reflejen sin recargar (AC4).
+  useEffect(() => {
+    let cancelled = false;
+    setRolesCache({});
+    Promise.allSettled(
+      users.map(async (u) => {
+        const res = await fetch(`/api/admin/users/${u.id}/roles`);
+        if (!res.ok) throw new Error("failed");
+        const data = await res.json();
+        const roles: string[] = data.roles ?? [];
+        const role: AppRole = roles.includes("admin") ? "admin" : "analista";
+        return { id: u.id, role };
+      })
+    ).then((results) => {
+      if (cancelled) return;
+      const patch: Record<string, AppRole> = {};
+      for (const r of results) {
+        if (r.status === "fulfilled") patch[r.value.id] = r.value.role;
+      }
+      if (Object.keys(patch).length > 0) {
+        setRolesCache(patch);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [users]);
+
+  // Sync rol cacheado al abrir editor
   useEffect(() => {
     if (!selectedUserId) return;
-    if (rolesCache[selectedUserId]) {
-      setEditState((prev) => ({ ...prev, role: rolesCache[selectedUserId] }));
-      return;
+    const cached = rolesCache[selectedUserId];
+    if (cached) {
+      setEditState((prev) => ({ ...prev, role: cached }));
     }
-    const fetchRole = async () => {
-      try {
-        const res = await fetch(`/api/admin/users/${selectedUserId}/roles`);
-        if (res.ok) {
-          const data = await res.json();
-          const roles: string[] = data.roles ?? [];
-          const role: AppRole = roles.includes("admin") ? "admin" : "analista";
-          setRolesCache((prev) => ({ ...prev, [selectedUserId]: role }));
-          setEditState((prev) => ({ ...prev, role }));
-        }
-      } catch {
-        // keep default
-      }
-    };
-    fetchRole();
-  }, [selectedUserId]);
+  }, [selectedUserId, rolesCache]);
 
   // Close selection when clicking outside the list
   useEffect(() => {
@@ -138,8 +155,8 @@ export default function UsersTable({
               <div className="flex items-center">
                 {/* Left side: status + name + email */}
                 <div className="flex-1 min-w-0">
-                  {/* Status badge */}
-                  <div className="mb-2">
+                  {/* Status + Role badges */}
+                  <div className="mb-2 flex items-center gap-2 flex-wrap">
                     {isSelected ? (
                       <select
                         value={editState.enabled ? "activo" : "desactivado"}
@@ -179,6 +196,34 @@ export default function UsersTable({
                         )}
                       </>
                     )}
+                    {/* Role badge — siempre visible (US-FB-05 AC1) */}
+                    {(() => {
+                      const role = rolesCache[user.id];
+                      if (!role) {
+                        return (
+                          <span
+                            className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium text-gray-400 bg-gray-100 border border-gray-200"
+                            title="Cargando rol..."
+                          >
+                            …
+                          </span>
+                        );
+                      }
+                      const isAdmin = role === "admin";
+                      return (
+                        <span
+                          className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium border"
+                          style={{
+                            backgroundColor: isAdmin ? "#e0e7ff" : "#f3f4f6",
+                            color: isAdmin ? "#3730a3" : "#4b5563",
+                            borderColor: isAdmin ? "#c7d2fe" : "#e5e7eb",
+                          }}
+                          title={isAdmin ? "Administrador — gestión de usuarios y acceso total" : "Analista — acceso al flujo principal"}
+                        >
+                          {isAdmin ? "Administrador" : "Analista"}
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   {/* Name & Email */}
