@@ -4,6 +4,7 @@
   "/admin/users/page": "/admin/users",
   "/api/admin/users/[id]/roles/route": "/api/admin/users/[id]/roles",
   "/api/admin/users/[id]/route": "/api/admin/users/[id]",
+  "/api/admin/users/notify/route": "/api/admin/users/notify",
   "/api/admin/users/route": "/api/admin/users",
   "/api/auth/[...nextauth]/route": "/api/auth/[...nextauth]",
   "/api/auth/kc-logout/route": "/api/auth/kc-logout",

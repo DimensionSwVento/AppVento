@@ -11,6 +11,7 @@ export const INITIAL_VIEW_STATE = {
 };
 
 // Colombia + mares circundantes (San Andrés, Malpelo, Caribe, Pacífico)
+// Bounds extendidos al norte para cubrir San Andrés + Providencia (hasta ~13.5°N)
 export const MAX_BOUNDS: [number, number, number, number] = [-82, -4.3, -66.5, 13.5];
 
 export const SNAPSHOT_KEY = "map-snapshot";
@@ -23,4 +24,18 @@ export const COLOMBIA_POLYGON: [number, number][] = [
   [-72.0, 6.8], [-67.5, 6.2], [-67.0, 4.0], [-67.8, 2.0], [-69.8, -0.5], [-70.0, -4.2],
   [-73.5, -1.5], [-75.2, -0.1], [-77.6, 0.8], [-78.8, 1.4], [-79.2, 2.0], [-78.5, 3.5],
   [-78.0, 4.2], [-77.8, 5.5], [-78.5, 6.5], [-77.5, 8.6],
+];
+
+// Archipiélago de San Andrés, Providencia y Santa Catalina + mares territoriales.
+// Rectángulo amplio que cubre ambas islas y sus ZEE para permitir selección offshore.
+// San Andrés ≈ [-81.75, 12.5], Providencia ≈ [-81.37, 13.35].
+export const ARCHIPELAGO_POLYGON: [number, number][] = [
+  [-82.0, 12.2], [-82.0, 13.5], [-81.2, 13.5], [-81.2, 12.2], [-82.0, 12.2],
+];
+
+// Lista de todos los polígonos del territorio colombiano usados por la cuadrícula.
+// Permite que `polygonToCells` se llame por cada polígono y los resultados se merjeen.
+export const COLOMBIA_POLYGONS: [number, number][][] = [
+  COLOMBIA_POLYGON,
+  ARCHIPELAGO_POLYGON,
 ];

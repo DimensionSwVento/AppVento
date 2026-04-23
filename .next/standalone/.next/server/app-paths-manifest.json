@@ -4,6 +4,7 @@
   "/admin/users/page": "app/admin/users/page.js",
   "/api/admin/users/[id]/roles/route": "app/api/admin/users/[id]/roles/route.js",
   "/api/admin/users/[id]/route": "app/api/admin/users/[id]/route.js",
+  "/api/admin/users/notify/route": "app/api/admin/users/notify/route.js",
   "/api/admin/users/route": "app/api/admin/users/route.js",
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
   "/api/auth/kc-logout/route": "app/api/auth/kc-logout/route.js",
