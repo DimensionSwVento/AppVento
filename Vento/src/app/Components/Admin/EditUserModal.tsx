@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useEffect, useState } from "react";
 import { User, UpdateUserPayload } from "../../types/user";
@@ -9,15 +9,22 @@ interface EditUserModalProps {
   onSubmit: (id: string, payload: UpdateUserPayload) => Promise<void>;
 }
 
-export default function EditUserModal({ user, onClose, onSubmit }: EditUserModalProps) {
+export default function EditUserModal({
+  user,
+  onClose,
+  onSubmit,
+}: EditUserModalProps) {
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
   const [enabled, setEnabled] = useState(user.enabled);
   const [role, setRole] = useState<"admin" | "analista">("analista");
+  const [newrole, setNewRole] = useState<"admin" | "analista">("analista");
   const [rolesLoading, setRolesLoading] = useState(true);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const mail = user.email;
+  const name = user.firstName;
 
   useEffect(() => {
     const fetchRoles = async () => {
@@ -27,6 +34,7 @@ export default function EditUserModal({ user, onClose, onSubmit }: EditUserModal
           const data = await res.json();
           const roles: string[] = data.roles ?? [];
           setRole(roles.includes("admin") ? "admin" : "analista");
+          setNewRole(roles.includes("admin") ? "admin" : "analista");
         }
       } catch {
         // keep default "analista"
@@ -41,11 +49,22 @@ export default function EditUserModal({ user, onClose, onSubmit }: EditUserModal
     e.preventDefault();
     setLoading(true);
     setError(null);
+
     try {
-      await onSubmit(user.id, { firstName, lastName, enabled, role });
+      await onSubmit(user.id, { firstName, lastName, enabled, role: newrole });
+
+      if (newrole.includes("admin") && role.includes("analista")) {
+        const resnotify = await fetch(`/api/admin/users/notify`, {
+          method: "POST",
+          body: JSON.stringify({ mail, name }),
+        });
+        const data = await resnotify.json(); // text() en vez de json() por si falla
+
+      }
       onClose();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Error desconocido";
+      const errorMessage =
+        err instanceof Error ? err.message : "Error desconocido";
       setError(errorMessage || "Error al actualizar el usuario");
     } finally {
       setLoading(false);
@@ -56,7 +75,10 @@ export default function EditUserModal({ user, onClose, onSubmit }: EditUserModal
     /* Backdrop */
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ backgroundColor: "rgba(180,195,210,0.45)", backdropFilter: "blur(2px)" }}
+      style={{
+        backgroundColor: "rgba(180,195,210,0.45)",
+        backdropFilter: "blur(2px)",
+      }}
       onClick={onClose}
     >
       {/* Modal card */}
@@ -66,15 +88,28 @@ export default function EditUserModal({ user, onClose, onSubmit }: EditUserModal
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-          <h3 className="text-base font-semibold text-gray-800">Editar Usuario</h3>
+          <h3 className="text-base font-semibold text-gray-800">
+            Editar Usuario
+          </h3>
           <button
             type="button"
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
             aria-label="Cerrar"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -90,7 +125,9 @@ export default function EditUserModal({ user, onClose, onSubmit }: EditUserModal
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block mb-1.5 text-xs font-medium text-gray-600">Nombre</label>
+                <label className="block mb-1.5 text-xs font-medium text-gray-600">
+                  Nombre
+                </label>
                 <input
                   type="text"
                   value={firstName}
@@ -98,26 +135,44 @@ export default function EditUserModal({ user, onClose, onSubmit }: EditUserModal
                   required
                   className="w-full px-3 py-2 text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all"
                   style={{ focusRingColor: "#1B4F6A" } as React.CSSProperties}
-                  onFocus={(e) => { e.currentTarget.style.boxShadow = "0 0 0 2px rgba(27,79,106,0.25)"; e.currentTarget.style.borderColor = "#1B4F6A"; }}
-                  onBlur={(e) => { e.currentTarget.style.boxShadow = ""; e.currentTarget.style.borderColor = ""; }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.boxShadow =
+                      "0 0 0 2px rgba(27,79,106,0.25)";
+                    e.currentTarget.style.borderColor = "#1B4F6A";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.boxShadow = "";
+                    e.currentTarget.style.borderColor = "";
+                  }}
                 />
               </div>
               <div>
-                <label className="block mb-1.5 text-xs font-medium text-gray-600">Apellido</label>
+                <label className="block mb-1.5 text-xs font-medium text-gray-600">
+                  Apellido
+                </label>
                 <input
                   type="text"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   required
                   className="w-full px-3 py-2 text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none transition-all"
-                  onFocus={(e) => { e.currentTarget.style.boxShadow = "0 0 0 2px rgba(27,79,106,0.25)"; e.currentTarget.style.borderColor = "#1B4F6A"; }}
-                  onBlur={(e) => { e.currentTarget.style.boxShadow = ""; e.currentTarget.style.borderColor = ""; }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.boxShadow =
+                      "0 0 0 2px rgba(27,79,106,0.25)";
+                    e.currentTarget.style.borderColor = "#1B4F6A";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.boxShadow = "";
+                    e.currentTarget.style.borderColor = "";
+                  }}
                 />
               </div>
             </div>
 
             <div>
-              <label className="block mb-1.5 text-xs font-medium text-gray-600">Correo Electrónico</label>
+              <label className="block mb-1.5 text-xs font-medium text-gray-600">
+                Correo Electrónico
+              </label>
               <input
                 type="email"
                 value={user.email}
@@ -127,7 +182,9 @@ export default function EditUserModal({ user, onClose, onSubmit }: EditUserModal
             </div>
 
             <div>
-              <label className="block mb-1.5 text-xs font-medium text-gray-600">Estado de la cuenta</label>
+              <label className="block mb-1.5 text-xs font-medium text-gray-600">
+                Estado de la cuenta
+              </label>
               <label className="relative inline-flex items-center cursor-pointer gap-3">
                 <input
                   type="checkbox"
@@ -135,20 +192,36 @@ export default function EditUserModal({ user, onClose, onSubmit }: EditUserModal
                   checked={enabled}
                   onChange={(e) => setEnabled(e.target.checked)}
                 />
-                <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all" style={{ ...(enabled ? { backgroundColor: "#1B4F6A" } : {}) }}></div>
-                <span className="text-sm text-gray-700">{enabled ? "Activo" : "Inactivo"}</span>
+                <div
+                  className="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all"
+                  style={{ ...(enabled ? { backgroundColor: "#1B4F6A" } : {}) }}
+                ></div>
+                <span className="text-sm text-gray-700">
+                  {enabled ? "Activo" : "Inactivo"}
+                </span>
               </label>
             </div>
 
             <div>
-              <label className="block mb-1.5 text-xs font-medium text-gray-600">Rol</label>
+              <label className="block mb-1.5 text-xs font-medium text-gray-600">
+                Rol
+              </label>
               <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as "admin" | "analista")}
+                value={newrole}
+                onChange={(e) =>
+                  setNewRole(e.target.value as "admin" | "analista")
+                }
                 disabled={rolesLoading}
                 className="w-full px-3 py-2 text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none disabled:opacity-50 disabled:cursor-wait transition-all"
-                onFocus={(e) => { e.currentTarget.style.boxShadow = "0 0 0 2px rgba(27,79,106,0.25)"; e.currentTarget.style.borderColor = "#1B4F6A"; }}
-                onBlur={(e) => { e.currentTarget.style.boxShadow = ""; e.currentTarget.style.borderColor = ""; }}
+                onFocus={(e) => {
+                  e.currentTarget.style.boxShadow =
+                    "0 0 0 2px rgba(27,79,106,0.25)";
+                  e.currentTarget.style.borderColor = "#1B4F6A";
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.boxShadow = "";
+                  e.currentTarget.style.borderColor = "";
+                }}
               >
                 <option value="analista">Analista</option>
                 <option value="admin">Administrador</option>
@@ -157,8 +230,8 @@ export default function EditUserModal({ user, onClose, onSubmit }: EditUserModal
                 {rolesLoading
                   ? "Cargando rol actual…"
                   : role === "admin"
-                  ? "Administrador: acceso completo a gestión de usuarios, privilegios y configuración."
-                  : "Analista: acceso al flujo principal de análisis de viabilidad, sin gestión de usuarios."}
+                    ? "Administrador: acceso completo a gestión de usuarios, privilegios y configuración."
+                    : "Analista: acceso al flujo principal de análisis de viabilidad, sin gestión de usuarios."}
               </p>
             </div>
 
@@ -176,8 +249,16 @@ export default function EditUserModal({ user, onClose, onSubmit }: EditUserModal
                 disabled={loading}
                 className="px-5 py-2 rounded-md text-sm font-medium text-white transition-colors disabled:opacity-60"
                 style={{ backgroundColor: "#165170" }}
-                onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#113d56"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#165170"; }}
+                onMouseEnter={(e) => {
+                  if (!loading)
+                    (
+                      e.currentTarget as HTMLButtonElement
+                    ).style.backgroundColor = "#113d56";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                    "#165170";
+                }}
               >
                 {loading ? "Guardando..." : "Guardar Cambios"}
               </button>
