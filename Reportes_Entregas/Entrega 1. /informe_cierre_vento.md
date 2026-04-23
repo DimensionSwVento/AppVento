@@ -88,8 +88,6 @@ Keycloak — Identidad (Docker)
 | Objetivo | Estado | Detalle |
 |----------|--------|---------|
 | Motor geoespacial H3 con precisión estandarizada | ✅ Cumplido | Selección de hexágonos H3 resolución 3–7. Click → ID hexagonal → pintado. Colombia continental completa. San Andrés y offshore en sprint de feedback. |
-| Automatización de generación de reportes | ⚠️ Parcial | Estructura de reporte implementada en UI. Integración con motor multicriterio es scope futuro (fuera del contrato original). |
-| Centralizar 5 dimensiones de análisis | ⚠️ Parcial | Las 5 dimensiones están estructuradas en la interfaz. El cálculo dinámico requiere el modelo AHP del equipo de investigación (scope futuro). |
 | Login institucional | ✅ Cumplido | Keycloak OIDC con restricción de dominio, recuperación de contraseña, roles diferenciados. |
 | Gestión de usuarios CRUD | ✅ Cumplido | Consola Keycloak provee CRUD completo. UI de admin con tabla de usuarios y asignación de roles incluida en sprint de feedback. |
 
