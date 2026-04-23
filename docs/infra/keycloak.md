@@ -159,6 +159,9 @@ Ver [infra/keycloak/themes/README.md](../../infra/keycloak/themes/README.md):
 ### Pendiente relacionado
 El feedback cliente (US-FB-01) pide **formularios 100% en español + rename "email" → "Correo de Usuario"**. Esto se hace **ajustando el theme** (archivos `.properties` de i18n) — no tocando backend. Tiempo estimado: 2-3h (ver [feedback-cliente-v1.md](../spec/stories/feedback-cliente-v1.md#us-fb-01)).
 
+### US-FB-02 — confirmación post-registro (resuelta app-side)
+El flujo `Registro → Confirmación → Login → Dashboard` se implementa con rutas custom en Next.js en lugar de `info.ftl`/`register-complete.ftl` en el theme. Decisión documentada en [ADR-012](../spec/adr/ADR-012-post-registration-confirmation-app-side.md). El realm no requiere cambios: el wildcard `http://localhost:3000/*` ya cubre los nuevos endpoints (`/api/auth/register/callback` y `/registration-success`). En producción, los wildcards en `redirectUris` y `post.logout.redirect.uris` del cliente `vento-web` deben apuntar al dominio real (ya documentado en §3).
+
 ---
 
 ## 5. Variables de entorno Keycloak (dev)

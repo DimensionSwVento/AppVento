@@ -23,6 +23,7 @@ Documento que responde al feedback cliente item #6: **¿qué estrategia se usa p
 | UI condicionada por rol | `useSession()` + `session.roles` | [Vento/src/app/Components/SideBar.tsx](../../Vento/src/app/Components/SideBar.tsx) |
 | Sesión expirada | `SessionGuard` detecta `RefreshTokenError` | [Vento/src/app/Components/SessionGuard.tsx](../../Vento/src/app/Components/SessionGuard.tsx) |
 | Logout federado | Route server-side | [Vento/src/app/api/auth/kc-logout/route.ts](../../Vento/src/app/api/auth/kc-logout/route.ts) |
+| Registro + confirmación | Rutas custom + federated logout | [Vento/src/app/api/auth/register/route.ts](../../Vento/src/app/api/auth/register/route.ts) · [callback](../../Vento/src/app/api/auth/register/callback/route.ts) · [ADR-012](../spec/adr/ADR-012-post-registration-confirmation-app-side.md) |
 
 **Principio**: defensa en profundidad — cada capa verifica por su cuenta, sin asumir que la anterior ya filtró.
 
@@ -212,6 +213,31 @@ Actualmente usa defaults de Keycloak. Propuesto:
 - Access Token Lifespan: **15 min**
 - SSO Session Idle: **30 min**
 - SSO Session Max: **10h**
+
+---
+
+## 5bis. Flujo de registro con confirmación (US-FB-02)
+
+Para evitar que un usuario recién registrado caiga directo al dashboard sin un paso explícito de login, el registro NO pasa por `signIn("keycloak")` de NextAuth. Se implementan dos rutas API custom:
+
+### `GET /api/auth/register`
+Construye la URL de Keycloak con `kc_action=register` + `state` (CSRF, almacenado en cookie HttpOnly con scope `/api/auth/register`) y redirige al navegador.
+
+### `GET /api/auth/register/callback`
+1. Verifica `state` contra la cookie (rechaza en CSRF mismatch).
+2. Intercambia `code` → `tokens` server-side (solo para capturar `id_token`).
+3. Redirige al usuario al `logout_endpoint` de Keycloak con `id_token_hint` y `post_logout_redirect_uri=/registration-success`.
+4. Limpia la cookie de state.
+
+**Nunca crea sesión NextAuth.** Cuando el usuario aterriza en `/registration-success`, la cookie SSO de Keycloak ya fue eliminada por el logout federado → no existe forma de saltar al dashboard sin volver a autenticarse.
+
+### `/registration-success`
+Server Component estático con mensaje en español "¡Usuario registrado!" y botón explícito a `/` (login).
+
+### Entrada al flujo
+Desde la landing (`/`), junto al botón "Iniciar sesión" aparece "Crear cuenta" (componente `SignUpButton`) que apunta a `/api/auth/register`.
+
+Ver [ADR-012](../spec/adr/ADR-012-post-registration-confirmation-app-side.md) para el razonamiento completo (por qué no se hizo en el theme Keycloak ni en el Registration Flow del realm).
 
 ---
 
