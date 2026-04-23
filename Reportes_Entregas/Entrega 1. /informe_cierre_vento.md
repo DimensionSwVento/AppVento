@@ -192,13 +192,4 @@ El proyecto tiene documentadas **20 historias de usuario futuras** organizadas e
 
 ---
 
-## 11. Firmas y Aceptación
-
-| Parte | Representante | Cargo | Fecha | Firma |
-|-------|--------------|-------|-------|-------|
-| Mavalan Software | | | | |
-| Cliente Vento | | | | |
-
----
-
 *Mavalan Software — Proyecto Vento v1.0 — Abril 2026*
