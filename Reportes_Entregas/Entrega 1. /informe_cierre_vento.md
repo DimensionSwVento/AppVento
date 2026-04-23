@@ -144,7 +144,7 @@ Tras la revisión del cliente del deploy en AccuWeb, se recibieron **11 puntos d
 
 Según los términos del contrato:
 
-**Período:** 20 días hábiles (~1 mes calendario) desde la entrega final en AccuWeb.
+**Período:** 10 días hábiles (~medio mes calendario) desde la entrega final en AccuWeb.
 
 **Cubre:**
 - Corrección de errores que impidan el funcionamiento del sistema
