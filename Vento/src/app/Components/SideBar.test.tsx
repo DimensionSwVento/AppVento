@@ -1,10 +1,24 @@
-import { describe, it, expect } from "vitest";
-import { useEffect } from "react";
+import { describe, it, expect, vi } from "vitest";
+import { useEffect, useState } from "react";
 import { render, screen } from "@testing-library/react";
 import SideBar from "./SideBar";
 import { AprincipalProvider, useAprincipal } from "../Utils/AccionPrincipalContext";
 
-/** helper para preparar estado inicial antes de renderizar SideBar */
+vi.mock("next-auth/react", () => ({
+  useSession: () => ({ data: { user: { email: "test@test.com", name: "Test" } } }),
+  signOut: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/dashboard",
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
+/**
+ * Helper que siembra estado inicial en el Provider y sólo renderiza a los
+ * hijos cuando el commit del setState ya fue aplicado. Esto evita carreras
+ * entre el flush de useEffect y los asserts del test (React 19 + RTL).
+ */
 function Seed({
   accion,
   hexes,
@@ -15,11 +29,14 @@ function Seed({
   children: React.ReactNode;
 }) {
   const { setAccion, setSelectedHexes } = useAprincipal();
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     if (accion !== undefined) setAccion(accion);
     if (hexes && hexes.length > 0) setSelectedHexes(new Set(hexes));
+    setReady(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  if (!ready) return null;
   return <>{children}</>;
 }
 

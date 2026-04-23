@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { AprincipalProvider } from "@/app/Utils/AccionPrincipalContext";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 const signOutMock = vi.fn().mockResolvedValue(undefined);
 const useSessionMock = vi.fn();
@@ -32,11 +31,9 @@ import SideBar from "@/app/Components/SideBar";
 
 function renderSideBar() {
   return render(
-    <AprincipalProvider>
-      <SideBar>
-        <span>child</span>
-      </SideBar>
-    </AprincipalProvider>,
+    <SideBar>
+      <span>child</span>
+    </SideBar>,
   );
 }
 
@@ -62,40 +59,24 @@ beforeEach(() => {
 
 describe("SideBar — Auth", () => {
   it("muestra el email del usuario desde la sesión", () => {
-    render(
-      <SideBar>
-        <span>child</span>
-      </SideBar>,
-    );
+    renderSideBar();
     expect(screen.getByText(/user@example\.com/i)).toBeInTheDocument();
   });
 
   it("muestra el botón de cerrar sesión", () => {
-    render(
-      <SideBar>
-        <span>child</span>
-      </SideBar>,
-    );
+    renderSideBar();
     const logoutBtn = screen.getByTitle("Cerrar sesión");
     expect(logoutBtn).toBeInTheDocument();
   });
 
   it("fallback si la sesión no tiene email del usuario", () => {
     useSessionMock.mockReturnValue({ data: { user: {} } });
-    render(
-      <SideBar>
-        <span>child</span>
-      </SideBar>,
-    );
+    renderSideBar();
     expect(screen.getByTitle("Cerrar sesión")).toBeInTheDocument();
   });
 
   it("llama signOut y redirige a Keycloak logout al hacer click", async () => {
-    render(
-      <SideBar>
-        <span>child</span>
-      </SideBar>,
-    );
+    renderSideBar();
     const logoutBtn = screen.getByTitle("Cerrar sesión");
     await fireEvent.click(logoutBtn);
     expect(signOutMock).toHaveBeenCalledWith({ redirect: false });
@@ -104,11 +85,7 @@ describe("SideBar — Auth", () => {
 
 describe("SideBar — Navegación", () => {
   it("renderiza las 4 acciones principales del menú", () => {
-    render(
-      <SideBar>
-        <span>child</span>
-      </SideBar>,
-    );
+    renderSideBar();
     expect(screen.getByText("Selección de área")).toBeInTheDocument();
     expect(screen.getByText("Dimensiones")).toBeInTheDocument();
     expect(screen.getByText("Características del proyecto")).toBeInTheDocument();
@@ -116,11 +93,7 @@ describe("SideBar — Navegación", () => {
   });
 
   it("Dimensiones está deshabilitado si no hay hexágonos seleccionados", () => {
-    render(
-      <SideBar>
-        <span>child</span>
-      </SideBar>,
-    );
+    renderSideBar();
     const dim = screen.getByText("Dimensiones").parentElement!;
     expect(dim.className).toContain("opacity-40");
   });
@@ -131,11 +104,7 @@ describe("SideBar — Navegación", () => {
       setAccion: setAccionMock,
       selectedHexes: new Set(["8a2a1072b59ffff"]),
     });
-    render(
-      <SideBar>
-        <span>child</span>
-      </SideBar>,
-    );
+    renderSideBar();
     const dim = screen.getByText("Dimensiones").parentElement!;
     expect(dim.className).toContain("cursor-pointer");
     expect(dim.className).not.toContain("opacity-40");
@@ -147,11 +116,7 @@ describe("SideBar — Navegación", () => {
       setAccion: setAccionMock,
       selectedHexes: new Set(["8a2a1072b59ffff"]),
     });
-    render(
-      <SideBar>
-        <span>child</span>
-      </SideBar>,
-    );
+    renderSideBar();
     fireEvent.click(screen.getByText("Dimensiones").parentElement!);
     expect(setAccionMock).toHaveBeenCalledWith("dimensiones");
   });
@@ -162,11 +127,7 @@ describe("SideBar — Navegación", () => {
       setAccion: setAccionMock,
       selectedHexes: new Set(["8a2a1072b59ffff"]),
     });
-    render(
-      <SideBar>
-        <span>child</span>
-      </SideBar>,
-    );
+    renderSideBar();
     fireEvent.click(screen.getByText("Dimensiones").parentElement!);
     expect(setAccionMock).toHaveBeenCalledWith("dimensiones");
   });
@@ -179,11 +140,7 @@ describe("SideBar — Navegación", () => {
         roles: ["admin"],
       },
     });
-    render(
-      <SideBar>
-        <span>child</span>
-      </SideBar>,
-    );
+    renderSideBar();
     expect(screen.getByText("Gestión de usuarios")).toBeInTheDocument();
   });
 
@@ -195,11 +152,7 @@ describe("SideBar — Navegación", () => {
         roles: ["analista"],
       },
     });
-    render(
-      <SideBar>
-        <span>child</span>
-      </SideBar>,
-    );
+    renderSideBar();
     expect(screen.queryByText("Gestión de usuarios")).not.toBeInTheDocument();
   });
 });

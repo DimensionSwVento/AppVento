@@ -1,22 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { AprincipalProvider } from "@/app/Utils/AccionPrincipalContext";
 
-const {
-  pathnameRef,
-  routerPushMock,
-  signOutMock,
-  useSessionMock,
-  useAprincipalMock,
-  setAccionMock,
-} = vi.hoisted(() => ({
-  pathnameRef: { current: "/admin/users" },
-  routerPushMock: vi.fn(),
-  signOutMock: vi.fn().mockResolvedValue(undefined),
-  useSessionMock: vi.fn(),
-  useAprincipalMock: vi.fn(),
-  setAccionMock: vi.fn(),
-}));
+const pathnameRef = vi.hoisted(() => ({ current: "/admin/users" }));
+const routerPushMock = vi.hoisted(() => vi.fn());
+const signOutMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const useSessionMock = vi.hoisted(() => vi.fn());
+const useAprincipalMock = vi.hoisted(() => vi.fn());
+const setAccionMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next-auth/react", () => ({
   useSession: () => useSessionMock(),
@@ -36,11 +26,9 @@ import SideBar from "@/app/Components/SideBar";
 
 function renderSideBar() {
   return render(
-    <AprincipalProvider>
-      <SideBar>
-        <span>child</span>
-      </SideBar>
-    </AprincipalProvider>,
+    <SideBar>
+      <span>child</span>
+    </SideBar>,
   );
 }
 
