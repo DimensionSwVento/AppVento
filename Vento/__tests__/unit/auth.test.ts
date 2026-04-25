@@ -82,7 +82,7 @@ describe("auth.ts — jwt callback", () => {
     jwtCb = (cfg.callbacks as { jwt: JwtCb }).jwt;
   });
 
-  it("persists idToken but not accessToken on initial sign-in", async () => {
+  it("persists refresh token metadata and roles on initial sign-in", async () => {
     decodeMock.mockReturnValue({
       realm_access: { roles: ["admin", "analista"] },
     });
@@ -98,7 +98,7 @@ describe("auth.ts — jwt callback", () => {
     });
 
     expect(result.accessToken).toBeUndefined();
-    expect(result.idToken).toBe("id-456");
+    expect(result.idToken).toBeUndefined();
     expect(result.refreshToken).toBe("rt-789");
     expect(result.expiresAt).toBe(9999999999);
     expect(result.roles).toEqual(["admin", "analista"]);
@@ -141,7 +141,7 @@ describe("auth.ts — jwt callback", () => {
 
     expect(fetchSpy).toHaveBeenCalledOnce();
     expect(result.accessToken).toBeUndefined();
-    expect(result.idToken).toBe("new-id");
+    expect(result.idToken).toBeUndefined();
     expect(result.refreshToken).toBe("new-rt");
     expect(result.roles).toEqual(["analista"]);
     expect(result.error).toBeUndefined();
@@ -212,13 +212,12 @@ describe("auth.ts — jwt callback", () => {
 /* ---------- Session callback ---------- */
 
 describe("auth.ts — session callback", () => {
-  it("copies only idToken and roles into session (accessToken stays server-side)", async () => {
+  it("copies only roles/error into session (tokens stay server-side)", async () => {
     const cfg = await importAuth();
     const sessionCb = (cfg.callbacks as { session: SessionCb }).session;
 
     const session: Record<string, unknown> = { user: { name: "test" } };
     const token = {
-      idToken: "id-tok",
       roles: ["admin"],
       error: undefined,
     };
@@ -226,7 +225,7 @@ describe("auth.ts — session callback", () => {
     const result = await sessionCb({ session, token });
     // accessToken se queda server-side en el JWT (cookie reduction)
     expect(result.accessToken).toBeUndefined();
-    expect(result.idToken).toBe("id-tok");
+    expect(result.idToken).toBeUndefined();
     expect(result.roles).toEqual(["admin"]);
     // error se pasa al cliente — lo usa SessionGuard para detectar refresh expirado
     expect(result.error).toBeUndefined();

@@ -13,7 +13,11 @@ export default defineConfig({
     setupFiles: "./vitest.setup.ts",
     include: ["__tests__/unit/**/*.{test,spec}.{ts,tsx}", "src/**/*.test.{ts,tsx}"],
     exclude: ["**/node_modules/**", "**/e2e/**"],
-    isolate: false,
+    // `isolate: true` es requerido: varios archivos de test mockean los mismos
+    // módulos (next-auth/react, next/navigation, @/app/Utils/AccionPrincipalContext)
+    // con factories distintas. Sin aislamiento, el primer factory queda cementado
+    // en la caché de módulos compartida y los demás archivos ven mocks ajenos.
+    isolate: true,
     fileParallelism: false,
   },
 });
