@@ -19,7 +19,7 @@ Consolidación de los 11 items de feedback recibidos del cliente tras la revisi�
 | ID | Historia | Área | Horas | Estado |
 |----|----------|------|-------|--------|
 | US-FB-01 | Keycloak en español + botón inicio + password policy | 🎨 Theme + 🛠️ Realm | 8h | 🔨 Pendiente |
-| US-FB-02 | Flujo post-registro con confirmación | 🎨 Theme + 🛠️ Realm | 4h | 🔨 Pendiente |
+| US-FB-02 | Flujo post-registro con confirmación | 📦 FE (app-side, ver [ADR-012](../adr/ADR-012-post-registration-confirmation-app-side.md)) | 4h | ✅ Listo |
 | US-FB-03 | Gestión de expiración de sesión | 🛠️ Realm + 📦 FE | 3h | 🔨 Pendiente |
 | US-FB-04 | Territorio colombiano completo (offshore + insular) | 📦 FE | 7h | 🔨 Pendiente |
 | US-FB-05 | Admin visibilidad y asignación de roles | 📦 FE | 3h | 🔨 Pendiente |
@@ -74,6 +74,26 @@ Consolidación de los 11 items de feedback recibidos del cliente tras la revisi�
 Registro → [CONFIRMACIÓN "Usuario registrado"] → Login → Dashboard
           (antes iba directo: Registro → Dashboard)
 ```
+
+### Implementación (ver [ADR-012](../adr/ADR-012-post-registration-confirmation-app-side.md))
+
+Resuelto app-side por tres restricciones reales del repo:
+- Fuentes del theme Keycloak viven fuera (solo `.jar` en `infra/keycloak/themes/`).
+- "Post Broker Login Flow" solo aplica con IdP externo (Vento no tiene brokering).
+- `verifyEmail` bloqueado por ADR-009 (sin SMTP).
+
+Componentes entregados:
+
+| Pieza | Archivo | AC cubierto |
+|-------|---------|-------------|
+| Ruta que inicia registro con `kc_action=register` | `Vento/src/app/api/auth/register/route.ts` | — |
+| Callback que hace federated logout y redirige | `Vento/src/app/api/auth/register/callback/route.ts` | AC3 |
+| Pantalla de confirmación en español | `Vento/src/app/registration-success/page.tsx` | AC1 |
+| Botón "Iniciar sesión" en la pantalla | mismo archivo | AC2 |
+| Botón "Crear cuenta" en landing | `Vento/src/app/Components/SignUpButton.tsx` | — |
+| Manejo de errores (CSRF, token exchange, cancelación) | en `page.tsx` (mensajes) y `callback/route.ts` | — |
+
+Tests: 32 unitarios nuevos en `Vento/__tests__/unit/app/api/auth/register/**` y `Vento/__tests__/unit/app/registration-success/`.
 
 ---
 

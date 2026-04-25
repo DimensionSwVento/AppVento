@@ -2,16 +2,36 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import Image from "next/image";
 import SignInButton from "./Components/SignInButton";
+import SignUpButton from "./Components/SignUpButton";
+
+type RegisterError =
+  | "register_config"
+  | "register_missing_code"
+  | "register_state"
+  | "register_token_exchange"
+  | `register_${string}`;
+
+function registerErrorMessage(code: RegisterError | undefined): string | null {
+  if (!code) return null;
+  if (code === "register_access_denied") {
+    return "Cancelaste el registro. Puedes intentarlo de nuevo cuando quieras.";
+  }
+  return "No pudimos completar el registro. Vuelve a intentarlo; si el problema persiste contacta al administrador.";
+}
 
 export default async function Home({
   searchParams,
 }: Readonly<{
-  searchParams: Promise<{ expired?: string }>;
+  searchParams: Promise<{ expired?: string; error?: string }>;
 }>) {
   const session = await auth();
-  const { expired } = await searchParams;
+  const { expired, error } = await searchParams;
 
   if (session && !expired) redirect("/dashboard");
+
+  const registerErrorMsg = error?.startsWith("register_")
+    ? registerErrorMessage(error as RegisterError)
+    : null;
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#0b2a3c] px-6">
@@ -40,7 +60,19 @@ export default async function Home({
           </div>
         )}
 
-        <SignInButton />
+        {registerErrorMsg && (
+          <div
+            role="alert"
+            className="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-200"
+          >
+            {registerErrorMsg}
+          </div>
+        )}
+
+        <div className="flex w-full flex-col gap-3">
+          <SignInButton />
+          <SignUpButton />
+        </div>
 
         <p className="text-xs text-gray-500">
           La autenticación es gestionada por un servicio de identidad externo.

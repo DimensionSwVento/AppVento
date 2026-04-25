@@ -27,6 +27,13 @@ vi.mock("@/app/Components/SignInButton", () => ({
   default: () => <button>Iniciar sesión</button>,
 }));
 
+vi.mock("@/app/Components/SignUpButton", () => ({
+  default: () => (
+    // eslint-disable-next-line @next/next/no-html-link-for-pages
+    <a href="/api/auth/register">Crear cuenta</a>
+  ),
+}));
+
 import Home from "@/app/page";
 
 beforeEach(() => {
@@ -35,7 +42,7 @@ beforeEach(() => {
 });
 
 const defaultProps = {
-  searchParams: Promise.resolve({} as { expired?: string }),
+  searchParams: Promise.resolve({} as { expired?: string; error?: string }),
 };
 
 describe("Home page (src/app/page.tsx)", () => {
@@ -98,5 +105,41 @@ describe("Home page (src/app/page.tsx)", () => {
         /autenticación es gestionada por un servicio de identidad externo/i,
       ),
     ).toBeInTheDocument();
+  });
+
+  it("muestra el boton 'Crear cuenta' apuntando a /api/auth/register (US-FB-02)", async () => {
+    authMock.mockResolvedValue(null);
+
+    const jsx = await Home(defaultProps);
+    render(jsx);
+
+    const link = screen.getByRole("link", { name: /crear cuenta/i });
+    expect(link).toHaveAttribute("href", "/api/auth/register");
+  });
+
+  it("muestra mensaje de error amigable cuando el flujo de registro falla", async () => {
+    authMock.mockResolvedValue(null);
+
+    const props = {
+      searchParams: Promise.resolve({ error: "register_token_exchange" }),
+    };
+    const jsx = await Home(props);
+    render(jsx);
+
+    expect(
+      screen.getByText(/no pudimos completar el registro/i),
+    ).toBeInTheDocument();
+  });
+
+  it("muestra mensaje especifico cuando el usuario cancela el registro", async () => {
+    authMock.mockResolvedValue(null);
+
+    const props = {
+      searchParams: Promise.resolve({ error: "register_access_denied" }),
+    };
+    const jsx = await Home(props);
+    render(jsx);
+
+    expect(screen.getByText(/cancelaste el registro/i)).toBeInTheDocument();
   });
 });
