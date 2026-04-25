@@ -115,6 +115,18 @@
       "namedRegex": "^/api/auth/kc\\-logout(?:/)?$"
     },
     {
+      "page": "/api/auth/register",
+      "regex": "^/api/auth/register(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/register(?:/)?$"
+    },
+    {
+      "page": "/api/auth/register/callback",
+      "regex": "^/api/auth/register/callback(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/register/callback(?:/)?$"
+    },
+    {
       "page": "/api/health",
       "regex": "^/api/health(?:/)?$",
       "routeKeys": {},
@@ -173,6 +185,12 @@
       "regex": "^/not\\-authorized(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/not\\-authorized(?:/)?$"
+    },
+    {
+      "page": "/registration-success",
+      "regex": "^/registration\\-success(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/registration\\-success(?:/)?$"
     }
   ],
   "dataRoutes": [],

@@ -8,6 +8,8 @@
   "/api/admin/users/route": "/api/admin/users",
   "/api/auth/[...nextauth]/route": "/api/auth/[...nextauth]",
   "/api/auth/kc-logout/route": "/api/auth/kc-logout",
+  "/api/auth/register/callback/route": "/api/auth/register/callback",
+  "/api/auth/register/route": "/api/auth/register",
   "/api/health/route": "/api/health",
   "/api/hexagons/route": "/api/hexagons",
   "/api/tiles/[z]/[x]/[y]/route": "/api/tiles/[z]/[x]/[y]",
@@ -20,5 +22,6 @@
   "/dimensions/page": "/dimensions",
   "/favicon.ico/route": "/favicon.ico",
   "/not-authorized/page": "/not-authorized",
-  "/page": "/"
+  "/page": "/",
+  "/registration-success/page": "/registration-success"
 }
