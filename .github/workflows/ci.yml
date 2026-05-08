@@ -11,8 +11,13 @@ name: CI Pipeline
 #   (ii) deployment-gate     : usa la salida del AI Analyzer para
 #                              permitir o bloquear el deploy
 #
-# Jobs auxiliares (security, deploy) se mantienen como buenas prácticas
-# y se gobiernan por el resultado del deployment-gate.
+# Implementación: por restricción de allowed actions a nivel org
+# (DimensionSwVento no permite actions/upload-artifact ni
+# actions/download-artifact), las dos lógicas viven en el MISMO job
+# como steps secuenciales. Las fases del paper se distinguen por logs y
+# por la sección "AI Pipeline Analyzer Summary" que se publica en el
+# step summary de GitHub Actions (visible en la UI sin necesidad de
+# artifact actions).
 # ═══════════════════════════════════════════════════════════════════════════
 
 on:
@@ -46,12 +51,12 @@ defaults:
 
 jobs:
   # ═══════════════════════════════════════════════════════════════════════
-  # JOB (i): frontend-quality-ai
-  # Implementa Build + Test + AI Analysis del protocolo (paper Fig. 1).
-  # Produce todos los artefactos en quality-evidence/{logs,reports,ai}/
+  # frontend-quality-ai (paper §IV, Fig. 2)
+  #   Build + Test + AI Analysis + Deployment Gate (todo en un solo job
+  #   por restricción de actions; las fases se distinguen por steps).
   # ═══════════════════════════════════════════════════════════════════════
   frontend-quality-ai:
-    name: "frontend-quality-ai (Build + Test + AI Analysis)"
+    name: "frontend-quality-ai (Build + Test + AI Analysis + Gate)"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,7 +71,7 @@ jobs:
         run: npm ci
 
       # ── Build phase ────────────────────────────────────────────────────
-      - name: Build phase — compile Next.js
+      - name: "[Build phase] Compile Next.js"
         run: |
           mkdir -p quality-evidence/logs
           npm run build 2>&1 | tee quality-evidence/logs/build.log
@@ -80,17 +85,17 @@ jobs:
           NEXT_PUBLIC_KEYCLOAK_ISSUER: ${{ secrets.NEXT_PUBLIC_KEYCLOAK_ISSUER }}
 
       # ── Test phase: quality gates aggregated by attribute ──────────────
-      - name: Test phase — lint
+      - name: "[Test phase] Lint"
         run: npm run lint 2>&1 | tee quality-evidence/logs/lint.log
 
-      - name: Test phase — typecheck
+      - name: "[Test phase] TypeScript check"
         run: npx tsc --noEmit 2>&1 | tee quality-evidence/logs/typecheck.log
 
-      - name: Test phase — unit tests + attribute coverage collect
+      - name: "[Test phase] Unit tests + attribute coverage collect"
         run: npm run qa:collect 2>&1 | tee quality-evidence/logs/test.log
 
       # ── AI Analysis phase ──────────────────────────────────────────────
-      - name: AI Analysis phase — call AI Pipeline Analyzer (OpenRouter)
+      - name: "[AI Analysis phase] Call AI Pipeline Analyzer (OpenRouter)"
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           AI_PIPELINE_MODEL: ${{ vars.AI_PIPELINE_MODEL || 'openai/gpt-4o-mini' }}
@@ -99,54 +104,46 @@ jobs:
           GIT_SHA: ${{ github.sha }}
         run: npm run qa:ai 2>&1 | tee quality-evidence/logs/ai-analysis.log
 
-      - name: Publish quality evidence (logs/, reports/, ai/)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: quality-evidence-${{ github.sha }}
-          path: Vento/quality-evidence/
-          if-no-files-found: warn
-
-  # ═══════════════════════════════════════════════════════════════════════
-  # JOB (ii): deployment-gate
-  # Conditional Deploy phase — consume el output del AI Pipeline Analyzer
-  # y decide si la build se promueve (paper Sec. III/IV).
-  # ═══════════════════════════════════════════════════════════════════════
-  deployment-gate:
-    name: "deployment-gate (AI-driven decision)"
-    runs-on: ubuntu-latest
-    needs: frontend-quality-ai
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Download quality evidence
-        uses: actions/download-artifact@v4
-        with:
-          name: quality-evidence-${{ github.sha }}
-          path: Vento/quality-evidence/
-
-      - name: Run deployment gate
+      # ── Deploy phase gate ──────────────────────────────────────────────
+      - name: "[Deploy phase gate] Apply AI-driven decision"
         env:
           DEPLOY_GATE_STRICT: ${{ vars.DEPLOY_GATE_STRICT || 'false' }}
           GIT_SHA: ${{ github.sha }}
-        run: npm run qa:gate
+        run: npm run qa:gate 2>&1 | tee quality-evidence/logs/gate.log
 
-      - name: Publish deployment decision artifact
+      # ── Publish summary in GitHub Actions UI (no artifact action needed)
+      - name: Publish AI Pipeline Analyzer summary
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: deployment-decision-${{ github.sha }}
-          path: Vento/quality-evidence/decision/
-          if-no-files-found: warn
+        run: |
+          {
+            echo "## AI Pipeline Analyzer Summary"
+            echo ""
+            if [ -f quality-evidence/ai/pipeline-recommendation.md ]; then
+              cat quality-evidence/ai/pipeline-recommendation.md
+            else
+              echo "_No AI recommendation produced (analyzer step did not run or failed early)._"
+            fi
+            echo ""
+            echo "## Deployment Gate Decision"
+            echo ""
+            if [ -f quality-evidence/decision/deployment-decision.json ]; then
+              echo '```json'
+              cat quality-evidence/decision/deployment-decision.json
+              echo '```'
+            else
+              echo "_No gate decision recorded._"
+            fi
+            echo ""
+            echo "## Attribute Coverage Report"
+            echo ""
+            if [ -f quality-evidence/reports/attribute-coverage.md ]; then
+              cat quality-evidence/reports/attribute-coverage.md
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ═══════════════════════════════════════════════════════════════════════
   # Job auxiliar: seguridad de la cadena de suministro
-  # Corre en paralelo. No es del protocolo del paper, pero refuerza el
-  # atributo Security.
+  # Refuerza el atributo Security. Corre en paralelo.
   # ═══════════════════════════════════════════════════════════════════════
   security:
     name: "Audit + Secrets Scan (Security attribute)"
@@ -178,12 +175,12 @@ jobs:
         run: gitleaks detect --source . --verbose
 
   # ═══════════════════════════════════════════════════════════════════════
-  # Deploy — sólo si deployment-gate y security pasan
+  # Deploy — sólo si frontend-quality-ai (que incluye el gate) y security pasan
   # ═══════════════════════════════════════════════════════════════════════
   deploy:
     name: "Deploy Branch (gated)"
     runs-on: ubuntu-latest
-    needs: [deployment-gate, security]
+    needs: [frontend-quality-ai, security]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
     steps:
       - uses: actions/checkout@v4
