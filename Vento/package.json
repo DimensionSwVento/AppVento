@@ -9,7 +9,17 @@
     "lint": "eslint",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:ci": "vitest run"
+    "test:ci": "vitest run",
+    "test:json": "vitest run --reporter=default --reporter=json --outputFile=quality-evidence/reports/vitest.json",
+    "qa:collect": "npm run test:json && node scripts/quality-attributes-collect.mjs",
+    "qa:ai": "node scripts/ai-pipeline-analyzer.mjs",
+    "qa:ai:local": "node --env-file=.env.local scripts/ai-pipeline-analyzer.mjs",
+    "qa:gate": "node scripts/deployment-gate.mjs",
+    "qa:gate:local": "node --env-file=.env.local scripts/deployment-gate.mjs",
+    "qa:pipeline": "npm run qa:collect && npm run qa:ai && npm run qa:gate",
+    "qa:pipeline:local": "npm run qa:collect && npm run qa:ai:local && npm run qa:gate:local",
+    "qa:simulate": "node scripts/qa-simulate.mjs",
+    "qa:attributes": "npm run qa:collect"
   },
   "dependencies": {
     "@deck.gl/core": "~9.2.11",

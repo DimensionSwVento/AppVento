@@ -1,19 +1,27 @@
 name: CI Pipeline
 
-# ═══════════════════════════════════════════════════════════
-# Flujo:
-#   develop → quality + build + security → deploy-test (staging)
-#   main    → quality + build + security → deploy-prod (producción)
+# ═══════════════════════════════════════════════════════════════════════════
+# Vento — Automated Testing Pipeline
+# Implementación del protocolo descrito en paper.md (Sec. III, Fig. 1):
 #
-# Las ramas deploy-test y deploy-prod son permanentes y solo
-# contienen Vento/ (sin docs, specs, infra). cPanel de AccuWeb
-# apunta a ellas con autodeploy.
-# ═══════════════════════════════════════════════════════════
+#   Commit → Build → Test → AI Analysis → Deploy
+#
+# Sec. IV, Fig. 2 del paper define dos jobs principales para Vento:
+#   (i)  frontend-quality-ai : ejecuta build + quality gates + AI Analyzer
+#   (ii) deployment-gate     : usa la salida del AI Analyzer para
+#                              permitir o bloquear el deploy
+#
+# Jobs auxiliares (security, deploy) se mantienen como buenas prácticas
+# y se gobiernan por el resultado del deployment-gate.
+# ═══════════════════════════════════════════════════════════════════════════
 
 on:
   workflow_dispatch:
   push:
-    branches: [develop, main]
+    branches:
+      - develop
+      - main
+      - "feature/**"
     paths-ignore:
       - "**.md"
       - ".github/stories/**"
@@ -21,7 +29,9 @@ on:
       - "_bmad-output/**"
       - "docs/**"
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - develop
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -35,11 +45,13 @@ defaults:
     working-directory: Vento
 
 jobs:
-  # ─────────────────────────────────────
-  # Stage 1: Calidad — lint + types + tests
-  # ─────────────────────────────────────
-  quality:
-    name: "Lint + TypeCheck + Tests"
+  # ═══════════════════════════════════════════════════════════════════════
+  # JOB (i): frontend-quality-ai
+  # Implementa Build + Test + AI Analysis del protocolo (paper Fig. 1).
+  # Produce todos los artefactos en quality-evidence/{logs,reports,ai}/
+  # ═══════════════════════════════════════════════════════════════════════
+  frontend-quality-ai:
+    name: "frontend-quality-ai (Build + Test + AI Analysis)"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,40 +62,14 @@ jobs:
           cache: npm
           cache-dependency-path: Vento/package-lock.json
 
-      - name: Instalar dependencias
+      - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
-
-      - name: TypeScript check
-        run: npx tsc --noEmit
-
-      - name: Tests unitarios
-        run: npm run test:run
-
-
-  # ─────────────────────────────────────
-  # Stage 2: Build — compilación correcta
-  # ─────────────────────────────────────
-  build:
-    name: "Build"
-    runs-on: ubuntu-latest
-    needs: quality
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: Vento/package-lock.json
-
-      - name: Instalar dependencias
-        run: npm ci
-
-      - name: Build Next.js
-        run: npm run build
+      # ── Build phase ────────────────────────────────────────────────────
+      - name: Build phase — compile Next.js
+        run: |
+          mkdir -p quality-evidence/logs
+          npm run build 2>&1 | tee quality-evidence/logs/build.log
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
@@ -93,11 +79,77 @@ jobs:
           NEXT_PUBLIC_KEYCLOAK_REALM: ${{ secrets.NEXT_PUBLIC_KEYCLOAK_REALM }}
           NEXT_PUBLIC_KEYCLOAK_ISSUER: ${{ secrets.NEXT_PUBLIC_KEYCLOAK_ISSUER }}
 
-  # ─────────────────────────────────────
-  # Stage 3: Seguridad — audit + secretos
-  # ─────────────────────────────────────
+      # ── Test phase: quality gates aggregated by attribute ──────────────
+      - name: Test phase — lint
+        run: npm run lint 2>&1 | tee quality-evidence/logs/lint.log
+
+      - name: Test phase — typecheck
+        run: npx tsc --noEmit 2>&1 | tee quality-evidence/logs/typecheck.log
+
+      - name: Test phase — unit tests + attribute coverage collect
+        run: npm run qa:collect 2>&1 | tee quality-evidence/logs/test.log
+
+      # ── AI Analysis phase ──────────────────────────────────────────────
+      - name: AI Analysis phase — call AI Pipeline Analyzer (OpenRouter)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          AI_PIPELINE_MODEL: ${{ vars.AI_PIPELINE_MODEL || 'openai/gpt-4o-mini' }}
+          AI_PIPELINE_REFERER: https://github.com/${{ github.repository }}
+          AI_PIPELINE_TITLE: Vento AI Pipeline Analyzer
+          GIT_SHA: ${{ github.sha }}
+        run: npm run qa:ai 2>&1 | tee quality-evidence/logs/ai-analysis.log
+
+      - name: Publish quality evidence (logs/, reports/, ai/)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-evidence-${{ github.sha }}
+          path: Vento/quality-evidence/
+          if-no-files-found: warn
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # JOB (ii): deployment-gate
+  # Conditional Deploy phase — consume el output del AI Pipeline Analyzer
+  # y decide si la build se promueve (paper Sec. III/IV).
+  # ═══════════════════════════════════════════════════════════════════════
+  deployment-gate:
+    name: "deployment-gate (AI-driven decision)"
+    runs-on: ubuntu-latest
+    needs: frontend-quality-ai
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Download quality evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: quality-evidence-${{ github.sha }}
+          path: Vento/quality-evidence/
+
+      - name: Run deployment gate
+        env:
+          DEPLOY_GATE_STRICT: ${{ vars.DEPLOY_GATE_STRICT || 'false' }}
+          GIT_SHA: ${{ github.sha }}
+        run: npm run qa:gate
+
+      - name: Publish deployment decision artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-decision-${{ github.sha }}
+          path: Vento/quality-evidence/decision/
+          if-no-files-found: warn
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # Job auxiliar: seguridad de la cadena de suministro
+  # Corre en paralelo. No es del protocolo del paper, pero refuerza el
+  # atributo Security.
+  # ═══════════════════════════════════════════════════════════════════════
   security:
-    name: "Audit + Secrets Scan"
+    name: "Audit + Secrets Scan (Security attribute)"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -110,35 +162,35 @@ jobs:
           cache: npm
           cache-dependency-path: Vento/package-lock.json
 
-      - name: Instalar dependencias
+      - name: Install dependencies
         run: npm ci
 
-      - name: Audit de dependencias
+      - name: Audit dependencies
         run: npm audit --audit-level=high
         continue-on-error: true
 
-      - name: Instalar gitleaks
+      - name: Install gitleaks
         run: |
           wget -qO- https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_8.24.3_linux_x64.tar.gz | tar xz -C /usr/local/bin gitleaks
         working-directory: /tmp
 
-      - name: Scan de secretos (gitleaks)
+      - name: Scan for secrets (gitleaks)
         run: gitleaks detect --source . --verbose
 
-  # ─────────────────────────────────────
-  # Stage 4: Deploy — genera rama limpia para AccuWeb
-  # ─────────────────────────────────────
+  # ═══════════════════════════════════════════════════════════════════════
+  # Deploy — sólo si deployment-gate y security pasan
+  # ═══════════════════════════════════════════════════════════════════════
   deploy:
-    name: "Deploy Branch"
+    name: "Deploy Branch (gated)"
     runs-on: ubuntu-latest
-    needs: [build, security]
+    needs: [deployment-gate, security]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Determinar rama destino
+      - name: Resolve target branch
         id: target
         run: |
           if [ "${{ github.ref }}" = "refs/heads/develop" ]; then
@@ -148,7 +200,7 @@ jobs:
           fi
         working-directory: .
 
-      - name: Generar y push rama de deploy
+      - name: Build and push deploy branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -156,24 +208,19 @@ jobs:
           DEPLOY_BRANCH="${{ steps.target.outputs.branch }}"
           SOURCE_SHA="${{ github.sha }}"
 
-          # crear rama orphan limpia
           git checkout --orphan "${DEPLOY_BRANCH}-tmp"
           git rm -rf .
 
-          # traer solo Vento/ del commit original
           git checkout "${SOURCE_SHA}" -- Vento/
 
-          # mover contenido de Vento/ a la raíz
           shopt -s dotglob
           mv Vento/* .
           rm -rf Vento
 
-          # limpiar carpetas que no deben ir al server
           rm -rf docs _bmad _bmad-output infra node_modules .next
 
           git add -A
           git commit -m "deploy: ${DEPLOY_BRANCH} from ${SOURCE_SHA::7}"
 
-          # force push a la rama permanente
           git push origin HEAD:refs/heads/${DEPLOY_BRANCH} --force
         working-directory: .
