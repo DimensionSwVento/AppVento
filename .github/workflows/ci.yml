@@ -11,13 +11,18 @@ name: CI Pipeline
 #   (ii) deployment-gate     : usa la salida del AI Analyzer para
 #                              permitir o bloquear el deploy
 #
-# Implementación: por restricción de allowed actions a nivel org
-# (DimensionSwVento no permite actions/upload-artifact ni
-# actions/download-artifact), las dos lógicas viven en el MISMO job
-# como steps secuenciales. Las fases del paper se distinguen por logs y
-# por la sección "AI Pipeline Analyzer Summary" que se publica en el
-# step summary de GitHub Actions (visible en la UI sin necesidad de
-# artifact actions).
+# Por restricción de allowed-actions a nivel org (DimensionSwVento solo
+# permite actions de su propio org), este workflow:
+#   - NO usa NINGUNA action externa (ni actions/checkout ni actions/setup-node).
+#   - Hace checkout manual con GITHUB_TOKEN y git clone.
+#   - Usa el Node 20 pre-instalado en el runner ubuntu-latest.
+#   - Combina las dos fases del paper en un solo job (no se necesita
+#     transferencia de artefactos entre runners).
+#   - Publica el reporte de la IA en $GITHUB_STEP_SUMMARY (UI nativa).
+#
+# Si más adelante el admin de la org habilita "Allow actions created by
+# GitHub", se puede simplificar volviendo a usar actions/checkout y
+# actions/setup-node.
 # ═══════════════════════════════════════════════════════════════════════════
 
 on:
@@ -45,36 +50,39 @@ concurrency:
 permissions:
   contents: write
 
-defaults:
-  run:
-    working-directory: Vento
-
 jobs:
   # ═══════════════════════════════════════════════════════════════════════
   # frontend-quality-ai (paper §IV, Fig. 2)
-  #   Build + Test + AI Analysis + Deployment Gate (todo en un solo job
-  #   por restricción de actions; las fases se distinguen por steps).
+  # Build + Test + AI Analysis + Deployment Gate, todo en un solo job.
   # ═══════════════════════════════════════════════════════════════════════
   frontend-quality-ai:
     name: "frontend-quality-ai (Build + Test + AI Analysis + Gate)"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Manual checkout (no external actions allowed)
+        env:
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git init -q
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          git -c protocol.version=2 fetch --depth=1 origin "${SHA}"
+          git checkout -q FETCH_HEAD
+          echo "Checked out ${SHA::7} of ${REPO}"
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: Vento/package-lock.json
+      - name: Verify pre-installed Node 20 on the runner
+        run: |
+          node --version
+          npm --version
 
       - name: Install dependencies
+        working-directory: Vento
         run: npm ci
 
       # ── Build phase ────────────────────────────────────────────────────
       - name: "[Build phase] Compile Next.js"
-        run: |
-          mkdir -p quality-evidence/logs
-          npm run build 2>&1 | tee quality-evidence/logs/build.log
+        working-directory: Vento
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
@@ -83,19 +91,26 @@ jobs:
           NEXT_PUBLIC_KEYCLOAK_URL: ${{ secrets.NEXT_PUBLIC_KEYCLOAK_URL }}
           NEXT_PUBLIC_KEYCLOAK_REALM: ${{ secrets.NEXT_PUBLIC_KEYCLOAK_REALM }}
           NEXT_PUBLIC_KEYCLOAK_ISSUER: ${{ secrets.NEXT_PUBLIC_KEYCLOAK_ISSUER }}
+        run: |
+          mkdir -p quality-evidence/logs
+          npm run build 2>&1 | tee quality-evidence/logs/build.log
 
       # ── Test phase: quality gates aggregated by attribute ──────────────
       - name: "[Test phase] Lint"
+        working-directory: Vento
         run: npm run lint 2>&1 | tee quality-evidence/logs/lint.log
 
       - name: "[Test phase] TypeScript check"
+        working-directory: Vento
         run: npx tsc --noEmit 2>&1 | tee quality-evidence/logs/typecheck.log
 
       - name: "[Test phase] Unit tests + attribute coverage collect"
+        working-directory: Vento
         run: npm run qa:collect 2>&1 | tee quality-evidence/logs/test.log
 
       # ── AI Analysis phase ──────────────────────────────────────────────
       - name: "[AI Analysis phase] Call AI Pipeline Analyzer (OpenRouter)"
+        working-directory: Vento
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           AI_PIPELINE_MODEL: ${{ vars.AI_PIPELINE_MODEL || 'openai/gpt-4o-mini' }}
@@ -106,14 +121,16 @@ jobs:
 
       # ── Deploy phase gate ──────────────────────────────────────────────
       - name: "[Deploy phase gate] Apply AI-driven decision"
+        working-directory: Vento
         env:
           DEPLOY_GATE_STRICT: ${{ vars.DEPLOY_GATE_STRICT || 'false' }}
           GIT_SHA: ${{ github.sha }}
         run: npm run qa:gate 2>&1 | tee quality-evidence/logs/gate.log
 
-      # ── Publish summary in GitHub Actions UI (no artifact action needed)
+      # ── Publish summary in GitHub Actions UI ───────────────────────────
       - name: Publish AI Pipeline Analyzer summary
         if: always()
+        working-directory: Vento
         run: |
           {
             echo "## AI Pipeline Analyzer Summary"
@@ -142,40 +159,44 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ═══════════════════════════════════════════════════════════════════════
-  # Job auxiliar: seguridad de la cadena de suministro
-  # Refuerza el atributo Security. Corre en paralelo.
+  # security — npm audit + gitleaks (Security attribute)
   # ═══════════════════════════════════════════════════════════════════════
   security:
     name: "Audit + Secrets Scan (Security attribute)"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Manual checkout with full history (no external actions)
+        env:
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" .
+          git checkout -q "${SHA}"
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: Vento/package-lock.json
+      - name: Verify pre-installed Node 20 on the runner
+        run: |
+          node --version
+          npm --version
 
       - name: Install dependencies
+        working-directory: Vento
         run: npm ci
 
       - name: Audit dependencies
+        working-directory: Vento
         run: npm audit --audit-level=high
         continue-on-error: true
 
       - name: Install gitleaks
         run: |
           wget -qO- https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_8.24.3_linux_x64.tar.gz | tar xz -C /usr/local/bin gitleaks
-        working-directory: /tmp
 
       - name: Scan for secrets (gitleaks)
         run: gitleaks detect --source . --verbose
 
   # ═══════════════════════════════════════════════════════════════════════
-  # Deploy — sólo si frontend-quality-ai (que incluye el gate) y security pasan
+  # deploy — sólo si frontend-quality-ai y security pasan
   # ═══════════════════════════════════════════════════════════════════════
   deploy:
     name: "Deploy Branch (gated)"
@@ -183,9 +204,14 @@ jobs:
     needs: [frontend-quality-ai, security]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Manual checkout with full history (no external actions)
+        env:
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" .
+          git checkout -q "${SHA}"
 
       - name: Resolve target branch
         id: target
@@ -195,9 +221,11 @@ jobs:
           elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
             echo "branch=deploy-prod" >> $GITHUB_OUTPUT
           fi
-        working-directory: .
 
       - name: Build and push deploy branch
+        env:
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -219,5 +247,5 @@ jobs:
           git add -A
           git commit -m "deploy: ${DEPLOY_BRANCH} from ${SOURCE_SHA::7}"
 
+          # The remote URL already includes the token from the manual checkout
           git push origin HEAD:refs/heads/${DEPLOY_BRANCH} --force
-        working-directory: .
