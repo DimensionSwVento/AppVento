@@ -8,12 +8,12 @@
  * tests, and adaptive thresholding without breaking real tests.
  *
  * Usage:
- *   node scripts/qa-simulate.mjs <scenario>
- *   node scripts/qa-simulate.mjs --list
+ *   npm run qa:simulate -- <scenario>
+ *   npm run qa:simulate -- --list
  *
  * Workflow:
  *   1.  npm run qa:collect                   # build real baseline evidence
- *   2.  node scripts/qa-simulate.mjs <name>  # mutate evidence
+ *   2.  npm run qa:simulate -- <name>        # mutate evidence
  *   3.  npm run qa:ai:local                  # let the LLM analyze
  *   4.  npm run qa:gate:local                # see the gate decision
  *   5.  npm run qa:collect                   # reset to real evidence
@@ -21,8 +21,11 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const projectRoot = process.cwd();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(__dirname, "..");
+
 const coveragePath = path.join(
   projectRoot,
   "quality-evidence/reports/attribute-coverage.json",
@@ -186,7 +189,7 @@ function printList() {
   }
   console.log("Workflow:");
   console.log("  1. npm run qa:collect                   # baseline");
-  console.log("  2. node scripts/qa-simulate.mjs <name>  # inject scenario");
+  console.log("  2. npm run qa:simulate -- <name>        # inject scenario");
   console.log("  3. npm run qa:ai:local                  # see LLM analysis");
   console.log("  4. npm run qa:gate:local                # see gate decision");
   console.log("  5. npm run qa:collect                   # reset");

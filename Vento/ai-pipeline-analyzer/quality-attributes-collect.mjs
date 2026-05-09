@@ -8,7 +8,7 @@
  *
  * This script is the deterministic "Test phase" artifact described in the
  * paper (Sec. III, Fig. 1) and feeds the AI Analysis phase
- * (scripts/ai-pipeline-analyzer.mjs).
+ * (ai-pipeline-analyzer.mjs, same directory).
  *
  * Scope: frontend-only. End-to-end GIS attributes (real spatial data,
  * geoservices) require backend coverage and live outside this script.
@@ -16,10 +16,14 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const projectRoot = process.cwd();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const analyzerDir = __dirname;
+const projectRoot = path.resolve(analyzerDir, "..");
+
 const reportPath = path.join(projectRoot, "quality-evidence/reports/vitest.json");
-const configPath = path.join(projectRoot, "scripts/quality-attributes.config.json");
+const configPath = path.join(analyzerDir, "quality-attributes.config.json");
 const outputDir = path.join(projectRoot, "quality-evidence/reports");
 const outputJsonPath = path.join(outputDir, "attribute-coverage.json");
 const outputMdPath = path.join(outputDir, "attribute-coverage.md");

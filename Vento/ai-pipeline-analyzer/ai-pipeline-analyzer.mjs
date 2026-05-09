@@ -37,14 +37,17 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
 
-const projectRoot = process.cwd();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const analyzerDir = __dirname;
+const projectRoot = path.resolve(analyzerDir, "..");
 
 const paths = {
   coverageJson: path.join(projectRoot, "quality-evidence/reports/attribute-coverage.json"),
   vitestJson: path.join(projectRoot, "quality-evidence/reports/vitest.json"),
   logsDir: path.join(projectRoot, "quality-evidence/logs"),
-  systemPrompt: path.join(projectRoot, "scripts/prompts/ai-analyzer.system.md"),
+  systemPrompt: path.join(analyzerDir, "prompts/ai-analyzer.system.md"),
   outDir: path.join(projectRoot, "quality-evidence/ai"),
 };
 
