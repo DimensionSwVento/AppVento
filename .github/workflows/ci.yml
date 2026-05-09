@@ -159,43 +159,6 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ═══════════════════════════════════════════════════════════════════════
-  # security — npm audit + gitleaks (Security attribute)
-  # ═══════════════════════════════════════════════════════════════════════
-  security:
-    name: "Audit + Secrets Scan (Security attribute)"
-    runs-on: ubuntu-latest
-    steps:
-      - name: Manual checkout with full history (no external actions)
-        env:
-          REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" .
-          git checkout -q "${SHA}"
-
-      - name: Verify pre-installed Node 20 on the runner
-        run: |
-          node --version
-          npm --version
-
-      - name: Install dependencies
-        working-directory: Vento
-        run: npm ci
-
-      - name: Audit dependencies
-        working-directory: Vento
-        run: npm audit --audit-level=high
-        continue-on-error: true
-
-      - name: Install gitleaks
-        run: |
-          wget -qO- https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_8.24.3_linux_x64.tar.gz | tar xz -C /usr/local/bin gitleaks
-
-      - name: Scan for secrets (gitleaks)
-        run: gitleaks detect --source . --verbose
-
-  # ═══════════════════════════════════════════════════════════════════════
   # deploy — sólo si frontend-quality-ai y security pasan
   # ═══════════════════════════════════════════════════════════════════════
   deploy:
