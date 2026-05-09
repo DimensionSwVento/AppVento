@@ -164,8 +164,17 @@ jobs:
   deploy:
     name: "Deploy Branch (gated)"
     runs-on: ubuntu-latest
-    needs: [frontend-quality-ai, security]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    needs: [frontend-quality-ai]
+    # Branch policy:
+    #   develop          → deploy-test         (consumido por AccuWeb autodeploy)
+    #   main             → deploy-prod         (consumido por AccuWeb autodeploy)
+    #   feature/<name>   → deploy-feature-<name>  (testing aislado, no consumido por AccuWeb)
+    if: |
+      github.event_name == 'push' && (
+        github.ref == 'refs/heads/develop' ||
+        github.ref == 'refs/heads/main' ||
+        startsWith(github.ref, 'refs/heads/feature/')
+      )
     steps:
       - name: Manual checkout with full history (no external actions)
         env:
@@ -178,11 +187,20 @@ jobs:
 
       - name: Resolve target branch
         id: target
+        env:
+          REF: ${{ github.ref }}
         run: |
-          if [ "${{ github.ref }}" = "refs/heads/develop" ]; then
-            echo "branch=deploy-test" >> $GITHUB_OUTPUT
-          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            echo "branch=deploy-prod" >> $GITHUB_OUTPUT
+          if [ "$REF" = "refs/heads/develop" ]; then
+            echo "branch=deploy-test" >> "$GITHUB_OUTPUT"
+          elif [ "$REF" = "refs/heads/main" ]; then
+            echo "branch=deploy-prod" >> "$GITHUB_OUTPUT"
+          elif [[ "$REF" == refs/heads/feature/* ]]; then
+            FEATURE_NAME="${REF#refs/heads/feature/}"
+            SANITIZED="${FEATURE_NAME//\//-}"
+            echo "branch=deploy-feature-${SANITIZED}" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Unsupported ref for deploy: $REF"
+            exit 1
           fi
 
       - name: Build and push deploy branch
