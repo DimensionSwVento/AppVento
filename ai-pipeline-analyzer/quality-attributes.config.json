@@ -1,0 +1,105 @@
+{
+  "attributes": [
+    {
+      "id": "processing",
+      "name": "Processing",
+      "criticality": 5,
+      "patterns": [
+        "/src/app/Utils/AccionPrincipalContext.test.tsx",
+        "/src/app/Components/NextStepButton.test.tsx",
+        "/src/app/dashboard/page.test.tsx",
+        "/src/app/Components/Map.test.tsx",
+        "/__tests__/unit/app/Components/SideBar.test.tsx",
+        "/__tests__/unit/app/Components/SideBar.admin-nav.test.tsx"
+      ],
+      "suggested_tests": [
+        "Integrar casos reales de operaciones espaciales (overlay/buffer/intersection) sobre dataset controlado"
+      ]
+    },
+    {
+      "id": "availability",
+      "name": "Availability",
+      "criticality": 5,
+      "patterns": [
+        "/__tests__/unit/app/api/health/route.test.ts",
+        "/__tests__/unit/middleware.test.ts",
+        "/__tests__/unit/app/Components/SessionGuard.test.tsx",
+        "/__tests__/unit/app/api/moved-to-fastapi.routes.test.ts"
+      ],
+      "suggested_tests": [
+        "Agregar pruebas contractuales de conectividad/fallback contra backend staging"
+      ]
+    },
+    {
+      "id": "security",
+      "name": "Security",
+      "criticality": 5,
+      "patterns": [
+        "/__tests__/unit/auth.test.ts",
+        "/__tests__/unit/middleware.test.ts",
+        "/__tests__/unit/app/api/auth/[...nextauth]/route.test.ts",
+        "/__tests__/unit/app/api/admin/users/[id]/route.test.ts",
+        "/__tests__/unit/app/api/admin/users/[id]/roles/route.test.ts",
+        "/__tests__/unit/app/api/admin/users/notify/route.test.ts",
+        "/__tests__/unit/app/Utils/keycloakAdmin.test.ts"
+      ],
+      "suggested_tests": [
+        "Añadir escaneo SAST/DAST automatizado en gate de seguridad"
+      ]
+    },
+    {
+      "id": "data_quality",
+      "name": "Data Quality",
+      "criticality": 4,
+      "patterns": [
+        "/src/app/Utils/h3Resolution.test.ts",
+        "/src/app/Components/Map.test.tsx"
+      ],
+      "suggested_tests": [
+        "Validar completitud/outliers sobre muestras de datos geoespaciales reales"
+      ]
+    },
+    {
+      "id": "usability_geospatial",
+      "name": "Usability (Geospatial)",
+      "criticality": 4,
+      "patterns": [
+        "/src/app/Components/Map.test.tsx",
+        "/__tests__/unit/app/Components/SideBar.test.tsx",
+        "/src/app/Components/NextStepButton.test.tsx",
+        "/__tests__/unit/app/registration-success/page.test.tsx",
+        "/__tests__/unit/app/page.test.tsx",
+        "/__tests__/unit/app/Components/SessionGuard.test.tsx"
+      ],
+      "suggested_tests": [
+        "Incluir pruebas e2e de navegación cartográfica y accesibilidad en viewport real"
+      ]
+    },
+    {
+      "id": "traceability_auditability",
+      "name": "Traceability & Auditability",
+      "criticality": 4,
+      "patterns": [
+        "/__tests__/unit/",
+        "/src/app/"
+      ],
+      "suggested_tests": [
+        "Publicar artefactos de pruebas por ejecución en CI (JSON/Markdown)"
+      ]
+    },
+    {
+      "id": "resilience",
+      "name": "Resilience",
+      "criticality": 4,
+      "patterns": [
+        "/__tests__/unit/app/Components/SessionGuard.test.tsx",
+        "/__tests__/unit/app/page.test.tsx",
+        "/__tests__/unit/app/api/auth/register/callback/route.test.ts",
+        "/__tests__/unit/app/api/admin/users/notify/route.test.ts"
+      ],
+      "suggested_tests": [
+        "Añadir fault-injection de dependencias remotas y verificación de recuperación"
+      ]
+    }
+  ]
+}
