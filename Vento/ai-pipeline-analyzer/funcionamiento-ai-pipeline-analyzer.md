@@ -36,6 +36,40 @@ Los criterios salen del mapeo del paper: cada atributo tiene pruebas asociadas y
 - El gate bloquea si falla un atributo critico (`criticality = 5`) o si falla mas del 5% del total de pruebas.
 - El gate advierte si faltan evidencias en atributos de criticidad alta (`>= 4`) o si un atributo critico no alcanza 100% de pass rate.
 
+## US extraidas y criterios QA
+
+**Criterios base por atributo:** `P` Processing: flujo/operacion deterministica con test. `A` Availability: ruta, build o servicio responde/degrada controladamente. `S` Security: acceso, tokens, secretos o dependencias protegidos. `DQ` Data Quality: datos/configuracion espacial validos. `U` Usability: interfaz clara, accesible y en espanol cuando aplique. `T` Traceability: evidencia reproducible en logs/reportes/config versionada. `R` Resilience: fallo manejado sin estado corrupto.
+
+| US | Historia | Criterios de aceptacion QA aplicables |
+| --- | --- | --- |
+| US-MONO | Estructura monorepo | T: estructura y scripts versionados; A: servicios levantan de forma reproducible; P: build/test ejecutables desde scripts. |
+| US-ENV | Variables de entorno | S: secretos fuera de Git; T: variables documentadas; A: build y servicios arrancan con valores requeridos. |
+| US-DDD | Backend clean architecture | P: casos de uso con tests; A: health/endpoints disponibles; S: tokens OIDC validados; DQ: esquema geoespacial versionado. |
+| US-KEY | Integracion Keycloak | S: roles `admin`/`analista` y tokens correctos; A: login/registro disponibles; R: recuperacion y expiracion gestionadas. |
+| US-CI | Pipeline CI + deploy | T: logs/reportes por ejecucion; S: audit y secrets scan; A: build/deploy gate ejecutan antes de promover. |
+| US01 | Login via Keycloak | S: flujo OIDC seguro; A: redireccion a dashboard tras login; U: errores de credenciales claros; R: fallo de auth vuelve a login. |
+| US-AUTH-GUARD | Proteccion de rutas | S: rutas protegidas y RBAC; A: redirecciones controladas; R: token expirado no rompe sesion; U: mensaje de sesion expirada. |
+| US03 | Mapa base + H3 | P: mapa, zoom, pan y seleccion H3 funcionan; DQ: H3 valido sobre Colombia; U: spinner/error claro; A: carga inicial aceptable. |
+| US03-AC6 | Ingesta `.h3.parquet` | DQ: conteos, rangos, nulos y duplicados validados; P: transformacion reproducible; T: proceso de actualizacion documentado. |
+| US03-AC1 | Mapa de calor | P: coloreo por `score_general`; DQ: valores consistentes; U: leyenda clara y escala visible. |
+| US03-AC2 | Filtrado por variable | P: re-render por variable; U: selector comprensible; A: render menor a 2s segun criterio original. |
+| US03-AC3 | Popup hexagono | U: popup muestra score, variables e H3; P: click abre/cierra correctamente; DQ: datos del hexagono coinciden con seleccion. |
+| US03-AC5 | Hexagonos no disponibles | DQ: `tipo_celda=excluida` tratado aparte; U: estilo diferenciado; P: no son seleccionables ni calculables. |
+| US03-AC4 | Dato central en hexagono | U: valor legible por zoom; P: cambia con filtro; DQ: valor corresponde al dato activo. |
+| US03-AC9 | Panel de control | U: leyenda, selector e indicador visibles; P: cambios actualizan mapa y leyenda; DQ: metadatos/rangos consistentes. |
+| US-CACHE | Cache geoespacial | A: segunda visita usa cache; R: invalidacion por hash evita datos obsoletos; T: version de datos trazable. |
+| US03-AC7 | Metadata de variables | DQ: fuente/vigencia disponibles; U: metadata accesible en UI; T: origen de datos documentado. |
+| US08 | CRUD usuarios admin | S: solo admin accede; U: tabla, busqueda y errores claros; R: errores Keycloak/duplicados controlados; T: cambios auditables. |
+| US03-AC1-FIX01 | Colores + leyenda | U: gradiente comunica impacto; DQ: variable positiva/negativa clasificada; P: leyenda cambia con variable. |
+| US-KEY-01 | Realm/client Keycloak | S: realm, client PKCE y roles correctos; T: `realm-export.json` versionado; A: redirects dev/prod configurados. |
+| US-FB-01 | Keycloak en espanol + politicas | U: pantallas y mensajes en espanol; S: password policy; A: boton inicio/retorno disponible. |
+| US-FB-02 | Confirmacion post-registro | U: confirmacion y CTA claros; S: no crea sesion sin login; R: errores/cancelacion manejados. |
+| US-FB-03 | Expiracion de sesion | R: modal y sign-out controlado; A: redireccion a login; U: mensaje comprensible; S: token expirado no autoriza. |
+| US-FB-04 | Territorio colombiano completo | DQ: poligonos y bounds incluyen archipielago; P: seleccion funciona en islas; U: borde no oculta hexagonos. |
+| US-FB-05 | Admin roles visibles | S: rol visible y modificable solo por admin; U: badges/selectores claros; P: cambio se refleja sin recargar. |
+| US-FB-06 | Email al asignar admin | R: fallo SMTP no rompe asignacion; S: feature flag y permisos; T: evento/email registrable. |
+| US-DOC-01 | Documentacion tecnica | T: auth, testing y stack documentados; S: estrategia auth auditable; A: pruebas y pipeline explicados. |
+
 ## Feedback de IA y decision de deploy
 
 El analyzer construye un payload con metricas globales, evidencias por atributo, fallos y resumen de logs. Si existe `OPENROUTER_API_KEY`, consulta el modelo configurado; si no, usa un fallback heuristico deterministico con el mismo esquema JSON.
@@ -55,6 +89,5 @@ La evidencia frontend es coherente con el protocolo del paper: cubre los siete a
 
 Salvedades encontradas:
 
-- El paper menciona `npm audit --audit-level=high --json` como evidencia de seguridad, pero el workflow actual no ejecuta ese gate.
-- El build produce evidencia de disponibilidad en logs, aunque el reporte por atributo solo agrega suites Vitest.
-
+- Seguridad ya contempla `npm audit --audit-level=high --json` y `gitleaks` mediante `qa:security`; en ejecucion local puede quedar en `ERROR` si faltan runtime o scanner.
+- El build produce evidencia de disponibilidad en logs, aunque el reporte por atributo la complementa principalmente con suites Vitest.
