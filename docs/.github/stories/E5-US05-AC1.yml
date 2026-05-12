@@ -1,0 +1,31 @@
+id: US05-AC1
+title: "[US05-AC1] Formulario Dinámico de Aerogeneradores"
+epic: "E5-Proyecto"
+epic_label: "epic:E5-Proyecto"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Segunda Entrega"
+depends_on: ["US05-AC5"]
+unlocks: "US05-AC3"
+week: 2
+body: |
+  ## Historia de Usuario
+  Como analista que ya seleccionó área y variables, quiero introducir las características técnicas del proyecto (capacidad MW, modelo turbina, altura buje, etc.) para que el informe considere parámetros reales.
+
+  **Épica:** E5 — Características del Proyecto
+
+  ## Criterios de Aceptación
+  1. Formulario con los campos definidos en la reunión con equipo de datos (capacidad MW, número de turbinas, altura buje, diámetro rotor, …)
+  2. Campos se renderizan dinámicamente según definición — añadir/quitar campos no requiere rediseño
+  3. Cada campo tiene label en español, tipo apropiado (number/select/text) y placeholder
+  4. Layout responsive (grid en desktop, columna en mobile)
+  5. Test unitario: render con N campos, valores se capturan correctamente
+
+  ## Estado
+  ⏸ **BLOQUEADA** — espera reunión con equipo de datos para definir campos exactos.
+
+  ## Dependencias
+  US05-AC5 (catálogo disponible)
+
+  ## Estimación tras desbloqueo
+  4h

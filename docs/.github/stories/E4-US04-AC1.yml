@@ -1,0 +1,31 @@
+id: US04-AC1
+title: "[US04-AC1] Agrupación Visual de Variables por Dimensión con Colores GIS"
+epic: "E4-Variables"
+epic_label: "epic:E4-Variables"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Segunda Entrega"
+depends_on: ["US04-AC4"]
+unlocks: "US04-AC2, US04-AC3, US04-AC5"
+week: 1
+body: |
+  ## Historia de Usuario
+  Como analista, quiero ver las variables del análisis agrupadas en 5 dimensiones con código de color tipo heat-map GIS para identificar visualmente la categoría y prioridad de cada variable.
+
+  **Épica:** E4 — Configuración de Dimensiones (Variables)
+
+  ## Criterios de Aceptación
+  1. Variables agrupadas en 5 secciones colapsables correspondientes a las 5 dimensiones (técnica, ambiental, regulatoria, socioeconómica, macroeconómica)
+  2. Cada sección tiene un código de color tipo heat-map GIS — paleta a definir con cliente: viridis (`#440154→#FDE725`) o inferno (`#420A68→#FCFFA4`)
+  3. Header de cada sección muestra: nombre de dimensión + color asignado + número de variables totales
+  4. Secciones se pueden expandir/colapsar individualmente
+  5. Estado de expansión persiste mientras dure la sesión
+
+  ## Decisión Pendiente
+  Confirmar con cliente paleta exacta y si los colores marcan **jerarquía de importancia** o solo **agrupación visual**.
+
+  ## Dependencias
+  US04-AC4 (datos del endpoint)
+
+  ## Estimación
+  4h

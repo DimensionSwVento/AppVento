@@ -1,0 +1,31 @@
+id: US05-AC3
+title: "[US05-AC3] Validación de Rangos Técnicos"
+epic: "E5-Proyecto"
+epic_label: "epic:E5-Proyecto"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Segunda Entrega"
+depends_on: ["US05-AC1", "US05-AC5"]
+unlocks: ""
+week: 2
+body: |
+  ## Historia de Usuario
+  Como analista, quiero ver mensajes de error claros si introduzco valores fuera del rango técnico permitido para no avanzar con datos inválidos.
+
+  **Épica:** E5 — Características del Proyecto
+
+  ## Criterios de Aceptación
+  1. Cada campo numérico valida que el valor caiga dentro del rango técnico permitido (definido en la reunión con datos)
+  2. Mensaje inline en español al usuario si el valor está fuera de rango (ej. "La altura debe estar entre 50 y 200 metros")
+  3. El botón "Siguiente paso" queda deshabilitado mientras haya errores
+  4. Errores se limpian cuando el usuario corrige el valor
+  5. Test unitario: valor fuera de rango bloquea; valor válido permite avanzar
+
+  ## Estado
+  ⏸ **BLOQUEADA** — rangos exactos no definidos. Espera reunión equipo de datos.
+
+  ## Dependencias
+  US05-AC1, US05-AC5
+
+  ## Estimación tras desbloqueo
+  2h

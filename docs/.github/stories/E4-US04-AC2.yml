@@ -1,0 +1,29 @@
+id: US04-AC2
+title: "[US04-AC2] Tooltip con Definición de cada Variable"
+epic: "E4-Variables"
+epic_label: "epic:E4-Variables"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Segunda Entrega"
+depends_on: ["US04-AC1", "US04-AC4"]
+unlocks: ""
+week: 1
+body: |
+  ## Historia de Usuario
+  Como analista, quiero ver la definición de cada variable al pasar el mouse (o tap en mobile) sobre ella para entender qué mide sin salir del flujo.
+
+  **Épica:** E4 — Configuración de Dimensiones (Variables)
+
+  ## Criterios de Aceptación
+  1. Cada variable tiene un icono ℹ (info) al lado del label
+  2. Hover sobre el icono muestra tooltip con la definición en español
+  3. En mobile, tap sobre el icono abre/cierra el tooltip (no hover)
+  4. Tooltip se cierra al hacer click fuera
+  5. Texto del tooltip viene del campo `definition` del endpoint `/api/variables`
+  6. Test unitario: tooltip aparece y desaparece según interacción
+
+  ## Dependencias
+  US04-AC1 (variables agrupadas), US04-AC4 (definiciones del endpoint)
+
+  ## Estimación
+  3h
