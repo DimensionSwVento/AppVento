@@ -67,7 +67,6 @@ Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación d
   4. Cálculo correcto independiente de la resolución H3 (área por celda varía con resolución y latitud)
   5. Comportamiento con `0 hexágonos seleccionados` → `0 km²`, sin error
   6. Test unitario y test integración SideBar
-- **Estimación:** 3-4h
 - **Estado:** ✅ Sin bloqueantes — listo para arrancar
 
 ---
@@ -91,7 +90,6 @@ Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación d
   4. Secciones se pueden expandir/colapsar individualmente
   5. Estado de expansión persiste mientras dure la sesión
 - **Decisión pendiente:** confirmar con cliente paleta exacta y si los colores marcan **jerarquía de importancia** o solo **agrupación visual**
-- **Estimación:** 4h
 - **Estado:** ⏸ Espera consulta cliente sobre paleta
 
 ---
@@ -107,7 +105,6 @@ Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación d
   4. Tooltip se cierra al hacer click fuera
   5. Texto del tooltip viene del campo `definition` del endpoint `/api/variables`
   6. Test unitario: tooltip aparece y desaparece según interacción
-- **Estimación:** 3h
 - **Estado:** ✅ Sin bloqueantes
 
 ---
@@ -123,7 +120,6 @@ Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación d
   4. Texto numérico al lado: `3 / 8` o similar
   5. Actualización inmediata al configurar/deseleccionar una variable
   6. Test unitario: progreso refleja correctamente N/M
-- **Estimación:** 2h
 - **Estado:** ✅ Sin bloqueantes
 
 ---
@@ -139,7 +135,6 @@ Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación d
   4. Datos vienen de la definición compartida con el equipo de investigación
   5. Frontend lo consume vía rewrite Next.js (mismo patrón que `/api/tiles` — ver [frontend-backend-integration.md](../../architecture/frontend-backend-integration.md))
   6. Test backend: endpoint retorna status 200 + JSON con estructura esperada
-- **Estimación:** 3h backend + 1h rewrite frontend
 - **Estado:** ✅ Sin bloqueantes
 
 ---
@@ -154,7 +149,6 @@ Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación d
   3. Al cerrar pestaña o sesión, la configuración se pierde (intencional — `sessionStorage`, no `localStorage`)
   4. Helper reutilizable para serializar/deserializar
   5. Test unitario: setear → leer devuelve mismo valor; clear borra todo
-- **Estimación:** 2h
 - **Estado:** ✅ Sin bloqueantes
 
 ---
@@ -180,7 +174,6 @@ Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación d
   4. Layout responsive (grid en desktop, columna en mobile)
   5. Test unitario: render con N campos, valores se capturan correctamente
 - **Estado:** ⏸ Bloqueada — reunión equipo de datos
-- **Estimación tras desbloqueo:** 4h
 
 ---
 
@@ -195,7 +188,6 @@ Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación d
   4. Opción "modelo personalizado" permite ingresar valores manualmente
   5. Test unitario: búsqueda filtra correctamente; selección autocompleta
 - **Estado:** ⏸ Bloqueada — reunión equipo de datos
-- **Estimación tras desbloqueo:** 3h
 
 ---
 
@@ -210,7 +202,6 @@ Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación d
   4. Errores se limpian cuando el usuario corrige el valor
   5. Test unitario: valor fuera de rango bloquea; valor válido permite avanzar
 - **Estado:** ⏸ Bloqueada — reunión equipo de datos (rangos exactos no definidos)
-- **Estimación tras desbloqueo:** 2h
 
 ---
 
@@ -224,7 +215,6 @@ Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación d
   3. Limpieza al cerrar pestaña (no `localStorage`)
   4. Test unitario
 - **Estado:** ✅ Sin bloqueantes (scaffolding aunque el formulario aún no exista)
-- **Estimación:** 1h
 
 ---
 
@@ -240,7 +230,6 @@ Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación d
   3. ADR-014 escribiendo la decisión (winx)
   4. Test: 5+ modelos cargan correctamente y son seleccionables
 - **Estado:** ⏸ Bloqueada — reunión equipo de datos
-- **Estimación tras desbloqueo:** 2h (JSON) o 4h (BE)
 
 ---
 
@@ -266,7 +255,6 @@ Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación d
   - WeasyPrint (Python backend, HTML/CSS → PDF, calidad pro) — **recomendado**
   - ReportLab (Python backend, PDF nativo programático)
   - jsPDF + html2canvas (frontend, sin backend, calidad inferior)
-- **Estimación:** 6-12h según tecnología
 - **Estado:** ⏸ Espera ADR-013
 
 ---
@@ -282,7 +270,6 @@ Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación d
   4. Indicador de carga mientras se genera (puede tardar segundos)
   5. Mensaje de error claro si la generación falla
   6. Test unitario: el iframe recibe la URL del PDF generado
-- **Estimación:** 2h
 - **Estado:** ⏸ Espera US06-AC1
 
 ---
@@ -298,7 +285,6 @@ Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación d
   4. Tipografía y colores consistentes con el branding de la app
   5. Saltos de página adecuados — secciones no se cortan mal
   6. Test visual manual + snapshot del HTML/template
-- **Estimación:** 4h
 - **Estado:** ✅ Diseño puede arrancar (independiente de ADR-013)
 
 ---
