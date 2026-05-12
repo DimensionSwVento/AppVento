@@ -112,8 +112,6 @@ Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación d
 
 ---
 
-
-
 ### US04-AC3 — Indicador de Progreso por Categoría
 - **Prioridad:** 🟡 Alta
 - **Épica origen:** E4 (Variables)
