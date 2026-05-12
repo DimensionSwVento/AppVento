@@ -39,6 +39,7 @@ author: mavalan Software
 
 | # | Documento | Ruta | Estado |
 |---|-----------|------|--------|
+| 0 | **Master — punto de entrada único** | `docs/master/README.md` | ✅ v1.0 |
 | 1 | Conocimiento del proyecto | `docs/project_knowledge.md` | ✅ Organizado v1 |
 | 2 | Resumen e Índice (este archivo) | `docs/spec/project-status.md` | ✅ v2.0 |
 | 3 | Especificaciones generales | `docs/spec/Spec_doc.md` | ✅ v1.1 |

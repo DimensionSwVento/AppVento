@@ -1,0 +1,29 @@
+id: US03-AC10
+title: "[US03-AC10] Cálculo de Área en km² de la Selección"
+epic: "E2-Mapa-SIG"
+epic_label: "epic:E2-Mapa-SIG"
+priority: critica
+priority_label: "priority:critica"
+milestone: "Segunda Entrega"
+depends_on: ["US03", "US03-AC6"]
+unlocks: "US06-AC1"
+week: 1
+body: |
+  ## Historia de Usuario
+  Como analista, quiero ver el área total en km² de los hexágonos que tengo seleccionados para dimensionar la escala del proyecto sin contar hexágonos manualmente.
+
+  **Épica:** E2 — Mapa SIG Interactivo (extensión scope-dos)
+
+  ## Criterios de Aceptación
+  1. Cálculo de área usando `cellArea(h, 'km2')` de h3-js sumado sobre `selectedHexes`
+  2. Área visible en la UI (SideBar o subpage "Selección de área") con formato `1,234.56 km²` con separadores de miles
+  3. Actualización reactiva al añadir/quitar hexágonos sin recargar
+  4. Cálculo correcto independiente de la resolución H3 (área por celda varía con resolución y latitud)
+  5. Comportamiento con `0 hexágonos seleccionados` → `0 km²`, sin error
+  6. Test unitario y test integración SideBar
+
+  ## Dependencias
+  US03, US03-AC6
+
+  ## Estimación
+  3-4h

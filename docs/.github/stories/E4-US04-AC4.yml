@@ -1,0 +1,29 @@
+id: US04-AC4
+title: "[US04-AC4] Endpoint Backend /api/variables"
+epic: "E4-Variables"
+epic_label: "epic:E4-Variables"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Segunda Entrega"
+depends_on: ["US-DDD"]
+unlocks: "US04-AC1, US04-AC2"
+week: 1
+body: |
+  ## Historia de Usuario
+  Como frontend del flujo de variables, necesito un endpoint REST que devuelva las variables agrupadas por dimensión con sus definiciones y tipos, para renderizar la UI de configuración.
+
+  **Épica:** E4 — Configuración de Dimensiones (Variables — backend)
+
+  ## Criterios de Aceptación
+  1. Endpoint `GET /api/variables` en FastAPI
+  2. Retorna `{ variables: [{ dimension, name, label, definition, type }] }`
+  3. `dimension` ∈ las 5 dimensiones; `type` ∈ excluyente/incluyente/penalizante/informativa
+  4. Datos vienen de la definición compartida con el equipo de investigación
+  5. Frontend lo consume vía rewrite Next.js (mismo patrón que `/api/tiles` — ver `docs/architecture/frontend-backend-integration.md`)
+  6. Test backend: endpoint retorna status 200 + JSON con estructura esperada
+
+  ## Dependencias
+  US-DDD (backend FastAPI funcionando)
+
+  ## Estimación
+  3h backend + 1h rewrite frontend

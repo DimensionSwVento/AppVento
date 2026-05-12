@@ -1,0 +1,31 @@
+id: US05-AC2
+title: "[US05-AC2] Selector con Catálogo de Modelos de Aerogeneradores"
+epic: "E5-Proyecto"
+epic_label: "epic:E5-Proyecto"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Segunda Entrega"
+depends_on: ["US05-AC5"]
+unlocks: ""
+week: 2
+body: |
+  ## Historia de Usuario
+  Como analista, quiero seleccionar el modelo de aerogenerador desde un catálogo con búsqueda para autocompletar parámetros conocidos del fabricante.
+
+  **Épica:** E5 — Características del Proyecto
+
+  ## Criterios de Aceptación
+  1. Selector con dropdown searchable de modelos del catálogo
+  2. Búsqueda filtra por fabricante y/o nombre del modelo
+  3. Al seleccionar un modelo, los campos relevantes del formulario se autocompletan con sus valores nominales (capacidad, alturas, etc.)
+  4. Opción "modelo personalizado" permite ingresar valores manualmente
+  5. Test unitario: búsqueda filtra correctamente; selección autocompleta
+
+  ## Estado
+  ⏸ **BLOQUEADA** — espera reunión con equipo de datos.
+
+  ## Dependencias
+  US05-AC5
+
+  ## Estimación tras desbloqueo
+  3h

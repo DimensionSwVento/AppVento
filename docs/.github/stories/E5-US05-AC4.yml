@@ -1,0 +1,28 @@
+id: US05-AC4
+title: "[US05-AC4] Persistencia del Formulario en sessionStorage"
+epic: "E5-Proyecto"
+epic_label: "epic:E5-Proyecto"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Segunda Entrega"
+depends_on: ["US04-AC5"]
+unlocks: ""
+week: 1
+body: |
+  ## Historia de Usuario
+  Como analista, quiero que los valores del formulario del proyecto se preserven al navegar entre pasos para no rellenarlos cada vez.
+
+  **Épica:** E5 — Características del Proyecto
+
+  ## Criterios de Aceptación
+  1. Valores del formulario se guardan en `sessionStorage` automáticamente al cambiar cualquier campo
+  2. Al navegar a otro paso y volver, los valores se restauran
+  3. Limpieza al cerrar pestaña (no `localStorage`)
+  4. Reutiliza el helper de US04-AC5
+  5. Test unitario
+
+  ## Dependencias
+  US04-AC5 (mismo helper)
+
+  ## Estimación
+  1h

@@ -1,0 +1,29 @@
+id: US06-AC3
+title: "[US06-AC3] Template del PDF (Estructura y Branding)"
+epic: "E6-Reportes"
+epic_label: "epic:E6-Reportes"
+priority: critica
+priority_label: "priority:critica"
+milestone: "Segunda Entrega"
+depends_on: []
+unlocks: "US06-AC4"
+week: 1
+body: |
+  ## Historia de Usuario
+  Como cliente, quiero un informe con branding institucional (Vento + ANH + EAFIT + mavalan) y estructura clara para usar como entregable profesional.
+
+  **Épica:** E6 — Reportes / Informe PDF
+
+  ## Criterios de Aceptación
+  1. Template incluye: portada con título, fecha de generación, mapa estático del área seleccionada, tabla de variables configuradas, características técnicas del proyecto, scores por dimensión
+  2. Encabezado con logos institucionales: Vento + ANH + EAFIT + mavalan
+  3. Pie de página con número de página y fecha
+  4. Tipografía y colores consistentes con el branding de la app
+  5. Saltos de página adecuados — secciones no se cortan mal
+  6. Test visual manual + snapshot del HTML/template
+
+  ## Dependencias
+  ADR-013 (decisión técnica) — puede arrancar diseño en paralelo
+
+  ## Estimación
+  4h
