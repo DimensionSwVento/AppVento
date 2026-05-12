@@ -335,18 +335,6 @@ Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación d
 
 # Resumen Consolidado scope-dos
 
-## Estimación total
-
-| Bloque | Horas |
-|--------|-------|
-| E2 (US03-AC10) | 3-4h |
-| E4 (US04-AC1 a AC5) | 14h |
-| E5 (US05-AC1 a AC5) | 12-14h |
-| E6 (US06-AC1 a AC5) | 17-23h |
-| **Total** | **46-55h** |
-
-Con buffer 20%: **55-66h** = ~2 semanas con el equipo (1 FT + 2 PT).
-
 ## Dependencias entre HUs
 
 ```
@@ -398,13 +386,6 @@ ADR-013 ──► US06-AC1 ──► US06-AC2
 - Deploy a `deploy-test`
 - Demo cliente
 
-## Propuesta de asignación
-
-| Dev | HUs |
-|-----|-----|
-| **Winx** | Decisiones + ADR-013/014 + US06-AC1/AC2/AC3 + reviews |
-| **Part-time A** | US04-AC1/AC2/AC3/AC4/AC5 |
-| **Part-time B** | US03-AC10 + US05-AC1/AC2/AC3/AC4/AC5 (tras desbloqueo) |
 
 ---
 
