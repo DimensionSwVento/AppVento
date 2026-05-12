@@ -1,110 +1,116 @@
 ---
-version: 2.0
+version: 3.0
 date: 2026-04-20
 scope: contractual-segunda-entrega
 origen: continuación del scope-primera-entrega.md
 equipo: 1 fulltime (winx) + 2 part-time
-estado: borrador propuesto — HUs descompuestas por responsabilidad única
+estado: borrador propuesto — HUs estrictamente del spec del cliente, con tareas técnicas detalladas adentro
 ---
 
 # Scope Contractual — Segunda Entrega
 
-Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación del flujo principal: selección → variables → características → informe. Cada HU mantiene **una sola responsabilidad** siguiendo el patrón del scope-1 (`US03-AC1`, `US03-AC2`, …).
+Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación del flujo: selección → variables → características → informe.
 
-> **Estado de las precondiciones**: scope-1 entregado con feedback cliente atendido. Hay HUs que requieren **reunión con equipo de datos / modelo multicriterio** antes de empezar — ver §Reuniones requeridas.
+Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas técnicas necesarias para implementarla (endpoints backend, helpers, componentes auxiliares) se listan **dentro de la HU**, no como HUs separadas.
+
+> **Estado de precondiciones**: scope-1 entregado, feedback v1 atendido. US05 bloqueada esperando reunión con equipo de datos. Modelo multicriterio en desarrollo — donde no haya datos reales se usan placeholders.
 
 ---
 
 ## Reuniones requeridas
 
-| Reunión | Objetivo | Participantes | HUs bloqueadas |
-|---------|----------|---------------|----------------|
-| **Datos — Catálogo aerogeneradores** | Definir modelos soportados, campos, rangos válidos, mantenedor | winx + equipo de datos + cliente (mavalan) | US05-AC1, US05-AC2, US05-AC3, US05-AC5 |
-| **Modelo multicriterio — Output esperado** | Confirmar entregables del modelo (scores, fórmulas, metadata) para diseñar template | winx + equipo investigación | US06-AC5 (datos reales) |
-| **Cliente — Paleta colores GIS** | Confirmar viridis vs inferno + si los colores marcan jerarquía o solo agrupación | winx + cliente | US04-AC1 |
+| Reunión | Objetivo | HUs bloqueadas |
+|---------|----------|----------------|
+| **Datos — Definición de "Características del Proyecto"** | El enfoque ya no es turbina-por-turbina (eso cambió). La reunión define cómo se modela ahora. | US05 (las 3 HUs) |
+| **Modelo multicriterio — Output esperado** | Confirmar entregables del modelo para conectar datos reales al informe | US03 (parte viabilidad) y US06 datos reales (diferidos) |
 
 ---
 
 ## Resumen de historias scope-dos
 
-| Prioridad | ID | Historia | Épica | Estado |
+| Prioridad | ID | Historia | Épica | Preparado_para_desarrollo? |
 |-----------|----|----------|-------|--------|
-| 🔴 Crítica | **US03-AC10** | Cálculo de área km² de la selección | E2 | ✅ Listo |
-| 🟡 Alta | **US04-AC1** | Agrupación visual de variables por dimensión | E4 | ⏸ Espera paleta colores |
-| 🟡 Alta | **US04-AC2** | Tooltip con definición de variable | E4 | ✅ Listo |
+| 🔴 Crítica | **US03-P2** | Cálculo de área y viabilidad del área (Mapa Parte 2) | E2 | ✅ Listo (viabilidad con placeholders hasta modelo) |
+| 🟡 Alta | **US04-AC1** | Agrupación por 5 categorías de color | E4 | ✅ Listo |
+| 🟡 Alta | **US04-AC2** | Tooltip con definición de cada variable | E4 | ✅ Listo |
 | 🟡 Alta | **US04-AC3** | Indicador de progreso por categoría | E4 | ✅ Listo |
-| 🟡 Alta | **US04-AC4** | Endpoint backend `/api/variables` | E4 | ✅ Listo |
-| 🟡 Alta | **US04-AC5** | Persistencia sessionStorage variables | E4 | ✅ Listo |
-| 🟡 Alta | **US05-AC1** | Formulario dinámico aerogeneradores | E5 | ⏸ Reunión datos |
-| 🟡 Alta | **US05-AC2** | Selector con catálogo + búsqueda | E5 | ⏸ Reunión datos |
-| 🟡 Alta | **US05-AC3** | Validación de rangos técnicos | E5 | ⏸ Reunión datos |
-| 🟡 Alta | **US05-AC4** | Persistencia sessionStorage proyecto | E5 | ✅ Listo |
-| 🟡 Alta | **US05-AC5** | Fuente del catálogo (JSON estático vs BE) | E5 | ⏸ Reunión datos |
-| 🔴 Crítica | **US06-AC1** | Generación PDF con placeholders | E6 | ⏸ ADR-013 |
-| 🔴 Crítica | **US06-AC2** | Previsualización del PDF en pantalla | E6 | ⏸ ADR-013 |
-| 🔴 Crítica | **US06-AC3** | Template del PDF (estructura y logos) | E6 | ✅ Listo |
-| 🟡 Alta | **US06-AC4** | Marca "Datos de muestra" en informe | E6 | ✅ Listo |
-| 🟢 Media | **US06-AC5** | Conexión a datos reales del modelo | E6 | ⏸ Modelo multicriterio |
+| 🟡 Alta | **US05-AC1** | Formulario dinámico para aerogeneradores | E5 | ⏸ Reunión datos |
+| 🟡 Alta | **US05-AC2** | Selección de catálogo de modelos | E5 | ⏸ Reunión datos |
+| 🟡 Alta | **US05-AC3** | Validación de rangos técnicos permitidos | E5 | ⏸ Reunión datos |
+| 🔴 Crítica | **US06-AC3** | Previsualización en pantalla del informe PDF | E6 | ⏸ ADR-013 |
+
+**Total: 8 HUs** (1 + 3 + 3 + 1)
 
 ---
 
-# E2 — Mapa SIG (extensión)
+# E2 — Mapa SIG (Parte 2: Calcular área y viabilidad)
 
-> **Objetivo:** Completar el flujo de selección añadiendo cálculo automático del área en km², insumo para el informe de viabilidad.
+> **Objetivo:** Calcular y mostrar el área (km²) y la viabilidad agregada del área seleccionada en el mapa como insumo del flujo y del informe.
 
 **Dependencias:** US03, US03-AC6
 
 ---
 
-### US03-AC10 — Cálculo de Área en km² de la Selección
+### US03-P2 — Cálculo de Área y Viabilidad del Área Seleccionada
 - **Prioridad:** 🔴 Crítica
 - **Épica origen:** E2 (Mapa SIG — Parte 2)
 - **Dependencia:** US03, US03-AC6
 - **Criterios de Aceptación:**
-  1. Cálculo de área usando `cellArea(h, 'km2')` de h3-js sumado sobre `selectedHexes`
-  2. Área visible en la UI (SideBar o subpage "Selección de área") con formato `1,234.56 km²` con separadores de miles
-  3. Actualización reactiva al añadir/quitar hexágonos sin recargar
-  4. Cálculo correcto independiente de la resolución H3 (área por celda varía con resolución y latitud)
-  5. Comportamiento con `0 hexágonos seleccionados` → `0 km²`, sin error
-  6. Test unitario y test integración SideBar
-- **Estado:** ✅ Sin bloqueantes — listo para arrancar
+  1. Cálculo de área usando `cellArea(h, 'km2')` de h3-js, sumado sobre `selectedHexes`
+  2. Área visible en la UI con formato `1,234.56 km²` con separadores de miles
+  3. Indicador de viabilidad del área seleccionada — valor agregado a partir de los scores de los hexágonos
+  4. Actualización reactiva al añadir/quitar hexágonos sin recargar
+  5. Comportamiento robusto con `0 hexágonos seleccionados` → `0 km²` y sin indicador de viabilidad, sin crash
+- **Tareas técnicas / desarrollo:**
+  - 📦 **FE Helper**: `Vento/src/app/Utils/areaCalc.ts` — `calcArea(hexes: Set<string>): number` y `calcViability(hexes, scores): number`
+  - 📦 **FE Componente**: `<AreaDisplay>` (puede vivir en SideBar o en la subpage "Selección de área")
+  - 📦 **FE Integración**: hook `useMemo` sobre `selectedHexes` para no recalcular en cada render
+  - 📦 **BE (opcional)**: si los scores de viabilidad por hex no están ya en los tiles, exponer `GET /api/scores?h3=...` — confirmar con backend si ya existe
+  - 🧪 **Tests**: unitario de `areaCalc.ts` (0 hex, 1 hex, N hex); integración con SideBar al cambiar `selectedHexes`
+- **Notas:** La viabilidad usa scores actuales del backend (placeholders mientras el modelo multicriterio avanza). Cuando llegue versión avanzada, los valores se reemplazan sin tocar el cálculo.
 
 ---
 
 # E4 — Configuración de Dimensiones (Variables)
 
-> **Objetivo:** Permitir al analista configurar las variables del análisis multicriterio, agrupadas por dimensión, con feedback visual claro de qué hace cada una y cuánto lleva configurado.
+> **Objetivo:** Permitir al analista visualizar las variables del análisis agrupadas por dimensión, con definición clara y feedback de progreso.
 
 **Dependencias:** US01 (sesión válida), US03 (área seleccionada)
 
 ---
 
-### US04-AC1 — Agrupación Visual de Variables por Dimensión con Colores GIS
+### US04-AC1 — Agrupación por 5 Categorías de Color
 - **Prioridad:** 🟡 Alta
 - **Épica origen:** E4 (Variables)
-- **Dependencia:** US04-AC4 (datos del endpoint)
+- **Dependencia:** —
 - **Criterios de Aceptación:**
-  1. Variables agrupadas en 5 secciones colapsables correspondientes a las 5 dimensiones (técnica, ambiental, regulatoria, socioeconómica, macroeconómica)
-  2. Cada sección tiene un código de color tipo heat-map GIS — paleta a definir con cliente: viridis (`#440154→#FDE725`) o inferno (`#420A68→#FCFFA4`)
-  3. Header de cada sección muestra: nombre de dimensión + color asignado + número de variables totales
-  4. Secciones se pueden expandir/colapsar individualmente
-  5. Estado de expansión persiste mientras dure la sesión
-- **Decisión pendiente:** confirmar con cliente paleta exacta y si los colores marcan **jerarquía de importancia** o solo **agrupación visual**
-- **Estado:** ⏸ Espera consulta cliente sobre paleta
+  1. Variables agrupadas en las 5 dimensiones (técnica, ambiental, regulatoria, socioeconómica, macroeconómica)
+  2. Cada dimensión tiene un color de **paleta GIS estándar empezando en morado** y bajando por la escala térmica/espectral (mismo principio que los heat-maps de generación energética)
+  3. Header de cada sección muestra: nombre de dimensión + color asignado
+  4. Las secciones se pueden expandir/colapsar individualmente
+- **Tareas técnicas / desarrollo:**
+  - 📦 **BE Endpoint**: `GET /api/variables` en FastAPI que retorne `{ variables: [{ dimension, name, label, definition, type }] }` agrupadas por dimensión
+  - 📦 **FE Rewrite**: añadir `/api/variables/:path*` a [next.config.ts](../../../Vento/next.config.ts) (mismo patrón que `/api/tiles`)
+  - 📦 **FE Componente**: extender [Dimensions.tsx](../../../Vento/src/app/Components/) con secciones colapsables y aplicación de paleta GIS
+  - 📦 **FE Constantes**: definir paleta GIS en un módulo reutilizable (`Vento/src/app/Utils/gisPalette.ts`)
+  - 🧪 **Tests**: backend retorna estructura esperada; frontend renderiza N grupos colapsables
+- **Estado:** ✅ Sin bloqueantes
 
 ---
 
 ### US04-AC2 — Tooltip con Definición de cada Variable
 - **Prioridad:** 🟡 Alta
 - **Épica origen:** E4 (Variables)
-- **Dependencia:** US04-AC1 (variables ya agrupadas), US04-AC4 (definiciones del endpoint)
+- **Dependencia:** US04-AC1
 - **Criterios de Aceptación:**
-  1. Cada variable tiene un icono ℹ (info) al lado del label
-  2. Hover sobre el icono muestra tooltip con la definición en español
-  3. En mobile, tap sobre el icono abre/cierra el tooltip (no hover)
-  4. Tooltip se cierra al hacer click fuera
-  5. Texto del tooltip viene del campo `definition` del endpoint `/api/variables`
-  6. Test unitario: tooltip aparece y desaparece según interacción
+  1. Cada variable tiene un icono ℹ al lado del label
+  2. Hover (desktop) o tap (mobile) sobre el icono muestra tooltip con la definición en español
+  3. Tooltip se cierra al hacer click fuera
+  4. Texto del tooltip viene del campo `definition` del endpoint `/api/variables`
+- **Tareas técnicas / desarrollo:**
+  - 📦 **FE Componente**: `<VariableTooltip>` reutilizable con accesibilidad básica (`aria-describedby`, ESC para cerrar)
+  - 📦 **FE Datos**: las definiciones vienen del mismo endpoint `/api/variables` (no añade carga extra al backend)
+  - 🧪 **Tests**: tooltip aparece/desaparece según interacción; click fuera lo cierra
 - **Estado:** ✅ Sin bloqueantes
 
 ---
@@ -115,271 +121,183 @@ Sigue al [scope-primera-entrega.md](./scope-primera-entrega.md). Continuación d
 - **Dependencia:** US04-AC1
 - **Criterios de Aceptación:**
   1. Cada dimensión muestra una barra de progreso visible
-  2. Barra refleja `N de M variables configuradas` para esa dimensión
+  2. Refleja `N de M variables configuradas` para esa dimensión
   3. Color de la barra coincide con el color de la dimensión (US04-AC1)
   4. Texto numérico al lado: `3 / 8` o similar
   5. Actualización inmediata al configurar/deseleccionar una variable
-  6. Test unitario: progreso refleja correctamente N/M
-- **Estado:** ✅ Sin bloqueantes
-
----
-
-### US04-AC4 — Endpoint Backend `/api/variables`
-- **Prioridad:** 🟡 Alta
-- **Épica origen:** E4 (Variables — backend)
-- **Dependencia:** US-DDD (backend FastAPI funcionando)
-- **Criterios de Aceptación:**
-  1. Endpoint `GET /api/variables` en FastAPI
-  2. Retorna `{ variables: [{ dimension, name, label, definition, type }] }`
-  3. `dimension` ∈ las 5 dimensiones; `type` ∈ excluyente/incluyente/penalizante/informativa
-  4. Datos vienen de la definición compartida con el equipo de investigación
-  5. Frontend lo consume vía rewrite Next.js (mismo patrón que `/api/tiles` — ver [frontend-backend-integration.md](../../architecture/frontend-backend-integration.md))
-  6. Test backend: endpoint retorna status 200 + JSON con estructura esperada
-- **Estado:** ✅ Sin bloqueantes
-
----
-
-### US04-AC5 — Persistencia de la Configuración en sessionStorage
-- **Prioridad:** 🟡 Alta
-- **Épica origen:** E4 (Variables)
-- **Dependencia:** US04-AC1
-- **Criterios de Aceptación:**
-  1. Variables configuradas por el usuario se guardan en `sessionStorage` automáticamente
-  2. Al navegar a otro paso (Características, Informe) y volver, la configuración se restaura
-  3. Al cerrar pestaña o sesión, la configuración se pierde (intencional — `sessionStorage`, no `localStorage`)
-  4. Helper reutilizable para serializar/deserializar
-  5. Test unitario: setear → leer devuelve mismo valor; clear borra todo
+- **Tareas técnicas / desarrollo:**
+  - 📦 **FE Componente**: `<CategoryProgress>` que recibe `{ dimension, configured, total }`
+  - 📦 **FE Estado**: definir cómo se trackea "configurada" — sugerencia: estado local en `Dimensions.tsx` o context dedicado
+  - 🧪 **Tests**: render con `(3, 8)` muestra `3 / 8`; barra al 37.5%
 - **Estado:** ✅ Sin bloqueantes
 
 ---
 
 # E5 — Características del Proyecto
 
-> **Objetivo:** Capturar parámetros técnicos del proyecto eólico (turbinas, capacidad, alturas) para alimentar el informe.
+> **Objetivo:** Capturar las características del proyecto eólico. **Enfoque pendiente de reunión con equipo de datos** — el cliente confirmó que ya no es turbina-por-turbina como se planteó originalmente, la nueva definición se acuerda en la reunión.
 
 **Dependencias:** US03 (área), US04 (variables configuradas)
 
-> ⏸ **Bloque grueso bloqueado** — la mayoría de HUs depende de reunión con equipo de datos. Solo US05-AC4 (persistencia) puede preparar el scaffolding antes.
+> ⏸ Todas las HUs de esta épica están **bloqueadas hasta la reunión**. Las ACs listadas son las del spec original; la reunión puede modificarlas, mantenerlas o reemplazarlas.
 
 ---
 
-### US05-AC1 — Formulario Dinámico de Aerogeneradores
+### US05-AC1 — Formulario Dinámico para Aerogeneradores
 - **Prioridad:** 🟡 Alta
 - **Épica origen:** E5 (Proyecto)
-- **Dependencia:** US05-AC5 (catálogo disponible)
-- **Criterios de Aceptación:**
-  1. Formulario con los campos definidos en la reunión con equipo de datos (capacidad MW, número de turbinas, altura buje, diámetro rotor, …)
-  2. Campos se renderizan dinámicamente según definición — añadir/quitar campos no requiere rediseño
-  3. Cada campo tiene label en español, tipo apropiado (number/select/text) y placeholder
-  4. Layout responsive (grid en desktop, columna en mobile)
-  5. Test unitario: render con N campos, valores se capturan correctamente
-- **Estado:** ⏸ Bloqueada — reunión equipo de datos
+- **Dependencia:** Reunión equipo de datos (definición de campos)
+- **Criterios de Aceptación (provisionales):**
+  1. Formulario con los campos que se definan en la reunión con el equipo de datos
+  2. Los campos se renderizan dinámicamente según definición (añadir/quitar campos no requiere rediseño)
+  3. Cada campo tiene label en español, tipo apropiado y placeholder
+  4. Layout responsive (grid desktop, columna mobile)
+- **Tareas técnicas / desarrollo:**
+  - 📦 **FE Componente**: nuevo `<CaracteristicasProyectoForm>` en `Vento/src/app/Components/`
+  - 📦 **FE Tipos**: definir interfaz `CaracteristicasPayload` en `Vento/src/app/types/`
+  - 📦 **BE (posiblemente)**: endpoint que reciba/persista las características — definir si es transitorio (solo para informe) o persistente en DB. **A confirmar en reunión**
+  - 🧪 **Tests**: render con N campos, captura de valores correcta
+- **Estado:** ⏸ **BLOQUEADA** — espera reunión
 
 ---
 
-### US05-AC2 — Selector con Catálogo de Modelos
+### US05-AC2 — Selección de Catálogo de Modelos
 - **Prioridad:** 🟡 Alta
 - **Épica origen:** E5 (Proyecto)
-- **Dependencia:** US05-AC5
-- **Criterios de Aceptación:**
+- **Dependencia:** Reunión equipo de datos
+- **Criterios de Aceptación (provisionales):**
   1. Selector con dropdown searchable de modelos del catálogo
   2. Búsqueda filtra por fabricante y/o nombre del modelo
-  3. Al seleccionar un modelo, los campos relevantes del formulario se autocompletan con sus valores nominales (capacidad, alturas, etc.)
+  3. Al seleccionar un modelo, los campos relevantes del formulario se autocompletan con sus valores nominales
   4. Opción "modelo personalizado" permite ingresar valores manualmente
-  5. Test unitario: búsqueda filtra correctamente; selección autocompleta
-- **Estado:** ⏸ Bloqueada — reunión equipo de datos
+- **Tareas técnicas / desarrollo:**
+  - 📊 **Datos**: definir formato del catálogo y su mantenedor en la reunión (cliente, investigación, equipo dev)
+  - 📦 **FE Componente**: `<TurbineCatalogSelector>` con búsqueda local (`fuse.js`-like o simple `includes`)
+  - 📦 **FE/BE Fuente**: decidir entre JSON estático en `public/data/turbines.json` o endpoint backend (decisión a documentar en mini-ADR o nota en la HU)
+  - 🧪 **Tests**: búsqueda filtra correctamente; selección autocompleta el form
+- **Estado:** ⏸ **BLOQUEADA** — espera reunión
 
 ---
 
-### US05-AC3 — Validación de Rangos Técnicos
+### US05-AC3 — Validación de Rangos Técnicos Permitidos
 - **Prioridad:** 🟡 Alta
 - **Épica origen:** E5 (Proyecto)
-- **Dependencia:** US05-AC1, US05-AC5
-- **Criterios de Aceptación:**
-  1. Cada campo numérico valida que el valor caiga dentro del rango técnico permitido (definido en la reunión con datos)
-  2. Mensaje inline en español al usuario si el valor está fuera de rango (ej. "La altura debe estar entre 50 y 200 metros")
+- **Dependencia:** Reunión equipo de datos (rangos exactos), US05-AC1
+- **Criterios de Aceptación (provisionales):**
+  1. Cada campo numérico valida que el valor caiga dentro del rango técnico permitido (rangos definidos en la reunión)
+  2. Mensaje inline en español al usuario si el valor está fuera de rango
   3. El botón "Siguiente paso" queda deshabilitado mientras haya errores
   4. Errores se limpian cuando el usuario corrige el valor
-  5. Test unitario: valor fuera de rango bloquea; valor válido permite avanzar
-- **Estado:** ⏸ Bloqueada — reunión equipo de datos (rangos exactos no definidos)
+- **Tareas técnicas / desarrollo:**
+  - 📦 **FE Validación**: usar Zod (recomendado) o validación manual; schema deriva de la definición de campos
+  - 📦 **FE Componente**: `<FieldError>` reutilizable para mensajes
+  - 📊 **Datos**: rangos del catálogo (ver US05-AC2) — vienen del mismo origen
+  - 🧪 **Tests**: valor fuera de rango bloquea submit; valor válido permite avanzar
+- **Estado:** ⏸ **BLOQUEADA** — espera reunión
 
 ---
 
-### US05-AC4 — Persistencia del Formulario en sessionStorage
-- **Prioridad:** 🟡 Alta
-- **Épica origen:** E5 (Proyecto)
-- **Dependencia:** US04-AC5 (mismo helper)
-- **Criterios de Aceptación:**
-  1. Valores del formulario se guardan en `sessionStorage` automáticamente al cambiar cualquier campo
-  2. Al navegar a otro paso y volver, los valores se restauran
-  3. Limpieza al cerrar pestaña (no `localStorage`)
-  4. Test unitario
-- **Estado:** ✅ Sin bloqueantes (scaffolding aunque el formulario aún no exista)
+# E6 — Reportes (Parte 1: Generación y Visualización)
+
+> **Objetivo:** Mostrar los resultados del informe de viabilidad en una pantalla nativa de la app (siguiendo el diseño Figma) — scores por dimensión + valor de viabilidad agregado — con botón de descarga de PDF. La generación del PDF y el template van dentro de esta HU como tareas técnicas.
+
+**Dependencias:** US03, US04, US05; diseño Figma del informe
 
 ---
 
-### US05-AC5 — Fuente del Catálogo de Aerogeneradores
-- **Prioridad:** 🟡 Alta
-- **Épica origen:** E5 (Proyecto — decisión técnica)
-- **Dependencia:** Reunión equipo de datos
-- **Criterios de Aceptación:**
-  1. Catálogo de modelos accesible al frontend con estructura `{ id, fabricante, modelo, capacidad_MW, altura_min, altura_max, rotor_diametro, ... }`
-  2. **Decisión pendiente** en reunión:
-     - Opción A: JSON estático en `public/data/turbines.json` (rápido, sin latencia, requiere redeploy para actualizar)
-     - Opción B: endpoint backend `/api/turbines` (actualizable sin redeploy, +complejidad)
-  3. ADR-014 escribiendo la decisión (winx)
-  4. Test: 5+ modelos cargan correctamente y son seleccionables
-- **Estado:** ⏸ Bloqueada — reunión equipo de datos
-
----
-
-# E6 — Reportes (PDF)
-
-> **Objetivo:** Generar informe de viabilidad descargable en PDF, con previsualización antes de descarga.
-
-**Dependencias:** US03, US04, US05; modelo multicriterio (diferible)
-
----
-
-### US06-AC1 — Generación del PDF (con placeholders)
+### US06-AC3 — Pantalla de Informe (UI nativa según Figma) + Descarga PDF
 - **Prioridad:** 🔴 Crítica
-- **Épica origen:** E6 (Reportes)
-- **Dependencia:** ADR-013 (decisión técnica), US04, US05 (datos del flujo)
+- **Épica origen:** E6 (Reportes — Parte 1: Generación y Visualización)
+- **Dependencia:** ADR-013 (decisión de tecnología de PDF), Figma del informe, US04 (variables), US05 (características — datos placeholder si la reunión no llegó)
 - **Criterios de Aceptación:**
-  1. Generación de PDF a partir de: hexágonos seleccionados, dimensiones configuradas, características del proyecto
-  2. Endpoint/función retorna `application/pdf` válido ≥ 1KB
-  3. Datos pueden ser **placeholders** mientras el modelo multicriterio avanza
-  4. Manejo robusto de `0 hexágonos seleccionados` → mensaje de error claro, sin crash
-  5. Test unitario: generación con dataset placeholder retorna PDF válido
-- **Decisión técnica pendiente (ADR-013):**
-  - WeasyPrint (Python backend, HTML/CSS → PDF, calidad pro) — **recomendado**
-  - ReportLab (Python backend, PDF nativo programático)
-  - jsPDF + html2canvas (frontend, sin backend, calidad inferior)
-- **Estado:** ⏸ Espera ADR-013
+  1. Pantalla de informe en UI nativa de la app (no iframe), siguiendo el diseño Figma del informe
+  2. Muestra los resultados por dimensión — cada una de las 5 dimensiones (técnica, ambiental, regulatoria, socioeconómica, macroeconómica) con su score
+  3. Muestra el valor de viabilidad agregado del área seleccionada
+  4. Botón "Descargar PDF" visible en la pantalla
+  5. Al hacer click en el botón, se genera y descarga un PDF con el mismo contenido (scores por dimensión + viabilidad + área + variables + características)
+  6. PDF descargado tiene branding institucional (Vento + ANH + EAFIT + mavalan)
+  7. Indicador de carga mientras se genera el PDF al descargar
+  8. Mensaje de error claro si la generación falla
+- **Tareas técnicas / desarrollo:**
+  - 🛠️ **ADR-013**: escribir decisión de tecnología — WeasyPrint vs ReportLab vs jsPDF. Recomendado: WeasyPrint
+  - 🎨 **UI**: traducir el diseño Figma del informe a componentes React
+  - 📦 **FE Página**: `Vento/src/app/informe/page.tsx` con UI nativa del informe + botón descarga
+  - 📦 **FE Componentes**: `<DimensionResult>` (muestra una dimensión con su score), `<ViabilityScore>` (valor agregado), `<DownloadPDFButton>`
+  - 📦 **FE Llamada**: helper que llama al endpoint y descarga el `Blob` como archivo (`<a download>` o `window.URL.createObjectURL`)
+  - 📦 **BE Endpoint**: `POST /api/reports/pdf` que reciba `{ hexes, variables, caracteristicas, scores }` y retorne `application/pdf` con header `Content-Disposition: attachment`
+  - 📦 **FE UI**: spinner durante generación + componente `<ErrorBanner>` si falla
+  - 🧪 **Tests**: endpoint retorna PDF válido (`application/pdf` ≥ 1KB); componente FE renderiza N dimensiones con scores correctos; botón descarga dispara fetch + descarga del blob; manejo robusto de `0 hexágonos seleccionados`
+- **Notas:**
+  - La pantalla **NO** usa iframe — es UI nativa que refleja exactamente el Figma
+  - El PDF se genera **solo al descargar**, no en cada render de la pantalla
+  - Si llegan datos reales del modelo multicriterio durante el sprint, se conectan a la UI y al template sin cambios estructurales
+  - Parte 2 (futuro, fuera de este scope): histórico de informes, compartir vía link
 
 ---
 
-### US06-AC2 — Previsualización del PDF en Pantalla
-- **Prioridad:** 🔴 Crítica
-- **Épica origen:** E6 (Reportes)
-- **Dependencia:** US06-AC1
-- **Criterios de Aceptación:**
-  1. Pantalla de informe muestra el PDF embebido en un `<iframe src=...>`
-  2. Usuario puede scroll dentro del iframe para ver todas las páginas
-  3. Botón para regenerar el PDF si el usuario cambia datos del flujo
-  4. Indicador de carga mientras se genera (puede tardar segundos)
-  5. Mensaje de error claro si la generación falla
-  6. Test unitario: el iframe recibe la URL del PDF generado
-- **Estado:** ⏸ Espera US06-AC1
+# Resumen Consolidado
 
----
+## Estimación
 
-### US06-AC3 — Template del PDF (Estructura y Branding)
-- **Prioridad:** 🔴 Crítica
-- **Épica origen:** E6 (Reportes)
-- **Dependencia:** ADR-013
-- **Criterios de Aceptación:**
-  1. Template incluye: portada con título, fecha de generación, mapa estático del área seleccionada, tabla de variables configuradas, características técnicas del proyecto, scores por dimensión
-  2. Encabezado con logos institucionales: Vento + ANH + EAFIT + mavalan
-  3. Pie de página con número de página y fecha
-  4. Tipografía y colores consistentes con el branding de la app
-  5. Saltos de página adecuados — secciones no se cortan mal
-  6. Test visual manual + snapshot del HTML/template
-- **Estado:** ✅ Diseño puede arrancar (independiente de ADR-013)
+| Bloque | HUs | Horas estimadas (con tareas técnicas adentro) |
+|--------|-----|------------------------------------------------|
+| E2 (US03-P2) | 1 | 4-5h |
+| E4 (US04-AC1/AC2/AC3) | 3 | 12-14h (incluye `/api/variables` backend) |
+| E5 (US05-AC1/AC2/AC3) | 3 | 10-14h tras desbloqueo de reunión |
+| E6 (US06-AC3) | 1 | 16-22h (incluye ADR-013, UI nativa Figma, generación, template, descarga) |
+| **Total** | **8** | **42-55h** |
 
----
+Con buffer 20%: **48-64h** = ~2 semanas con el equipo.
 
-### US06-AC4 — Marca "Datos de Muestra" Mientras el Modelo Esté en Desarrollo
-- **Prioridad:** 🟡 Alta
-- **Épica origen:** E6 (Reportes)
-- **Dependencia:** US06-AC3
-- **Criterios de Aceptación:**
-  1. Mientras los datos del informe vengan de placeholders, el PDF muestra una **banda visible** en la portada y en el encabezado de cada página: **"Datos de muestra — modelo multicriterio en desarrollo"**
-  2. Banda visualmente distinta (color de advertencia, ej. naranja claro)
-  3. Feature flag `USING_REAL_MODEL_DATA` controla la visibilidad — `false` por defecto
-  4. Al activar `USING_REAL_MODEL_DATA=true`, la banda desaparece automáticamente
-  5. Test: con flag off → banda presente; con flag on → ausente
-- **Estimación:** 1h
-- **Estado:** ✅ Sin bloqueantes
-
----
-
-### US06-AC5 — Conexión a Datos Reales del Modelo Multicriterio
-- **Prioridad:** 🟢 Media
-- **Épica origen:** E6 (Reportes)
-- **Dependencia:** Modelo multicriterio en versión avanzada, US06-AC1
-- **Criterios de Aceptación:**
-  1. Reemplazar placeholders por consumo del endpoint `/api/score/{h3Index}` (o similar — definir con backend)
-  2. Validar que los scores reales aparecen correctamente en el template
-  3. Quitar feature flag (US06-AC4) y banda "Datos de muestra"
-  4. Validación stakeholders del informe con datos reales
-  5. Tests: endpoint retorna scores; PDF refleja valores correctos
-- **Estado:** ⏸ Bloqueada — modelo multicriterio en desarrollo
-- **Estimación tras desbloqueo:** 4-6h
-
----
-
-# Resumen Consolidado scope-dos
-
-## Dependencias entre HUs
+## Dependencias
 
 ```
-US03-AC10 ──────────────────────────────────► (independiente)
+US03-P2 ───────────────────────────────────► (independiente)
 
-US04-AC4 ──► US04-AC1 ──┬─► US04-AC2
-                        ├─► US04-AC3
-                        └─► US04-AC5
+US04-AC1 ──┬─► US04-AC2
+           └─► US04-AC3
 
-US05-AC5 ──► US05-AC1 ──┬─► US05-AC3
-              │         └─► US05-AC4
-              └─► US05-AC2
+(Reunión datos) ──► US05-AC1 ──► US05-AC3
+                    US05-AC2 (paralelo)
 
-ADR-013 ──► US06-AC1 ──► US06-AC2
-            US06-AC3 (paralelo)
-            US06-AC4 (paralelo)
-                        │
-                        ▼
-                     US06-AC5 (cuando modelo entregue)
+ADR-013 + US04 + US05 (placeholder OK) ──► US06-AC3
 ```
 
-## Decisiones técnicas a tomar antes del sprint
+## Empezables sin reunión (3 HUs, ~16-19h)
 
-1. **Paleta colores US04-AC1** — viridis vs inferno — consulta cliente
-2. **Catálogo aerogeneradores US05-AC5** — JSON estático vs BE — reunión equipo de datos → ADR-014
-3. **PDF generation US06-AC1** — WeasyPrint vs ReportLab vs jsPDF → ADR-013
-4. **Persistencia formularios** — confirmado sessionStorage (US04-AC5, US05-AC4)
+- US03-P2 (cálculo área + viabilidad placeholder)
+- US04-AC1, AC2, AC3 (las 3 HUs de variables)
 
-## Plan de arranque
+## Bloqueadas por reunión (3 HUs, ~10-14h)
 
-### Fase 0 — Agendamiento y decisiones (3-5 días)
-- Agendar reuniones datos y modelo multicriterio
-- Consulta cliente sobre paleta colores
-- Escribir ADR-013 (PDF) y borrador ADR-014 (catálogo)
+- US05-AC1, AC2, AC3 — todas esperan la reunión con el equipo de datos
 
-### Fase 1 — Sin bloqueantes (semana 1, ~22h)
-- US03-AC10 (3-4h)
-- US04-AC2, AC3, AC4, AC5 (~10h)
-- US06-AC3, AC4 (5h)
-- US05-AC4 scaffolding (1h)
+## Bloqueadas por decisión interna (1 HU, ~16-22h)
 
-### Fase 2 — Tras desbloqueos (semana 2, ~25h)
-- US04-AC1 si paleta confirmada
-- US05-AC1, AC2, AC3, AC5 si reunión cerró
-- US06-AC1, AC2 tras ADR-013
+- US06-AC3 — espera ADR-013 (decisión interna de winx, ~1h) + Figma del informe
 
-### Fase 3 — Integración y demo
-- Tests end-to-end del flujo
-- Deploy a `deploy-test`
-- Demo cliente
+## Propuesta de asignación
 
+| Dev | HUs |
+|-----|-----|
+| **Winx (full-time)** | ADR-013 + US06-AC3 (UI Figma + generación + template + descarga) + reviews + reuniones |
+| **Part-time A** | US04-AC1 (incluye endpoint backend) + AC2 + AC3 |
+| **Part-time B** | US03-P2 + (tras reunión) US05-AC1/AC2/AC3 |
+
+## Decisiones técnicas pendientes (resumen)
+
+| # | Decisión | Owner | Tiempo |
+|---|----------|-------|--------|
+| 1 | ADR-013 — Motor PDF | winx | ~1h |
+| 2 | Fuente del catálogo aerogeneradores | reunión datos | reunión |
+| 3 | Persistencia del proyecto (transitorio vs BD) | reunión datos | reunión |
 
 ---
 
 ## Cierre esperado del scope-dos
 
-- ✅ 16 sub-HUs (3 críticas, 12 altas, 1 media) cerradas, con la excepción de US06-AC5 (esperando modelo)
-- ✅ ADR-013 y ADR-014 escritos
-- ✅ Paleta colores GIS confirmada con cliente
-- ✅ Tests para cada AC
+- ✅ 8 HUs cerradas (US05 si reunión llegó; si no, parcial)
+- ✅ ADR-013 escrito
+- ✅ Tests para cada HU (cobertura ≥ tareas técnicas críticas)
 - ✅ Deploy a `deploy-test` validado
-- ✅ Demo end-to-end con placeholders en informe PDF
+- ✅ Demo del flujo end-to-end con placeholders donde aplique

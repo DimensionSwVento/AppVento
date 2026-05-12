@@ -20,7 +20,11 @@ body: |
   3. Color de la barra coincide con el color de la dimensión (US04-AC1)
   4. Texto numérico al lado: `3 / 8` o similar
   5. Actualización inmediata al configurar/deseleccionar una variable
-  6. Test unitario: progreso refleja correctamente N/M
+
+  ## Tareas técnicas / desarrollo
+  - 📦 **FE Componente**: `<CategoryProgress>` que recibe `{ dimension, configured, total }`
+  - 📦 **FE Estado**: definir cómo se trackea "configurada" — sugerencia: estado local en `Dimensions.tsx` o context dedicado
+  - 🧪 **Tests**: render con `(3, 8)` muestra `3 / 8`; barra a la fracción correcta
 
   ## Dependencias
   US04-AC1
