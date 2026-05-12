@@ -1,0 +1,38 @@
+id: US03-P2
+title: "[US03-P2] Cálculo de Área y Viabilidad del Área Seleccionada"
+epic: "E2-Mapa-SIG"
+epic_label: "epic:E2-Mapa-SIG"
+priority: critica
+priority_label: "priority:critica"
+milestone: "Segunda Entrega"
+depends_on: ["US03", "US03-AC6"]
+unlocks: "US06-AC3"
+week: 1
+body: |
+  ## Historia de Usuario
+  Como analista, quiero ver el área total en km² y un indicador de viabilidad del área seleccionada para dimensionar la escala del proyecto y entender qué tan adecuada es la zona elegida.
+
+  **Épica:** E2 — Mapa SIG Interactivo (Parte 2: Calcular área y viabilidad — Mapa)
+
+  ## Criterios de Aceptación
+  1. Cálculo de área usando `cellArea(h, 'km2')` de h3-js, sumado sobre `selectedHexes`
+  2. Área visible en la UI con formato `1,234.56 km²` con separadores de miles
+  3. Indicador de viabilidad del área seleccionada — valor agregado a partir de los scores de los hexágonos
+  4. Actualización reactiva al añadir/quitar hexágonos sin recargar
+  5. Comportamiento robusto con `0 hexágonos seleccionados` → `0 km²` y sin indicador de viabilidad, sin crash
+
+  ## Tareas técnicas / desarrollo
+  - 📦 **FE Helper**: `Vento/src/app/Utils/areaCalc.ts` — `calcArea(hexes: Set<string>): number` y `calcViability(hexes, scores): number`
+  - 📦 **FE Componente**: `<AreaDisplay>` (puede vivir en SideBar o en la subpage "Selección de área")
+  - 📦 **FE Integración**: hook `useMemo` sobre `selectedHexes` para no recalcular en cada render
+  - 📦 **BE (opcional)**: si los scores de viabilidad por hex no están ya en los tiles, exponer `GET /api/scores?h3=...` — confirmar con backend si ya existe
+  - 🧪 **Tests**: unitario de `areaCalc.ts` (0 hex, 1 hex, N hex); integración con SideBar al cambiar `selectedHexes`
+
+  ## Notas
+  La viabilidad usa scores actuales del backend (placeholders mientras el modelo multicriterio avanza). Cuando llegue versión avanzada, los valores se reemplazan sin tocar el cálculo.
+
+  ## Dependencias
+  US03 (mapa base + selección), US03-AC6 (datos ingresados)
+
+  ## Estimación
+  4-5h

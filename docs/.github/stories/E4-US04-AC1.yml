@@ -1,31 +1,34 @@
 id: US04-AC1
-title: "[US04-AC1] Agrupación Visual de Variables por Dimensión con Colores GIS"
+title: "[US04-AC1] Agrupación por 5 Categorías de Color (Paleta GIS)"
 epic: "E4-Variables"
 epic_label: "epic:E4-Variables"
 priority: alta
 priority_label: "priority:alta"
 milestone: "Segunda Entrega"
-depends_on: ["US04-AC4"]
-unlocks: "US04-AC2, US04-AC3, US04-AC5"
+depends_on: []
+unlocks: "US04-AC2, US04-AC3"
 week: 1
 body: |
   ## Historia de Usuario
-  Como analista, quiero ver las variables del análisis agrupadas en 5 dimensiones con código de color tipo heat-map GIS para identificar visualmente la categoría y prioridad de cada variable.
+  Como analista, quiero ver las variables del análisis agrupadas en las 5 dimensiones con un código de color tipo heat-map GIS (empezando en morado) para identificar visualmente la categoría a la que pertenece cada variable.
 
   **Épica:** E4 — Configuración de Dimensiones (Variables)
 
   ## Criterios de Aceptación
-  1. Variables agrupadas en 5 secciones colapsables correspondientes a las 5 dimensiones (técnica, ambiental, regulatoria, socioeconómica, macroeconómica)
-  2. Cada sección tiene un código de color tipo heat-map GIS — paleta a definir con cliente: viridis (`#440154→#FDE725`) o inferno (`#420A68→#FCFFA4`)
-  3. Header de cada sección muestra: nombre de dimensión + color asignado + número de variables totales
-  4. Secciones se pueden expandir/colapsar individualmente
-  5. Estado de expansión persiste mientras dure la sesión
+  1. Variables agrupadas en las 5 dimensiones (técnica, ambiental, regulatoria, socioeconómica, macroeconómica)
+  2. Cada dimensión tiene un color de **paleta GIS estándar empezando en morado** y bajando por la escala térmica/espectral (mismo principio que los heat-maps de generación energética)
+  3. Header de cada sección muestra: nombre de dimensión + color asignado
+  4. Las secciones se pueden expandir/colapsar individualmente
 
-  ## Decisión Pendiente
-  Confirmar con cliente paleta exacta y si los colores marcan **jerarquía de importancia** o solo **agrupación visual**.
+  ## Tareas técnicas / desarrollo
+  - 📦 **BE Endpoint**: `GET /api/variables` en FastAPI que retorne `{ variables: [{ dimension, name, label, definition, type }] }` agrupadas por dimensión
+  - 📦 **FE Rewrite**: añadir `/api/variables/:path*` a `next.config.ts` (mismo patrón que `/api/tiles`)
+  - 📦 **FE Componente**: extender `Vento/src/app/Components/Dimensions.tsx` con secciones colapsables aplicando paleta GIS
+  - 📦 **FE Constantes**: definir paleta GIS en módulo reutilizable (`Vento/src/app/Utils/gisPalette.ts`)
+  - 🧪 **Tests**: backend retorna estructura esperada; frontend renderiza N grupos colapsables con sus colores
 
   ## Dependencias
-  US04-AC4 (datos del endpoint)
+  Ninguna externa.
 
   ## Estimación
-  4h
+  4-5h (incluye endpoint backend)

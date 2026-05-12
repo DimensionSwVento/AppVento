@@ -5,7 +5,7 @@ epic_label: "epic:E4-Variables"
 priority: alta
 priority_label: "priority:alta"
 milestone: "Segunda Entrega"
-depends_on: ["US04-AC1", "US04-AC4"]
+depends_on: ["US04-AC1"]
 unlocks: ""
 week: 1
 body: |
@@ -15,15 +15,18 @@ body: |
   **Épica:** E4 — Configuración de Dimensiones (Variables)
 
   ## Criterios de Aceptación
-  1. Cada variable tiene un icono ℹ (info) al lado del label
-  2. Hover sobre el icono muestra tooltip con la definición en español
-  3. En mobile, tap sobre el icono abre/cierra el tooltip (no hover)
-  4. Tooltip se cierra al hacer click fuera
-  5. Texto del tooltip viene del campo `definition` del endpoint `/api/variables`
-  6. Test unitario: tooltip aparece y desaparece según interacción
+  1. Cada variable tiene un icono ℹ al lado del label
+  2. Hover (desktop) o tap (mobile) sobre el icono muestra tooltip con la definición en español
+  3. Tooltip se cierra al hacer click fuera
+  4. Texto del tooltip viene del campo `definition` del endpoint `/api/variables`
+
+  ## Tareas técnicas / desarrollo
+  - 📦 **FE Componente**: `<VariableTooltip>` reutilizable con accesibilidad básica (`aria-describedby`, ESC para cerrar)
+  - 📦 **FE Datos**: las definiciones vienen del mismo endpoint `/api/variables` (no añade carga extra al backend)
+  - 🧪 **Tests**: tooltip aparece/desaparece según interacción; click fuera lo cierra
 
   ## Dependencias
-  US04-AC1 (variables agrupadas), US04-AC4 (definiciones del endpoint)
+  US04-AC1 (variables ya agrupadas y disponibles desde el endpoint)
 
   ## Estimación
   3h

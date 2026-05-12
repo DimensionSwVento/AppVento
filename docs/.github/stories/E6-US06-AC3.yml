@@ -1,29 +1,48 @@
 id: US06-AC3
-title: "[US06-AC3] Template del PDF (Estructura y Branding)"
+title: "[US06-AC3] Pantalla de Informe (UI nativa según Figma) + Descarga PDF"
 epic: "E6-Reportes"
 epic_label: "epic:E6-Reportes"
 priority: critica
 priority_label: "priority:critica"
 milestone: "Segunda Entrega"
-depends_on: []
-unlocks: "US06-AC4"
-week: 1
+depends_on: ["US04-AC1", "US05-AC1"]
+unlocks: ""
+week: 2
 body: |
   ## Historia de Usuario
-  Como cliente, quiero un informe con branding institucional (Vento + ANH + EAFIT + mavalan) y estructura clara para usar como entregable profesional.
+  Como analista, quiero ver los resultados del informe de viabilidad en una pantalla nativa de la app (siguiendo el diseño Figma) — con los scores de cada una de las 5 dimensiones y el valor de viabilidad agregado — y poder descargar el informe en PDF con un click.
 
-  **Épica:** E6 — Reportes / Informe PDF
+  **Épica:** E6 — Reportes (Parte 1: Generación y Visualización)
 
   ## Criterios de Aceptación
-  1. Template incluye: portada con título, fecha de generación, mapa estático del área seleccionada, tabla de variables configuradas, características técnicas del proyecto, scores por dimensión
-  2. Encabezado con logos institucionales: Vento + ANH + EAFIT + mavalan
-  3. Pie de página con número de página y fecha
-  4. Tipografía y colores consistentes con el branding de la app
-  5. Saltos de página adecuados — secciones no se cortan mal
-  6. Test visual manual + snapshot del HTML/template
+  1. Pantalla de informe en UI nativa de la app (no iframe), siguiendo el diseño Figma del informe
+  2. Muestra los resultados por dimensión — cada una de las 5 dimensiones (técnica, ambiental, regulatoria, socioeconómica, macroeconómica) con su score
+  3. Muestra el valor de viabilidad agregado del área seleccionada
+  4. Botón "Descargar PDF" visible en la pantalla
+  5. Al hacer click en el botón, se genera y descarga un PDF con el mismo contenido (scores por dimensión + viabilidad + área + variables + características)
+  6. PDF descargado tiene branding institucional (Vento + ANH + EAFIT + mavalan)
+  7. Indicador de carga mientras se genera el PDF al descargar
+  8. Mensaje de error claro si la generación falla
+
+  ## Tareas técnicas / desarrollo
+  - 🛠️ **ADR-013**: escribir decisión de tecnología — WeasyPrint vs ReportLab vs jsPDF. Recomendado: WeasyPrint
+  - 🎨 **UI**: traducir el diseño Figma del informe a componentes React
+  - 📦 **FE Página**: `Vento/src/app/informe/page.tsx` con UI nativa del informe + botón descarga
+  - 📦 **FE Componentes**: `<DimensionResult>` (una dimensión con su score), `<ViabilityScore>` (valor agregado), `<DownloadPDFButton>`
+  - 📦 **FE Llamada**: helper que llama al endpoint y descarga el `Blob` como archivo (`<a download>` o `window.URL.createObjectURL`)
+  - 📦 **BE Endpoint**: `POST /api/reports/pdf` que reciba `{ hexes, variables, caracteristicas, scores }` y retorne `application/pdf` con header `Content-Disposition: attachment`
+  - 📦 **BE Template**: archivo HTML+CSS para WeasyPrint (o ReportLab DSL) con estructura: portada, mapa estático del área, tabla de variables, características, scores por dimensión, valor de viabilidad. Incluye logos institucionales
+  - 📦 **FE UI**: spinner durante generación + componente `<ErrorBanner>` si falla
+  - 🧪 **Tests**: endpoint retorna PDF válido (`application/pdf` ≥ 1KB); componente FE renderiza N dimensiones con scores correctos; botón descarga dispara fetch + descarga del blob; manejo robusto de `0 hexágonos seleccionados`
+
+  ## Notas
+  - La pantalla **NO** usa iframe — es UI nativa que refleja exactamente el Figma
+  - El PDF se genera **solo al descargar**, no en cada render de la pantalla
+  - Si llegan datos reales del modelo multicriterio durante el sprint, se conectan a la UI y al template sin cambios estructurales
+  - Parte 2 (fuera de este scope): histórico de informes, compartir vía link
 
   ## Dependencias
-  ADR-013 (decisión técnica) — puede arrancar diseño en paralelo
+  ADR-013, US04 (variables), US05 (características — placeholder si reunión no llegó), diseño Figma del informe
 
   ## Estimación
-  4h
+  16-22h (incluye ADR-013, UI nativa Figma, BE endpoint+template, FE descarga, tests)

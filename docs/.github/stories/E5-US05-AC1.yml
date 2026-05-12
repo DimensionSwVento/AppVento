@@ -1,31 +1,38 @@
 id: US05-AC1
-title: "[US05-AC1] Formulario Dinámico de Aerogeneradores"
+title: "[US05-AC1] Formulario Dinámico para Aerogeneradores"
 epic: "E5-Proyecto"
 epic_label: "epic:E5-Proyecto"
 priority: alta
 priority_label: "priority:alta"
 milestone: "Segunda Entrega"
-depends_on: ["US05-AC5"]
+depends_on: []
 unlocks: "US05-AC3"
 week: 2
 body: |
   ## Historia de Usuario
-  Como analista que ya seleccionó área y variables, quiero introducir las características técnicas del proyecto (capacidad MW, modelo turbina, altura buje, etc.) para que el informe considere parámetros reales.
+  Como analista, quiero introducir las características del proyecto eólico mediante un formulario dinámico para que el informe considere parámetros del proyecto en relación al área seleccionada.
 
   **Épica:** E5 — Características del Proyecto
 
-  ## Criterios de Aceptación
-  1. Formulario con los campos definidos en la reunión con equipo de datos (capacidad MW, número de turbinas, altura buje, diámetro rotor, …)
-  2. Campos se renderizan dinámicamente según definición — añadir/quitar campos no requiere rediseño
-  3. Cada campo tiene label en español, tipo apropiado (number/select/text) y placeholder
-  4. Layout responsive (grid en desktop, columna en mobile)
-  5. Test unitario: render con N campos, valores se capturan correctamente
+  > ⚠️ El enfoque original "turbina por turbina" cambió — la nueva definición se establece en reunión con el equipo de datos. Los criterios listados aquí son provisionales hasta esa reunión.
+
+  ## Criterios de Aceptación (provisionales)
+  1. Formulario con los campos que se definan en la reunión con el equipo de datos
+  2. Los campos se renderizan dinámicamente según definición (añadir/quitar campos no requiere rediseño)
+  3. Cada campo tiene label en español, tipo apropiado y placeholder
+  4. Layout responsive (grid desktop, columna mobile)
+
+  ## Tareas técnicas / desarrollo
+  - 📦 **FE Componente**: nuevo `<CaracteristicasProyectoForm>` en `Vento/src/app/Components/`
+  - 📦 **FE Tipos**: definir interfaz `CaracteristicasPayload` en `Vento/src/app/types/`
+  - 📦 **BE (posiblemente)**: endpoint que reciba/persista las características — definir si es transitorio (solo para informe) o persistente en DB. **A confirmar en reunión**
+  - 🧪 **Tests**: render con N campos, captura de valores correcta
 
   ## Estado
-  ⏸ **BLOQUEADA** — espera reunión con equipo de datos para definir campos exactos.
+  ⏸ **BLOQUEADA** — espera reunión con equipo de datos para definir campos exactos y modelo de persistencia.
 
   ## Dependencias
-  US05-AC5 (catálogo disponible)
+  Reunión equipo de datos.
 
   ## Estimación tras desbloqueo
   4h
