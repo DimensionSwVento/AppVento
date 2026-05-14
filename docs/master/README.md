@@ -94,7 +94,7 @@ Leyenda: 🟢 ok · 🟡 parcial · 🔵 planeado · 🟠 en proceso externo · 
 | [scope-primera-entrega.md](../spec/stories/scope-primera-entrega.md) | 20 historias contractuales de la primera entrega (US01, US03, US08, etc.) |
 | [scope-dos.md](../spec/stories/scope-dos.md) | 16 sub-historias de la segunda entrega (US03P2, US04, US05, US06) — diseño en curso |
 | [feedback-cliente-v1.md](../spec/stories/feedback-cliente-v1.md) | 7 HUs derivadas del feedback post-deploy v1 (Keycloak ES, expiración sesión, territorio insular, admin roles, …) |
-| [feedback-cliente-v2.md](../spec/stories/feedback-cliente-v2.md) | Placeholder — se llenará tras la demo de scope-dos |
+| [feedback-1-ronund2.md](../spec/stories/feedback-1-ronund2.md) | Feedback ronda 2 — evaluación de terceros tras deploy v1 (5 HUs derivadas + items descartados con razón) |
 | [tecnologias.md](../spec/architecture/tecnologias.md) | Comparativa de opciones tecnológicas (parcialmente histórico — ver [tech-stack-validation.md](../architecture/tech-stack-validation.md)) |
 | [reunion-pendiente-decisiones-arquitectura.md](../spec/reunion-pendiente-decisiones-arquitectura.md) | Convocatoria a reunión multidisciplinaria pendiente |
 
@@ -139,7 +139,7 @@ Leyenda: 🟢 ok · 🟡 parcial · 🔵 planeado · 🟠 en proceso externo · 
 1. Lee §1 Diagrama y §2 Estado.
 2. Si quieres entender qué hace Vento: [Spec_doc.md](../spec/Spec_doc.md).
 3. Si quieres ver qué se entregó y qué falta: [project-status.md](../spec/project-status.md).
-4. Si tienes feedback nuevo: lo capturaremos en `feedback-cliente-v2.md`.
+4. Si tienes feedback nuevo: lo capturaremos en una próxima ronda (`feedback-1-ronundN.md`).
 
 ### Soy **PM / coordinador**
 1. Lee este master + [project-status.md](../spec/project-status.md).

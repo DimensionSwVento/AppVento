@@ -57,17 +57,21 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
 - **Dependencia:** US03, US03-AC6
 - **Criterios de Aceptación:**
   1. Cálculo de área usando `cellArea(h, 'km2')` de h3-js, sumado sobre `selectedHexes`
-  2. Área visible en la UI con formato `1,234.56 km²` con separadores de miles
-  3. Indicador de viabilidad del área seleccionada — valor agregado a partir de los scores de los hexágonos
+  2. Área visible en un **panel flotante pequeño a la derecha del mapa** (siempre visible, ~180-220px de ancho) con formato `1,234.56 km²` y separadores de miles
+  3. Indicador de viabilidad del área seleccionada — valor agregado a partir de los scores de los hexágonos, mostrado en el mismo panel
   4. Actualización reactiva al añadir/quitar hexágonos sin recargar
   5. Comportamiento robusto con `0 hexágonos seleccionados` → `0 km²` y sin indicador de viabilidad, sin crash
+  6. Responsive: en mobile el panel se acopla en la parte inferior (no superpuesto al mapa)
 - **Tareas técnicas / desarrollo:**
   - 📦 **FE Helper**: `Vento/src/app/Utils/areaCalc.ts` — `calcArea(hexes: Set<string>): number` y `calcViability(hexes, scores): number`
-  - 📦 **FE Componente**: `<AreaDisplay>` (puede vivir en SideBar o en la subpage "Selección de área")
-  - 📦 **FE Integración**: hook `useMemo` sobre `selectedHexes` para no recalcular en cada render
-  - 📦 **BE (opcional)**: si los scores de viabilidad por hex no están ya en los tiles, exponer `GET /api/scores?h3=...` — confirmar con backend si ya existe
-  - 🧪 **Tests**: unitario de `areaCalc.ts` (0 hex, 1 hex, N hex); integración con SideBar al cambiar `selectedHexes`
-- **Notas:** La viabilidad usa scores actuales del backend (placeholders mientras el modelo multicriterio avanza). Cuando llegue versión avanzada, los valores se reemplazan sin tocar el cálculo.
+  - 📦 **FE Contenedor flotante**: `Vento/src/app/Components/MapInfoPanel.tsx` — panel flotante a la derecha del mapa, ancho ~200px, siempre visible. Reutilizable para futuros widgets (tooltips US04-AC2, leyenda, etc.)
+  - 📦 **FE Componente**: `<AreaDisplay>` dentro del panel — renderiza el área + valor de viabilidad. Lee `selectedHexes` del context con `useAprincipal()` y usa `useMemo` para no recalcular en cada render
+  - 📦 **FE Integración**: insertar `<MapInfoPanel>` en [Map.tsx](../../../Vento/src/app/Components/Map.tsx) como hijo del contenedor del mapa (posición `absolute right-3 top-3`)
+  - 📦 **BE (opcional)**: si los scores de viabilidad por hex no están ya en los tiles, exponer `GET /api/scores?h3=...` — **verificar con backend antes de empezar si ya existe**
+  - 🧪 **Tests**: unitario de `areaCalc.ts` (0 hex, 1 hex, N hex); integración del componente al cambiar `selectedHexes`
+- **Notas:**
+  - El panel es la base UI para US04-AC2 (tooltips variables) y posibles widgets futuros — diseño escalable.
+  - La viabilidad usa scores actuales del backend (placeholders mientras el modelo multicriterio avanza). Cuando llegue versión avanzada, los valores se reemplazan sin tocar el cálculo ni el componente.
 
 ---
 
