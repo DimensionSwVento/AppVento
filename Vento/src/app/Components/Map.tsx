@@ -21,6 +21,7 @@ import { webgl2Adapter } from "@luma.gl/webgl";
 import { cellToBoundary, cellToLatLng, getHexagonEdgeLengthAvg, getResolution, polygonToCells } from "h3-js";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
 import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS } from "../Utils/h3Resolution";
+import AreaDisplay from "./AreaDisplay";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 try { luma.registerAdapters([webgl2Adapter]); } catch { /* ok */ }
@@ -291,6 +292,8 @@ export default function MapView() {
           <p className="text-gray-500 text-lg">... cargando mapa</p>
         </div>
       )}
+
+      {mapReady && <AreaDisplay />}
 
       {mapReady && (
         <>
