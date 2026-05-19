@@ -199,7 +199,7 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
   - 🧪 **Tests**: valor fuera de rango bloquea submit; valor válido permite avanzar
 - **Estado:** ⏸ **BLOQUEADA** — espera reunión
 
----
+---US06-AC3 — Pantalla de Informe 
 
 # E6 — Reportes (Parte 1: Generación y Visualización)
 

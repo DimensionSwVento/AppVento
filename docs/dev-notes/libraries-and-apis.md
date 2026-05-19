@@ -149,6 +149,26 @@ Inventario de las librerías externas que toca el proyecto y de los métodos con
 
 ---
 
+### `jspdf` + `html2canvas` (generación de PDF client-side)
+
+**Doc oficial:** https://github.com/parallax/jsPDF · https://github.com/niklasvh/html2canvas
+**Usado en:** [pdfExport.ts](../../Vento/src/app/Utils/pdfExport.ts), llamado desde [Report.tsx](../../Vento/src/app/Components/Report.tsx)
+
+| Método | Para qué |
+|--------|----------|
+| `html2canvas(el, opts)` | Renderiza un elemento del DOM a un canvas (snapshot visual) |
+| `canvas.toDataURL("image/png")` | Convierte el canvas a data URL para embed en PDF |
+| `new jsPDF({ orientation, unit, format })` | Crea un documento PDF (A4 portrait por defecto) |
+| `pdf.addImage(data, "PNG", x, y, w, h)` | Embebe la imagen renderizada en la página |
+| `pdf.addPage()` | Añade páginas si el contenido excede una hoja |
+| `pdf.save(filename)` | Dispara la descarga del PDF |
+
+**Notas:**
+- Generación 100% client-side — no requiere backend ni ADR-013 todavía (US06-AC3).
+- Cuando llegue el backend con WeasyPrint (template profesional + branding fuerte), `pdfExport.ts` se reemplaza por un fetch al endpoint sin tocar `Report.tsx`.
+
+---
+
 ## 4. Backend (FastAPI — repo separado)
 
 > El backend vive en un repo aparte. Aquí solo se listan las llamadas que el frontend hace contra él.
