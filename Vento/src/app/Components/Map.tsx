@@ -20,7 +20,11 @@ import { luma } from "@luma.gl/core";
 import { webgl2Adapter } from "@luma.gl/webgl";
 import { cellToBoundary, cellToLatLng, getHexagonEdgeLengthAvg, getResolution, polygonToCells } from "h3-js";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
+import { useVariables } from "../Utils/VariablesContext";
 import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS } from "../Utils/h3Resolution";
+import { aggregateScore, colorForScore, expandToRes8, type Palette } from "../Utils/heatmap";
+import PaletteToggle from "./PaletteToggle";
+import HeatmapLegend from "./HeatmapLegend";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 try { luma.registerAdapters([webgl2Adapter]); } catch { /* ok */ }
@@ -94,7 +98,10 @@ function getColombiaCells(resolution: number): CachedCell[] {
 
 export default function MapView() {
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
-  const { selectedHexes, setSelectedHexes } = useAprincipal();
+  const { accion, selectedHexes, setSelectedHexes } = useAprincipal();
+  const { activeVariables } = useVariables();
+  const canSelect = accion === "seleccion-area";
+  const [palette, setPalette] = useState<Palette>("inferno");
   const [mapReady, setMapReady] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [hoveredHex, setHoveredHex] = useState<string | null>(null);
@@ -121,13 +128,14 @@ export default function MapView() {
   }, []);
 
   const toggleHex = useCallback((h3Index: string) => {
+    if (!canSelect) return; // US03-AC12 — selección sólo en fase "seleccion-area"
     setSelectedHexes((prev) => {
       const next = new Set(prev);
       if (next.has(h3Index)) next.delete(h3Index);
       else next.add(h3Index);
       return next;
     });
-  }, [setSelectedHexes]);
+  }, [canSelect, setSelectedHexes]);
 
   // capa de cuadrícula con tiles — solo renderiza lo visible, cachea por tile
   const gridTileLayer = useMemo(() => new TileLayer<HexCell>({
@@ -198,24 +206,52 @@ export default function MapView() {
     [selectedHexes]
   );
 
-  // capa de seleccionados — top level, siempre visible (independiente de tiles)
-  const selectedLayer = useMemo(() => new PolygonLayer<HexCell>({
-    id: "selected-hexes",
-    data: selectedArr,
-    getPolygon: (d) => cellToBoundary(d.h, true),
-    getFillColor: SELECTED_FILL,
-    getLineColor: SELECTED_BORDER,
-    getLineWidth: 1,
-    lineWidthMinPixels: 2,
-    filled: true,
-    stroked: true,
-    pickable: false,
-  }), [selectedArr]);
+  // US03-AC10 — Heatmap clippeado a la selección, expandido a resolución 8.
+  // Solo se calcula si hay al menos una variable activa y selección no vacía.
+  // El color de cada celda es el agregado ponderado de las variables activas
+  // (variableWeights.ts firma positivo/negativo + magnitud).
+  const heatmapRes8 = useMemo<HexCell[]>(() => {
+    if (activeVariables.size === 0 || selectedHexes.size === 0) return [];
+    return expandToRes8(selectedHexes).map((h) => ({ h }));
+  }, [activeVariables, selectedHexes]);
 
-  // H3 ID label solo en hexágonos seleccionados — últimos 7 chars
+  const heatmapLayer = useMemo(() => {
+    if (heatmapRes8.length === 0 || activeVariables.size === 0) return null;
+    return new PolygonLayer<HexCell>({
+      id: "variable-heatmap",
+      data: heatmapRes8,
+      getPolygon: (d) => cellToBoundary(d.h, true),
+      getFillColor: (d) => colorForScore(aggregateScore(activeVariables, d.h), palette),
+      filled: true,
+      stroked: false,
+      pickable: false,
+      updateTriggers: { getFillColor: [activeVariables, palette] },
+    });
+  }, [heatmapRes8, activeVariables, palette]);
+
+  // Capa de seleccionados — sólo en fase "seleccion-area".
+  // En dimensiones/características/informe se oculta para no estorbar al heatmap.
+  const selectedLayer = useMemo(() => {
+    if (!canSelect) return null;
+    return new PolygonLayer<HexCell>({
+      id: "selected-hexes",
+      data: selectedArr,
+      getPolygon: (d) => cellToBoundary(d.h, true),
+      getFillColor: SELECTED_FILL,
+      getLineColor: SELECTED_BORDER,
+      getLineWidth: 1,
+      lineWidthMinPixels: 2,
+      filled: true,
+      stroked: true,
+      pickable: false,
+    });
+  }, [selectedArr, canSelect]);
+
+  // H3 ID label solo en hexágonos seleccionados — sólo en fase "seleccion-area".
   // Tamaño en metros proporcional al hex → el texto nunca sale del hexágono.
   // sizeMinPixels/MaxPixels evitan textos ilegibles o gigantes a zooms extremos.
   const selectedLabelLayer = useMemo(() => {
+    if (!canSelect) return null;
     if (selectedArr.length === 0) return null;
     return new TextLayer<HexCell>({
       id: "selected-labels",
@@ -236,12 +272,12 @@ export default function MapView() {
       getAlignmentBaseline: "center",
       pickable: false,
     });
-  }, [selectedArr]);
+  }, [selectedArr, canSelect]);
 
-  // capa de hover — relleno gris transparente del hex bajo el cursor
-  // En mobile no hay cursor real (touch) → se deshabilita
+  // capa de hover — relleno gris transparente del hex bajo el cursor.
+  // Sólo en fase "seleccion-area"; en otras fases no hay interacción que sugerir.
   const hoverFillLayer = useMemo(() => {
-    if (!hoveredHex || isMobile) return null;
+    if (!canSelect || !hoveredHex || isMobile) return null;
     return new PolygonLayer<HexCell>({
       id: "hover-fill",
       data: [{ h: hoveredHex }],
@@ -256,9 +292,9 @@ export default function MapView() {
     });
   }, [hoveredHex, isMobile]);
 
-  // símbolo "+" en el centro del hex hovered (solo desktop)
+  // símbolo "+" en el centro del hex hovered — sólo en fase "seleccion-area" (desktop)
   const hoverPlusLayer = useMemo(() => {
-    if (!hoveredHex || isMobile) return null;
+    if (!canSelect || !hoveredHex || isMobile) return null;
     const [lat, lng] = cellToLatLng(hoveredHex);
     return new TextLayer<HexCell>({
       id: "hover-plus",
@@ -273,7 +309,7 @@ export default function MapView() {
       getAlignmentBaseline: "center",
       pickable: false,
     });
-  }, [hoveredHex]);
+  }, [hoveredHex, canSelect]);
 
   const zoomIn = () => setViewState((v) => clampViewState({ ...v, zoom: v.zoom + 1 }));
   const zoomOut = () => setViewState((v) => clampViewState({ ...v, zoom: v.zoom - 1 }));
@@ -321,13 +357,23 @@ export default function MapView() {
         </>
       )}
 
+      {activeVariables.size > 0 && selectedHexes.size > 0 && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
+          <PaletteToggle palette={palette} onChange={setPalette} />
+          <HeatmapLegend palette={palette} />
+        </div>
+      )}
+
       <DeckGL
         style={{ position: "relative", width: "auto", height: "100%" }}
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => setViewState(clampViewState(vs as typeof INITIAL_VIEW_STATE))}
         controller={true}
-        layers={[gridTileLayer, territoryBorderLayer, selectedLayer, selectedLabelLayer, hoverFillLayer, hoverPlusLayer]}
-        getCursor={({ isHovering }) => (isHovering ? "pointer" : "grab")}
+        layers={[gridTileLayer, territoryBorderLayer, heatmapLayer, selectedLayer, selectedLabelLayer, hoverFillLayer, hoverPlusLayer]}
+        getCursor={({ isHovering }) => {
+          if (!canSelect) return isHovering ? "not-allowed" : "grab";
+          return isHovering ? "pointer" : "grab";
+        }}
         onHover={(info) => {
           const cell = info.object as HexCell | undefined;
           setHoveredHex(cell ? cell.h : null);

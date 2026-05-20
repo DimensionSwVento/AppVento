@@ -31,15 +31,18 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
 | Prioridad | ID | Historia | Épica | Preparado_para_desarrollo? |
 |-----------|----|----------|-------|--------|
 | 🔴 Crítica | **US03-P2** | Cálculo de área y viabilidad del área (Mapa Parte 2) | E2 | ✅ Listo (viabilidad con placeholders hasta modelo) |
-| 🟡 Alta | **US04-AC1** | Agrupación por 5 categorías de color | E4 | ✅ Listo |
+| 🟡 Alta | **US03-AC10** | Heatmap clippeado a la selección (variables activas) | E2 | ✅ Listo |
+| 🟡 Alta | **US03-AC11** | Toggle de paleta GIS (inferno / viridis) | E2 | ✅ Listo |
+| 🟡 Alta | **US03-AC12** | Bloqueo de selección fuera de fase Selección de Área | E2 | ✅ Listo |
+| 🟢 Media | **US03-AC13** | Leyenda del heatmap (rampa de paleta vigente, siempre visible) | E2 | ✅ Listo |
+| 🟡 Alta | **US04-AC1** | Subpágina Dimensiones (cards colapsables, switches, búsqueda, contador X/Y) | E4 | ✅ Listo |
 | 🟡 Alta | **US04-AC2** | Tooltip con definición de cada variable | E4 | ✅ Listo |
-| 🟡 Alta | **US04-AC3** | Indicador de progreso por categoría | E4 | ✅ Listo |
 | 🟡 Alta | **US05-AC1** | Formulario dinámico para aerogeneradores | E5 | ⏸ Reunión datos |
 | 🟡 Alta | **US05-AC2** | Selección de catálogo de modelos | E5 | ⏸ Reunión datos |
 | 🟡 Alta | **US05-AC3** | Validación de rangos técnicos permitidos | E5 | ⏸ Reunión datos |
 | 🔴 Crítica | **US06-AC3** | Previsualización en pantalla del informe PDF | E6 | ⏸ ADR-013 |
 
-**Total: 8 HUs** (1 + 3 + 3 + 1)
+**Total: 11 HUs** (5 + 2 + 3 + 1)
 
 ---
 
@@ -75,6 +78,82 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
 
 ---
 
+### US03-AC10 — Heatmap Clippeado a la Selección (agregado multi-variable ponderado, res 8)
+- **Prioridad:** 🟡 Alta
+- **Épica origen:** E2 (Mapa SIG)
+- **Dependencia:** US03 (selección de área), US04-AC1 (variables activas)
+- **Criterios de Aceptación:**
+  1. El heatmap se pinta **solo sobre el área cubierta por `selectedHexes`** — fuera de la selección los hexes no muestran color de variables
+  2. El heatmap refleja el **agregado multi-variable** de las variables activas (de US04-AC1). Pesos signados en `variableWeights.ts`. **Las penalizadoras sólo restan** del promedio aditivo, no se mezclan en él: `final = clamp(baseAditivo - penalty, 0, 1)`. Al añadir/quitar variables el heatmap se recompone — ejemplo: añadir "Cigarrillos ilegales" enfría hexes que eran calientes por "Velocidad del viento"
+  3. Pintado **siempre a resolución H3 = 8** (la más fina del rango soportado): los hexes seleccionados de menor resolución se expanden a sus hijos res-8 antes de colorear, ignorando el promedio del hex padre
+  4. Color de cada celda res-8 deriva del agregado normalizado (0..1) usando la paleta vigente (de US03-AC11)
+  5. Si no hay variables activas → no se renderiza heatmap (selección sólo con su color de borde)
+  6. Si no hay selección → no se renderiza heatmap (mapa base limpio)
+  7. Actualización reactiva al cambiar selección o variables activas sin recargar
+- **Tareas técnicas / desarrollo:**
+  - 📦 **FE Helper**: `Vento/src/app/Utils/heatmap.ts` — `expandToRes8` (usa `cellToChildren`), `scoreFor(variableId, hex)` (placeholder casi-uniforme [0.6, 0.8) por hex, independiente de la variable, para observar el efecto neto al activar variables), `aggregateScore(activeVariables, hex)` (promedio aditivo de positivas menos promedio de penalizadoras, clamp [0,1])
+  - 📦 **FE Helper de pesos**: `Vento/src/app/Utils/variableWeights.ts` — `Record<string, number>` con peso signado por variable. Aislado del catálogo para que el cliente reemplace los valores desde BD sin tocar la UI ni el cálculo
+  - 📦 **FE Map.tsx**: nueva `PolygonLayer` dedicada al heatmap que recibe los hexes res-8 + paleta + `aggregateScore`
+  - 📦 **FE**: lectura de `activeVariables` vía `VariablesContext` (de US04-AC1)
+  - 📦 **BE**: **no requiere endpoint nuevo** todavía — el clipping, expansión a res 8 y agregado se hacen client-side. Cuando el cliente entregue los pesos en BD se reemplaza `variableWeights.ts` por un fetch al backend manteniendo la misma forma
+  - 🧪 **Tests**: `expandToRes8` produce hijos esperados; `scoreFor` determinista; `aggregateScore` con 0/1/N variables, polaridad opuesta, ignora pesos 0; render con/sin variables activas y con/sin selección
+
+---
+
+### US03-AC11 — Toggle de Paleta GIS (Inferno / Viridis)
+- **Prioridad:** 🟡 Alta
+- **Épica origen:** E2 (Mapa SIG)
+- **Dependencia:** US03-AC10
+- **Criterios de Aceptación:**
+  1. Control visible en la parte superior del mapa para alternar entre dos paletas GIS estándar
+  2. Opción **Inferno**: rampa morado → rojo → amarillo (térmica)
+  3. Opción **Viridis**: rampa morado → azul → verde → amarillo (perceptualmente uniforme)
+  4. El cambio de paleta actualiza inmediatamente los colores del heatmap clippeado (US03-AC10)
+  5. Paleta seleccionada se mantiene mientras el usuario navega entre fases (selección, dimensiones, características, informe)
+- **Tareas técnicas / desarrollo:**
+  - 📦 **FE Utils**: `Vento/src/app/Utils/gisPalette.ts` — exporta `INFERNO` y `VIRIDIS` como arrays de stops `[t, [r,g,b]]` + helper `interpolateColor(palette, score)`
+  - 📦 **FE Componente**: `<PaletteToggle>` posicionado `absolute top-3 left-3` o similar en `Map.tsx`
+  - 📦 **FE Estado**: paleta vigente en context (extender `AccionPrincipalContext` o nuevo `MapPaletteContext`)
+  - 🧪 **Tests**: cambio de paleta dispara re-render del heatmap; `interpolateColor` devuelve color correcto en stops conocidos
+
+---
+
+### US03-AC12 — Bloqueo de Selección Fuera de Fase "Selección de Área"
+- **Prioridad:** 🟡 Alta
+- **Épica origen:** E2 (Mapa SIG)
+- **Dependencia:** US03
+- **Criterios de Aceptación:**
+  1. Cuando `accion === "seleccion-area"` → click en el mapa modifica `selectedHexes` (comportamiento actual)
+  2. Cuando `accion !== "seleccion-area"` (dimensiones, características, informe) → click en el mapa **NO** modifica `selectedHexes`
+  3. Los hexes seleccionados permanecen visibles en todas las fases (no se borran al cambiar de acción)
+  4. Feedback visual al hover sobre el mapa en fase bloqueada (cursor `not-allowed` o similar) para comunicar el estado
+  5. Garantiza coherencia entre el área seleccionada, el heatmap mostrado y el informe descargado
+- **Tareas técnicas / desarrollo:**
+  - 📦 **FE Map.tsx**: condicionar el handler `onClick` de la PolygonLayer de selección a `accion === "seleccion-area"`; mantener resto del rendering
+  - 📦 **FE Cursor**: aplicar `getCursor` condicional al DeckGL container según `accion`
+  - 🧪 **Tests**: click en fase "dimensiones" no modifica `selectedHexes`; click en fase "seleccion-area" sí; los hexes seleccionados sobreviven al cambio de acción
+
+---
+
+### US03-AC13 — Leyenda del Heatmap + Ayuda "?"
+- **Prioridad:** 🟢 Media
+- **Épica origen:** E2 (Mapa SIG)
+- **Dependencia:** US03-AC10, US03-AC11
+- **Criterios de Aceptación:**
+  1. Cuando el heatmap es visible (al menos una variable activa + selección), se muestra una leyenda junto al `PaletteToggle` arriba del mapa
+  2. La leyenda es **siempre visible** mientras el heatmap esté activo (pill con rampa + etiquetas, no requiere acción para mostrarse)
+  3. Renderiza la **rampa de la paleta vigente** (inferno o viridis) como gradiente horizontal usando los stops de `heatmap.ts`
+  4. Etiquetas en los extremos: **"Baja"** (izquierda) ←→ **"Alta"** (derecha) — interpretación de viabilidad
+  5. Cambia de gradiente automáticamente al alternar paleta (US03-AC11)
+  6. **Icono "?" al final** de la pill: hover abre un popover con la descripción de cómo funciona el heatmap (variables que suman vs restan, rol de la paleta). Click sobre "?" alterna el popover de forma sticky. Cierre con ESC, click fuera o segundo click
+  7. Accesibilidad: rampa con `role="img"` + `aria-label`; botón "?" con `aria-expanded`/`aria-controls`; popover con `role="tooltip"`
+- **Tareas técnicas / desarrollo:**
+  - 📦 **FE Componente**: `<HeatmapLegend palette={palette} />` — gradiente CSS desde `INFERNO_STOPS` / `VIRIDIS_STOPS`, botón "?" con estado `open` controlado por hover/focus/click + listeners de click-fuera y ESC
+  - 📦 **FE Integración**: en `Map.tsx`, montado al lado de `<PaletteToggle>` dentro del mismo contenedor flex, condicionado a `activeVariables.size > 0 && selectedHexes.size > 0`
+  - 🧪 **Tests**: pill siempre visible; hover abre popover, mouseleave lo cierra; click alterna; ESC cierra; gradiente cambia entre paletas
+
+---
+
 # E4 — Configuración de Dimensiones (Variables)
 
 > **Objetivo:** Permitir al analista visualizar las variables del análisis agrupadas por dimensión, con definición clara y feedback de progreso.
@@ -83,56 +162,51 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
 
 ---
 
-### US04-AC1 — Agrupación por 5 Categorías de Color
+### US04-AC1 — Subpágina Dimensiones (Cards Colapsables, Switches, Búsqueda, Contador X/Y)
 - **Prioridad:** 🟡 Alta
 - **Épica origen:** E4 (Variables)
 - **Dependencia:** —
+- **Origen del diseño:** Figma de la subpágina Dimensiones (cliente, mayo 2026)
 - **Criterios de Aceptación:**
-  1. Variables agrupadas en las 5 dimensiones (técnica, ambiental, regulatoria, socioeconómica, macroeconómica)
-  2. Cada dimensión tiene un color de **paleta GIS estándar empezando en morado** y bajando por la escala térmica/espectral (mismo principio que los heat-maps de generación energética)
-  3. Header de cada sección muestra: nombre de dimensión + color asignado
-  4. Las secciones se pueden expandir/colapsar individualmente
+  1. Subpágina renderizada en el SideBar cuando `accion === "dimensiones"`, con título "Configura las variables de interés por cada dimensión"
+  2. **Search bar** "Buscar variables" arriba de las cards — filtra variables por label o descripción dentro de todas las dimensiones
+  3. Variables agrupadas en las **5 dimensiones** (ambiental, técnica, regulatoria, socioeconómica, macroeconómica)
+  4. Cada dimensión se renderiza como **card colapsable** con header que muestra: nombre de dimensión + **contador `X / Y`** (X = variables activas, Y = total de variables de la dimensión) + chevron de expandir/colapsar
+  5. Cards colapsables individualmente — el estado de expandido/colapsado de cada dimensión es independiente
+  6. Cuando una card está expandida, muestra la lista de variables de esa dimensión. Cada fila contiene: **switch** + **label** de la variable + **descripción breve** + **icono** (ℹ para tooltip, definido en US04-AC2)
+  7. El switch determina si la variable está **activa** (encendido = pinta su contribución en el heatmap del mapa, vía US03-AC10) o **inactiva**
+  8. Activar/desactivar un switch actualiza inmediatamente el contador `X / Y` del header de su dimensión
+  9. Botón "Siguiente paso" al final de la subpágina avanza la fase a "características"
+  10. **Multi-selección con pesos signados**: múltiples variables pueden estar activas simultáneamente. Cada variable tiene un peso signado en `Vento/src/app/Utils/variableWeights.ts` (positivo = aditiva, negativo = penalizadora; magnitud = importancia relativa). **Las penalizadoras sólo restan**: no entran al promedio aditivo, restan directamente del base aditivo. Ejemplo: activar "Cigarrillos ilegales" enfría los hexes donde se concentra esa actividad aunque "Velocidad del viento" sea excelente
+  11. Estado de la variable activa vive en context en memoria (no persiste entre sesiones — la decisión de persistencia se toma cuando se justifique)
 - **Tareas técnicas / desarrollo:**
-  - 📦 **BE Endpoint**: `GET /api/variables` en FastAPI que retorne `{ variables: [{ dimension, name, label, definition, type }] }` agrupadas por dimensión
-  - 📦 **FE Rewrite**: añadir `/api/variables/:path*` a [next.config.ts](../../../Vento/next.config.ts) (mismo patrón que `/api/tiles`)
-  - 📦 **FE Componente**: extender [Dimensions.tsx](../../../Vento/src/app/Components/) con secciones colapsables y aplicación de paleta GIS
-  - 📦 **FE Constantes**: definir paleta GIS en un módulo reutilizable (`Vento/src/app/Utils/gisPalette.ts`)
-  - 🧪 **Tests**: backend retorna estructura esperada; frontend renderiza N grupos colapsables
-- **Estado:** ✅ Sin bloqueantes
+  - 📦 **FE Catálogo**: `Vento/src/app/Utils/variablesCatalog.ts` — variables hardcoded agrupadas por dimensión (mientras `GET /api/variables` no exista) con `{ id, dimension, label, description, color }`. Colores en un módulo aparte para cambio fácil futuro
+  - 📦 **FE Context**: `Vento/src/app/Utils/VariablesContext.tsx` — `activeVariables: Set<string>`, `toggleVariable(id)`, `isActive(id)`, contadores derivados por dimensión
+  - 📦 **FE Componente**: reescribir [Dimensions.tsx](../../../Vento/src/app/Components/Dimensions.tsx) con search bar + cards colapsables
+  - 📦 **FE Componente**: `<DimensionCard>` — header colapsable + body con stack de `<VariableSwitch>`
+  - 📦 **FE Componente**: `<VariableSwitch>` — switch + label + descripción + icono (ℹ delega a US04-AC2)
+  - 📦 **FE Provider**: añadir `VariablesProvider` en [Providers.tsx](../../../Vento/src/app/Providers.tsx) para que el mapa (US03-AC10) y la subpágina compartan estado
+  - 📦 **BE (diferido)**: `GET /api/variables` en FastAPI — **no es bloqueante**, se conecta cuando esté listo; el catálogo hardcoded inicial es la fuente de verdad temporal
+  - 🧪 **Tests**: render con 5 cards, expand/collapse individual, switch toggle actualiza contador, search filtra variables por label y descripción
+- **Estado:** ✅ Sin bloqueantes (catálogo hardcoded)
 
 ---
 
-### US04-AC2 — Tooltip con Definición de cada Variable
+### US04-AC2 — Tooltip Accesible con Definición de cada Variable
 - **Prioridad:** 🟡 Alta
 - **Épica origen:** E4 (Variables)
 - **Dependencia:** US04-AC1
 - **Criterios de Aceptación:**
-  1. Cada variable tiene un icono ℹ al lado del label
-  2. Hover (desktop) o tap (mobile) sobre el icono muestra tooltip con la definición en español
-  3. Tooltip se cierra al hacer click fuera
-  4. Texto del tooltip viene del campo `definition` del endpoint `/api/variables`
+  1. Cada variable tiene un icono ℹ al lado del label dentro de la fila de `<VariableSwitch>`
+  2. Click sobre el icono abre un popover en español con: descripción de la variable + indicador **"Suma a viabilidad"** o **"Resta a viabilidad"** (derivado del signo de `variableWeights.ts`)
+  3. Popover se cierra: ESC, click fuera, segundo click sobre el icono
+  4. Texto del popover viene del campo `description` del catálogo (o `definition` del endpoint cuando exista)
+  5. Accesibilidad: el botón usa `aria-expanded`/`aria-controls` y el popover tiene `role="tooltip"`
 - **Tareas técnicas / desarrollo:**
-  - 📦 **FE Componente**: `<VariableTooltip>` reutilizable con accesibilidad básica (`aria-describedby`, ESC para cerrar)
-  - 📦 **FE Datos**: las definiciones vienen del mismo endpoint `/api/variables` (no añade carga extra al backend)
-  - 🧪 **Tests**: tooltip aparece/desaparece según interacción; click fuera lo cierra
-- **Estado:** ✅ Sin bloqueantes
-
----
-
-### US04-AC3 — Indicador de Progreso por Categoría
-- **Prioridad:** 🟡 Alta
-- **Épica origen:** E4 (Variables)
-- **Dependencia:** US04-AC1
-- **Criterios de Aceptación:**
-  1. Cada dimensión muestra una barra de progreso visible
-  2. Refleja `N de M variables configuradas` para esa dimensión
-  3. Color de la barra coincide con el color de la dimensión (US04-AC1)
-  4. Texto numérico al lado: `3 / 8` o similar
-  5. Actualización inmediata al configurar/deseleccionar una variable
-- **Tareas técnicas / desarrollo:**
-  - 📦 **FE Componente**: `<CategoryProgress>` que recibe `{ dimension, configured, total }`
-  - 📦 **FE Estado**: definir cómo se trackea "configurada" — sugerencia: estado local en `Dimensions.tsx` o context dedicado
-  - 🧪 **Tests**: render con `(3, 8)` muestra `3 / 8`; barra al 37.5%
+  - 📦 **FE Componente**: `<VariableTooltip>` con estado local `open` + listeners (mousedown fuera, keydown ESC) + cleanup en `useEffect`
+  - 📦 **FE Integración**: `<VariableSwitch>` reemplaza el `title=` nativo por `<VariableTooltip variable={variable} />`
+  - 📦 **FE Datos**: descripción del catálogo hardcoded (US04-AC1); polaridad de `weightFor(variable.id)` en `variableWeights.ts`
+  - 🧪 **Tests**: click abre/cierra; ESC y click-fuera cierran; polaridad correcta para viento (suma) y cigarrillos-ilegales (resta)
 - **Estado:** ✅ Sin bloqueantes
 
 ---
@@ -241,17 +315,15 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
 
 # Resumen Consolidado
 
-## Estimación
+## Resumen por épica
 
-| Bloque | HUs | Horas estimadas (con tareas técnicas adentro) |
-|--------|-----|------------------------------------------------|
-| E2 (US03-P2) | 1 | 4-5h |
-| E4 (US04-AC1/AC2/AC3) | 3 | 12-14h (incluye `/api/variables` backend) |
-| E5 (US05-AC1/AC2/AC3) | 3 | 10-14h tras desbloqueo de reunión |
-| E6 (US06-AC3) | 1 | 16-22h (incluye ADR-013, UI nativa Figma, generación, template, descarga) |
-| **Total** | **8** | **42-55h** |
-
-Con buffer 20%: **48-64h** = ~2 semanas con el equipo.
+| Bloque | HUs |
+|--------|-----|
+| E2 (US03-P2, AC10, AC11, AC12) | 4 |
+| E4 (US04-AC1, AC2) | 2 |
+| E5 (US05-AC1, AC2, AC3) | 3 |
+| E6 (US06-AC3) | 1 |
+| **Total** | **10** |
 
 ## Dependencias
 
@@ -259,7 +331,11 @@ Con buffer 20%: **48-64h** = ~2 semanas con el equipo.
 US03-P2 ───────────────────────────────────► (independiente)
 
 US04-AC1 ──┬─► US04-AC2
-           └─► US04-AC3
+           └─► US03-AC10 (heatmap usa variables activas)
+
+US03-AC10 ──► US03-AC11 (paleta aplica al heatmap)
+
+US03 ──► US03-AC12 (bloqueo de selección)
 
 (Reunión datos) ──► US05-AC1 ──► US05-AC3
                     US05-AC2 (paralelo)
@@ -267,34 +343,38 @@ US04-AC1 ──┬─► US04-AC2
 ADR-013 + US04 + US05 (placeholder OK) ──► US06-AC3
 ```
 
-## Empezables sin reunión (3 HUs, ~16-19h)
+## Empezables sin reunión (6 HUs)
 
 - US03-P2 (cálculo área + viabilidad placeholder)
-- US04-AC1, AC2, AC3 (las 3 HUs de variables)
+- US03-AC10 (heatmap clippeado a selección)
+- US03-AC11 (toggle paleta GIS inferno/viridis)
+- US03-AC12 (bloqueo de selección fuera de fase)
+- US04-AC1 (subpágina dimensiones con cards colapsables, switches, búsqueda)
+- US04-AC2 (tooltip de variables)
 
-## Bloqueadas por reunión (3 HUs, ~10-14h)
+## Bloqueadas por reunión (3 HUs)
 
 - US05-AC1, AC2, AC3 — todas esperan la reunión con el equipo de datos
 
-## Bloqueadas por decisión interna (1 HU, ~16-22h)
+## Bloqueadas por decisión interna (1 HU)
 
-- US06-AC3 — espera ADR-013 (decisión interna de winx, ~1h) + Figma del informe
+- US06-AC3 — espera ADR-013 (decisión interna de winx) + Figma del informe
 
 ## Propuesta de asignación
 
 | Dev | HUs |
 |-----|-----|
 | **Winx (full-time)** | ADR-013 + US06-AC3 (UI Figma + generación + template + descarga) + reviews + reuniones |
-| **Part-time A** | US04-AC1 (incluye endpoint backend) + AC2 + AC3 |
-| **Part-time B** | US03-P2 + (tras reunión) US05-AC1/AC2/AC3 |
+| **Part-time A** | US04-AC1 (catálogo hardcoded + cards colapsables + switches + búsqueda) + US04-AC2 (tooltips) |
+| **Part-time B** | US03-P2 + US03-AC10/AC11/AC12 (heatmap clippeado + paleta + bloqueo selección) + (tras reunión) US05-AC1/AC2/AC3 |
 
 ## Decisiones técnicas pendientes (resumen)
 
-| # | Decisión | Owner | Tiempo |
-|---|----------|-------|--------|
-| 1 | ADR-013 — Motor PDF | winx | ~1h |
-| 2 | Fuente del catálogo aerogeneradores | reunión datos | reunión |
-| 3 | Persistencia del proyecto (transitorio vs BD) | reunión datos | reunión |
+| # | Decisión | Owner |
+|---|----------|-------|
+| 1 | ADR-013 — Motor PDF | winx |
+| 2 | Fuente del catálogo aerogeneradores | reunión datos |
+| 3 | Persistencia del proyecto (transitorio vs BD) | reunión datos |
 
 ---
 
