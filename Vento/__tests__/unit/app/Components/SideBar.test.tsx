@@ -52,7 +52,7 @@ beforeEach(() => {
   setAccionMock.mockReset();
   delete (window as { location?: unknown }).location;
   (window as { location: unknown }).location = {
-    href: "",
+    href: "https://app.example.com/dashboard",
     origin: "https://app.example.com",
   };
 });
@@ -95,7 +95,8 @@ describe("SideBar — Navegación", () => {
   it("Dimensiones está deshabilitado si no hay hexágonos seleccionados", () => {
     renderSideBar();
     const dim = screen.getByText("Dimensiones").parentElement!;
-    expect(dim.className).toContain("opacity-40");
+    expect(dim).toHaveAttribute("aria-disabled", "true");
+    expect(dim.className).toContain("cursor-not-allowed");
   });
 
   it("Dimensiones se habilita cuando hay hexágonos seleccionados", () => {
@@ -106,8 +107,36 @@ describe("SideBar — Navegación", () => {
     });
     renderSideBar();
     const dim = screen.getByText("Dimensiones").parentElement!;
+    expect(dim).toHaveAttribute("aria-disabled", "false");
     expect(dim.className).toContain("cursor-pointer");
-    expect(dim.className).not.toContain("opacity-40");
+  });
+
+  it("oculta el CTA de próximo paso si no hay hexágonos seleccionados", () => {
+    renderSideBar();
+    expect(screen.queryByTestId("next-step-cta")).not.toBeInTheDocument();
+  });
+
+  it("muestra el CTA de próximo paso cuando hay selección activa", () => {
+    useAprincipalMock.mockReturnValue({
+      accion: "seleccion-area",
+      setAccion: setAccionMock,
+      selectedHexes: new Set(["8a2a1072b59ffff"]),
+    });
+    renderSideBar();
+    expect(screen.getByTestId("next-step-cta")).toHaveTextContent(
+      "Continuar a Dimensiones",
+    );
+  });
+
+  it("click en el CTA cambia la acción principal a dimensiones", () => {
+    useAprincipalMock.mockReturnValue({
+      accion: "seleccion-area",
+      setAccion: setAccionMock,
+      selectedHexes: new Set(["8a2a1072b59ffff"]),
+    });
+    renderSideBar();
+    fireEvent.click(screen.getByTestId("next-step-cta"));
+    expect(setAccionMock).toHaveBeenCalledWith("dimensiones");
   });
 
   it("click en un paso anterior navega hacia atrás (retroceso libre)", () => {
