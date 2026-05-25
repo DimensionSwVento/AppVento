@@ -312,10 +312,31 @@ export default function SideBar({
                     await signOut({ redirect: false });
                     window.location.href = "/api/auth/kc-logout";
                   }}
-                  className={ExitIconCls}
+                  className={`${ExitIconCls} group relative inline-flex items-center justify-center`}
                   title="Cerrar sesión"
+                  aria-label="Cerrar sesión"
                 >
-                  X
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M10 17l5-5-5-5" />
+                    <path d="M15 12H3" />
+                    <path d="M21 19V5a2 2 0 0 0-2-2h-6" />
+                    <path d="M21 5v14a2 2 0 0 1-2 2h-6" />
+                  </svg>
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-full ml-2 hidden whitespace-nowrap rounded bg-black/80 px-2 py-1 text-[10px] text-white group-hover:block"
+                  >
+                    Cerrar sesión
+                  </span>
                 </button>
               </div>
             </div>

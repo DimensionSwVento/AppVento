@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const signOutMock = vi.fn().mockResolvedValue(undefined);
 const useSessionMock = vi.fn();
@@ -50,6 +50,7 @@ beforeEach(() => {
     selectedHexes: new Set(),
   });
   setAccionMock.mockReset();
+  signOutMock.mockClear();
   delete (window as { location?: unknown }).location;
   (window as { location: unknown }).location = {
     href: "",
@@ -65,21 +66,28 @@ describe("SideBar — Auth", () => {
 
   it("muestra el botón de cerrar sesión", () => {
     renderSideBar();
-    const logoutBtn = screen.getByTitle("Cerrar sesión");
+    const logoutBtn = screen.getByRole("button", { name: "Cerrar sesión" });
     expect(logoutBtn).toBeInTheDocument();
+    expect(logoutBtn).toHaveAttribute("title", "Cerrar sesión");
+    expect(logoutBtn).not.toHaveTextContent("X");
   });
 
   it("fallback si la sesión no tiene email del usuario", () => {
     useSessionMock.mockReturnValue({ data: { user: {} } });
     renderSideBar();
-    expect(screen.getByTitle("Cerrar sesión")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Cerrar sesión" }),
+    ).toBeInTheDocument();
   });
 
   it("llama signOut y redirige a Keycloak logout al hacer click", async () => {
     renderSideBar();
-    const logoutBtn = screen.getByTitle("Cerrar sesión");
+    const logoutBtn = screen.getByRole("button", { name: "Cerrar sesión" });
     await fireEvent.click(logoutBtn);
     expect(signOutMock).toHaveBeenCalledWith({ redirect: false });
+    await waitFor(() => {
+      expect(window.location.href).toBe("/api/auth/kc-logout");
+    });
   });
 });
 
