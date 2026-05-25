@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 /** Carpeta de esta app (donde está node_modules). Evita que Turbopack use el repo padre por otro package-lock.json. */
 const turbopackRoot = path.dirname(fileURLToPath(import.meta.url));
 
-// Si NEXT_PUBLIC_API_URL está definido, reenviar /api/tiles/* al backend FastAPI.
+// Si NEXT_PUBLIC_API_URL está definido, reenviar APIs de datos al backend FastAPI.
 // En desarrollo local (sin la variable) se usan las rutas internas de Next.js.
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -16,12 +16,16 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   ...(API_URL && {
     async rewrites() {
-      return [
-        {
-          source: "/api/tiles/:path*",
-          destination: `${API_URL}/api/tiles/:path*`,
-        },
-      ];
+      return {
+        beforeFiles: [
+          // /api/tiles se reenvía directamente al backend FastAPI (tiles son binarios, no tienen fallback)
+          {
+            source: "/api/tiles/:path*",
+            destination: `${API_URL}/api/tiles/:path*`,
+          },
+          // NOTA: /api/variables NO está aquí — el route handler de Next.js hace el proxy+fallback
+        ],
+      };
     },
   }),
   transpilePackages: [
