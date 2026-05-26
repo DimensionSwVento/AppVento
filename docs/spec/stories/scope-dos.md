@@ -31,18 +31,20 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
 | Prioridad | ID | Historia | Épica | Preparado_para_desarrollo? |
 |-----------|----|----------|-------|--------|
 | 🔴 Crítica | **US03-P2** | Cálculo de área y viabilidad del área (Mapa Parte 2) | E2 | ✅ Listo (viabilidad con placeholders hasta modelo) |
-| 🟡 Alta | **US03-AC10** | Heatmap clippeado a la selección (variables activas) | E2 | ✅ Listo |
-| 🟡 Alta | **US03-AC11** | Toggle de paleta GIS (inferno / viridis) | E2 | ✅ Listo |
 | 🟡 Alta | **US03-AC12** | Bloqueo de selección fuera de fase Selección de Área | E2 | ✅ Listo |
-| 🟢 Media | **US03-AC13** | Leyenda del heatmap (rampa de paleta vigente, siempre visible) | E2 | ✅ Listo |
 | 🟡 Alta | **US04-AC1** | Subpágina Dimensiones (cards colapsables, switches, búsqueda, contador X/Y) | E4 | ✅ Listo |
 | 🟡 Alta | **US04-AC2** | Tooltip con definición de cada variable | E4 | ✅ Listo |
+| 🟡 Alta | **US04-AC4** | Chips de variables seleccionadas en esquina del mapa (con popup info) | E4 | ✅ Listo |
+| 🟡 Alta | **US06-HEAT-AC1** | Heatmap clippeado multivariable (movido a fase Informe) | E6 | 🔁 Migrar a rama PDF — código en `Vento/src/app/heatmap/` |
+| 🟡 Alta | **US06-HEAT-AC2** | Toggle de paleta GIS (inferno / viridis) — junto al heatmap del Informe | E6 | 🔁 Migrar a rama PDF |
+| 🟢 Media | **US06-HEAT-AC3** | Leyenda del heatmap (rampa + ayuda "?") — junto al heatmap del Informe | E6 | 🔁 Migrar a rama PDF |
 | 🟡 Alta | **US05-AC1** | Formulario dinámico para aerogeneradores | E5 | ⏸ Reunión datos |
 | 🟡 Alta | **US05-AC2** | Selección de catálogo de modelos | E5 | ⏸ Reunión datos |
 | 🟡 Alta | **US05-AC3** | Validación de rangos técnicos permitidos | E5 | ⏸ Reunión datos |
 | 🔴 Crítica | **US06-AC3** | Previsualización en pantalla del informe PDF | E6 | ⏸ ADR-013 |
 
-**Total: 11 HUs** (5 + 2 + 3 + 1)
+**Total: 12 HUs** (2 + 3 + 3 + 4)
+**Nota de scope-shift (2026-05-19):** el cliente reorientó el heatmap multivariable de la fase Dimensiones a la fase Informe. Las HUs US03-AC10/11/13 se renombraron a US06-HEAT-AC1/2/3 y se migran a la rama de previsualización del PDF. El código asociado vive en `Vento/src/app/heatmap/` (autocontenido) para copiarlo a la otra rama sin rehacer. En su lugar, la fase Dimensiones gana US04-AC4 (chips de variables seleccionadas).
 
 ---
 
@@ -78,79 +80,25 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
 
 ---
 
-### US03-AC10 — Heatmap Clippeado a la Selección (agregado multi-variable ponderado, res 8)
-- **Prioridad:** 🟡 Alta
-- **Épica origen:** E2 (Mapa SIG)
-- **Dependencia:** US03 (selección de área), US04-AC1 (variables activas)
-- **Criterios de Aceptación:**
-  1. El heatmap se pinta **solo sobre el área cubierta por `selectedHexes`** — fuera de la selección los hexes no muestran color de variables
-  2. El heatmap refleja el **agregado multi-variable** de las variables activas (de US04-AC1). Pesos signados en `variableWeights.ts`. **Las penalizadoras sólo restan** del promedio aditivo, no se mezclan en él: `final = clamp(baseAditivo - penalty, 0, 1)`. Al añadir/quitar variables el heatmap se recompone — ejemplo: añadir "Cigarrillos ilegales" enfría hexes que eran calientes por "Velocidad del viento"
-  3. Pintado **siempre a resolución H3 = 8** (la más fina del rango soportado): los hexes seleccionados de menor resolución se expanden a sus hijos res-8 antes de colorear, ignorando el promedio del hex padre
-  4. Color de cada celda res-8 deriva del agregado normalizado (0..1) usando la paleta vigente (de US03-AC11)
-  5. Si no hay variables activas → no se renderiza heatmap (selección sólo con su color de borde)
-  6. Si no hay selección → no se renderiza heatmap (mapa base limpio)
-  7. Actualización reactiva al cambiar selección o variables activas sin recargar
-- **Tareas técnicas / desarrollo:**
-  - 📦 **FE Helper**: `Vento/src/app/Utils/heatmap.ts` — `expandToRes8` (usa `cellToChildren`), `scoreFor(variableId, hex)` (placeholder casi-uniforme [0.6, 0.8) por hex, independiente de la variable, para observar el efecto neto al activar variables), `aggregateScore(activeVariables, hex)` (promedio aditivo de positivas menos promedio de penalizadoras, clamp [0,1])
-  - 📦 **FE Helper de pesos**: `Vento/src/app/Utils/variableWeights.ts` — `Record<string, number>` con peso signado por variable. Aislado del catálogo para que el cliente reemplace los valores desde BD sin tocar la UI ni el cálculo
-  - 📦 **FE Map.tsx**: nueva `PolygonLayer` dedicada al heatmap que recibe los hexes res-8 + paleta + `aggregateScore`
-  - 📦 **FE**: lectura de `activeVariables` vía `VariablesContext` (de US04-AC1)
-  - 📦 **BE**: **no requiere endpoint nuevo** todavía — el clipping, expansión a res 8 y agregado se hacen client-side. Cuando el cliente entregue los pesos en BD se reemplaza `variableWeights.ts` por un fetch al backend manteniendo la misma forma
-  - 🧪 **Tests**: `expandToRes8` produce hijos esperados; `scoreFor` determinista; `aggregateScore` con 0/1/N variables, polaridad opuesta, ignora pesos 0; render con/sin variables activas y con/sin selección
-
----
-
-### US03-AC11 — Toggle de Paleta GIS (Inferno / Viridis)
-- **Prioridad:** 🟡 Alta
-- **Épica origen:** E2 (Mapa SIG)
-- **Dependencia:** US03-AC10
-- **Criterios de Aceptación:**
-  1. Control visible en la parte superior del mapa para alternar entre dos paletas GIS estándar
-  2. Opción **Inferno**: rampa morado → rojo → amarillo (térmica)
-  3. Opción **Viridis**: rampa morado → azul → verde → amarillo (perceptualmente uniforme)
-  4. El cambio de paleta actualiza inmediatamente los colores del heatmap clippeado (US03-AC10)
-  5. Paleta seleccionada se mantiene mientras el usuario navega entre fases (selección, dimensiones, características, informe)
-- **Tareas técnicas / desarrollo:**
-  - 📦 **FE Utils**: `Vento/src/app/Utils/gisPalette.ts` — exporta `INFERNO` y `VIRIDIS` como arrays de stops `[t, [r,g,b]]` + helper `interpolateColor(palette, score)`
-  - 📦 **FE Componente**: `<PaletteToggle>` posicionado `absolute top-3 left-3` o similar en `Map.tsx`
-  - 📦 **FE Estado**: paleta vigente en context (extender `AccionPrincipalContext` o nuevo `MapPaletteContext`)
-  - 🧪 **Tests**: cambio de paleta dispara re-render del heatmap; `interpolateColor` devuelve color correcto en stops conocidos
-
----
-
-### US03-AC12 — Bloqueo de Selección Fuera de Fase "Selección de Área"
+### US03-AC12 — Bloqueo de Selección Fuera de Fase "Selección de Área" + Bordes Condicionales
 - **Prioridad:** 🟡 Alta
 - **Épica origen:** E2 (Mapa SIG)
 - **Dependencia:** US03
 - **Criterios de Aceptación:**
   1. Cuando `accion === "seleccion-area"` → click en el mapa modifica `selectedHexes` (comportamiento actual)
   2. Cuando `accion !== "seleccion-area"` (dimensiones, características, informe) → click en el mapa **NO** modifica `selectedHexes`
-  3. Los hexes seleccionados permanecen visibles en todas las fases (no se borran al cambiar de acción)
-  4. Feedback visual al hover sobre el mapa en fase bloqueada (cursor `not-allowed` o similar) para comunicar el estado
-  5. Garantiza coherencia entre el área seleccionada, el heatmap mostrado y el informe descargado
+  3. Los hexes seleccionados permanecen visibles (relleno) en todas las fases (no se borran al cambiar de acción)
+  4. **Bordes de la selección — comportamiento por fase:**
+     - En **"seleccion-area"**: cada hex seleccionado lleva su **borde completo individual** (grid de selección visible)
+     - En otras fases: sólo el **contorno exterior** del conjunto (los hexes contiguos fusionan sus bordes en una sola línea perimetral, usando `cellsToMultiPolygon` de h3-js)
+  5. Feedback visual al hover sobre el mapa en fase bloqueada (cursor `not-allowed`) para comunicar el estado
+  6. Labels H3 y efectos de hover ("+") sólo aparecen en `seleccion-area`
+  7. Garantiza coherencia entre el área seleccionada, el heatmap del informe y el informe descargado
 - **Tareas técnicas / desarrollo:**
   - 📦 **FE Map.tsx**: condicionar el handler `onClick` de la PolygonLayer de selección a `accion === "seleccion-area"`; mantener resto del rendering
   - 📦 **FE Cursor**: aplicar `getCursor` condicional al DeckGL container según `accion`
+  - 📦 **FE Bordes**: una sola `selectedBordersLayer` con lógica dual — `data = selectedArr` (per-hex) en fase seleccionable, o `data = cellsToMultiPolygon(...)` (contorno fusionado) en otras fases
   - 🧪 **Tests**: click en fase "dimensiones" no modifica `selectedHexes`; click en fase "seleccion-area" sí; los hexes seleccionados sobreviven al cambio de acción
-
----
-
-### US03-AC13 — Leyenda del Heatmap + Ayuda "?"
-- **Prioridad:** 🟢 Media
-- **Épica origen:** E2 (Mapa SIG)
-- **Dependencia:** US03-AC10, US03-AC11
-- **Criterios de Aceptación:**
-  1. Cuando el heatmap es visible (al menos una variable activa + selección), se muestra una leyenda junto al `PaletteToggle` arriba del mapa
-  2. La leyenda es **siempre visible** mientras el heatmap esté activo (pill con rampa + etiquetas, no requiere acción para mostrarse)
-  3. Renderiza la **rampa de la paleta vigente** (inferno o viridis) como gradiente horizontal usando los stops de `heatmap.ts`
-  4. Etiquetas en los extremos: **"Baja"** (izquierda) ←→ **"Alta"** (derecha) — interpretación de viabilidad
-  5. Cambia de gradiente automáticamente al alternar paleta (US03-AC11)
-  6. **Icono "?" al final** de la pill: hover abre un popover con la descripción de cómo funciona el heatmap (variables que suman vs restan, rol de la paleta). Click sobre "?" alterna el popover de forma sticky. Cierre con ESC, click fuera o segundo click
-  7. Accesibilidad: rampa con `role="img"` + `aria-label`; botón "?" con `aria-expanded`/`aria-controls`; popover con `role="tooltip"`
-- **Tareas técnicas / desarrollo:**
-  - 📦 **FE Componente**: `<HeatmapLegend palette={palette} />` — gradiente CSS desde `INFERNO_STOPS` / `VIRIDIS_STOPS`, botón "?" con estado `open` controlado por hover/focus/click + listeners de click-fuera y ESC
-  - 📦 **FE Integración**: en `Map.tsx`, montado al lado de `<PaletteToggle>` dentro del mismo contenedor flex, condicionado a `activeVariables.size > 0 && selectedHexes.size > 0`
-  - 🧪 **Tests**: pill siempre visible; hover abre popover, mouseleave lo cierra; click alterna; ESC cierra; gradiente cambia entre paletas
 
 ---
 
@@ -162,33 +110,37 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
 
 ---
 
-### US04-AC1 — Subpágina Dimensiones (Cards Colapsables, Switches, Búsqueda, Contador X/Y)
+### US04-AC1 — Subpágina Dimensiones (forma final)
 - **Prioridad:** 🟡 Alta
 - **Épica origen:** E4 (Variables)
 - **Dependencia:** —
-- **Origen del diseño:** Figma de la subpágina Dimensiones (cliente, mayo 2026)
+- **Origen del diseño:** Figma + iteraciones con cliente, cerrada 2026-05-19
 - **Criterios de Aceptación:**
-  1. Subpágina renderizada en el SideBar cuando `accion === "dimensiones"`, con título "Configura las variables de interés por cada dimensión"
-  2. **Search bar** "Buscar variables" arriba de las cards — filtra variables por label o descripción dentro de todas las dimensiones
-  3. Variables agrupadas en las **5 dimensiones** (ambiental, técnica, regulatoria, socioeconómica, macroeconómica)
-  4. Cada dimensión se renderiza como **card colapsable** con header que muestra: nombre de dimensión + **contador `X / Y`** (X = variables activas, Y = total de variables de la dimensión) + chevron de expandir/colapsar
-  5. Cards colapsables individualmente — el estado de expandido/colapsado de cada dimensión es independiente
-  6. Cuando una card está expandida, muestra la lista de variables de esa dimensión. Cada fila contiene: **switch** + **label** de la variable + **descripción breve** + **icono** (ℹ para tooltip, definido en US04-AC2)
-  7. El switch determina si la variable está **activa** (encendido = pinta su contribución en el heatmap del mapa, vía US03-AC10) o **inactiva**
-  8. Activar/desactivar un switch actualiza inmediatamente el contador `X / Y` del header de su dimensión
-  9. Botón "Siguiente paso" al final de la subpágina avanza la fase a "características"
-  10. **Multi-selección con pesos signados**: múltiples variables pueden estar activas simultáneamente. Cada variable tiene un peso signado en `Vento/src/app/Utils/variableWeights.ts` (positivo = aditiva, negativo = penalizadora; magnitud = importancia relativa). **Las penalizadoras sólo restan**: no entran al promedio aditivo, restan directamente del base aditivo. Ejemplo: activar "Cigarrillos ilegales" enfría los hexes donde se concentra esa actividad aunque "Velocidad del viento" sea excelente
-  11. Estado de la variable activa vive en context en memoria (no persiste entre sesiones — la decisión de persistencia se toma cuando se justifique)
+  1. Subpágina renderizada cuando `accion === "dimensiones"`, layout `flex flex-col h-full` con título + buscador + cards en zona scrollable arriba y botón "Siguiente paso" pegado al fondo
+  2. **Título** "Configura las variables de interés por cada dimensión" con margin-top hacia arriba para separarlo del borde del contenedor
+  3. **Search bar** "Buscar variables" filtra variables por label o descripción dentro de todas las dimensiones; muestra resultados con las cards auto-expandidas
+  4. **Scrollbar siempre visible** en el contenedor de cards (`overflow-y-scroll` + `scrollbar-gutter: stable`) para feedback visual de cuántas variables hay
+  5. Variables agrupadas en las **5 dimensiones** fijas (ambiental, técnica, regulatoria, socioeconómica, macroeconómica) — la taxonomía es estable mientras el cliente no la cambie
+  6. Cada dimensión se renderiza como **card cuadrada con bordes redondeados** (`rounded-md`) y header colapsable: nombre + contador **`X / Y`** (X = activas, Y = total) + chevron expandir/colapsar
+  7. Cards colapsables individualmente — el estado es independiente por card
+  8. Cuando una card está expandida, cada fila de variable contiene: **switch** (izquierda) + **label** + **descripción** (centro) + **dot de color** (derecha) — el dot representa el color asignado a la variable, mismo que aparece en los chips del mapa. Cuando lleguen íconos del cliente, reemplazan al dot
+  9. **Variables obligatorias** (catálogo: `required: true`) arrancan activas, su switch se renderiza deshabilitado (`opacity-70 cursor-not-allowed`) y muestran el sufijo discreto "obligatoria" junto al label
+  10. Activar/desactivar un switch actualiza inmediatamente el contador `X / Y` del header
+  11. **Botón "Siguiente paso"** al fondo de la subpágina: barra full-width sin bordes redondeados ni padding/margen externos, border-top suave. Click avanza a "características"
+  12. **Multi-selección con pesos signados**: múltiples variables pueden estar activas simultáneamente. Pesos signados en `Vento/src/app/Utils/variableWeights.ts` (positivo aditiva, negativo penalizadora). Las penalizadoras sólo restan del promedio base aditivo (semántica documentada en US06-HEAT-AC1)
+  13. Estado de variables activas vive en context en memoria (no persiste entre sesiones — decisión de persistencia diferida)
 - **Tareas técnicas / desarrollo:**
-  - 📦 **FE Catálogo**: `Vento/src/app/Utils/variablesCatalog.ts` — variables hardcoded agrupadas por dimensión (mientras `GET /api/variables` no exista) con `{ id, dimension, label, description, color }`. Colores en un módulo aparte para cambio fácil futuro
-  - 📦 **FE Context**: `Vento/src/app/Utils/VariablesContext.tsx` — `activeVariables: Set<string>`, `toggleVariable(id)`, `isActive(id)`, contadores derivados por dimensión
-  - 📦 **FE Componente**: reescribir [Dimensions.tsx](../../../Vento/src/app/Components/Dimensions.tsx) con search bar + cards colapsables
+  - 📦 **FE Catálogo**: `Vento/src/app/Utils/variablesCatalog.ts` — `{ id, dimension, label, description, required? }`. **Las variables NO tienen color propio** en el catálogo; el color se deriva en runtime de `dimensionColors.ts` para que cambiar paletas no toque la fuente de variables
+  - 📦 **FE Colors**: `Vento/src/app/Utils/dimensionColors.ts` — `colorForVariable(id)` con HSL hue por dimensión + luminosidad por orden dentro de la dimensión
+  - 📦 **FE Context**: `Vento/src/app/Utils/VariablesContext.tsx` — `activeVariables: Set<string>` con `requiredVariableIds()` pre-activas, `toggleVariable(id)` que ignora obligatorias, `clearNonRequired()`, contadores derivados
+  - 📦 **FE Componente**: `<Dimensions>` con search bar + cards + NextStepButton fijo
   - 📦 **FE Componente**: `<DimensionCard>` — header colapsable + body con stack de `<VariableSwitch>`
-  - 📦 **FE Componente**: `<VariableSwitch>` — switch + label + descripción + icono (ℹ delega a US04-AC2)
-  - 📦 **FE Provider**: añadir `VariablesProvider` en [Providers.tsx](../../../Vento/src/app/Providers.tsx) para que el mapa (US03-AC10) y la subpágina compartan estado
-  - 📦 **BE (diferido)**: `GET /api/variables` en FastAPI — **no es bloqueante**, se conecta cuando esté listo; el catálogo hardcoded inicial es la fuente de verdad temporal
-  - 🧪 **Tests**: render con 5 cards, expand/collapse individual, switch toggle actualiza contador, search filtra variables por label y descripción
-- **Estado:** ✅ Sin bloqueantes (catálogo hardcoded)
+  - 📦 **FE Componente**: `<VariableSwitch>` — switch (deshabilitado si required) + label + descripción + dot de color a la derecha
+  - 📦 **FE Componente**: `<NextStepButton>` — barra full-width única; sin variant prop
+  - 📦 **FE Provider**: `VariablesProvider` en `Providers.tsx` para que el mapa (chips US04-AC4) y la subpágina compartan estado
+  - 📦 **BE (diferido)**: `GET /api/variables` en FastAPI — no bloqueante; cuando exista reemplaza el catálogo hardcoded sin tocar la UI
+  - 🧪 **Tests**: render con 5 cards, expand/collapse individual, switch toggle actualiza contador, search filtra por label y descripción, obligatorias pre-activas y switch deshabilitado
+- **Estado:** ✅ Sin bloqueantes (catálogo hardcoded; íconos por variable pendientes del cliente)
 
 ---
 
@@ -208,6 +160,37 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
   - 📦 **FE Datos**: descripción del catálogo hardcoded (US04-AC1); polaridad de `weightFor(variable.id)` en `variableWeights.ts`
   - 🧪 **Tests**: click abre/cierra; ESC y click-fuera cierran; polaridad correcta para viento (suma) y cigarrillos-ilegales (resta)
 - **Estado:** ✅ Sin bloqueantes
+
+---
+
+### US04-AC4 — Panel "Variables seleccionadas" (forma final)
+- **Prioridad:** 🟡 Alta
+- **Épica origen:** E4 (Variables)
+- **Dependencia:** US04-AC1
+- **Origen:** Scope-shift 2026-05-19 — heatmap movido a Informe (US06-HEAT). En lugar del heatmap durante Dimensiones, el mapa muestra qué variables están activas para que el usuario pueda alternar la visibilidad de la lista mientras explora el mapa
+- **Criterios de Aceptación:**
+  1. El componente **sólo se renderiza** cuando `accion === "dimensiones"` (no en selección, características ni informe)
+  2. **Posición**: esquina superior derecha del mapa (`absolute top-3 right-3`). Pill y panel se **reemplazan entre sí** en esa misma posición — no coexisten
+  3. **Panel desplegado es el estado por defecto** cuando hay variables activas. Mostrar header + lista de variables
+  4. **Header del panel** — toda la cabecera (`<header>` con `role="button"`, `tabIndex={0}`, soporta Enter/Space): título **"Variables seleccionadas"** a la izquierda + (opcional) botón **"Limpiar"** a la derecha + **chevron-up grande** (`h-6 w-6`) al final. Click sobre cualquier parte del header (excepto Limpiar) → colapsa a pill
+  5. Botón **"Limpiar"** sólo visible si hay al menos una variable no-obligatoria activa. Click → resetea a sólo obligatorias (vía `clearNonRequired`). Usa `e.stopPropagation()` para no colapsar el panel al click
+  6. **Cada item de la lista** (con divisor `divide-gray-300` entre filas): badge cuadrado grande (`h-10 w-10 rounded-md`) con `backgroundColor` derivado de `colorForVariable(id)` + label en `text-sm font-semibold` + subtítulo con la dimensión (sin prefijo "Dimensión", capitalizado: "Ambiental", "Técnica", etc.) + ✕ a la derecha para deseleccionar (sólo en variables no-obligatorias)
+  7. **Variables obligatorias**: no muestran ✕ y llevan sufijo discreto "obligatoria"
+  8. **Click sobre la fila** de una variable (todo el área salvo el ✕) → abre `InfoPopover` separado en `absolute top-3 left-3` con label + dimensión + descripción + "Suma a viabilidad" o "Resta a viabilidad"
+  9. **Panel es "fijo"**: NO se cierra por click fuera ni por ESC. Sólo el header lo colapsa
+  10. **Pill compacta** (estado colapsado): contenedor azul brand `bg-[#165170ff]` con rótulo "Variables seleccionadas en el mapa" + icono ⓘ arriba + fila horizontal de chips circulares (`h-8 w-8`) abajo, hasta 3 colores + `+N` si hay más. Click en cualquier parte → vuelve al panel
+  11. **Sombra del panel**: `shadow-lg shadow-[#cacacbff]` + `border border-[#eae9e9ff]`. Sombra de la pill similar (`shadow-lg shadow-[#cacacbff]`)
+  12. **InfoPopover**: ✕ propio para cerrar; ESC también lo cierra (es secundario, no fijo). Se reemplaza al hacer click sobre otra variable del panel
+  13. Sin variables activas no se renderiza nada (no muestra ni pill ni panel)
+  14. **Reemplazo futuro por íconos**: el color del badge cuadrado es placeholder. Cuando el cliente entregue íconos por variable, el badge muestra el icono centrado sobre el color (o sólo el icono, según el diseño que se confirme)
+- **Tareas técnicas / desarrollo:**
+  - 📦 **FE Componente**: `<SelectedVariablesChips>` con tres sub-componentes — `PillCompact` (modo colapsado), `PanelExpanded` (modo abierto), `InfoPopover` (top-left). Estado local: `expanded` (default `true`) + `infoVarId`
+  - 📦 **FE Header clickeable**: usa `<header role="button" tabIndex={0}>` + handlers `onClick` y `onKeyDown` (Enter/Space). Botón "Limpiar" interno con `e.stopPropagation()` para no propagar el click al header
+  - 📦 **FE Estilo**: panel = `w-60 max-h-[70vh] overflow-y-auto rounded-lg border border-[#eae9e9ff] shadow-lg shadow-[#cacacbff]`; header sticky con `border-b border-gray-300`; pill = `rounded-2xl bg-[#165170ff] px-4 py-3`
+  - 📦 **FE Colors**: dot/badge usa `colorForVariable(id)` (de `dimensionColors.ts`, US04-AC1). Misma fuente que los dots del `VariableSwitch`
+  - 📦 **FE Integración**: montado en `Map.tsx` con condición `accion === "dimensiones" && activeVariables.size > 0`
+  - 🧪 **Tests**: panel default visible; click header colapsa a pill; click pill re-expande; click ✕ deselecciona; Limpiar conserva obligatorias y no colapsa; click en fila abre InfoPopover; ESC no cierra el panel pero sí cierra InfoPopover
+- **Estado:** ✅ Sin bloqueantes (forma final; íconos por variable pendientes del cliente)
 
 ---
 
@@ -310,6 +293,53 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
   - El PDF se genera **solo al descargar**, no en cada render de la pantalla
   - Si llegan datos reales del modelo multicriterio durante el sprint, se conectan a la UI y al template sin cambios estructurales
   - Parte 2 (futuro, fuera de este scope): histórico de informes, compartir vía link
+
+---
+
+### US06-HEAT-AC1 — Heatmap Multivariable en Pantalla del Informe (migrado de E2)
+- **Prioridad:** 🟡 Alta
+- **Épica origen:** E6 (Reportes — heatmap final, post scope-shift 2026-05-19)
+- **Dependencia:** US04-AC1 (variables activas), US06-AC3 (pantalla de informe)
+- **Origen del cambio:** El cliente reorientó el heatmap multivariable de Dimensiones a la pantalla final del Informe — es el resultado visual de toda la configuración, no un preview durante la fase de configuración
+- **Criterios de Aceptación:**
+  1. El heatmap se pinta **solo sobre el área cubierta por `selectedHexes`**, expandido a resolución H3 = 8 ignorando el promedio del hex padre
+  2. El color de cada celda res-8 es el agregado multi-variable de las variables activas: las aditivas suman al promedio base, las penalizadoras restan directamente (`final = clamp(baseAditivo - penalty, 0, 1)`)
+  3. Sin variables activas → no se renderiza heatmap (selección sólo con su color de borde)
+  4. Sin selección → no se renderiza heatmap
+  5. Pesos signados en `variableWeights.ts` (compartido entre ramas)
+- **Tareas técnicas / desarrollo:**
+  - 📦 **Código portable**: ya implementado y autocontenido en `Vento/src/app/heatmap/` — copiar la carpeta a la rama de previsualización del informe
+  - 📦 **Integración en rama destino**: usar `buildHeatmapLayer(selectedHexes, activeVariables, palette)` del index.ts y añadir como capa al `DeckGL` de la pantalla del Informe
+  - 📦 **Dependencias compartidas**: la rama destino debe tener `Vento/src/app/Utils/variableWeights.ts` (o equivalente)
+  - 🧪 **Tests**: ya cubiertos por `heatmap.test.ts` dentro de la carpeta autocontenida (expandToRes8, scoreFor, aggregateScore, paletas)
+
+---
+
+### US06-HEAT-AC2 — Toggle de Paleta GIS (Inferno / Viridis) en pantalla Informe
+- **Prioridad:** 🟡 Alta
+- **Épica origen:** E6 (Reportes)
+- **Dependencia:** US06-HEAT-AC1
+- **Criterios de Aceptación:**
+  1. Control en la pantalla del Informe para alternar entre paletas Inferno y Viridis
+  2. El cambio actualiza inmediatamente los colores del heatmap (US06-HEAT-AC1)
+- **Tareas técnicas / desarrollo:**
+  - 📦 Componente `<PaletteToggle>` exportado por `heatmap/index.ts` — listo para montar en la pantalla del Informe
+  - 📦 Estado local de paleta en la pantalla destino, pasado como prop al `buildHeatmapLayer`
+  - 🧪 **Tests**: ya cubiertos en `heatmap/PaletteToggle.test.tsx`
+
+---
+
+### US06-HEAT-AC3 — Leyenda del Heatmap + Ayuda "?" en pantalla Informe
+- **Prioridad:** 🟢 Media
+- **Épica origen:** E6 (Reportes)
+- **Dependencia:** US06-HEAT-AC1, US06-HEAT-AC2
+- **Criterios de Aceptación:**
+  1. Mientras el heatmap es visible, se muestra una pill con la rampa de la paleta vigente y etiquetas "Baja" ←→ "Alta"
+  2. Icono "?" al final de la pill: hover/click abre popover explicando el agregado de variables
+  3. Cierre con ESC, click fuera o segundo click
+- **Tareas técnicas / desarrollo:**
+  - 📦 Componente `<HeatmapLegend>` exportado por `heatmap/index.ts` — listo para montar al lado del PaletteToggle
+  - 🧪 **Tests**: ya cubiertos en `heatmap/HeatmapLegend.test.tsx`
 
 ---
 

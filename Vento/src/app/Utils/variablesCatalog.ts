@@ -19,6 +19,10 @@ export interface Variable {
   dimension: DimensionId;
   label: string;
   description: string;
+  /** Si es `true`, la variable es obligatoria: arranca activa y su switch no
+   *  se puede apagar desde la UI. Placeholder hasta que el cliente confirme
+   *  el set definitivo de variables obligatorias en la reunión. */
+  required?: boolean;
 }
 
 export interface Dimension {
@@ -41,8 +45,8 @@ export const DIMENSIONS: Dimension[] = [
  */
 export const VARIABLES: Variable[] = [
   // Ambiental
-  { id: "viento-100m", dimension: "ambiental", label: "Velocidad del viento a 100m", description: "Promedio anual de velocidad del viento a 100m de altura" },
-  { id: "densidad-energetica", dimension: "ambiental", label: "Densidad energética", description: "Energía disponible por unidad de área barrida del rotor" },
+  { id: "viento-100m", dimension: "ambiental", label: "Velocidad del viento a 100m", description: "Promedio anual de velocidad del viento a 100m de altura", required: true },
+  { id: "densidad-energetica", dimension: "ambiental", label: "Densidad energética", description: "Energía disponible por unidad de área barrida del rotor", required: true },
   { id: "exposicion-solar", dimension: "ambiental", label: "Exposición solar", description: "Radiación solar promedio anual sobre el terreno" },
   { id: "humedad-relativa", dimension: "ambiental", label: "Humedad relativa", description: "Humedad promedio relevante para corrosión y eficiencia" },
   // Técnica
@@ -51,7 +55,7 @@ export const VARIABLES: Variable[] = [
   { id: "distancia-subestacion", dimension: "tecnica", label: "Distancia a subestación", description: "Proximidad a líneas de transmisión existentes" },
   { id: "accesibilidad-vial", dimension: "tecnica", label: "Accesibilidad vial", description: "Distancia a vías principales para transporte de equipos" },
   // Regulatoria
-  { id: "zonas-protegidas", dimension: "regulatoria", label: "Zonas protegidas", description: "Solapamiento con áreas de conservación ambiental" },
+  { id: "zonas-protegidas", dimension: "regulatoria", label: "Zonas protegidas", description: "Solapamiento con áreas de conservación ambiental", required: true },
   { id: "resguardos-indigenas", dimension: "regulatoria", label: "Resguardos indígenas", description: "Distancia o solapamiento con territorios indígenas" },
   { id: "uso-suelo", dimension: "regulatoria", label: "Uso del suelo permitido", description: "Categoría POT que habilita o restringe el desarrollo eólico" },
   { id: "cigarrillos-ilegales", dimension: "regulatoria", label: "Cigarrillos ilegales", description: "Concentración de actividad ilegal en la zona — penaliza la viabilidad pese a otras variables favorables" },
@@ -71,4 +75,9 @@ export function variablesByDimension(dim: DimensionId): Variable[] {
 
 export function getVariableById(id: string): Variable | undefined {
   return VARIABLES.find((v) => v.id === id);
+}
+
+/** Devuelve los ids de las variables marcadas como obligatorias. */
+export function requiredVariableIds(): string[] {
+  return VARIABLES.filter((v) => v.required).map((v) => v.id);
 }

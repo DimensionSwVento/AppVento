@@ -4,41 +4,42 @@ import DimensionCard from "./DimensionCard";
 import { VariablesProvider } from "../Utils/VariablesContext";
 import { DIMENSIONS, variablesByDimension } from "../Utils/variablesCatalog";
 
-const ambiental = DIMENSIONS.find((d) => d.id === "ambiental")!;
-const vars = variablesByDimension("ambiental");
+// Uso socioeconomica porque no tiene variables obligatorias (arrancan inactivas)
+const socio = DIMENSIONS.find((d) => d.id === "socioeconomica")!;
+const vars = variablesByDimension("socioeconomica");
+const firstNonRequired = vars.find((v) => !v.required)!;
 
 describe("DimensionCard", () => {
   it("renderiza header con contador 0/N cerrado por defecto", () => {
     render(
       <VariablesProvider>
-        <DimensionCard dimension={ambiental} variables={vars} />
+        <DimensionCard dimension={socio} variables={vars} />
       </VariablesProvider>,
     );
-    expect(screen.getByText(/Dimensión ambiental/)).toBeInTheDocument();
+    expect(screen.getByText(/Dimensión socioeconómica/)).toBeInTheDocument();
     expect(screen.getByText(new RegExp(`0/${vars.length}`))).toBeInTheDocument();
-    // cerrado: no muestra la primera variable
     expect(
-      screen.queryByText(vars[0].label),
+      screen.queryByText(firstNonRequired.label),
     ).not.toBeInTheDocument();
   });
 
   it("expande al hacer click en el header", () => {
     render(
       <VariablesProvider>
-        <DimensionCard dimension={ambiental} variables={vars} />
+        <DimensionCard dimension={socio} variables={vars} />
       </VariablesProvider>,
     );
     fireEvent.click(screen.getByRole("button", { expanded: false }));
-    expect(screen.getByText(vars[0].label)).toBeInTheDocument();
+    expect(screen.getByText(firstNonRequired.label)).toBeInTheDocument();
   });
 
-  it("activar un switch incrementa el contador del header", () => {
+  it("activar un switch no-obligatorio incrementa el contador del header", () => {
     render(
       <VariablesProvider>
-        <DimensionCard dimension={ambiental} variables={vars} defaultOpen />
+        <DimensionCard dimension={socio} variables={vars} defaultOpen />
       </VariablesProvider>,
     );
-    const sw = screen.getByRole("switch", { name: vars[0].label });
+    const sw = screen.getByRole("switch", { name: firstNonRequired.label });
     act(() => fireEvent.click(sw));
     expect(screen.getByText(new RegExp(`1/${vars.length}`))).toBeInTheDocument();
   });
@@ -46,7 +47,7 @@ describe("DimensionCard", () => {
   it("no renderiza si la lista de variables está vacía (filtrado por búsqueda sin match)", () => {
     const { container } = render(
       <VariablesProvider>
-        <DimensionCard dimension={ambiental} variables={[]} />
+        <DimensionCard dimension={socio} variables={[]} />
       </VariablesProvider>,
     );
     expect(container.firstChild).toBeNull();

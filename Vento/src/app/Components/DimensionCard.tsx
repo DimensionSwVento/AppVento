@@ -24,7 +24,7 @@ export default function DimensionCard({
   if (variables.length === 0) return null;
 
   return (
-    <div className="rounded-xl bg-white shadow-sm">
+    <div className="rounded-md bg-white shadow-sm">
       <button
         type="button"
         aria-expanded={open}

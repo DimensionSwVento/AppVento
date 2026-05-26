@@ -1,7 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { act, render } from "@testing-library/react";
 import { useVariables, VariablesProvider } from "./VariablesContext";
-import { VARIABLES, variablesByDimension } from "./variablesCatalog";
+import {
+  VARIABLES,
+  getVariableById,
+  requiredVariableIds,
+  variablesByDimension,
+} from "./variablesCatalog";
 
 function Probe({ onCtx }: { onCtx: (ctx: ReturnType<typeof useVariables>) => void }) {
   const ctx = useVariables();
@@ -9,45 +14,60 @@ function Probe({ onCtx }: { onCtx: (ctx: ReturnType<typeof useVariables>) => voi
   return null;
 }
 
-describe("VariablesContext — multi-selección con polaridad ponderada", () => {
-  it("inicia con set vacío y total correcto", () => {
+const firstNonRequired = VARIABLES.find((v) => !v.required)!;
+const secondNonRequired = VARIABLES.filter((v) => !v.required)[1];
+const requiredVar = VARIABLES.find((v) => v.required)!;
+
+describe("VariablesContext — multi-selección con obligatorias", () => {
+  it("inicia con las variables obligatorias activas y el resto inactivas", () => {
     let captured!: ReturnType<typeof useVariables>;
     render(
       <VariablesProvider>
         <Probe onCtx={(c) => (captured = c)} />
       </VariablesProvider>,
     );
-    expect(captured.activeVariables.size).toBe(0);
-    expect(captured.totalActive).toBe(0);
-    expect(captured.totalVariables).toBe(VARIABLES.length);
+    const required = requiredVariableIds();
+    expect(captured.totalActive).toBe(required.length);
+    for (const id of required) expect(captured.isActive(id)).toBe(true);
   });
 
-  it("toggleVariable activa una variable inactiva", () => {
+  it("toggleVariable activa una variable no obligatoria inactiva", () => {
     let captured!: ReturnType<typeof useVariables>;
     render(
       <VariablesProvider>
         <Probe onCtx={(c) => (captured = c)} />
       </VariablesProvider>,
     );
-    act(() => captured.toggleVariable(VARIABLES[0].id));
-    expect(captured.isActive(VARIABLES[0].id)).toBe(true);
-    expect(captured.totalActive).toBe(1);
+    act(() => captured.toggleVariable(firstNonRequired.id));
+    expect(captured.isActive(firstNonRequired.id)).toBe(true);
   });
 
-  it("toggleVariable sobre la activa la desactiva", () => {
+  it("toggleVariable sobre la activa no obligatoria la desactiva", () => {
     let captured!: ReturnType<typeof useVariables>;
     render(
       <VariablesProvider>
         <Probe onCtx={(c) => (captured = c)} />
       </VariablesProvider>,
     );
-    act(() => captured.toggleVariable(VARIABLES[0].id));
-    act(() => captured.toggleVariable(VARIABLES[0].id));
-    expect(captured.isActive(VARIABLES[0].id)).toBe(false);
-    expect(captured.totalActive).toBe(0);
+    act(() => captured.toggleVariable(firstNonRequired.id));
+    act(() => captured.toggleVariable(firstNonRequired.id));
+    expect(captured.isActive(firstNonRequired.id)).toBe(false);
   });
 
-  it("permite múltiples variables activas simultáneamente", () => {
+  it("toggleVariable sobre una obligatoria no la desactiva (no-op)", () => {
+    let captured!: ReturnType<typeof useVariables>;
+    render(
+      <VariablesProvider>
+        <Probe onCtx={(c) => (captured = c)} />
+      </VariablesProvider>,
+    );
+    const before = captured.totalActive;
+    act(() => captured.toggleVariable(requiredVar.id));
+    expect(captured.isActive(requiredVar.id)).toBe(true);
+    expect(captured.totalActive).toBe(before);
+  });
+
+  it("permite múltiples no-obligatorias activas simultáneamente", () => {
     let captured!: ReturnType<typeof useVariables>;
     render(
       <VariablesProvider>
@@ -55,32 +75,25 @@ describe("VariablesContext — multi-selección con polaridad ponderada", () => 
       </VariablesProvider>,
     );
     act(() => {
-      captured.toggleVariable(VARIABLES[0].id);
-      captured.toggleVariable(VARIABLES[1].id);
-      captured.toggleVariable(VARIABLES[2].id);
+      captured.toggleVariable(firstNonRequired.id);
+      captured.toggleVariable(secondNonRequired.id);
     });
-    expect(captured.totalActive).toBe(3);
-    expect(captured.isActive(VARIABLES[0].id)).toBe(true);
-    expect(captured.isActive(VARIABLES[1].id)).toBe(true);
-    expect(captured.isActive(VARIABLES[2].id)).toBe(true);
+    expect(captured.isActive(firstNonRequired.id)).toBe(true);
+    expect(captured.isActive(secondNonRequired.id)).toBe(true);
   });
 
-  it("activeCountByDimension cuenta sólo variables activas de esa dimensión", () => {
+  it("activeCountByDimension refleja obligatorias activas de esa dimensión desde el inicio", () => {
     let captured!: ReturnType<typeof useVariables>;
     render(
       <VariablesProvider>
         <Probe onCtx={(c) => (captured = c)} />
       </VariablesProvider>,
     );
-    const ambVar = variablesByDimension("ambiental")[0];
-    const tecVar = variablesByDimension("tecnica")[0];
-    act(() => {
-      captured.toggleVariable(ambVar.id);
-      captured.toggleVariable(tecVar.id);
-    });
-    expect(captured.activeCountByDimension("ambiental")).toBe(1);
-    expect(captured.activeCountByDimension("tecnica")).toBe(1);
-    expect(captured.activeCountByDimension("regulatoria")).toBe(0);
+    // viento-100m y densidad-energetica (obligatorias) son ambientales
+    const reqInAmbiental = variablesByDimension("ambiental").filter(
+      (v) => v.required,
+    ).length;
+    expect(captured.activeCountByDimension("ambiental")).toBe(reqInAmbiental);
   });
 
   it("totalByDimension devuelve el total fijo (independiente del estado)", () => {
@@ -93,5 +106,10 @@ describe("VariablesContext — multi-selección con polaridad ponderada", () => 
     expect(captured.totalByDimension("ambiental")).toBe(
       variablesByDimension("ambiental").length,
     );
+  });
+
+  it("getVariableById sigue funcionando con ids del catálogo", () => {
+    expect(getVariableById(firstNonRequired.id)).toBeDefined();
+    expect(getVariableById("no-existe")).toBeUndefined();
   });
 });

@@ -1,7 +1,13 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { DimensionId, VARIABLES, variablesByDimension } from "./variablesCatalog";
+import {
+  DimensionId,
+  VARIABLES,
+  getVariableById,
+  requiredVariableIds,
+  variablesByDimension,
+} from "./variablesCatalog";
 
 interface VariablesContextValue {
   /** Set de IDs de variables activas (multi-selección). El heatmap del mapa agrega
@@ -13,6 +19,8 @@ interface VariablesContextValue {
   totalByDimension: (dim: DimensionId) => number;
   totalActive: number;
   totalVariables: number;
+  /** Vacía la selección de variables NO obligatorias. Las obligatorias permanecen activas. */
+  clearNonRequired: () => void;
 }
 
 const noopContext: VariablesContextValue = {
@@ -23,6 +31,7 @@ const noopContext: VariablesContextValue = {
   totalByDimension: (dim) => variablesByDimension(dim).length,
   totalActive: 0,
   totalVariables: VARIABLES.length,
+  clearNonRequired: () => {},
 };
 
 const VariablesContext = createContext<VariablesContextValue>(noopContext);
@@ -32,17 +41,25 @@ export function useVariables() {
 }
 
 export function VariablesProvider({ children }: { children: React.ReactNode }) {
+  // Las variables obligatorias arrancan activas y no se pueden apagar.
   const [activeVariables, setActiveVariables] = useState<Set<string>>(
-    () => new Set(),
+    () => new Set(requiredVariableIds()),
   );
 
   const toggleVariable = useCallback((id: string) => {
+    const v = getVariableById(id);
+    // Variables obligatorias no se pueden desactivar; tampoco re-activar (no-op).
+    if (v?.required) return;
     setActiveVariables((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
+  }, []);
+
+  const clearNonRequired = useCallback(() => {
+    setActiveVariables(new Set(requiredVariableIds()));
   }, []);
 
   const isActive = useCallback(
@@ -68,8 +85,9 @@ export function VariablesProvider({ children }: { children: React.ReactNode }) {
       totalByDimension: (dim) => variablesByDimension(dim).length,
       totalActive: activeVariables.size,
       totalVariables: VARIABLES.length,
+      clearNonRequired,
     }),
-    [activeVariables, toggleVariable, isActive, activeCountByDimension],
+    [activeVariables, toggleVariable, isActive, activeCountByDimension, clearNonRequired],
   );
 
   return (
