@@ -1,44 +1,74 @@
 import { describe, it, expect } from "vitest";
+import { latLngToCell, polygonToCells } from "h3-js";
 import {
-  COLOMBIA_POLYGON,
   ARCHIPELAGO_POLYGON,
+  COLOMBIA_IGAC_METADATA,
+  COLOMBIA_IGAC_POLYGONS,
+  COLOMBIA_POLYGON,
   COLOMBIA_POLYGONS,
   MAX_BOUNDS,
+  isPointInColombia,
 } from "./h3Resolution";
 
-describe("h3Resolution — territorio colombiano extendido (US-FB-04)", () => {
-  it("COLOMBIA_POLYGON cierra sobre sí mismo (primer = último vértice)", () => {
+function cellsForPolygons(resolution: number): Set<string> {
+  const cells = new Set<string>();
+  for (const polygon of COLOMBIA_POLYGONS) {
+    for (const cell of polygonToCells(polygon, resolution, true)) {
+      cells.add(cell);
+    }
+  }
+  return cells;
+}
+
+describe("h3Resolution - cartografia oficial IGAC (US-FB2-02)", () => {
+  it("COLOMBIA_POLYGON viene del artefacto IGAC, cierra sobre si mismo y supera la simplificacion manual", () => {
+    expect(COLOMBIA_IGAC_METADATA.source).toContain("IGAC");
+    expect(COLOMBIA_IGAC_METADATA.featureCount).toBe(33);
     expect(COLOMBIA_POLYGON[0]).toEqual(COLOMBIA_POLYGON[COLOMBIA_POLYGON.length - 1]);
+    expect(COLOMBIA_POLYGON.length).toBeGreaterThan(500);
   });
 
-  it("ARCHIPELAGO_POLYGON es rectangular, cerrado y contiene San Andrés (~-81.75, 12.5)", () => {
-    const [west, south, east, north] = [
-      Math.min(...ARCHIPELAGO_POLYGON.map((p) => p[0])),
-      Math.min(...ARCHIPELAGO_POLYGON.map((p) => p[1])),
-      Math.max(...ARCHIPELAGO_POLYGON.map((p) => p[0])),
-      Math.max(...ARCHIPELAGO_POLYGON.map((p) => p[1])),
-    ];
-    // San Andrés
-    expect(-81.75).toBeGreaterThan(west);
-    expect(-81.75).toBeLessThan(east);
-    expect(12.5).toBeGreaterThan(south);
-    expect(12.5).toBeLessThan(north);
-    // Providencia
-    expect(-81.37).toBeGreaterThan(west);
-    expect(-81.37).toBeLessThan(east);
-    expect(13.35).toBeGreaterThan(south);
-    expect(13.35).toBeLessThan(north);
-  });
-
-  it("COLOMBIA_POLYGONS incluye continente + archipiélago", () => {
+  it("COLOMBIA_POLYGONS expone IGAC completo y conserva el archipielago offshore existente", () => {
+    expect(COLOMBIA_IGAC_POLYGONS.length).toBeGreaterThanOrEqual(1);
     expect(COLOMBIA_POLYGONS).toContain(COLOMBIA_POLYGON);
     expect(COLOMBIA_POLYGONS).toContain(ARCHIPELAGO_POLYGON);
-    expect(COLOMBIA_POLYGONS).toHaveLength(2);
+    expect(COLOMBIA_POLYGONS.length).toBe(COLOMBIA_IGAC_POLYGONS.length + 1);
   });
 
-  it("MAX_BOUNDS cubre el archipiélago (oeste <= -82, norte >= 13.5)", () => {
-    const [west, , , north] = MAX_BOUNDS;
+  it("ARCHIPELAGO_POLYGON contiene San Andres y Providencia", () => {
+    expect(isPointInColombia(12.58, -81.7)).toBe(true);
+    expect(isPointInColombia(13.35, -81.37)).toBe(true);
+  });
+
+  it("MAX_BOUNDS cubre continente, costas y archipielago", () => {
+    const [west, south, east, north] = MAX_BOUNDS;
     expect(west).toBeLessThanOrEqual(-82);
+    expect(south).toBeLessThanOrEqual(-4.3);
+    expect(east).toBeGreaterThanOrEqual(-66.85689);
     expect(north).toBeGreaterThanOrEqual(13.5);
+  });
+
+  it("isPointInColombia usa la cartografia compartida para continente, archipielago y oceanos fuera del alcance", () => {
+    expect(isPointInColombia(4.711, -74.0721)).toBe(true); // Bogota
+    expect(isPointInColombia(10.9639, -74.7964)).toBe(true); // costa Caribe
+    expect(isPointInColombia(3.8906, -77.0700)).toBe(true); // costa Pacifica
+    expect(isPointInColombia(12.58, -81.7)).toBe(true); // San Andres
+    expect(isPointInColombia(0, -85)).toBe(false);
+    expect(isPointInColombia(15, -74)).toBe(false);
+  });
+
+  it("polygonToCells produce celdas en zonas de control: Caribe, Pacifico, frontera y archipielago", () => {
+    const cells = cellsForPolygons(5);
+    const controls = [
+      { name: "Caribe", lat: 10.9639, lng: -74.7964 },
+      { name: "Pacifico", lat: 3.8906, lng: -77.0700 },
+      { name: "frontera oriental", lat: 4.711, lng: -69.414 },
+      { name: "frontera sur", lat: -4.203, lng: -69.94 },
+      { name: "archipielago", lat: 12.58, lng: -81.7 },
+    ];
+
+    for (const control of controls) {
+      expect(cells.has(latLngToCell(control.lat, control.lng, 5)), control.name).toBe(true);
+    }
   });
 });

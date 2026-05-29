@@ -2,7 +2,8 @@
  * Índice espacial de hexágonos H3 organizado por tiles z/x/y.
  * Almacena todas las variables para soportar AC2 (filtrado) y AC3 (popup).
  */
-import { cellToLatLng, cellToParent, cellToChildren, getResolution } from "h3-js";
+import { cellToLatLng, cellToParent, getResolution } from "h3-js";
+import { isPointInColombia } from "./h3Resolution";
 import type { H3HexagonData } from "./parseH3Parquet";
 
 // tile response compacto — datos base + variable filtrada opcional
@@ -120,28 +121,6 @@ let variableRanges: Map<string, { min: number; max: number }> | null = null;
 // nombres de variables disponibles
 let availableVariables: string[] = [];
 
-// Polígono simplificado Colombia continental + mares territoriales [lng, lat]
-const COL_POLY: [number, number][] = [
-  [-77.5,8.6],[-77.4,9.0],[-76.8,9.6],[-76.0,10.0],[-75.5,11.2],[-74.8,11.5],
-  [-73.5,12.8],[-72.0,12.5],[-71.0,12.0],[-71.3,11.0],[-72.2,7.6],[-72.4,7.1],
-  [-72.0,6.8],[-67.5,6.2],[-67.0,4.0],[-67.8,2.0],[-69.8,-0.5],[-70.0,-4.2],
-  [-73.5,-1.5],[-75.2,-0.1],[-77.6,0.8],[-78.8,1.4],[-79.2,2.0],[-78.5,3.5],
-  [-78.0,4.2],[-77.8,5.5],[-78.5,6.5],[-77.5,8.6],
-];
-
-function isInColombia(lat: number, lng: number): boolean {
-  if (lat < -4.3 || lat > 13.5 || lng < -82 || lng > -66.5) return false;
-  if (lat >= 12.0 && lat <= 13.5 && lng >= -82.0 && lng <= -81.0) return true;
-  if (lat >= 3.5 && lat <= 4.2 && lng >= -82.0 && lng <= -81.0) return true;
-  let inside = false;
-  for (let i = 0, j = COL_POLY.length - 1; i < COL_POLY.length; j = i++) {
-    const [xi, yi] = COL_POLY[i];
-    const [xj, yj] = COL_POLY[j];
-    if (((yi > lat) !== (yj > lat)) && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)) inside = !inside;
-  }
-  return inside;
-}
-
 /**
  * Inicializa el índice: calcula lat/lng, filtra Colombia, calcula scores.
  */
@@ -152,7 +131,7 @@ export function initTileIndex(hexagons: H3HexagonData[], variableNames: string[]
   const all: IndexedHex[] = [];
   for (const h of hexagons) {
     const [lat, lng] = cellToLatLng(h.h3_index);
-    if (!isInColombia(lat, lng)) continue;
+    if (!isPointInColombia(lat, lng)) continue;
     const score = h.score_general > 0 ? h.score_general : calcTempViability(h.variables);
     all.push({ h3_index: h.h3_index, score_general: score, tipo_celda: h.tipo_celda, lat, lng, variables: h.variables });
   }
