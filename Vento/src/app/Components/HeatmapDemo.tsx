@@ -14,8 +14,6 @@ import { Map as MapGL, type MapRef } from "react-map-gl/maplibre";
 import { DeckGL } from "@deck.gl/react";
 import { TileLayer } from "@deck.gl/geo-layers";
 import { PolygonLayer } from "@deck.gl/layers";
-import { luma } from "@luma.gl/core";
-import { webgl2Adapter } from "@luma.gl/webgl";
 import { cellToBoundary, cellToParent, cellToChildren, getResolution } from "h3-js";
 import { useCachedImage } from "../Utils/useCachedImage";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
@@ -38,8 +36,6 @@ function zoomToH3Res(zoom: number): number {
   if (zoom >= 6) return 4;
   return 3;
 }
-
-try { luma.registerAdapters([webgl2Adapter]); } catch { /* ok */ }
 
 interface TileHex {
   h: string; s: number; t: string; la: number; ln: number; v?: number | null;
@@ -119,10 +115,13 @@ export default function HeatmapDemo() {
       .then((r) => r.json())
       .then(setLayerCounts)
       .catch(() => {});
-  }, [dataReady, viewState.zoom, selectedHexes.size, activeVar]);
+  }, [dataReady, viewState.zoom, selectedHexes, activeVar]);
 
   useEffect(() => {
-    if (!activeVar) { setVarRange(null); return; }
+    if (!activeVar) {
+      const timeoutId = window.setTimeout(() => setVarRange(null), 0);
+      return () => window.clearTimeout(timeoutId);
+    }
     fetch(`${API_BASE}/api/tiles/variables`)
       .then((r) => r.json())
       .then((data) => {
@@ -131,11 +130,6 @@ export default function HeatmapDemo() {
       })
       .catch(() => {});
   }, [activeVar]);
-
-  useEffect(() => {
-    if (shouldFreeze && mapState === "active") freeze();
-    else if (!shouldFreeze && mapState === "frozen") unfreeze();
-  }, [shouldFreeze]);
 
   const toggleHex = useCallback((h3Index: string) => {
     setSelectedHexes((prev) => {
@@ -182,6 +176,21 @@ export default function HeatmapDemo() {
     setSnapshot(null);
     setMapState("active");
   }, [clearCache]);
+
+  useEffect(() => {
+    if (shouldFreeze && mapState === "active") {
+      const timeoutId = window.setTimeout(() => {
+        void freeze();
+      }, 0);
+      return () => window.clearTimeout(timeoutId);
+    }
+    if (!shouldFreeze && mapState === "frozen") {
+      const timeoutId = window.setTimeout(() => {
+        void unfreeze();
+      }, 0);
+      return () => window.clearTimeout(timeoutId);
+    }
+  }, [freeze, mapState, shouldFreeze, unfreeze]);
 
   const MIN_ZOOM = 5;
   const MAX_ZOOM = 14;
@@ -254,7 +263,7 @@ export default function HeatmapDemo() {
       renderSubLayers: [selectedHexes.size, activeVar, varRange],
       getTileData: [activeVar],
     },
-  }), [selectedHexes, activeVar, varRange]);
+  }), [selectedHexes, activeVar, varRange, getHexSelectionState]);
 
   const zoomIn = () => setViewState((v) => clampViewState({ ...v, zoom: v.zoom + 1 }));
   const zoomOut = () => setViewState((v) => clampViewState({ ...v, zoom: v.zoom - 1 }));

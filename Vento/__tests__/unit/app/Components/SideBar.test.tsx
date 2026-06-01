@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const signOutMock = vi.fn().mockResolvedValue(undefined);
 const useSessionMock = vi.fn();
@@ -50,9 +50,10 @@ beforeEach(() => {
     selectedHexes: new Set(),
   });
   setAccionMock.mockReset();
+  signOutMock.mockClear();
   delete (window as { location?: unknown }).location;
   (window as { location: unknown }).location = {
-    href: "",
+    href: "https://app.example.com/dashboard",
     origin: "https://app.example.com",
   };
 });
@@ -65,21 +66,28 @@ describe("SideBar — Auth", () => {
 
   it("muestra el botón de cerrar sesión", () => {
     renderSideBar();
-    const logoutBtn = screen.getByTitle("Cerrar sesión");
+    const logoutBtn = screen.getByRole("button", { name: "Cerrar sesión" });
     expect(logoutBtn).toBeInTheDocument();
+    expect(logoutBtn).toHaveAttribute("title", "Cerrar sesión");
+    expect(logoutBtn).not.toHaveTextContent("X");
   });
 
   it("fallback si la sesión no tiene email del usuario", () => {
     useSessionMock.mockReturnValue({ data: { user: {} } });
     renderSideBar();
-    expect(screen.getByTitle("Cerrar sesión")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Cerrar sesión" }),
+    ).toBeInTheDocument();
   });
 
   it("llama signOut y redirige a Keycloak logout al hacer click", async () => {
     renderSideBar();
-    const logoutBtn = screen.getByTitle("Cerrar sesión");
+    const logoutBtn = screen.getByRole("button", { name: "Cerrar sesión" });
     await fireEvent.click(logoutBtn);
     expect(signOutMock).toHaveBeenCalledWith({ redirect: false });
+    await waitFor(() => {
+      expect(window.location.href).toBe("/api/auth/kc-logout");
+    });
   });
 });
 
@@ -95,7 +103,8 @@ describe("SideBar — Navegación", () => {
   it("Dimensiones está deshabilitado si no hay hexágonos seleccionados", () => {
     renderSideBar();
     const dim = screen.getByText("Dimensiones").parentElement!;
-    expect(dim.className).toContain("opacity-40");
+    expect(dim).toHaveAttribute("aria-disabled", "true");
+    expect(dim.className).toContain("cursor-not-allowed");
   });
 
   it("Dimensiones se habilita cuando hay hexágonos seleccionados", () => {
@@ -106,8 +115,36 @@ describe("SideBar — Navegación", () => {
     });
     renderSideBar();
     const dim = screen.getByText("Dimensiones").parentElement!;
+    expect(dim).toHaveAttribute("aria-disabled", "false");
     expect(dim.className).toContain("cursor-pointer");
-    expect(dim.className).not.toContain("opacity-40");
+  });
+
+  it("oculta el CTA de próximo paso si no hay hexágonos seleccionados", () => {
+    renderSideBar();
+    expect(screen.queryByTestId("next-step-cta")).not.toBeInTheDocument();
+  });
+
+  it("muestra el CTA de próximo paso cuando hay selección activa", () => {
+    useAprincipalMock.mockReturnValue({
+      accion: "seleccion-area",
+      setAccion: setAccionMock,
+      selectedHexes: new Set(["8a2a1072b59ffff"]),
+    });
+    renderSideBar();
+    expect(screen.getByTestId("next-step-cta")).toHaveTextContent(
+      "Continuar a Dimensiones",
+    );
+  });
+
+  it("click en el CTA cambia la acción principal a dimensiones", () => {
+    useAprincipalMock.mockReturnValue({
+      accion: "seleccion-area",
+      setAccion: setAccionMock,
+      selectedHexes: new Set(["8a2a1072b59ffff"]),
+    });
+    renderSideBar();
+    fireEvent.click(screen.getByTestId("next-step-cta"));
+    expect(setAccionMock).toHaveBeenCalledWith("dimensiones");
   });
 
   it("click en un paso anterior navega hacia atrás (retroceso libre)", () => {

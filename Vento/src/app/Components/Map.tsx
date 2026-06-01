@@ -16,14 +16,10 @@ import { Map as MapGL, type MapRef } from "react-map-gl/maplibre";
 import { DeckGL } from "@deck.gl/react";
 import { TileLayer } from "@deck.gl/geo-layers";
 import { PolygonLayer, TextLayer } from "@deck.gl/layers";
-import { luma } from "@luma.gl/core";
-import { webgl2Adapter } from "@luma.gl/webgl";
-import { cellToBoundary, cellToLatLng, getHexagonEdgeLengthAvg, getResolution, polygonToCells } from "h3-js";
+import { cellToBoundary, cellToLatLng, getHexagonEdgeLengthAvg, getResolution, isValidCell, polygonToCells } from "h3-js";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
 import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS } from "../Utils/h3Resolution";
 import "maplibre-gl/dist/maplibre-gl.css";
-
-try { luma.registerAdapters([webgl2Adapter]); } catch { /* ok */ }
 
 // mismo mapeo que HeatmapDemo (h3TileIndex) para que la cuadrícula coincida visualmente
 function zoomToH3Res(zoom: number): number {
@@ -48,17 +44,18 @@ function tileToBBox(z: number, x: number, y: number): [number, number, number, n
 
 const MIN_ZOOM = 5;
 const MAX_ZOOM = 14;
+const GRID_FADE_MS = 260;
+const GRID_REMAP_FALLBACK_MS = 650;
 
 // gris azulado
 const SELECTED_FILL: [number, number, number, number] = [224, 215, 221, 100];
 const SELECTED_BORDER: [number, number, number, number] = [70, 90, 120, 220];
 const GRID_BORDER: [number, number, number, number] = [224, 215, 221, 100];
+const GRID_BORDER_REMAP: [number, number, number, number] = [224, 215, 221, 35];
 // Borde territorio colombiano — distintivo pero no invasivo
 const TERRITORY_BORDER: [number, number, number, number] = [22, 81, 112, 160];
 // hover — misma familia que selected pero más tenue (alpha bajo) para distinguirse
 const HOVER_FILL: [number, number, number, number] = [224, 215, 221, 60];
-const HOVER_BORDER: [number, number, number, number] = [70, 90, 120, 120];
-const HOVER_TEXT_COLOR: [number, number, number, number] = [70, 90, 120, 220];
 // H3 ID label dentro de los hexágonos seleccionados
 const H3_LABEL_COLOR: [number, number, number, number] = [70, 90, 120, 255];
 // últimos 7 chars del h3 index — suficientemente único y legible
@@ -71,6 +68,16 @@ interface CachedCell { h: string; lat: number; lng: number; }
 
 // cache de cuadrícula Colombia por resolución, con lat/lng pre-calculados
 const colombiaCellsCache = new Map<number, CachedCell[]>();
+
+function getValidHoveredHex(object: unknown): string | null {
+  if (!object || typeof object !== "object" || !("h" in object)) return null;
+  const h = (object as { h?: unknown }).h;
+  return typeof h === "string" && isValidCell(h) ? h : null;
+}
+
+function getViewportH3Resolution(zoom: number): number {
+  return zoomToH3Res(Math.round(zoom));
+}
 
 function getColombiaCells(resolution: number): CachedCell[] {
   const cached = colombiaCellsCache.get(resolution);
@@ -97,10 +104,12 @@ export default function MapView() {
   const { selectedHexes, setSelectedHexes } = useAprincipal();
   const [mapReady, setMapReady] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const [hoveredHex, setHoveredHex] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [isGridRemapping, setIsGridRemapping] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapRef>(null);
+  const previousH3ResolutionRef = useRef(getViewportH3Resolution(INITIAL_VIEW_STATE.zoom));
+  const remapFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Detecta mobile (< 768px = md breakpoint de Tailwind)
   useEffect(() => {
@@ -120,6 +129,33 @@ export default function MapView() {
     };
   }, []);
 
+  const clearGridRemapFallback = useCallback(() => {
+    if (!remapFallbackRef.current) return;
+    clearTimeout(remapFallbackRef.current);
+    remapFallbackRef.current = null;
+  }, []);
+
+  const startGridRemap = useCallback(() => {
+    setIsGridRemapping(true);
+    clearGridRemapFallback();
+    remapFallbackRef.current = setTimeout(() => {
+      remapFallbackRef.current = null;
+      setIsGridRemapping(false);
+    }, GRID_REMAP_FALLBACK_MS);
+  }, [clearGridRemapFallback]);
+
+  const updateViewState = useCallback((nextViewState: typeof INITIAL_VIEW_STATE) => {
+    const clampedViewState = clampViewState(nextViewState);
+    const nextH3Resolution = getViewportH3Resolution(clampedViewState.zoom);
+    if (previousH3ResolutionRef.current !== nextH3Resolution) {
+      previousH3ResolutionRef.current = nextH3Resolution;
+      startGridRemap();
+    }
+    setViewState(clampedViewState);
+  }, [clampViewState, startGridRemap]);
+
+  useEffect(() => () => clearGridRemapFallback(), [clearGridRemapFallback]);
+
   const toggleHex = useCallback((h3Index: string) => {
     setSelectedHexes((prev) => {
       const next = new Set(prev);
@@ -129,6 +165,8 @@ export default function MapView() {
     });
   }, [setSelectedHexes]);
 
+  const gridLineColor = isGridRemapping ? GRID_BORDER_REMAP : GRID_BORDER;
+
   // capa de cuadrícula con tiles — solo renderiza lo visible, cachea por tile
   const gridTileLayer = useMemo(() => new TileLayer<HexCell>({
     id: "colombia-grid-tiles",
@@ -137,7 +175,12 @@ export default function MapView() {
     tileSize: 512,
     maxCacheSize: 64,
     maxRequests: 4,
+    // Mantiene tiles cacheados cercanos mientras entra la nueva resolución H3.
     refinementStrategy: "best-available",
+    onViewportLoad: () => {
+      if (!isGridRemapping) return;
+      setTimeout(() => setIsGridRemapping(false), GRID_FADE_MS);
+    },
     getTileData: async (tile) => {
       const { x, y, z } = tile.index;
       const res = zoomToH3Res(z);
@@ -156,7 +199,7 @@ export default function MapView() {
           result.push({ h: c.h });
         }
       }
-      return result as unknown as HexCell;
+      return result;
     },
     renderSubLayers: (props) => {
       const data = props.data as unknown as HexCell[] | null;
@@ -166,15 +209,24 @@ export default function MapView() {
         data,
         getPolygon: (d) => cellToBoundary(d.h, true),
         getFillColor: [0, 0, 0, 0],
-        getLineColor: GRID_BORDER,
+        getLineColor: gridLineColor,
         getLineWidth: 1,
         lineWidthMinPixels: 1,
         filled: true,
         stroked: true,
         pickable: true,
+        autoHighlight: !isMobile,
+        highlightColor: HOVER_FILL,
+        transitions: {
+          getFillColor: GRID_FADE_MS,
+          getLineColor: GRID_FADE_MS,
+        },
       });
     },
-  }), []);
+    updateTriggers: {
+      renderSubLayers: [gridLineColor, isMobile],
+    },
+  }), [gridLineColor, isGridRemapping, isMobile]);
 
   // Capa de borde del territorio colombiano (continente + archipiélago).
   // Pasa los polígonos sin relleno, solo contorno, para que el usuario vea hasta
@@ -238,45 +290,8 @@ export default function MapView() {
     });
   }, [selectedArr]);
 
-  // capa de hover — relleno gris transparente del hex bajo el cursor
-  // En mobile no hay cursor real (touch) → se deshabilita
-  const hoverFillLayer = useMemo(() => {
-    if (!hoveredHex || isMobile) return null;
-    return new PolygonLayer<HexCell>({
-      id: "hover-fill",
-      data: [{ h: hoveredHex }],
-      getPolygon: (d) => cellToBoundary(d.h, true),
-      getFillColor: HOVER_FILL,
-      getLineColor: HOVER_BORDER,
-      getLineWidth: 1,
-      lineWidthMinPixels: 2,
-      filled: true,
-      stroked: true,
-      pickable: false,
-    });
-  }, [hoveredHex, isMobile]);
-
-  // símbolo "+" en el centro del hex hovered (solo desktop)
-  const hoverPlusLayer = useMemo(() => {
-    if (!hoveredHex || isMobile) return null;
-    const [lat, lng] = cellToLatLng(hoveredHex);
-    return new TextLayer<HexCell>({
-      id: "hover-plus",
-      data: [{ h: hoveredHex }],
-      getPosition: () => [lng, lat],
-      getText: () => "+",
-      getSize: 28,
-      getColor: HOVER_TEXT_COLOR,
-      fontFamily: "sans-serif",
-      fontWeight: "bold",
-      getTextAnchor: "middle",
-      getAlignmentBaseline: "center",
-      pickable: false,
-    });
-  }, [hoveredHex]);
-
-  const zoomIn = () => setViewState((v) => clampViewState({ ...v, zoom: v.zoom + 1 }));
-  const zoomOut = () => setViewState((v) => clampViewState({ ...v, zoom: v.zoom - 1 }));
+  const zoomIn = () => updateViewState({ ...viewState, zoom: viewState.zoom + 1 });
+  const zoomOut = () => updateViewState({ ...viewState, zoom: viewState.zoom - 1 });
   const toggleFullscreen = () => {
     const el = containerRef.current;
     if (!el) return;
@@ -289,6 +304,21 @@ export default function MapView() {
       {!mapReady && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-gray-100">
           <p className="text-gray-500 text-lg">... cargando mapa</p>
+        </div>
+      )}
+
+      {isGridRemapping && (
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="h3-remap-status"
+          className="pointer-events-none absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-2 rounded-md border border-[#cce1eeff] bg-white/95 px-3 py-2 text-xs font-semibold text-[#165170ff] shadow-lg shadow-black/10"
+        >
+          <span
+            className="h-2 w-2 rounded-full bg-[#165170ff] motion-safe:animate-pulse"
+            aria-hidden="true"
+          />
+          Actualizando retícula
         </div>
       )}
 
@@ -324,18 +354,14 @@ export default function MapView() {
       <DeckGL
         style={{ position: "relative", width: "auto", height: "100%" }}
         viewState={viewState}
-        onViewStateChange={({ viewState: vs }) => setViewState(clampViewState(vs as typeof INITIAL_VIEW_STATE))}
+        onViewStateChange={({ viewState: vs }) => updateViewState(vs as typeof INITIAL_VIEW_STATE)}
         controller={true}
-        layers={[gridTileLayer, territoryBorderLayer, selectedLayer, selectedLabelLayer, hoverFillLayer, hoverPlusLayer]}
+        layers={[gridTileLayer, territoryBorderLayer, selectedLayer, selectedLabelLayer]}
         getCursor={({ isHovering }) => (isHovering ? "pointer" : "grab")}
-        onHover={(info) => {
-          const cell = info.object as HexCell | undefined;
-          setHoveredHex(cell ? cell.h : null);
-        }}
         onClick={(info) => {
-          const cell = info.object as HexCell | undefined;
-          if (!cell) return;
-          toggleHex(cell.h);
+          const h = getValidHoveredHex(info.object);
+          if (!h) return;
+          toggleHex(h);
         }}
       >
         <MapGL
