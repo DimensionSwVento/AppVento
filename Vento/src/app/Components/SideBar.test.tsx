@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { useEffect, useState } from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import SideBar from "./SideBar";
 import { AprincipalProvider, useAprincipal } from "../Utils/AccionPrincipalContext";
 
@@ -47,9 +47,15 @@ function renderSideBar(opts: { accion?: "seleccion-area" | "dimensiones" | "cara
         <SideBar>
           <div data-testid="children">child</div>
         </SideBar>
+        <ActionProbe />
       </Seed>
     </AprincipalProvider>
   );
+}
+
+function ActionProbe() {
+  const { accion } = useAprincipal();
+  return <span data-testid="accion-state">{accion}</span>;
 }
 
 describe("SideBar", () => {
@@ -69,13 +75,32 @@ describe("SideBar", () => {
   it("Dimensiones está deshabilitado si no hay hexágonos seleccionados", () => {
     renderSideBar({ accion: "seleccion-area" });
     const dim = screen.getByText("Dimensiones").parentElement!;
-    expect(dim.className).toContain("opacity-40");
+    expect(dim).toHaveAttribute("aria-disabled", "true");
+    expect(dim.className).toContain("cursor-not-allowed");
   });
 
   it("Dimensiones se habilita cuando hay hexágonos seleccionados", () => {
     renderSideBar({ accion: "seleccion-area", hexes: ["8a2a1072b59ffff"] });
     const dim = screen.getByText("Dimensiones").parentElement!;
+    expect(dim).toHaveAttribute("aria-disabled", "false");
     expect(dim.className).toContain("cursor-pointer");
-    expect(dim.className).not.toContain("opacity-40");
+  });
+
+  it("oculta el CTA de próximo paso si no hay hexágonos seleccionados", () => {
+    renderSideBar({ accion: "seleccion-area" });
+    expect(screen.queryByTestId("next-step-cta")).not.toBeInTheDocument();
+  });
+
+  it("muestra el CTA de próximo paso cuando hay selección activa", () => {
+    renderSideBar({ accion: "seleccion-area", hexes: ["8a2a1072b59ffff"] });
+    expect(screen.getByTestId("next-step-cta")).toHaveTextContent(
+      "Continuar a Dimensiones",
+    );
+  });
+
+  it("click en el CTA cambia la acción principal a dimensiones", () => {
+    renderSideBar({ accion: "seleccion-area", hexes: ["8a2a1072b59ffff"] });
+    fireEvent.click(screen.getByTestId("next-step-cta"));
+    expect(screen.getByTestId("accion-state")).toHaveTextContent("dimensiones");
   });
 });
