@@ -24,6 +24,7 @@ import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS } from "../Utils/h3Re
 import { type Place } from "../Utils/geocoder";
 import AreaDisplay from "./AreaDisplay";
 import MapSearchBox from "./MapSearchBox";
+import NextStepFloatingCard from "./NextStepFloatingCard";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 try { luma.registerAdapters([webgl2Adapter]); } catch { /* ok */ }
@@ -472,6 +473,7 @@ export default function MapView() {
 
       {mapReady && <AreaDisplay />}
       {mapReady && <MapSearchBox onSelect={handlePlaceSelect} />}
+      {mapReady && <NextStepFloatingCard />}
 
       {mapReady && (
         <>

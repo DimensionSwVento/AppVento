@@ -37,12 +37,12 @@ export default function SideBar({
   ] as const;
   const pasoActual = ORDEN.indexOf(accion as (typeof ORDEN)[number]);
   const haySeleccion = selectedHexes.size > 0;
+  const esPasado = (paso: (typeof ORDEN)[number]) =>
+    !isAdminPage && ORDEN.indexOf(paso) < pasoActual;
+  const esActual = (paso: (typeof ORDEN)[number]) =>
+    !isAdminPage && accion === paso;
   const showNextStepCta =
     isHydrated && !isAdminPage && accion === "seleccion-area" && haySeleccion;
-  const selectedCount = selectedHexes.size;
-  const selectedHexLabel = `${selectedCount} ${
-    selectedCount === 1 ? "hexágono seleccionado" : "hexágonos seleccionados"
-  }`;
 
   function navegar(destino: (typeof ORDEN)[number]) {
     // Desde admin: "seleccion-area" siempre vuelve al dashboard;
@@ -89,22 +89,21 @@ export default function SideBar({
     !isAdminPage && accion !== "seleccion-area" && accion !== null;
   // en mobile con subpagina visible, sidebar queda colapsado (solo iconos)
   // clases compartidas para ocultar texto en mobile-colapsado
-  const labelCls = hasSubpage ? "hidden md:inline-block" : "";
+  const labelCls = hasSubpage  ? "hidden md:inline-block" : "";
   // iconos: en mobile colapsado se separan más (mx + mt); en desktop mantienen ml-[0.5rem]
   const iconCls = hasSubpage
     ? "h-4 w-4 shrink-0 mx-auto my-[0.55rem] opacity-90 md:mx-0 md:my-0"
     : "h-4 w-4 shrink-0 opacity-90";
   const navItemBase =
-    "group mx-[0.5rem] flex min-h-[44px] w-[calc(100%-1rem)] items-center gap-2 rounded-lg border border-l-[3px] border-transparent px-2.5 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#cce1eeff]";
+    "group flex min-h-[44px] w-full items-center gap-2 border border-l-[3px] border-transparent px-2.5 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#cce1eeff]";
   const navItemEnabled =
     "cursor-pointer text-white hover:border-white/15 hover:bg-white/10 hover:shadow-md hover:shadow-black/10";
   const navItemDisabled = "cursor-not-allowed text-white/45 opacity-55";
   const activeNavItem =
     "border-white/20 border-l-[#cce1eeff] bg-white/15 shadow-lg shadow-black/15";
-  const nextNavItem =
-    "border-[#cce1eeff]/70 bg-white/10 shadow-lg shadow-black/10 ring-1 ring-[#cce1eeff]/50";
+  const nextNavItem = "";
   const secondaryItemBase =
-    "group mx-[0.5rem] flex min-h-[40px] w-[calc(100%-1rem)] cursor-default select-none items-center gap-2 rounded-lg border border-l-[3px] border-transparent px-2.5 text-white/90 transition-all duration-200 hover:border-white/10 hover:bg-white/10 hover:shadow-md hover:shadow-black/10";
+    "group flex min-h-[40px] w-full cursor-default select-none items-center gap-2 border border-l-[3px] border-transparent px-2.5 text-white/90 transition-all duration-200 hover:border-white/10 hover:bg-white/10 hover:shadow-md hover:shadow-black/10";
   const ExitIconCls = mobileOpen
     ? "mx-auto flex h-8 w-8 items-center justify-center rounded-full border border-white/25 text-white transition-colors hover:bg-white/10"
     : "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/25 text-white/80 transition-colors hover:bg-white/10 hover:text-white";
@@ -112,7 +111,31 @@ export default function SideBar({
 
   // separadores entre items en mobile colapsado: gris claro azulado, sutil
   const dividerCls = "mx-auto w-7 border-t border-[#cce1eeff]/25";
-  const itemLabelCls = "min-w-0 select-none text-[14px] leading-tight text-white";
+  const stepCheckIcon = (
+    <svg
+      className={`ml-auto h-4 w-4 shrink-0 text-white/90 ${labelCls}`}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.4 14.6-4.2-4.2 1.4-1.4 2.8 2.8 5.8-5.8 1.4 1.4-7.2 7.2z" />
+    </svg>
+  );
+  const activeStepArrowIcon = (
+    <svg
+      className={`ml-auto h-4 w-4 shrink-0 text-white/90 ${labelCls}`}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="9 6 15 12 9 18" />
+    </svg>
+  );
+  const itemLabelCls = "min-w-0 select-none text-[12px] leading-tight text-white";
   const sectionLabelCls =
     "mx-[0.75rem] mb-[0.75rem] mt-[1rem] cursor-default select-none text-[10.5px] font-semibold text-white/65";
 
@@ -164,7 +187,7 @@ export default function SideBar({
           className="pointer-events-none absolute inset-y-0 right-0 w-px bg-white/20"
         />
         <div
-          className={`relative z-10 flex h-full flex-col justify-between py-3 text-[10.5px] ${hasSubpage ? "w-[3.75rem] md:w-[14rem]" : "w-[14rem]"}`}
+          className={`relative z-10 flex h-full flex-col justify-between py-3 text-[10.5px] ${hasSubpage ? "w-[3.75rem] md:w-[12rem]" : "w-[12rem]"}`}
         >
           <div>
             <Image
@@ -172,9 +195,9 @@ export default function SideBar({
               alt="Logo"
               width={118}
               height={38}
-              className={`mb-[1.1rem] ml-[1rem] mt-[0.2rem] h-[38px] w-[118px] ${labelCls}`}
+              className={`${hasSubpage ? "hidden md:block md:mb-[1.1rem] md:mx-auto md:h-[38px] md:w-[118px]" : "mb-[1.1rem] mx-auto h-[38px] w-[118px]"}`}
             />
-            <hr className={`mx-[1rem] border-white/20 ${labelCls}`} />
+            <hr className={`hidden md:mx-[1rem] md:block md:border-white/20 `} />
             <div className={`${sectionLabelCls} ${labelCls}`}>
               ACCIONES PRINCIPALES
             </div>
@@ -191,6 +214,8 @@ export default function SideBar({
               <p className={`${itemLabelCls} ${labelCls}`}>
                 Selección de área
               </p>
+              {esPasado("seleccion-area") && stepCheckIcon}
+              {esActual("seleccion-area") && activeStepArrowIcon}
             </button>
             {mobileOpen && hasSubpage ? (
               <hr className={dividerCls}></hr>
@@ -213,46 +238,13 @@ export default function SideBar({
               <p className={`${itemLabelCls} ${labelCls}`}>
                 Dimensiones
               </p>
+              {esPasado("dimensiones") && stepCheckIcon}
+              {esActual("dimensiones") && activeStepArrowIcon}
             </button>
             {mobileOpen && hasSubpage ? (
               <hr className={dividerCls}></hr>
             ) : (
               <></>
-            )}
-
-            {showNextStepCta && (
-              <div
-                className={`mx-[0.5rem] mb-[1.1rem] mt-[0.6rem] ${labelCls}`}
-                aria-live="polite"
-              >
-                <button
-                  type="button"
-                  onClick={() => navegar("dimensiones")}
-                  className="group relative w-full overflow-hidden rounded-lg border border-[#cce1eeff] bg-white px-3 py-3 text-left text-[#165170ff] shadow-xl shadow-black/20 transition-all duration-200 motion-safe:hover:-translate-y-[1px] hover:shadow-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white motion-safe:animate-[vento-cta-in_220ms_ease-out]"
-                  aria-label={`Continuar a Dimensiones con ${selectedHexLabel}`}
-                  data-testid="next-step-cta"
-                >
-                  <span
-                    className="absolute inset-x-0 top-0 h-1 bg-[#cce1eeff]"
-                    aria-hidden="true"
-                  />
-                  <span className="block text-[10px] font-semibold leading-tight opacity-80">
-                    Área lista
-                  </span>
-                  <span className="mt-1 flex items-center justify-between gap-2 text-[13px] font-bold leading-tight">
-                    <span>Continuar a Dimensiones</span>
-                    <span
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#165170ff] text-[13px] text-white transition-transform duration-200 group-hover:translate-x-0.5"
-                      aria-hidden="true"
-                    >
-                      {">"}
-                    </span>
-                  </span>
-                  <span className="mt-1 block text-[10px] leading-tight opacity-80">
-                    {selectedHexLabel}
-                  </span>
-                </button>
-              </div>
             )}
 
             <button
@@ -278,6 +270,8 @@ export default function SideBar({
               <p className={`${itemLabelCls} ${labelCls}`}>
                 Características del proyecto
               </p>
+              {esPasado("caracteristicas") && stepCheckIcon}
+              {esActual("caracteristicas") && activeStepArrowIcon}
             </button>
             {mobileOpen && hasSubpage ? (
               <hr className={dividerCls}></hr>
@@ -298,6 +292,8 @@ export default function SideBar({
               <p className={`${itemLabelCls} ${labelCls}`}>
                 Informe de viabilidad
               </p>
+              {esPasado("informe") && stepCheckIcon}
+              {esActual("informe") && activeStepArrowIcon}
             </button>
             {mobileOpen && hasSubpage ? (
               <hr className={dividerCls}></hr>

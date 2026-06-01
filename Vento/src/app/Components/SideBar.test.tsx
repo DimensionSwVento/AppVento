@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { useEffect, useState } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import SideBar from "./SideBar";
 import { AprincipalProvider, useAprincipal } from "../Utils/AccionPrincipalContext";
 
@@ -86,21 +86,8 @@ describe("SideBar", () => {
     expect(dim.className).toContain("cursor-pointer");
   });
 
-  it("oculta el CTA de próximo paso si no hay hexágonos seleccionados", () => {
-    renderSideBar({ accion: "seleccion-area" });
+  it("ya no renderiza el CTA de próximo paso dentro del SideBar (vive en el mapa)", () => {
+    renderSideBar({ accion: "seleccion-area", hexes: ["8a2a1072b59ffff"] });
     expect(screen.queryByTestId("next-step-cta")).not.toBeInTheDocument();
-  });
-
-  it("muestra el CTA de próximo paso cuando hay selección activa", () => {
-    renderSideBar({ accion: "seleccion-area", hexes: ["8a2a1072b59ffff"] });
-    expect(screen.getByTestId("next-step-cta")).toHaveTextContent(
-      "Continuar a Dimensiones",
-    );
-  });
-
-  it("click en el CTA cambia la acción principal a dimensiones", () => {
-    renderSideBar({ accion: "seleccion-area", hexes: ["8a2a1072b59ffff"] });
-    fireEvent.click(screen.getByTestId("next-step-cta"));
-    expect(screen.getByTestId("accion-state")).toHaveTextContent("dimensiones");
   });
 });
