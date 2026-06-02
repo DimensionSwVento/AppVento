@@ -1,6 +1,7 @@
 "use client";
 import SideBar from "../Components/SideBar";
 import Dimensions from "../Components/Dimensions";
+import Caracteristicas from "../Components/Caracteristicas";
 import Report from "../Components/Report";
 import MapView from "../Components/Map";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
@@ -12,6 +13,8 @@ export default function AreaSelectionPage() {
     switch (accion) {
       case "dimensiones":
         return <Dimensions />;
+      case "caracteristicas":
+        return <Caracteristicas />;
       case "informe":
         return <Report />;
       default:
