@@ -24,26 +24,26 @@ export default function NextStepButton({
   if (!siguiente) return null;
 
   return (
-    <div className="mx-4 my-4 rounded-lg bg-white shadow p-4 flex items-center justify-between">
-      <div className="min-w-0">
-        <p className="text-[15px] font-medium text-gray-700">Siguiente paso</p>
+    <button
+      type="button"
+      disabled={disabled}
+      aria-disabled={disabled}
+      onClick={() => !disabled && setAccion(siguiente)}
+      className={`w-full bg-white flex items-center justify-between px-4 py-3 border border-r-[#165170] border-t-[#165170] ${
+        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+      }`}
+    >
+      <span className="flex flex-col items-start min-w-0 text-left">
+        <span className="text-[15px] font-medium text-gray-700">
+          Siguiente paso
+        </span>
         {disabled && blockedReason && (
-          <p className="mt-0.5 text-[11px] text-amber-700">{blockedReason}</p>
+          <span className="mt-0.5 text-[11px] text-amber-700">
+            {blockedReason}
+          </span>
         )}
-      </div>
-      <button
-        type="button"
-        disabled={disabled}
-        aria-disabled={disabled}
-        onClick={() => !disabled && setAccion(siguiente)}
-        className={`${
-          disabled
-            ? "cursor-not-allowed opacity-40"
-            : "cursor-pointer"
-        }`}
-      >
-        <img src="/next.png" alt="Siguiente" className="w-[32px] h-[32px]" />
-      </button>
-    </div>
+      </span>
+      <img src="/next.png" alt="Siguiente" className="w-[32px] h-[32px]" />
+    </button>
   );
 }

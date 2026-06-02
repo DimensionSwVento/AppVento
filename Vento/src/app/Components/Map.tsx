@@ -18,8 +18,9 @@ import { TileLayer } from "@deck.gl/geo-layers";
 import { PolygonLayer, TextLayer } from "@deck.gl/layers";
 import { luma } from "@luma.gl/core";
 import { webgl2Adapter } from "@luma.gl/webgl";
-import { cellToBoundary, cellToChildren, cellToLatLng, getHexagonEdgeLengthAvg, getResolution, polygonToCells } from "h3-js";
+import { cellToBoundary, cellToChildren, cellToLatLng, cellsToMultiPolygon, getHexagonEdgeLengthAvg, getResolution, polygonToCells } from "h3-js";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
+import { useVariables } from "../Utils/VariablesContext";
 import { useHeatmapDimension } from "../Utils/HeatmapDimensionContext";
 import { dimensionHexScore, viridis } from "../Utils/heatmapPalette";
 import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS } from "../Utils/h3Resolution";
@@ -28,6 +29,7 @@ import HexValuesTooltip from "./HexValuesTooltip";
 import HeatmapDimensionSwitches from "./HeatmapDimensionSwitches";
 import HeatmapLegend from "./HeatmapLegend";
 import InformativeVariablesList from "./InformativeVariablesList";
+import SelectedVariablesChips from "./SelectedVariablesChips";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 try { luma.registerAdapters([webgl2Adapter]); } catch { /* ok */ }
@@ -58,7 +60,7 @@ const MAX_ZOOM = 14;
 
 // gris azulado
 const SELECTED_FILL: [number, number, number, number] = [224, 215, 221, 100];
-const SELECTED_BORDER: [number, number, number, number] = [70, 90, 120, 220];
+const SELECTED_BORDER: [number, number, number, number] = [22, 81, 112, 200]; // brand #165170
 const GRID_BORDER: [number, number, number, number] = [224, 215, 221, 100];
 // Borde territorio colombiano — distintivo pero no invasivo
 const TERRITORY_BORDER: [number, number, number, number] = [22, 81, 112, 160];
@@ -102,7 +104,9 @@ function getColombiaCells(resolution: number): CachedCell[] {
 export default function MapView() {
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const { accion, selectedHexes, setSelectedHexes } = useAprincipal();
+  const { activeVariables } = useVariables();
   const { activeDimension } = useHeatmapDimension();
+  const canSelect = accion === "seleccion-area";
   const heatmapActive = accion === "informe" && activeDimension !== null;
   const [mapReady, setMapReady] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -131,6 +135,7 @@ export default function MapView() {
   }, []);
 
   const toggleHex = useCallback((h3Index: string) => {
+    if (!canSelect) return; // US03-AC12 — selección sólo en fase "seleccion-area"
     setSelectedHexes((prev) => {
       const next = new Set(prev);
       if (next.has(h3Index)) {
@@ -143,7 +148,7 @@ export default function MapView() {
       next.add(h3Index);
       return next;
     });
-  }, [setSelectedHexes]);
+  }, [canSelect, setSelectedHexes]);
 
   // capa de cuadrícula con tiles — solo renderiza lo visible, cachea por tile.
   // Cuando el heatmap del informe está activo, oculto la malla entera para
@@ -217,20 +222,19 @@ export default function MapView() {
     [selectedHexes]
   );
 
-  // capa de seleccionados — top level, siempre visible (independiente de tiles)
-  // Cuando el heatmap del informe está activo se oculta por completo (sin
-  // relleno gris ni borde) para no superponer bordes de hexes sobre el heatmap.
+  // Capa de seleccionados — relleno visible en seleccion/dimensiones/caracteristicas
+  // (US03-AC12 punto 3). Se oculta cuando el heatmap del informe está activo
+  // para no superponer el gris sobre la malla Viridis.
+  // Heatmap multivariable definitivo vive en US06-HEAT (Informe), con
+  // gradiente radial desde el centroide.
   const selectedLayer = useMemo(() => new PolygonLayer<HexCell>({
     id: "selected-hexes",
     visible: !heatmapActive,
     data: selectedArr,
     getPolygon: (d) => cellToBoundary(d.h, true),
     getFillColor: SELECTED_FILL,
-    getLineColor: SELECTED_BORDER,
-    getLineWidth: 1,
-    lineWidthMinPixels: 2,
     filled: true,
-    stroked: true,
+    stroked: false,
     pickable: false,
   }), [selectedArr, heatmapActive]);
 
@@ -302,12 +306,54 @@ export default function MapView() {
     });
   }, [heatmapActive, activeDimension, informeHeatmapData]);
 
-  // H3 ID label solo en hexágonos seleccionados — últimos 7 chars
+  // Bordes de la selección — comportamiento condicional por fase:
+  // - En "seleccion-area": cada hex tiene su borde completo (grid de selección)
+  // - En otras fases: sólo el contorno exterior (perímetro) del conjunto, usando
+  //   `cellsToMultiPolygon` para fusionar bordes contiguos en una sola línea
+  const selectedBordersLayer = useMemo(() => {
+    if (selectedArr.length === 0) return null;
+    if (canSelect) {
+      return new PolygonLayer<HexCell>({
+        id: "selected-hex-borders",
+        data: selectedArr,
+        getPolygon: (d) => cellToBoundary(d.h, true),
+        getLineColor: SELECTED_BORDER,
+        getLineWidth: 1,
+        lineWidthMinPixels: 1.5,
+        filled: false,
+        stroked: true,
+        pickable: false,
+      });
+    }
+    // Fuera de selección: outline exterior del conjunto fusionado
+    const polygons = cellsToMultiPolygon(
+      selectedArr.map((c) => c.h),
+      true,
+    );
+    const rings = polygons.flatMap((p) =>
+      p.map((ring) => ({ polygon: ring as [number, number][] })),
+    );
+    return new PolygonLayer<{ polygon: [number, number][] }>({
+      id: "selected-outline",
+      data: rings,
+      getPolygon: (d) => d.polygon,
+      getLineColor: SELECTED_BORDER,
+      getLineWidth: 2,
+      lineWidthMinPixels: 2,
+      filled: false,
+      stroked: true,
+      pickable: false,
+    });
+  }, [selectedArr, canSelect]);
+
+  // H3 ID label solo en hexágonos seleccionados — sólo en fase "seleccion-area".
   // Tamaño en metros proporcional al hex → el texto nunca sale del hexágono.
   // sizeMinPixels/MaxPixels evitan textos ilegibles o gigantes a zooms extremos.
   // Se oculta cuando el heatmap está activo (los IDs hex distraen del color).
   const selectedLabelLayer = useMemo(() => {
-    if (selectedArr.length === 0 || heatmapActive) return null;
+    if (selectedArr.length === 0) return null;
+    // Sólo en seleccion-area (no distrae en otras fases) y nunca sobre heatmap.
+    if (!canSelect || heatmapActive) return null;
     return new TextLayer<HexCell>({
       id: "selected-labels",
       data: selectedArr,
@@ -327,12 +373,12 @@ export default function MapView() {
       getAlignmentBaseline: "center",
       pickable: false,
     });
-  }, [selectedArr, heatmapActive]);
+  }, [selectedArr, canSelect, heatmapActive]);
 
-  // capa de hover — relleno gris transparente del hex bajo el cursor
-  // En mobile no hay cursor real (touch) → se deshabilita
+  // capa de hover — relleno gris transparente del hex bajo el cursor.
+  // Sólo en fase "seleccion-area"; en otras fases no hay interacción que sugerir.
   const hoverFillLayer = useMemo(() => {
-    if (!hoveredHex || isMobile) return null;
+    if (!canSelect || !hoveredHex || isMobile) return null;
     return new PolygonLayer<HexCell>({
       id: "hover-fill",
       data: [{ h: hoveredHex }],
@@ -347,9 +393,9 @@ export default function MapView() {
     });
   }, [hoveredHex, isMobile]);
 
-  // símbolo "+" en el centro del hex hovered (solo desktop)
+  // símbolo "+" en el centro del hex hovered — sólo en fase "seleccion-area" (desktop)
   const hoverPlusLayer = useMemo(() => {
-    if (!hoveredHex || isMobile) return null;
+    if (!canSelect || !hoveredHex || isMobile) return null;
     const [lat, lng] = cellToLatLng(hoveredHex);
     return new TextLayer<HexCell>({
       id: "hover-plus",
@@ -364,7 +410,7 @@ export default function MapView() {
       getAlignmentBaseline: "center",
       pickable: false,
     });
-  }, [hoveredHex]);
+  }, [hoveredHex, canSelect]);
 
   const zoomIn = () => setViewState((v) => clampViewState({ ...v, zoom: v.zoom + 1 }));
   const zoomOut = () => setViewState((v) => clampViewState({ ...v, zoom: v.zoom - 1 }));
@@ -420,6 +466,10 @@ export default function MapView() {
         />
       )}
 
+      {accion === "dimensiones" && activeVariables.size > 0 && (
+        <SelectedVariablesChips />
+      )}
+
       {accion === "informe" && (
         <>
           <div className="absolute top-3 left-3 z-10">
@@ -439,8 +489,11 @@ export default function MapView() {
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => setViewState(clampViewState(vs as typeof INITIAL_VIEW_STATE))}
         controller={true}
-        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedLabelLayer, hoverFillLayer, hoverPlusLayer]}
-        getCursor={({ isHovering }) => (isHovering ? "pointer" : "grab")}
+        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, selectedLabelLayer, hoverFillLayer, hoverPlusLayer]}
+        getCursor={({ isHovering }) => {
+          if (!canSelect) return isHovering ? "not-allowed" : "grab";
+          return isHovering ? "pointer" : "grab";
+        }}
         onHover={(info) => {
           const cell = info.object as HexCell | undefined;
           setHoveredHex(cell ? cell.h : null);
