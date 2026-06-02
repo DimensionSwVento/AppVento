@@ -17,9 +17,14 @@ function Seeder({ ids }: { ids: string[] }) {
   return null;
 }
 
-const cigarrillos = VARIABLES.find((v) => v.id === "cigarrillos-ilegales")!;
-const exposicion = VARIABLES.find((v) => v.id === "exposicion-solar")!;
-const humedad = VARIABLES.find((v) => v.id === "humedad-relativa")!;
+// Variables del nuevo catálogo escogidas por propiedad útil para el test:
+// - regulatoria (no-required) → tasa-exito-proyectos, para verificar subtítulo
+// - penalizing (no-required, peso < 0) → grupos-beligerantes, para popover
+// - additive ambientales no-required para Limpiar
+const regulatoriaVar = VARIABLES.find((v) => v.id === "tasa-exito-proyectos")!;
+const penalizingVar = VARIABLES.find((v) => v.id === "grupos-beligerantes")!;
+const ambientalA = VARIABLES.find((v) => v.id === "densidad-aire")!;
+const ambientalB = VARIABLES.find((v) => v.id === "riesgo-fisico")!;
 const pendiente = VARIABLES.find((v) => v.id === "pendiente-terreno")!;
 
 describe("SelectedVariablesChips (US04-AC4) — panel default, pill al colapsar", () => {
@@ -38,7 +43,7 @@ describe("SelectedVariablesChips (US04-AC4) — panel default, pill al colapsar"
   it("muestra subtítulo con la dimensión por cada item", () => {
     render(
       <VariablesProvider>
-        <Seeder ids={[cigarrillos.id]} />
+        <Seeder ids={[regulatoriaVar.id]} />
         <SelectedVariablesChips />
       </VariablesProvider>,
     );
@@ -49,57 +54,61 @@ describe("SelectedVariablesChips (US04-AC4) — panel default, pill al colapsar"
   it("botón 'Limpiar' deselecciona todas las no-obligatorias y deja sólo las required", () => {
     render(
       <VariablesProvider>
-        <Seeder ids={[exposicion.id, humedad.id, pendiente.id]} />
+        <Seeder ids={[ambientalA.id, ambientalB.id, pendiente.id]} />
         <SelectedVariablesChips />
       </VariablesProvider>,
     );
     fireEvent.click(screen.getByRole("button", { name: /Limpiar/i }));
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).queryByText(exposicion.label)).not.toBeInTheDocument();
-    expect(within(dialog).queryByText(humedad.label)).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(ambientalA.label)).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(ambientalB.label)).not.toBeInTheDocument();
     expect(within(dialog).queryByText(pendiente.label)).not.toBeInTheDocument();
-    expect(within(dialog).getByText("Velocidad del viento a 100m")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("Velocidad del viento media anualizada"),
+    ).toBeInTheDocument();
   });
 
   it("muestra los nombres de las variables activas en el panel", () => {
     render(
       <VariablesProvider>
-        <Seeder ids={[exposicion.id]} />
+        <Seeder ids={[ambientalA.id]} />
         <SelectedVariablesChips />
       </VariablesProvider>,
     );
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByText(exposicion.label)).toBeInTheDocument();
+    expect(within(dialog).getByText(ambientalA.label)).toBeInTheDocument();
   });
 
   it("click sobre un item del panel abre el info popover", () => {
     render(
       <VariablesProvider>
-        <Seeder ids={[cigarrillos.id]} />
+        <Seeder ids={[penalizingVar.id]} />
         <SelectedVariablesChips />
       </VariablesProvider>,
     );
     const dialog = screen.getByRole("dialog");
     fireEvent.click(
       within(dialog).getByRole("button", {
-        name: new RegExp(`Información de ${cigarrillos.label}`),
+        name: new RegExp(`Información de ${penalizingVar.label}`),
       }),
     );
     const info = screen.getByRole("tooltip");
-    expect(within(info).getByText(cigarrillos.description)).toBeInTheDocument();
+    expect(
+      within(info).getByText(penalizingVar.description),
+    ).toBeInTheDocument();
     expect(within(info).getByText("Resta a viabilidad")).toBeInTheDocument();
   });
 
   it("info popover tiene su propio botón de cerrar", () => {
     render(
       <VariablesProvider>
-        <Seeder ids={[humedad.id]} />
+        <Seeder ids={[ambientalB.id]} />
         <SelectedVariablesChips />
       </VariablesProvider>,
     );
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", {
-        name: new RegExp(`Información de ${humedad.label}`),
+        name: new RegExp(`Información de ${ambientalB.label}`),
       }),
     );
     fireEvent.click(
@@ -130,17 +139,17 @@ describe("SelectedVariablesChips (US04-AC4) — panel default, pill al colapsar"
   it("variables no obligatorias muestran ✕ que las deselecciona", () => {
     render(
       <VariablesProvider>
-        <Seeder ids={[pendiente.id]} />
+        <Seeder ids={[ambientalA.id]} />
         <SelectedVariablesChips />
       </VariablesProvider>,
     );
     const dialog = screen.getByRole("dialog");
     fireEvent.click(
       within(dialog).getByRole("button", {
-        name: new RegExp(`Deseleccionar ${pendiente.label}`),
+        name: new RegExp(`Deseleccionar ${ambientalA.label}`),
       }),
     );
-    expect(within(dialog).queryByText(pendiente.label)).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(ambientalA.label)).not.toBeInTheDocument();
   });
 
   it("click sobre el header del panel lo colapsa a la pill compacta", () => {
@@ -160,7 +169,7 @@ describe("SelectedVariablesChips (US04-AC4) — panel default, pill al colapsar"
   it("click sobre 'Limpiar' NO colapsa el panel (stopPropagation)", () => {
     render(
       <VariablesProvider>
-        <Seeder ids={[exposicion.id]} />
+        <Seeder ids={[ambientalA.id]} />
         <SelectedVariablesChips />
       </VariablesProvider>,
     );

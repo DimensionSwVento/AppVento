@@ -12,7 +12,7 @@ describe("variablesCatalog — estructura", () => {
     expect(DIMENSIONS.map((d) => d.id).sort()).toEqual(
       [
         "ambiental",
-        "macroeconomica",
+        "economica",
         "regulatoria",
         "socioeconomica",
         "tecnica",

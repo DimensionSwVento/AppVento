@@ -2,19 +2,22 @@
 
 import { useVariables } from "../Utils/VariablesContext";
 import { colorForVariable } from "../Utils/dimensionColors";
+import { getIconByVariableId } from "../Utils/variableIcons";
 import type { Variable } from "../Utils/variablesCatalog";
 
 /**
  * Fila de variable dentro de una `DimensionCard`.
  * - Switch a la izquierda (deshabilitado y siempre on si la variable es obligatoria)
  * - Label + descripción al centro
- * - Dot de color (color asignado a la variable) a la derecha en lugar del ℹ
+ * - Badge de color con el ícono encima (color de dimensión + ícono Figura 3)
+ *   a la derecha en lugar del antiguo dot
  */
 export default function VariableSwitch({ variable }: { variable: Variable }) {
   const { isActive, toggleVariable } = useVariables();
   const active = isActive(variable.id);
   const required = Boolean(variable.required);
   const color = colorForVariable(variable.id);
+  const Icon = getIconByVariableId(variable.id);
 
   return (
     <div className="flex items-start gap-3 py-2">
@@ -52,10 +55,12 @@ export default function VariableSwitch({ variable }: { variable: Variable }) {
       </div>
       <span
         aria-hidden="true"
-        title={`Color asignado a ${variable.label}`}
-        className="block h-3.5 w-3.5 shrink-0 mt-0.5 rounded-full ring-2 ring-white shadow-sm"
+        title={`Color e ícono de ${variable.label}`}
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md shadow-sm ring-1 ring-white/60"
         style={{ backgroundColor: color }}
-      />
+      >
+        <Icon className="h-4 w-4 text-white" strokeWidth={2.2} />
+      </span>
     </div>
   );
 }

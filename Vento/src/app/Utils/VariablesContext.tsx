@@ -87,7 +87,13 @@ export function VariablesProvider({ children }: { children: React.ReactNode }) {
       totalVariables: VARIABLES.length,
       clearNonRequired,
     }),
-    [activeVariables, toggleVariable, isActive, activeCountByDimension, clearNonRequired],
+    [
+      activeVariables,
+      toggleVariable,
+      isActive,
+      activeCountByDimension,
+      clearNonRequired,
+    ],
   );
 
   return (

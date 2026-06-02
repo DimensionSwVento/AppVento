@@ -89,11 +89,11 @@ describe("VariablesContext — multi-selección con obligatorias", () => {
         <Probe onCtx={(c) => (captured = c)} />
       </VariablesProvider>,
     );
-    // viento-100m y densidad-energetica (obligatorias) son ambientales
-    const reqInAmbiental = variablesByDimension("ambiental").filter(
+    // wpd y viento-velocidad (obligatorias) son técnicas
+    const reqInTecnica = variablesByDimension("tecnica").filter(
       (v) => v.required,
     ).length;
-    expect(captured.activeCountByDimension("ambiental")).toBe(reqInAmbiental);
+    expect(captured.activeCountByDimension("tecnica")).toBe(reqInTecnica);
   });
 
   it("totalByDimension devuelve el total fijo (independiente del estado)", () => {

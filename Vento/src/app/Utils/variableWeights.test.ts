@@ -15,18 +15,20 @@ describe("variableWeights — estructura", () => {
     }
   });
 
-  it("'cigarrillos-ilegales' tiene peso negativo (penaliza)", () => {
-    expect(weightFor("cigarrillos-ilegales")).toBeLessThan(0);
+  it("'grupos-beligerantes' tiene peso negativo (penaliza)", () => {
+    expect(weightFor("grupos-beligerantes")).toBeLessThan(0);
   });
 
-  it("'viento-100m' tiene peso positivo (aditivo)", () => {
-    expect(weightFor("viento-100m")).toBeGreaterThan(0);
+  it("'viento-velocidad' tiene peso positivo (aditivo)", () => {
+    expect(weightFor("viento-velocidad")).toBeGreaterThan(0);
   });
 });
 
 describe("variableWeights — weightFor", () => {
   it("retorna el peso asignado a una variable conocida", () => {
-    expect(weightFor("viento-100m")).toBe(VARIABLE_WEIGHTS["viento-100m"]);
+    expect(weightFor("viento-velocidad")).toBe(
+      VARIABLE_WEIGHTS["viento-velocidad"],
+    );
   });
 
   it("retorna 0 para variables que no están en el mapa", () => {

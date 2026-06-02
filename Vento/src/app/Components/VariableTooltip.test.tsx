@@ -4,17 +4,19 @@ import VariableTooltip from "./VariableTooltip";
 import type { Variable } from "../Utils/variablesCatalog";
 
 const additive: Variable = {
-  id: "viento-100m",
-  dimension: "ambiental",
-  label: "Velocidad del viento a 100m",
-  description: "Promedio anual de velocidad del viento a 100m de altura",
+  id: "viento-velocidad",
+  dimension: "tecnica",
+  label: "Velocidad del viento media anualizada",
+  description: "Promedio anual de velocidad del viento",
+  iconKey: "Wind",
 };
 
 const penalizing: Variable = {
-  id: "cigarrillos-ilegales",
-  dimension: "regulatoria",
-  label: "Cigarrillos ilegales",
-  description: "Concentración de actividad ilegal en la zona",
+  id: "grupos-beligerantes",
+  dimension: "socioeconomica",
+  label: "Presencia de grupos beligerantes",
+  description: "Actividad de grupos armados ilegales",
+  iconKey: "Swords",
 };
 
 describe("VariableTooltip (US04-AC2)", () => {

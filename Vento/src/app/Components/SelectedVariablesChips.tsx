@@ -9,6 +9,7 @@ import {
   type Variable,
 } from "../Utils/variablesCatalog";
 import { colorForVariable } from "../Utils/dimensionColors";
+import { getIconByVariableId } from "../Utils/variableIcons";
 import { weightFor } from "../Utils/variableWeights";
 
 /** Label corto de la dimensión para el subtítulo (sin el prefijo "Dimensión "). */
@@ -30,7 +31,7 @@ function dimensionShortLabel(id: DimensionId): string {
  *  3. **Info popover** en top-right: se abre al hacer click sobre un item del
  *     panel. Muestra descripción + polaridad. Cierre propio.
  */
-const PILL_VISIBLE_LIMIT = 3;
+const PILL_VISIBLE_LIMIT = 4;
 
 export default function SelectedVariablesChips() {
   const { activeVariables, toggleVariable, clearNonRequired } = useVariables();
@@ -46,6 +47,12 @@ export default function SelectedVariablesChips() {
         .filter((v): v is Variable => Boolean(v)),
     [activeVariables],
   );
+
+  // Cuando se abre el detalle de una variable, colapsa el panel a pill para
+  // dejar más espacio al popover; el usuario puede re-expandir tocando la pill.
+  useEffect(() => {
+    if (infoVarId) setExpanded(false);
+  }, [infoVarId]);
 
   if (variables.length === 0) return null;
 
@@ -73,6 +80,8 @@ export default function SelectedVariablesChips() {
       {infoVarId && (
         <InfoPopover
           variableId={infoVarId}
+          variables={variables}
+          onNavigate={(id) => setInfoVarId(id)}
           onClose={() => setInfoVarId(null)}
         />
       )}
@@ -89,8 +98,6 @@ function PillCompact({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const visible = variables.slice(0, PILL_VISIBLE_LIMIT);
-  const hiddenCount = variables.length - visible.length;
   return (
     <button
       type="button"
@@ -101,7 +108,7 @@ function PillCompact({
           : "Variables seleccionadas en el mapa — abrir lista"
       }
       aria-expanded={expanded}
-      className="flex flex-col items-start gap-2 rounded-2xl border border-[#eae9e9ff] shadow-lg shadow-[#cacacbff] px-4 py-3  bg-white"
+      className="flex w-60 flex-col items-start gap-2 rounded-2xl border border-[#eae9e9ff] shadow-lg shadow-[#cacacbff] px-4 py-3 bg-white"
     >
       <span className="flex items-center gap-1.5 text-sm font-semibold text-[#383838]">
         Variables seleccionadas en el mapa
@@ -118,17 +125,22 @@ function PillCompact({
           />
         </svg>
       </span>
-      <span className="flex items-center gap-2" aria-hidden="true">
-        {visible.map((v) => (
-          <span
-            key={v.id}
-            className="block h-8 w-8 rounded-full ring-2 ring-white shadow"
-            style={{ backgroundColor: colorForVariable(v.id) }}
-          />
-        ))}
-        {hiddenCount > 0 && (
+      <span className="flex flex-wrap items-center gap-2" aria-hidden="true">
+        {variables.slice(0, PILL_VISIBLE_LIMIT).map((v) => {
+          const Icon = getIconByVariableId(v.id);
+          return (
+            <span
+              key={v.id}
+              className="flex h-8 w-8 items-center justify-center rounded-full ring-2 ring-white shadow"
+              style={{ backgroundColor: colorForVariable(v.id) }}
+            >
+              <Icon className="h-4 w-4 text-white" strokeWidth={2.2} />
+            </span>
+          );
+        })}
+        {variables.length > PILL_VISIBLE_LIMIT && (
           <span className="flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-gray-200 px-2 text-xs font-semibold text-gray-700 ring-2 ring-white shadow">
-            +{hiddenCount}
+            +{variables.length - PILL_VISIBLE_LIMIT}
           </span>
         )}
       </span>
@@ -161,7 +173,7 @@ function PanelExpanded({
     <div
       role="dialog"
       aria-labelledby={titleId}
-      className="w-60 max-h-[70vh] overflow-y-auto rounded-lg bg-white border border-[#eae9e9ff] shadow-lg shadow-[#cacacbff]"
+      className="w-60 max-h-[28rem] overflow-y-scroll [scrollbar-gutter:stable] rounded-lg bg-white border border-[#eae9e9ff] shadow-lg shadow-[#cacacbff]"
     >
       <header
         onClick={onCollapse}
@@ -212,11 +224,18 @@ function PanelExpanded({
                 aria-label={`Información de ${v.label}`}
                 className="flex flex-1 items-center gap-3 text-left"
               >
-                <span
-                  aria-hidden="true"
-                  className="block h-10 w-10 shrink-0 rounded-md shadow-sm"
-                  style={{ backgroundColor: colorForVariable(v.id) }}
-                />
+                {(() => {
+                  const Icon = getIconByVariableId(v.id);
+                  return (
+                    <span
+                      aria-hidden="true"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md shadow-sm"
+                      style={{ backgroundColor: colorForVariable(v.id) }}
+                    >
+                      <Icon className="h-5 w-5 text-white" strokeWidth={2.2} />
+                    </span>
+                  );
+                })()}
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm font-semibold text-[#393939] leading-tight">
                     {v.label}
@@ -259,15 +278,45 @@ function PanelExpanded({
   );
 }
 
+type InfoTab =
+  | "resumen"
+  | "calculo"
+  | "fuente"
+  | "relevancia"
+  | "rango";
+
+const INFO_TABS: { id: InfoTab; label: string }[] = [
+  { id: "resumen", label: "Resumen" },
+  { id: "calculo", label: "Cómo se calcula" },
+  { id: "fuente", label: "Fuente de datos" },
+  { id: "relevancia", label: "Relevancia" },
+  { id: "rango", label: "Rango e interpretación" },
+];
+
 function InfoPopover({
   variableId,
+  variables,
+  onNavigate,
   onClose,
 }: {
   variableId: string;
+  variables: Variable[];
+  onNavigate: (id: string) => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const variable = getVariableById(variableId);
+  const [activeTab, setActiveTab] = useState<InfoTab>("resumen");
+
+  const currentIndex = variables.findIndex((v) => v.id === variableId);
+  const total = variables.length;
+  const canNavigate = total > 1 && currentIndex >= 0;
+  const prevVar = canNavigate
+    ? variables[(currentIndex - 1 + total) % total]
+    : null;
+  const nextVar = canNavigate
+    ? variables[(currentIndex + 1) % total]
+    : null;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -292,17 +341,20 @@ function InfoPopover({
         ? "text-red-700 bg-red-50"
         : "text-gray-600 bg-gray-100";
 
+  const Icon = getIconByVariableId(variable.id);
+  const bg = colorForVariable(variable.id);
+
   return (
     <div
       id="selected-vars-info"
       ref={ref}
       role="tooltip"
-      className="absolute top-3 left-3 z-20 w-64 rounded-lg bg-white p-3 shadow-lg ring-1 ring-black/5 max-md:top-12"
+      className="absolute bottom-4 left-4 z-20 w-[36rem] max-w-[calc(100%-2rem)] rounded-lg bg-white shadow-xl ring-1 ring-black/5"
     >
-      <header className="flex items-start justify-between gap-2 mb-1">
-        <p className="text-sm font-bold text-[#383838] leading-tight">
-          {variable.label}
-        </p>
+      <header className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
+        <h3 className="text-sm font-bold text-[#383838]">
+          Detalle de la variable seleccionada
+        </h3>
         <button
           type="button"
           onClick={onClose}
@@ -318,17 +370,105 @@ function InfoPopover({
           </svg>
         </button>
       </header>
-      <p className="text-[10px] uppercase tracking-wide text-gray-500">
-        {variable.dimension}
-      </p>
-      <p className="mt-1 text-xs text-gray-600 leading-snug">
-        {variable.description}
-      </p>
-      <span
-        className={`mt-2 inline-block rounded px-2 py-0.5 text-[10px] font-semibold ${polarityClass}`}
-      >
-        {polarityLabel}
-      </span>
+      <div className="flex">
+        <nav
+          aria-label="Secciones de detalle"
+          className="w-44 shrink-0 border-r border-gray-200 py-2"
+        >
+          <ul className="flex flex-col">
+            {INFO_TABS.map((t) => {
+              const active = activeTab === t.id;
+              return (
+                <li key={t.id}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab(t.id)}
+                    aria-current={active ? "page" : undefined}
+                    className={`block w-full border-l-[3px] px-4 py-2 text-left text-[12px] transition-colors ${
+                      active
+                        ? "border-[#165170ff] bg-gray-50 font-semibold text-[#165170ff]"
+                        : "border-transparent text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+        <div className="flex-1 min-w-0 p-4">
+          {activeTab === "resumen" ? (
+            <div>
+              <header className="flex items-start gap-3">
+                <span
+                  aria-hidden="true"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md shadow-sm"
+                  style={{ backgroundColor: bg }}
+                >
+                  <Icon className="h-6 w-6 text-white" strokeWidth={2.2} />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-[#383838] leading-tight">
+                    {variable.label}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wide text-gray-500 mt-0.5">
+                    {dimensionShortLabel(variable.dimension)}
+                  </p>
+                </div>
+              </header>
+              <dl className="mt-3 grid grid-cols-[5rem_1fr] gap-x-3 gap-y-1 text-[11px] leading-snug">
+                <dt className="font-semibold text-gray-500">ID</dt>
+                <dd className="font-mono text-gray-700 break-all">
+                  {variable.id}
+                </dd>
+                <dt className="font-semibold text-gray-500">En el área</dt>
+                <dd className="text-gray-500">
+                  —{" "}
+                  <span className="text-[10px] italic text-gray-400">
+                    (pendiente datos)
+                  </span>
+                </dd>
+              </dl>
+              <p className="mt-3 text-xs text-gray-600 leading-snug">
+                {variable.description}
+              </p>
+              <span
+                className={`mt-2 inline-block rounded px-2 py-0.5 text-[10px] font-semibold ${polarityClass}`}
+              >
+                {polarityLabel}
+              </span>
+            </div>
+          ) : (
+            <div className="flex h-full min-h-[8rem] flex-col items-center justify-center text-center text-xs text-gray-400">
+              <p className="font-semibold uppercase tracking-wide">
+                {INFO_TABS.find((t) => t.id === activeTab)?.label}
+              </p>
+              <p className="mt-1 italic">Disponible en el sprint 3</p>
+            </div>
+          )}
+        </div>
+      </div>
+      {canNavigate && prevVar && nextVar && (
+        <footer className="flex items-center justify-end gap-2 border-t border-gray-200 px-4 py-3">
+          <button
+            type="button"
+            onClick={() => onNavigate(prevVar.id)}
+            aria-label={`Anterior variable: ${prevVar.label}`}
+            className="rounded border border-[#165170ff] px-3 py-1.5 text-xs font-semibold text-[#165170ff] hover:bg-[#165170ff]/5"
+          >
+            Anterior variable
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigate(nextVar.id)}
+            aria-label={`Siguiente variable: ${nextVar.label}`}
+            className="rounded bg-[#165170ff] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0f3d57]"
+          >
+            Siguiente variable
+          </button>
+        </footer>
+      )}
     </div>
   );
 }
