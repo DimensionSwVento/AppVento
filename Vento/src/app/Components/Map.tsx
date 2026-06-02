@@ -18,9 +18,15 @@ import { TileLayer } from "@deck.gl/geo-layers";
 import { PolygonLayer, TextLayer } from "@deck.gl/layers";
 import { luma } from "@luma.gl/core";
 import { webgl2Adapter } from "@luma.gl/webgl";
-import { cellToBoundary, cellToLatLng, getHexagonEdgeLengthAvg, getResolution, polygonToCells } from "h3-js";
+import { cellToBoundary, cellToChildren, cellToLatLng, getHexagonEdgeLengthAvg, getResolution, polygonToCells } from "h3-js";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
+import { useHeatmapDimension } from "../Utils/HeatmapDimensionContext";
+import { dimensionHexScore, viridis } from "../Utils/heatmapPalette";
 import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS } from "../Utils/h3Resolution";
+import HexValuesTooltip from "./HexValuesTooltip";
+import HeatmapDimensionSwitches from "./HeatmapDimensionSwitches";
+import HeatmapLegend from "./HeatmapLegend";
+import InformativeVariablesList from "./InformativeVariablesList";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 try { luma.registerAdapters([webgl2Adapter]); } catch { /* ok */ }
@@ -94,10 +100,13 @@ function getColombiaCells(resolution: number): CachedCell[] {
 
 export default function MapView() {
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
-  const { selectedHexes, setSelectedHexes } = useAprincipal();
+  const { accion, selectedHexes, setSelectedHexes } = useAprincipal();
+  const { activeDimension } = useHeatmapDimension();
+  const heatmapActive = accion === "informe" && activeDimension !== null;
   const [mapReady, setMapReady] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [hoveredHex, setHoveredHex] = useState<string | null>(null);
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapRef>(null);
@@ -129,9 +138,12 @@ export default function MapView() {
     });
   }, [setSelectedHexes]);
 
-  // capa de cuadrícula con tiles — solo renderiza lo visible, cachea por tile
+  // capa de cuadrícula con tiles — solo renderiza lo visible, cachea por tile.
+  // Cuando el heatmap del informe está activo, oculto la malla entera para
+  // no superponer bordes de hexágonos sobre el mapa de calor.
   const gridTileLayer = useMemo(() => new TileLayer<HexCell>({
     id: "colombia-grid-tiles",
+    visible: !heatmapActive,
     minZoom: 2,
     maxZoom: 14,
     tileSize: 512,
@@ -174,7 +186,7 @@ export default function MapView() {
         pickable: true,
       });
     },
-  }), []);
+  }), [heatmapActive]);
 
   // Capa de borde del territorio colombiano (continente + archipiélago).
   // Pasa los polígonos sin relleno, solo contorno, para que el usuario vea hasta
@@ -199,8 +211,11 @@ export default function MapView() {
   );
 
   // capa de seleccionados — top level, siempre visible (independiente de tiles)
+  // Cuando el heatmap del informe está activo se oculta por completo (sin
+  // relleno gris ni borde) para no superponer bordes de hexes sobre el heatmap.
   const selectedLayer = useMemo(() => new PolygonLayer<HexCell>({
     id: "selected-hexes",
+    visible: !heatmapActive,
     data: selectedArr,
     getPolygon: (d) => cellToBoundary(d.h, true),
     getFillColor: SELECTED_FILL,
@@ -210,13 +225,82 @@ export default function MapView() {
     filled: true,
     stroked: true,
     pickable: false,
-  }), [selectedArr]);
+  }), [selectedArr, heatmapActive]);
+
+  // Heatmap del informe (US06-HEAT): malla de hijos res-8 dentro del área
+  // seleccionada (US06-HEAT-AC1) coloreados por un gradiente RADIAL desde
+  // el centroide de la selección — más caliente en el centro, más frío en
+  // los bordes. Cada dimensión añade una pequeña variación de fase usando
+  // el hash placeholder, para que el patrón no sea idéntico entre
+  // dimensiones (alrededor del 15% del rango).
+  const informeHeatmapData = useMemo<
+    { h: string; baseScore: number }[]
+  >(() => {
+    if (!heatmapActive || selectedHexes.size === 0) return [];
+
+    // 1) Centroide aproximado de la selección (promedio de lat/lng).
+    let sumLat = 0;
+    let sumLng = 0;
+    for (const h of selectedHexes) {
+      const [lat, lng] = cellToLatLng(h);
+      sumLat += lat;
+      sumLng += lng;
+    }
+    const cLat = sumLat / selectedHexes.size;
+    const cLng = sumLng / selectedHexes.size;
+
+    // 2) Expansión a res-8 + distancia de cada hijo al centroide.
+    const cells: { h: string; dist: number }[] = [];
+    let maxDist = 0;
+    for (const h of selectedHexes) {
+      const res = getResolution(h);
+      const children = res >= 8 ? [h] : cellToChildren(h, 8);
+      for (const c of children) {
+        const [lat, lng] = cellToLatLng(c);
+        const d = Math.hypot(lat - cLat, lng - cLng);
+        if (d > maxDist) maxDist = d;
+        cells.push({ h: c, dist: d });
+      }
+    }
+
+    // 3) Normaliza a [0, 1] y INVIERTE (centro = 1, borde = 0).
+    const denom = maxDist > 0 ? maxDist : 1;
+    return cells.map((c) => ({
+      h: c.h,
+      baseScore: 1 - c.dist / denom,
+    }));
+  }, [heatmapActive, selectedHexes]);
+
+  const informeHeatmapLayer = useMemo(() => {
+    if (!heatmapActive || informeHeatmapData.length === 0) return null;
+    const dim = activeDimension as string;
+    return new PolygonLayer<{ h: string; baseScore: number }>({
+      id: "informe-heatmap",
+      data: informeHeatmapData,
+      getPolygon: (d) => cellToBoundary(d.h, true),
+      getFillColor: (d) => {
+        // Pequeña variación por (dim, hex) — ±15% del rango — para que
+        // cada dimensión no muestre exactamente el mismo patrón radial.
+        const noise = (dimensionHexScore(dim, d.h) - 0.5) * 0.3;
+        const t = Math.max(0, Math.min(1, d.baseScore + noise));
+        const [r, g, b] = viridis(t);
+        return [r, g, b, 220];
+      },
+      // Sin borde por celda res-8 — quedaría una malla densísima. El borde
+      // del área completa lo sigue dibujando `selectedLayer`.
+      filled: true,
+      stroked: false,
+      pickable: false,
+      updateTriggers: { getFillColor: [dim] },
+    });
+  }, [heatmapActive, activeDimension, informeHeatmapData]);
 
   // H3 ID label solo en hexágonos seleccionados — últimos 7 chars
   // Tamaño en metros proporcional al hex → el texto nunca sale del hexágono.
   // sizeMinPixels/MaxPixels evitan textos ilegibles o gigantes a zooms extremos.
+  // Se oculta cuando el heatmap está activo (los IDs hex distraen del color).
   const selectedLabelLayer = useMemo(() => {
-    if (selectedArr.length === 0) return null;
+    if (selectedArr.length === 0 || heatmapActive) return null;
     return new TextLayer<HexCell>({
       id: "selected-labels",
       data: selectedArr,
@@ -236,7 +320,7 @@ export default function MapView() {
       getAlignmentBaseline: "center",
       pickable: false,
     });
-  }, [selectedArr]);
+  }, [selectedArr, heatmapActive]);
 
   // capa de hover — relleno gris transparente del hex bajo el cursor
   // En mobile no hay cursor real (touch) → se deshabilita
@@ -321,16 +405,43 @@ export default function MapView() {
         </>
       )}
 
+      {!isMobile && (
+        <HexValuesTooltip
+          hex={hoveredHex}
+          x={hoverPos?.x ?? null}
+          y={hoverPos?.y ?? null}
+        />
+      )}
+
+      {accion === "informe" && (
+        <>
+          <div className="absolute top-3 left-3 z-10">
+            <HeatmapLegend />
+          </div>
+          <div className="absolute top-3 right-3 z-10 flex w-44 flex-col gap-3">
+            <HeatmapDimensionSwitches />
+            <div className="max-h-[40vh] overflow-y-auto">
+              <InformativeVariablesList />
+            </div>
+          </div>
+        </>
+      )}
+
       <DeckGL
         style={{ position: "relative", width: "auto", height: "100%" }}
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => setViewState(clampViewState(vs as typeof INITIAL_VIEW_STATE))}
         controller={true}
-        layers={[gridTileLayer, territoryBorderLayer, selectedLayer, selectedLabelLayer, hoverFillLayer, hoverPlusLayer]}
+        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedLabelLayer, hoverFillLayer, hoverPlusLayer]}
         getCursor={({ isHovering }) => (isHovering ? "pointer" : "grab")}
         onHover={(info) => {
           const cell = info.object as HexCell | undefined;
           setHoveredHex(cell ? cell.h : null);
+          setHoverPos(
+            cell && typeof info.x === "number" && typeof info.y === "number"
+              ? { x: info.x, y: info.y }
+              : null,
+          );
         }}
         onClick={(info) => {
           const cell = info.object as HexCell | undefined;

@@ -31,6 +31,7 @@ export default function Report() {
   const reportRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(true);
 
   const area = useMemo(() => calcAreaKm2(selectedHexes), [selectedHexes]);
   const centroid = useMemo(() => getCentroid(selectedHexes), [selectedHexes]);
@@ -66,54 +67,86 @@ export default function Report() {
 
       <div
         ref={reportRef}
-        className="rounded-2xl bg-white shadow-sm p-4 flex flex-col gap-4"
+        className="rounded-2xl bg-white shadow-sm flex flex-col"
       >
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Región" value={region ?? "—"} />
-          <Field
-            label="Coordenadas"
-            value={centroid ? formatCoordenadas(centroid) : "—"}
-          />
-          <Field
-            label="Área total seleccionada"
-            value={`${fmtKm2.format(area)} km²`}
-          />
-          <Field
-            label="Cantidad de variables activas"
-            value={String(variablesActivasCount)}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          {PLACEHOLDER_DIMENSIONS.map((d) => (
-            <Field
-              key={d.id}
-              label={d.label}
-              value={`${fmtPct.format(d.value)}%`}
+        <button
+          type="button"
+          onClick={() => setPreviewOpen((v) => !v)}
+          aria-expanded={previewOpen}
+          aria-controls="report-preview-body"
+          className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left hover:bg-gray-50"
+        >
+          <span className="text-sm font-bold text-[#383838]">
+            Previsualización del informe
+          </span>
+          <svg
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+            className={`h-4 w-4 text-gray-500 transition-transform ${
+              previewOpen ? "rotate-180" : ""
+            }`}
+          >
+            <path
+              fillRule="evenodd"
+              d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
+              clipRule="evenodd"
             />
-          ))}
-          <Field
-            label="Total variables evaluadas"
-            value={String(variablesEvaluadasCount)}
-          />
-        </div>
+          </svg>
+        </button>
+        {previewOpen && (
+          <div
+            id="report-preview-body"
+            className="flex flex-col gap-4 border-t border-gray-200 p-4"
+          >
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Región" value={region ?? "—"} />
+              <Field
+                label="Coordenadas"
+                value={centroid ? formatCoordenadas(centroid) : "—"}
+              />
+              <Field
+                label="Área total seleccionada"
+                value={`${fmtKm2.format(area)} km²`}
+              />
+              <Field
+                label="Cantidad de variables activas"
+                value={String(variablesActivasCount)}
+              />
+            </div>
 
-        <div className="flex flex-col gap-2">
-          <p className="text-sm font-bold text-[#383838]">
-            Resultado preliminar:
-          </p>
-          <p className="text-xs text-gray-600">
-            Este es el valor total que representa el promedio de evaluación de
-            todos los valores analizados, según el punto seleccionado en el mapa
-            y las definiciones seleccionadas, de acuerdo a las variables
-            evaluadas.
-          </p>
-          <div className="rounded-md bg-gray-100 px-3 py-2">
-            <span className="text-2xl font-bold text-[#165170ff]">
-              {fmtPct.format(resultadoPreliminar)}%
-            </span>
+            <div className="grid grid-cols-2 gap-3">
+              {PLACEHOLDER_DIMENSIONS.map((d) => (
+                <Field
+                  key={d.id}
+                  label={d.label}
+                  value={`${fmtPct.format(d.value)}%`}
+                />
+              ))}
+              <Field
+                label="Total variables evaluadas"
+                value={String(variablesEvaluadasCount)}
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-bold text-[#383838]">
+                Resultado preliminar:
+              </p>
+              <p className="text-xs text-gray-600">
+                Este es el valor total que representa el promedio de evaluación
+                de todos los valores analizados, según el punto seleccionado en
+                el mapa y las definiciones seleccionadas, de acuerdo a las
+                variables evaluadas.
+              </p>
+              <div className="rounded-md bg-gray-100 px-3 py-2">
+                <span className="text-2xl font-bold text-[#165170ff]">
+                  {fmtPct.format(resultadoPreliminar)}%
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div>
