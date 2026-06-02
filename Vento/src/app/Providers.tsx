@@ -2,6 +2,7 @@
 
 import { SessionProvider } from "next-auth/react";
 import { AprincipalProvider } from "./Utils/AccionPrincipalContext";
+import { CaracteristicasProvider } from "./Utils/CaracteristicasContext";
 import { HeatmapDimensionProvider } from "./Utils/HeatmapDimensionContext";
 import SessionGuard from "./Components/SessionGuard";
 
@@ -10,7 +11,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <SessionGuard>
         <AprincipalProvider>
-          <HeatmapDimensionProvider>{children}</HeatmapDimensionProvider>
+          <CaracteristicasProvider>
+            <HeatmapDimensionProvider>{children}</HeatmapDimensionProvider>
+          </CaracteristicasProvider>
         </AprincipalProvider>
       </SessionGuard>
     </SessionProvider>

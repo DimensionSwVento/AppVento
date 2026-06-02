@@ -23,6 +23,7 @@ import { useAprincipal } from "../Utils/AccionPrincipalContext";
 import { useHeatmapDimension } from "../Utils/HeatmapDimensionContext";
 import { dimensionHexScore, viridis } from "../Utils/heatmapPalette";
 import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS } from "../Utils/h3Resolution";
+import { canAddHexToSelection } from "../Utils/hexClassification";
 import HexValuesTooltip from "./HexValuesTooltip";
 import HeatmapDimensionSwitches from "./HeatmapDimensionSwitches";
 import HeatmapLegend from "./HeatmapLegend";
@@ -132,8 +133,14 @@ export default function MapView() {
   const toggleHex = useCallback((h3Index: string) => {
     setSelectedHexes((prev) => {
       const next = new Set(prev);
-      if (next.has(h3Index)) next.delete(h3Index);
-      else next.add(h3Index);
+      if (next.has(h3Index)) {
+        next.delete(h3Index);
+        return next;
+      }
+      // Restricción US03-AC12: no mezclar onshore + offshore en la misma selección.
+      // Si el nuevo hex no es del mismo tipo que los ya seleccionados, ignorar.
+      if (!canAddHexToSelection(h3Index, prev)) return prev;
+      next.add(h3Index);
       return next;
     });
   }, [setSelectedHexes]);

@@ -39,3 +39,52 @@ export const COLOMBIA_POLYGONS: [number, number][][] = [
   COLOMBIA_POLYGON,
   ARCHIPELAGO_POLYGON,
 ];
+
+// Aproximación de la línea de costa real (sólo tierra firme, sin la
+// expansión de ~22 km hacia el mar que tiene COLOMBIA_POLYGON). Se usa
+// únicamente para clasificar hexes como `onshore` / `offshore` desde
+// `Utils/hexClassification.ts`; NO se usa para renderizado.
+//
+// Cuando llegue el polígono IGAC tierra-firme oficial, reemplazar estos
+// vértices manteniendo el mismo nombre.
+export const COLOMBIA_LAND_POLYGON: [number, number][] = [
+  // Costa Caribe (oeste → este)
+  [-77.2, 8.7],   // Cabo Tiburón (frontera Panamá)
+  [-76.5, 9.4],
+  [-75.8, 9.8],
+  [-75.5, 10.4], // Cartagena
+  [-74.8, 10.9], // Barranquilla
+  [-74.2, 11.2], // Santa Marta
+  [-73.5, 11.2],
+  [-72.9, 11.5], // Riohacha
+  [-71.7, 12.4], // Punta Gallinas (norte continental)
+  [-71.1, 11.0], // SE Guajira
+  // Frontera Venezuela (norte → sur)
+  [-72.0, 9.5],
+  [-72.4, 8.5],
+  [-72.5, 7.5], // Cúcuta
+  [-72.0, 6.5],
+  [-71.0, 6.5],
+  [-70.0, 6.0],
+  [-69.0, 6.0],
+  [-67.5, 6.2],
+  // Frontera Venezuela/Brasil (sur)
+  [-67.0, 1.5],
+  [-67.5, 0.7],
+  // Frontera Brasil
+  [-69.5, -0.5],
+  [-70.0, -4.2], // Leticia
+  // Frontera Perú/Ecuador (vuelta al oeste)
+  [-71.5, -2.5],
+  [-73.0, -1.0],
+  [-75.0, 0.0],
+  [-77.0, 0.6],
+  // Costa Pacífico (sur → norte)
+  [-78.8, 1.5], // Tumaco
+  [-79.0, 2.0],
+  [-78.3, 3.5], // Buenaventura
+  [-77.7, 5.5],
+  [-77.4, 6.5], // Bahía Solano
+  [-77.2, 7.5],
+  [-77.2, 8.7], // cierre del anillo en Cabo Tiburón
+];
