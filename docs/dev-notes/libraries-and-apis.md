@@ -35,7 +35,7 @@ Inventario de las librerías externas que toca el proyecto y de los métodos con
 
 **Notas:**
 - Resolución H3 va de 0 (más grande) a 15 (más pequeño). Vento usa res 3-8 según zoom.
-- `polygonToCells` es costoso para polígonos grandes — el repo cachea resultados por resolución en `Map.tsx`.
+- `polygonToCells` es costoso para polígonos grandes. En `Map.tsx` se invoca **per-tile** con el bbox del tile (no con todo el polígono de Colombia), y la validación "este hex pertenece a Colombia" se hace con un helper local `pointInRing`/`isInColombia` (ray casting) en vez de cachear el set completo del país. Ver **ADR-014** para el racional y los tradeoffs.
 
 ---
 
@@ -71,6 +71,42 @@ Inventario de las librerías externas que toca el proyecto y de los métodos con
 
 **Notas:**
 - MapLibre es fork open-source de Mapbox. No requiere API key.
+
+---
+
+### Nominatim — Geocoding (OpenStreetMap)
+
+**Doc oficial:** https://nominatim.org/release-docs/latest/api/Search/
+**Política de uso:** https://operations.osmfoundation.org/policies/nominatim/
+**Usado en:** [Vento/src/app/Utils/geocoder.ts](../../Vento/src/app/Utils/geocoder.ts) → consumido por [MapSearchBox.tsx](../../Vento/src/app/Components/MapSearchBox.tsx) en `Map.tsx`
+
+**Endpoint usado:** `GET https://nominatim.openstreetmap.org/search`
+
+| Parámetro | Valor | Para qué |
+|-----------|-------|----------|
+| `q` | texto del usuario | Query libre — busca corregimiento, municipio, departamento |
+| `countrycodes` | `co` | Restringe resultados a Colombia |
+| `format` | `jsonv2` | Respuesta JSON con campos enriquecidos |
+| `polygon_geojson` | `1` | Incluye polígono GeoJSON del lugar (Polygon o MultiPolygon) para auto-seleccionar hexes H3 |
+| `limit` | `7` | Máximo 7 resultados en el dropdown |
+| `accept-language` | `es` | Labels en español cuando estén disponibles |
+
+**Campos de la respuesta que usamos:**
+- `display_name` → texto completo "El Porvenir, Cauca, Colombia"
+- `name` → nombre corto (fallback: primer segmento de `display_name`)
+- `lat`, `lon` → centroide para `flyTo` del viewState
+- `class` + `type` → categoría OSM (`boundary/administrative`, `place/village`, etc.) para elegir zoom apropiado e icono
+- `geojson.type` + `geojson.coordinates` → polígono(s) del lugar, aplanados a anillos `[lng, lat][]` para `polygonToCells` de h3-js
+
+**Restricciones operativas:**
+- **Máximo 1 request por segundo** por política pública. El `<MapSearchBox>` debounce 350ms; el typing humano + abort de peticiones previas con `AbortController` mantienen la tasa por debajo del límite.
+- Es obligatorio enviar un `User-Agent` o `Referer` identificable. El `fetch` del browser manda `Referer` con el origin de la app → cumple.
+- Para producción a escala (cientos de usuarios concurrentes) se debe **self-hostear Nominatim** o migrar a un proveedor comercial (Mapbox, Google, etc.).
+- No requiere API key.
+
+**Notas técnicas:**
+- Los polígonos `Polygon` y `MultiPolygon` se aplanan a `Array<[number, number][]>` (sólo outer ring por polígono — huecos se ignoran). Esto está OK para nuestro uso (selección de hexes dentro del área).
+- Si el lugar no tiene polígono (algunos POI sólo tienen punto), se navega al centroide pero no se auto-selecciona — el `<MapSearchBox>` y `Map.tsx` manejan ese caso.
 
 ---
 

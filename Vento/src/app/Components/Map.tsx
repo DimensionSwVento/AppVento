@@ -25,11 +25,15 @@ import { useHeatmapDimension } from "../Utils/HeatmapDimensionContext";
 import { dimensionHexScore, viridis } from "../Utils/heatmapPalette";
 import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS } from "../Utils/h3Resolution";
 import { canAddHexToSelection } from "../Utils/hexClassification";
+import { type Place } from "../Utils/geocoder";
 import HexValuesTooltip from "./HexValuesTooltip";
 import HeatmapDimensionSwitches from "./HeatmapDimensionSwitches";
 import HeatmapLegend from "./HeatmapLegend";
 import InformativeVariablesList from "./InformativeVariablesList";
 import SelectedVariablesChips from "./SelectedVariablesChips";
+import AreaDisplay from "./AreaDisplay";
+import MapSearchBox from "./MapSearchBox";
+import NextStepFloatingCard from "./NextStepFloatingCard";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 try { luma.registerAdapters([webgl2Adapter]); } catch { /* ok */ }
@@ -67,7 +71,6 @@ const TERRITORY_BORDER: [number, number, number, number] = [22, 81, 112, 160];
 // hover — misma familia que selected pero más tenue (alpha bajo) para distinguirse
 const HOVER_FILL: [number, number, number, number] = [224, 215, 221, 60];
 const HOVER_BORDER: [number, number, number, number] = [70, 90, 120, 120];
-const HOVER_TEXT_COLOR: [number, number, number, number] = [70, 90, 120, 220];
 // H3 ID label dentro de los hexágonos seleccionados
 const H3_LABEL_COLOR: [number, number, number, number] = [70, 90, 120, 255];
 // últimos 7 chars del h3 index — suficientemente único y legible
@@ -76,29 +79,35 @@ function shortH3(h: string): string {
 }
 
 interface HexCell { h: string; }
-interface CachedCell { h: string; lat: number; lng: number; }
 
-// cache de cuadrícula Colombia por resolución, con lat/lng pre-calculados
-const colombiaCellsCache = new Map<number, CachedCell[]>();
-
-function getColombiaCells(resolution: number): CachedCell[] {
-  const cached = colombiaCellsCache.get(resolution);
-  if (cached) return cached;
-  // h3-js polygonToCells con isGeoJson=true espera [lng, lat]
-  // Se itera sobre todos los polígonos del territorio (continente + archipiélago)
-  const seen = new Set<string>();
-  const result: CachedCell[] = [];
-  for (const polygon of COLOMBIA_POLYGONS) {
-    const cells = polygonToCells(polygon as [number, number][], resolution, true);
-    for (const h of cells) {
-      if (seen.has(h)) continue;
-      seen.add(h);
-      const [lat, lng] = cellToLatLng(h);
-      result.push({ h, lat, lng });
-    }
+/**
+ * Ray-casting point-in-polygon. `ring` viene en formato `[lng, lat][]`
+ * (igual que GeoJSON y `COLOMBIA_POLYGONS`). Costo: O(N) por vértices del ring.
+ */
+function pointInRing(lat: number, lng: number, ring: [number, number][]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    const intersect =
+      yi > lat !== yj > lat &&
+      lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
   }
-  colombiaCellsCache.set(resolution, result);
-  return result;
+  return inside;
+}
+
+/**
+ * Filosofía "sólo lo visible": en vez de pre-computar las ~840k cells de
+ * Colombia para res 8 (cache global), cada tile valida por sí mismo cada cell
+ * de su bbox contra los polígonos del territorio. Sin estado global, sin
+ * pre-warm, costo amortizado por tile. Ver ADR-014.
+ */
+function isInColombia(lat: number, lng: number): boolean {
+  for (const polygon of COLOMBIA_POLYGONS) {
+    if (pointInRing(lat, lng, polygon as [number, number][])) return true;
+  }
+  return false;
 }
 
 export default function MapView() {
@@ -113,6 +122,9 @@ export default function MapView() {
   const [hoveredHex, setHoveredHex] = useState<string | null>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  // True mientras DeckGL termina de cargar los tiles del nuevo viewport tras un
+  // flyTo del search box. Se baja en `onViewportLoad` del TileLayer.
+  const [isTilesLoading, setIsTilesLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapRef>(null);
 
@@ -134,8 +146,33 @@ export default function MapView() {
     };
   }, []);
 
+  // Hexes que vinieron de la última búsqueda del search box (y aún no han
+  // sido tocados manualmente). Si el zoom cambia a otra resolución H3, sólo
+  // estos hexes se deseleccionan; los seleccionados a mano se preservan.
+  const searchHexesRef = useRef<Set<string>>(new Set());
+  // Resolución H3 a la que se ancló la última selección por búsqueda.
+  const searchH3ResRef = useRef<number | null>(null);
+  // Simulación de drag programático del search: rAF token + flag activa.
+  const flyToRafRef = useRef<number | null>(null);
+  const isFlyingRef = useRef<boolean>(false);
+  // Mirror de viewState para que el rAF lo lea fresco sin depender de cierre.
+  const viewStateRef = useRef(viewState);
+  useEffect(() => {
+    viewStateRef.current = viewState;
+  }, [viewState]);
+  // Cleanup en unmount: cancela cualquier slide en curso.
+  useEffect(() => {
+    return () => {
+      if (flyToRafRef.current !== null) cancelAnimationFrame(flyToRafRef.current);
+      isFlyingRef.current = false;
+    };
+  }, []);
+
   const toggleHex = useCallback((h3Index: string) => {
     if (!canSelect) return; // US03-AC12 — selección sólo en fase "seleccion-area"
+    // Cualquier toggle manual saca al hex del set "vino del search":
+    // pasa a tratarse como manual y deja de ser deseleccionable por zoom.
+    searchHexesRef.current.delete(h3Index);
     setSelectedHexes((prev) => {
       const next = new Set(prev);
       if (next.has(h3Index)) {
@@ -150,6 +187,141 @@ export default function MapView() {
     });
   }, [canSelect, setSelectedHexes]);
 
+  /** Determina un nivel de zoom razonable según el tipo de lugar OSM. */
+  const zoomForPlaceType = (type: string, category: string): number => {
+    if (category === "boundary" && type === "administrative") return 9;
+    if (type === "city" || type === "town") return 11;
+    if (type === "village" || type === "hamlet" || type === "suburb") return 12;
+    if (type === "municipality" || type === "county") return 9;
+    if (type === "state" || type === "region") return 7;
+    return 10;
+  };
+
+  const handlePlaceSelect = useCallback((place: Place) => {
+    const targetZoom = zoomForPlaceType(place.type, place.category);
+    const targetH3Res = zoomToH3Res(targetZoom);
+
+    // Pre-calcular los hexes del lugar a la resolución del destino. Se aplican
+    // SOLO al final del slide para que el cambio de selección coincida con la
+    // llegada de la cámara.
+    const newSearchHexes = new Set<string>();
+    if (place.polygons.length > 0) {
+      for (const ring of place.polygons) {
+        const cells = polygonToCells(ring, targetH3Res, true);
+        for (const h of cells) newSearchHexes.add(h);
+      }
+    }
+
+    // Cancelar cualquier slide previo en curso.
+    if (flyToRafRef.current !== null) {
+      cancelAnimationFrame(flyToRafRef.current);
+      flyToRafRef.current = null;
+    }
+
+    // Snapshot del punto de inicio.
+    const initial = { ...viewStateRef.current };
+    const targetLat = place.lat;
+    const targetLng = place.lng;
+
+    // Zoom "seguro" durante el paneo: bajo (~res 3-4) para que cada tile tenga
+    // pocos hexes y DeckGL los procese tile-a-tile como en un arrastre real.
+    const SAFE_ZOOM = Math.min(initial.zoom, targetZoom, 5);
+    // ~60fps → ~1.5s total de slide
+    const PHASE_1 = 12; // zoom out hasta SAFE_ZOOM
+    const PHASE_2 = 50; // pan a velocidad de drag
+    const PHASE_3 = 25; // zoom in al destino
+    const TOTAL = PHASE_1 + PHASE_2 + PHASE_3;
+
+    isFlyingRef.current = true;
+    setIsTilesLoading(true);
+
+    let frame = 0;
+    const tick = () => {
+      if (!isFlyingRef.current) {
+        flyToRafRef.current = null;
+        return;
+      }
+      frame++;
+
+      let lat: number;
+      let lng: number;
+      let z: number;
+
+      if (frame <= PHASE_1) {
+        // Fase 1: bajar zoom progresivamente hasta SAFE_ZOOM
+        const t = frame / PHASE_1;
+        lat = initial.latitude;
+        lng = initial.longitude;
+        z = initial.zoom + (SAFE_ZOOM - initial.zoom) * t;
+      } else if (frame <= PHASE_1 + PHASE_2) {
+        // Fase 2: paneo lateral a SAFE_ZOOM (como arrastre lento)
+        const t = (frame - PHASE_1) / PHASE_2;
+        lat = initial.latitude + (targetLat - initial.latitude) * t;
+        lng = initial.longitude + (targetLng - initial.longitude) * t;
+        z = SAFE_ZOOM;
+      } else if (frame <= TOTAL) {
+        // Fase 3: subir zoom al destino
+        const t = (frame - PHASE_1 - PHASE_2) / PHASE_3;
+        lat = targetLat;
+        lng = targetLng;
+        z = SAFE_ZOOM + (targetZoom - SAFE_ZOOM) * t;
+      } else {
+        // Fin del slide: aplicar selección y bajar overlay
+        isFlyingRef.current = false;
+        flyToRafRef.current = null;
+
+        setViewState((v) =>
+          clampViewState({
+            ...v,
+            latitude: targetLat,
+            longitude: targetLng,
+            zoom: targetZoom,
+          }),
+        );
+
+        if (newSearchHexes.size > 0) {
+          const prevSearch = searchHexesRef.current;
+          setSelectedHexes((prev) => {
+            const next = new Set(prev);
+            for (const h of prevSearch) next.delete(h);
+            for (const h of newSearchHexes) next.add(h);
+            return next;
+          });
+          searchHexesRef.current = newSearchHexes;
+          searchH3ResRef.current = targetH3Res;
+        }
+
+        setIsTilesLoading(false);
+        return;
+      }
+
+      setViewState((v) =>
+        clampViewState({ ...v, latitude: lat, longitude: lng, zoom: z }),
+      );
+      flyToRafRef.current = requestAnimationFrame(tick);
+    };
+
+    flyToRafRef.current = requestAnimationFrame(tick);
+  }, [clampViewState, setSelectedHexes]);
+
+  // Cuando el zoom cruza a otra resolución H3, deseleccionar SÓLO los hexes
+  // venidos del search; los manuales se mantienen.
+  useEffect(() => {
+    if (searchH3ResRef.current === null) return;
+    const currentRes = zoomToH3Res(viewState.zoom);
+    if (currentRes === searchH3ResRef.current) return;
+    const toRemove = searchHexesRef.current;
+    if (toRemove.size > 0) {
+      setSelectedHexes((prev) => {
+        const next = new Set(prev);
+        for (const h of toRemove) next.delete(h);
+        return next;
+      });
+    }
+    searchHexesRef.current = new Set();
+    searchH3ResRef.current = null;
+  }, [viewState.zoom, setSelectedHexes]);
+
   // capa de cuadrícula con tiles — solo renderiza lo visible, cachea por tile.
   // Cuando el heatmap del informe está activo, oculto la malla entera para
   // no superponer bordes de hexágonos sobre el mapa de calor.
@@ -162,23 +334,33 @@ export default function MapView() {
     maxCacheSize: 64,
     maxRequests: 4,
     refinementStrategy: "best-available",
+    onViewportLoad: () => {
+      // Durante el slide del search, mantener el overlay visible hasta el
+      // final del slide; el handler lo baja al terminar la fase 3.
+      if (isFlyingRef.current) return;
+      setIsTilesLoading(false);
+    },
     getTileData: async (tile) => {
       const { x, y, z } = tile.index;
       const res = zoomToH3Res(z);
-      const all = getColombiaCells(res);
       const [west, south, east, north] = tileToBBox(z, x, y);
       const latMargin = (north - south) * 0.1;
       const lngMargin = (east - west) * 0.1;
+      // Sólo se calculan los cells del bbox del tile y se valida cada uno
+      // con point-in-polygon contra COLOMBIA_POLYGONS. Sin cache global de
+      // Colombia: filosofía "sólo lo visible" — ver ADR-014.
+      const tilePolygon: [number, number][] = [
+        [west - lngMargin, south - latMargin],
+        [east + lngMargin, south - latMargin],
+        [east + lngMargin, north + latMargin],
+        [west - lngMargin, north + latMargin],
+        [west - lngMargin, south - latMargin],
+      ];
+      const tileCells = polygonToCells(tilePolygon, res, true);
       const result: HexCell[] = [];
-      for (const c of all) {
-        if (
-          c.lat >= south - latMargin &&
-          c.lat <= north + latMargin &&
-          c.lng >= west - lngMargin &&
-          c.lng <= east + lngMargin
-        ) {
-          result.push({ h: c.h });
-        }
+      for (const h of tileCells) {
+        const [lat, lng] = cellToLatLng(h);
+        if (isInColombia(lat, lng)) result.push({ h });
       }
       return result as unknown as HexCell;
     },
@@ -393,24 +575,12 @@ export default function MapView() {
     });
   }, [hoveredHex, isMobile]);
 
-  // símbolo "+" en el centro del hex hovered — sólo en fase "seleccion-area" (desktop)
-  const hoverPlusLayer = useMemo(() => {
-    if (!canSelect || !hoveredHex || isMobile) return null;
-    const [lat, lng] = cellToLatLng(hoveredHex);
-    return new TextLayer<HexCell>({
-      id: "hover-plus",
-      data: [{ h: hoveredHex }],
-      getPosition: () => [lng, lat],
-      getText: () => "+",
-      getSize: 28,
-      getColor: HOVER_TEXT_COLOR,
-      fontFamily: "sans-serif",
-      fontWeight: "bold",
-      getTextAnchor: "middle",
-      getAlignmentBaseline: "center",
-      pickable: false,
-    });
-  }, [hoveredHex, canSelect]);
+  // El "+" en el hex hovered se removió: el `TextLayer` recreado por cada
+  // cambio de hoveredHex disparaba un race en luma.gl
+  // (`getUniformBlockIndex: Argument 1 is not an object`). El `hoverFillLayer`
+  // de arriba (fill gris) sigue siendo el feedback de hover. Si se necesita
+  // reintroducir el "+", usar PolygonLayer con dos rectángulos cruzados o
+  // un IconLayer con SVG inline en vez de TextLayer.
 
   const zoomIn = () => setViewState((v) => clampViewState({ ...v, zoom: v.zoom + 1 }));
   const zoomOut = () => setViewState((v) => clampViewState({ ...v, zoom: v.zoom - 1 }));
@@ -428,6 +598,19 @@ export default function MapView() {
           <p className="text-gray-500 text-lg">... cargando mapa</p>
         </div>
       )}
+      {mapReady && isTilesLoading && (
+        // Overlay transparente: bloquea clicks pero deja ver el slide del mapa.
+        // Pill "cargando mapa" arriba para feedback sin tapar la vista.
+        <div className="absolute inset-0 z-30 pointer-events-auto cursor-wait">
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-white/90 text-gray-700 text-sm font-medium px-4 py-2 rounded-full shadow-md">
+            ... cargando mapa
+          </div>
+        </div>
+      )}
+
+      {mapReady && <AreaDisplay />}
+      {mapReady && <MapSearchBox onSelect={handlePlaceSelect} />}
+      {mapReady && <NextStepFloatingCard />}
 
       {mapReady && (
         <>
@@ -489,7 +672,7 @@ export default function MapView() {
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => setViewState(clampViewState(vs as typeof INITIAL_VIEW_STATE))}
         controller={true}
-        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, selectedLabelLayer, hoverFillLayer, hoverPlusLayer]}
+        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, selectedLabelLayer, hoverFillLayer]}
         getCursor={({ isHovering }) => {
           if (!canSelect) return isHovering ? "not-allowed" : "grab";
           return isHovering ? "pointer" : "grab";

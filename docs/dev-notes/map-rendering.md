@@ -33,7 +33,8 @@ Vento utiliza DeckGL + MapLibre para un mapa SIG interactivo con hexágonos H3. 
 | Error de hidratación SSR/CSR | MapView se renderizaba en servidor | `"use client"` directiva |
 | Mapa crashea con todos los hexágonos | ~150K hexágonos res 8 de golpe | TileLayer tile-based |
 | `dynamic()` rompe rendering | useEffect no ejecuta con next/dynamic | Import directo confirmado |
-| Zoom lento con PolygonLayer monolítico | Toda Colombia renderizada de golpe | TileLayer client-side con `polygonToCells` + cache por tile |
+| Zoom lento con PolygonLayer monolítico | Toda Colombia renderizada de golpe | TileLayer client-side con `polygonToCells` per-tile (ver ADR-014) |
+| Spike de CPU al primer zoom a res 7-8 | Cache global pre-computaba ~840k cells de Colombia | Validación per-tile con point-in-polygon contra `COLOMBIA_POLYGONS`; sin cache global (ADR-014) |
 
 ---
 
@@ -52,7 +53,7 @@ Vento utiliza DeckGL + MapLibre para un mapa SIG interactivo con hexágonos H3. 
 ```
 MapView (import directo, "use client")
   ├─ Estado: viewState, mapReady, fullscreen, selectedHexes
-  ├─ useMemo: gridTileLayer (TileLayer client-side con polygonToCells)
+  ├─ useMemo: gridTileLayer (TileLayer client-side; getTileData hace polygonToCells(tileBBox) + isInColombia per cell, ver ADR-014)
   ├─ useMemo: selectedLayer (PolygonLayer top-level)
   └─ Render:
        ├─ Overlay "... cargando mapa" (while !mapReady)

@@ -47,9 +47,15 @@ function renderSideBar(opts: { accion?: "seleccion-area" | "dimensiones" | "cara
         <SideBar>
           <div data-testid="children">child</div>
         </SideBar>
+        <ActionProbe />
       </Seed>
     </AprincipalProvider>
   );
+}
+
+function ActionProbe() {
+  const { accion } = useAprincipal();
+  return <span data-testid="accion-state">{accion}</span>;
 }
 
 describe("SideBar", () => {
@@ -69,13 +75,19 @@ describe("SideBar", () => {
   it("Dimensiones está deshabilitado si no hay hexágonos seleccionados", () => {
     renderSideBar({ accion: "seleccion-area" });
     const dim = screen.getByText("Dimensiones").parentElement!;
-    expect(dim.className).toContain("opacity-40");
+    expect(dim).toHaveAttribute("aria-disabled", "true");
+    expect(dim.className).toContain("cursor-not-allowed");
   });
 
   it("Dimensiones se habilita cuando hay hexágonos seleccionados", () => {
     renderSideBar({ accion: "seleccion-area", hexes: ["8a2a1072b59ffff"] });
     const dim = screen.getByText("Dimensiones").parentElement!;
+    expect(dim).toHaveAttribute("aria-disabled", "false");
     expect(dim.className).toContain("cursor-pointer");
-    expect(dim.className).not.toContain("opacity-40");
+  });
+
+  it("ya no renderiza el CTA de próximo paso dentro del SideBar (vive en el mapa)", () => {
+    renderSideBar({ accion: "seleccion-area", hexes: ["8a2a1072b59ffff"] });
+    expect(screen.queryByTestId("next-step-cta")).not.toBeInTheDocument();
   });
 });
