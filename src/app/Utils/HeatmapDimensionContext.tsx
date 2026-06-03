@@ -57,8 +57,11 @@ export function HeatmapDimensionProvider({
 }: {
   children: React.ReactNode;
 }) {
+  // Arranca con "general" para que el heatmap esté siempre visible al
+  // entrar a Informe. El usuario puede cambiar a otra dimensión, pero no
+  // hay opción "sin visualización".
   const [activeDimension, setActiveDimension] =
-    useState<HeatmapDimensionId | null>(null);
+    useState<HeatmapDimensionId | null>("general");
 
   const toggleDimension = useCallback((id: HeatmapDimensionId) => {
     setActiveDimension((prev) => (prev === id ? null : id));
