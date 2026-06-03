@@ -58,3 +58,45 @@ export function dimensionHexScore(dim: string, hex: string): number {
   const seed = hashString(dim + "::" + hex);
   return seed / 0xffffffff;
 }
+
+/**
+ * Promedio del puntaje placeholder de una dimensión sobre un conjunto de hexes.
+ * Devuelve string en formato `XX.X` (escala 0–100) para uso directo en UI.
+ * `0.0` si el set está vacío.
+ */
+export function dimensionScore(
+  dim: string,
+  hexes: Iterable<string>,
+): string {
+  let sum = 0;
+  let n = 0;
+  for (const h of hexes) {
+    sum += dimensionHexScore(dim, h);
+    n++;
+  }
+  if (n === 0) return "0.0";
+  return ((sum / n) * 100).toFixed(1);
+}
+
+/**
+ * Puntaje general placeholder del área seleccionada (promedio entre las 5
+ * dimensiones para mantener coherencia visual con `dimensionScore`).
+ * Devuelve string en formato `XX.X`.
+ */
+export function generalScore(hexes: Iterable<string>): string {
+  const arr = Array.from(hexes);
+  if (arr.length === 0) return "0.0";
+  const dims = [
+    "ambiental",
+    "tecnica",
+    "economica",
+    "socioeconomica",
+    "regulatoria",
+  ];
+  let sum = 0;
+  for (const dim of dims) {
+    const s = parseFloat(dimensionScore(dim, arr));
+    sum += s;
+  }
+  return (sum / dims.length).toFixed(1);
+}

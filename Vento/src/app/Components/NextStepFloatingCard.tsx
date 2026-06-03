@@ -20,7 +20,7 @@ export default function NextStepFloatingCard() {
       <button
         type="button"
         onClick={() => setAccion("dimensiones")}
-        className="group relative h-[6rem] w-[30rem] overflow-hidden rounded-lg border border-[#cce1eeff] bg-white px-3 py-3 text-left text-[#165170ff] shadow-xl shadow-black/20 transition-all duration-200 motion-safe:hover:-translate-y-[1px] hover:shadow-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white motion-safe:animate-[vento-cta-in_220ms_ease-out]"
+        className="group relative h-[6rem] w-[30rem] overflow-hidden rounded-lg border-2 border-[#165170ff] bg-white px-3 py-3 text-left text-[#165170ff] shadow-xl shadow-black/20 transition-all duration-200 motion-safe:hover:-translate-y-[1px] hover:shadow-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#165170ff] motion-safe:animate-[vento-cta-in_220ms_ease-out]"
         aria-label={`Continuar a Dimensiones con ${label}`}
         data-testid="next-step-cta"
       >

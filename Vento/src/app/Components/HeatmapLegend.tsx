@@ -34,33 +34,38 @@ const VIRIDIS_GRADIENT =
 
 export default function HeatmapLegend() {
   return (
-    <div className="rounded-2xl w-[5rem] bg-white p-3 shadow-sm">
-      <h3 className="text-[11px] font-bold text-[#165170ff]">Viabilidad (%)</h3>
+    <div className="rounded-2xl bg-white p-2.5 shadow-sm">
+      <h3 className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+        Viabilidad
+      </h3>
 
-      <div className="mt-2 flex gap-2">
+      <div className="mt-2 flex items-stretch gap-2">
         <span
           aria-hidden="true"
-          className="block h-44 w-3 shrink-0 rounded-sm"
+          className="block h-32 w-2 shrink-0 rounded-full"
           style={{ backgroundImage: VIRIDIS_GRADIENT }}
         />
-        <ul className="flex h-44 flex-col justify-between py-0.5">
+        <ul className="flex h-32 flex-col justify-between">
           {BUCKETS.map((b) => (
-            <li key={b.range} className="flex flex-col leading-tight">
-              <span className="text-[11px] font-semibold text-[#383838]">
+            <li
+              key={b.range}
+              className="flex items-baseline gap-1.5 whitespace-nowrap leading-none"
+            >
+              <span className="font-mono text-[10px] font-semibold text-[#165170ff]">
                 {b.range}
               </span>
-              <span className="text-[10px] text-gray-500">{b.label}</span>
+              <span className="text-[9px] text-gray-500">{b.label}</span>
             </li>
           ))}
         </ul>
       </div>
 
-      <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-2">
+      <div className="mt-2 flex items-center gap-1.5 border-t border-gray-200 pt-1.5">
         <span
           aria-hidden="true"
-          className="h-5 w-7 shrink-0 rounded border border-dashed border-gray-400 bg-transparent"
+          className="h-3 w-4 shrink-0 rounded border border-dashed border-gray-400"
         />
-        <span className="text-[10px] text-gray-600">Corregimientos</span>
+        <span className="text-[9px] text-gray-600">Corregimientos</span>
       </div>
     </div>
   );

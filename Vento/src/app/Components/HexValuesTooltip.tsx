@@ -57,12 +57,10 @@ export default function HexValuesTooltip({
 
   if (!hex || !scores || x === null || y === null) return null;
 
-  const shortId = hex.length > 7 ? "…" + hex.slice(-7) : hex;
-
   return (
     <div
       role="tooltip"
-      aria-label={`Valores del hexágono ${shortId}`}
+      aria-label="Valores del hexágono"
       style={{
         // Offset 12px desde el cursor para no taparlo.
         left: x + 12,
@@ -71,8 +69,11 @@ export default function HexValuesTooltip({
       className="pointer-events-none absolute z-20 w-52 max-h-[80vh] overflow-y-auto rounded-md border border-[#eae9e9ff] bg-white shadow-lg shadow-[#cacacbff]"
     >
       <header className="border-b border-gray-200 px-2.5 py-1.5">
-        <p className="font-mono text-[10px] font-bold text-[#383838]">
-          {shortId}
+        <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-500">
+          Hexágono
+        </p>
+        <p className="text-[10px] text-gray-600">
+          Valores en este punto del área
         </p>
       </header>
 

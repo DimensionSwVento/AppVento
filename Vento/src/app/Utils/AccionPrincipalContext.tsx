@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState } from "react";
 
-type Aprincipal =
+export type Aprincipal =
   | "seleccion-area"
   | "dimensiones"
   | "caracteristicas"

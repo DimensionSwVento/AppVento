@@ -34,6 +34,7 @@ import SelectedVariablesChips from "./SelectedVariablesChips";
 import AreaDisplay from "./AreaDisplay";
 import MapSearchBox from "./MapSearchBox";
 import NextStepFloatingCard from "./NextStepFloatingCard";
+import PhaseHintCard from "./PhaseHintCard";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 try { luma.registerAdapters([webgl2Adapter]); } catch { /* ok */ }
@@ -65,14 +66,15 @@ const MAX_ZOOM = 14;
 // gris azulado
 const SELECTED_FILL: [number, number, number, number] = [224, 215, 221, 100];
 const SELECTED_BORDER: [number, number, number, number] = [22, 81, 112, 200]; // brand #165170
-const GRID_BORDER: [number, number, number, number] = [224, 215, 221, 100];
+// Grid de la cuadrícula H3 — alpha reducido para que no sature offshore.
+const GRID_BORDER: [number, number, number, number] = [180, 175, 190, 55];
 // Borde territorio colombiano — distintivo pero no invasivo
 const TERRITORY_BORDER: [number, number, number, number] = [22, 81, 112, 160];
 // hover — misma familia que selected pero más tenue (alpha bajo) para distinguirse
 const HOVER_FILL: [number, number, number, number] = [224, 215, 221, 60];
 const HOVER_BORDER: [number, number, number, number] = [70, 90, 120, 120];
-// H3 ID label dentro de los hexágonos seleccionados
-const H3_LABEL_COLOR: [number, number, number, number] = [70, 90, 120, 255];
+// H3 ID label dentro de los hexágonos seleccionados — gris suave, no protagónico.
+const H3_LABEL_COLOR: [number, number, number, number] = [70, 90, 120, 180];
 // últimos 7 chars del h3 index — suficientemente único y legible
 function shortH3(h: string): string {
   return h.length > 7 ? "…" + h.slice(-7) : h;
@@ -306,7 +308,10 @@ export default function MapView() {
 
   // Cuando el zoom cruza a otra resolución H3, deseleccionar SÓLO los hexes
   // venidos del search; los manuales se mantienen.
+  // **Sólo aplica en fase `seleccion-area`** — en cualquier otra fase la
+  // selección está bloqueada por US03-AC12 y no debe mutar por zoom.
   useEffect(() => {
+    if (!canSelect) return;
     if (searchH3ResRef.current === null) return;
     const currentRes = zoomToH3Res(viewState.zoom);
     if (currentRes === searchH3ResRef.current) return;
@@ -320,7 +325,7 @@ export default function MapView() {
     }
     searchHexesRef.current = new Set();
     searchH3ResRef.current = null;
-  }, [viewState.zoom, setSelectedHexes]);
+  }, [canSelect, viewState.zoom, setSelectedHexes]);
 
   // capa de cuadrícula con tiles — solo renderiza lo visible, cachea por tile.
   // Cuando el heatmap del informe está activo, oculto la malla entera para
@@ -477,7 +482,9 @@ export default function MapView() {
         const noise = (dimensionHexScore(dim, d.h) - 0.5) * 0.3;
         const t = Math.max(0, Math.min(1, d.baseScore + noise));
         const [r, g, b] = viridis(t);
-        return [r, g, b, 220];
+        // Alpha 160 → deja ver las etiquetas y divisiones del basemap
+        // (nombres de departamentos/municipios) debajo del heatmap.
+        return [r, g, b, 160];
       },
       // Sin borde por celda res-8 — quedaría una malla densísima. El borde
       // del área completa lo sigue dibujando `selectedLayer`.
@@ -546,8 +553,10 @@ export default function MapView() {
       },
       getText: (d) => shortH3(d.h),
       // edge_length * 0.3 m → el texto ocupa ~70% del ancho del hex
-      getSize: (d) => getHexagonEdgeLengthAvg(getResolution(d.h), "m") * 0.3,
-      sizeMaxPixels: 18,
+      // Label más pequeño para no taparse a sí mismo a zoom alto.
+      getSize: (d) => getHexagonEdgeLengthAvg(getResolution(d.h), "m") * 0.18,
+      sizeMaxPixels: 11,
+      sizeMinPixels: 7,
       getColor: H3_LABEL_COLOR,
       fontFamily: "monospace",
       fontWeight: "bold",
@@ -608,9 +617,18 @@ export default function MapView() {
         </div>
       )}
 
-      {mapReady && <AreaDisplay />}
-      {mapReady && <MapSearchBox onSelect={handlePlaceSelect} />}
+      {/* Widgets fijos del mapa — visibles sólo en las fases donde aportan,
+          para evitar superposición con paneles flotantes de cada fase
+          (chips, leyenda heatmap, dropdown de dimensiones). */}
+      {mapReady &&
+        (accion === "seleccion-area" || accion === "caracteristicas") && (
+          <AreaDisplay />
+        )}
+      {mapReady && accion === "seleccion-area" && (
+        <MapSearchBox onSelect={handlePlaceSelect} />
+      )}
       {mapReady && <NextStepFloatingCard />}
+      {mapReady && <PhaseHintCard />}
 
       {mapReady && (
         <>
@@ -641,7 +659,9 @@ export default function MapView() {
         </>
       )}
 
-      {!isMobile && (
+      {/* Tooltip de valores per-hex: SÓLO sobre el heatmap del informe.
+          En otras fases el hex hover no aporta info (no hay valores aún). */}
+      {!isMobile && heatmapActive && (
         <HexValuesTooltip
           hex={hoveredHex}
           x={hoverPos?.x ?? null}

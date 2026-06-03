@@ -221,8 +221,9 @@ function PanelExpanded({
               <button
                 type="button"
                 onClick={() => onSelectInfo(v.id)}
-                aria-label={`Información de ${v.label}`}
-                className="flex flex-1 items-center gap-3 text-left"
+                aria-label={`Ver detalle de ${v.label}`}
+                title="Ver detalle"
+                className="group flex flex-1 items-center gap-3 text-left cursor-pointer"
               >
                 {(() => {
                   const Icon = getIconByVariableId(v.id);
@@ -245,8 +246,28 @@ function PanelExpanded({
                       </span>
                     )}
                   </span>
-                  <span className="block text-[11px] text-gray-500 mt-0.5">
-                    {dimensionShortLabel(v.dimension)}
+                  <span className="flex items-center gap-1 text-[11px] text-gray-500 mt-0.5">
+                    <span>{dimensionShortLabel(v.dimension)}</span>
+                    <span aria-hidden="true" className="text-gray-300">
+                      ·
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="inline-flex items-center gap-0.5 text-[10px] text-[#165170ff] opacity-70 group-hover:opacity-100"
+                    >
+                      <svg
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        className="h-3 w-3"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM9 9a1 1 0 012 0v4a1 1 0 11-2 0V9zm1-4a1 1 0 100 2 1 1 0 000-2z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      Ver detalle
+                    </span>
                   </span>
                 </span>
               </button>

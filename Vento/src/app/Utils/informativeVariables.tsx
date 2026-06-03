@@ -1,114 +1,94 @@
 /**
- * Catálogo provisional de "variables informativas" usado por
- * `InformativeVariablesList` y `HexValuesTooltip`.
+ * Catálogo de "variables informativas" usado por `InformativeVariablesList`
+ * y `HexValuesTooltip`.
  *
- * Mientras no exista el sistema de catálogo + selección (US04), este módulo
- * expone una lista fija + ícono + color + función de formateo por unidad.
- * Cuando regrese el sistema completo, reemplazar este módulo por uno que
- * lea del catálogo y del estado de selección.
+ * Ahora deriva del catálogo de dimensiones (`variablesCatalog.ts`) — todas
+ * las variables del flujo son informativas. La capa visual (icon, color)
+ * se resuelve dinámicamente vía `variableIcons.tsx` + `dimensionColors.ts`.
+ *
+ * Las unidades por id se mantienen en un overrides map; las variables sin
+ * unidad explícita usan "índice" como fallback (escala 0–100).
  */
 import {
-  Bird,
-  CircleDollarSign,
-  Fan,
-  Fish,
-  Gauge,
-  Mountain,
-  PawPrint,
-  Plug,
-  TriangleAlert,
-  Wind,
-  Zap,
-  type LucideIcon,
-} from "lucide-react";
+  VARIABLES,
+  getVariableById,
+  type Variable,
+} from "./variablesCatalog";
+import {
+  getIconByVariableId,
+  type VariableIconComponent,
+} from "./variableIcons";
+import { colorForVariable } from "./dimensionColors";
 
 export interface InfoVar {
   id: string;
   label: string;
   unit: string;
-  Icon: LucideIcon;
+  /** Componente SVG genérico — puede venir de Lucide, Tabler o custom. */
+  Icon: VariableIconComponent;
   color: string;
 }
 
-export const INFO_VARS: InfoVar[] = [
-  {
-    id: "viento-velocidad",
-    label: "Velocidad del viento",
-    unit: "m/s",
-    Icon: Wind,
-    color: "#165170",
-  },
-  {
-    id: "wpd",
-    label: "Densidad de potencia WPD",
-    unit: "W/m²",
-    Icon: Zap,
-    color: "#1e6a8c",
-  },
-  {
-    id: "elevacion",
-    label: "Elevación",
-    unit: "m",
-    Icon: Mountain,
-    color: "#2b6fb0",
-  },
-  {
-    id: "factor-capacidad",
-    label: "Factor de capacidad",
-    unit: "%",
-    Icon: Gauge,
-    color: "#2f8f4e",
-  },
-  {
-    id: "lcoe",
-    label: "LCOE",
-    unit: "USD/MWh",
-    Icon: CircleDollarSign,
-    color: "#6b4e9e",
-  },
-  {
-    id: "nodos-conexion",
-    label: "Distancia a nodos de conexión",
-    unit: "km",
-    Icon: Plug,
-    color: "#d4842c",
-  },
-  {
-    id: "num-aerogeneradores",
-    label: "Número de aerogeneradores",
-    unit: "uds.",
-    Icon: Fan,
-    color: "#3b5b8c",
-  },
-  {
-    id: "amenaza-volcanica",
-    label: "Amenaza volcánica",
-    unit: "índice",
-    Icon: TriangleAlert,
-    color: "#b04848",
-  },
-  {
-    id: "especies-iucn",
-    label: "Especies IUCN",
-    unit: "índice",
-    Icon: PawPrint,
-    color: "#2f8f4e",
-  },
-  {
-    id: "especies-endemicas",
-    label: "Especies endémicas",
-    unit: "índice",
-    Icon: Bird,
-    color: "#3b8c75",
-  },
-  {
-    id: "mares-coralinos",
-    label: "Mares coralinos",
-    unit: "índice",
-    Icon: Fish,
-    color: "#1e6a8c",
-  },
-];
+/** Unidades por id de variable. Lo no listado usa "índice" (escala 0–100). */
+const UNIT_OVERRIDES: Record<string, string> = {
+  "viento-velocidad": "m/s",
+  wpd: "W/m²",
+  elevacion: "m",
+  "factor-capacidad": "%",
+  lcoe: "USD/MWh",
+  opex: "USD/MWh",
+  "capex-conexion": "MUSD",
+  "capex-obra-civil": "MUSD",
+  "capex-generadores": "MUSD",
+  "nodos-conexion": "km",
+  "distancia-vial": "km",
+  "distancia-poi": "km",
+  "distancia-viviendas": "km",
+  "distancia-sin": "km",
+  "num-aerogeneradores": "uds.",
+  "area-proyecto": "km²",
+  "densidad-aire": "kg/m³",
+  "amenaza-volcanica": "índice",
+  "fallas-sismicidad": "índice",
+  "riesgo-fisico": "índice",
+  "pendiente-terreno": "°",
+  rugosidad: "m",
+  turbulencia: "%",
+  batimetria: "m",
+  ipm: "%",
+  analfabetismo: "%",
+  "densidad-poblacional": "hab/km²",
+  "pobreza-energetica": "índice",
+  "incidencia-delictiva": "índice",
+  "capacidad-gestion": "índice",
+  "estabilidad-juridica": "índice",
+  "tasa-exito-proyectos": "%",
+  "proyectos-xm": "uds.",
+};
+
+function unitFor(id: string): string {
+  return UNIT_OVERRIDES[id] ?? "índice";
+}
+
+/** Construye el InfoVar runtime a partir de un Variable del catálogo. */
+function toInfoVar(v: Variable): InfoVar {
+  return {
+    id: v.id,
+    label: v.label,
+    unit: unitFor(v.id),
+    Icon: getIconByVariableId(v.id),
+    color: colorForVariable(v.id),
+  };
+}
+
+/** Catálogo completo de variables informativas (derivado de variablesCatalog). */
+export const INFO_VARS: InfoVar[] = VARIABLES.map(toInfoVar);
+
+/** Lookup individual por id (devuelve `undefined` si no existe). */
+export function getInfoVarById(id: string): InfoVar | undefined {
+  const v = getVariableById(id);
+  return v ? toInfoVar(v) : undefined;
+}
 
 /**
  * Convierte un score normalizado [0,1] en un valor "humano" según la unidad
@@ -124,12 +104,22 @@ export function formatVariableValue(score: number, unit: string): string {
       return Math.round(score * 4500).toString(); // 0 – 4500 m
     case "%":
       return (15 + score * 45).toFixed(1); // 15% – 60%
+    case "°":
+      return (score * 35).toFixed(1); // 0 – 35° pendiente
     case "USD/MWh":
       return Math.round(35 + score * 60).toString(); // 35 – 95 USD/MWh
+    case "MUSD":
+      return (1 + score * 40).toFixed(1); // 1 – 41 MUSD
     case "km":
       return (score * 80).toFixed(1); // 0 – 80 km
+    case "km²":
+      return (score * 1500).toFixed(0); // 0 – 1500 km²
+    case "kg/m³":
+      return (0.9 + score * 0.4).toFixed(2); // 0.90 – 1.30 kg/m³
     case "uds.":
-      return Math.round(10 + score * 90).toString(); // 10 – 100 uds.
+      return Math.round(1 + score * 99).toString(); // 1 – 100 uds.
+    case "hab/km²":
+      return Math.round(score * 800).toString(); // 0 – 800 hab/km²
     default:
       return (score * 100).toFixed(1); // índice 0–100
   }

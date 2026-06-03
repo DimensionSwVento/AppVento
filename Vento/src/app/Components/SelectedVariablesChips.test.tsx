@@ -89,7 +89,7 @@ describe("SelectedVariablesChips (US04-AC4) — panel default, pill al colapsar"
     const dialog = screen.getByRole("dialog");
     fireEvent.click(
       within(dialog).getByRole("button", {
-        name: new RegExp(`Información de ${penalizingVar.label}`),
+        name: new RegExp(`Ver detalle de ${penalizingVar.label}`),
       }),
     );
     const info = screen.getByRole("tooltip");
@@ -108,7 +108,7 @@ describe("SelectedVariablesChips (US04-AC4) — panel default, pill al colapsar"
     );
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", {
-        name: new RegExp(`Información de ${ambientalB.label}`),
+        name: new RegExp(`Ver detalle de ${ambientalB.label}`),
       }),
     );
     fireEvent.click(

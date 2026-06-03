@@ -39,7 +39,9 @@ describe("AreaDisplay (US03-P2 AC2, AC4, AC5)", () => {
       </AprincipalProvider>
     );
     expect(screen.getByText("Área seleccionada")).toBeInTheDocument();
-    expect(screen.getByText(/^0\s/)).toBeInTheDocument();
+    // El número y la unidad están en text-nodes separados (el span "km²" no
+    // forma parte del mismo texto que el "0"). Por eso busco cada uno solo.
+    expect(screen.getByText("0")).toBeInTheDocument();
     expect(screen.getByText("km²")).toBeInTheDocument();
   });
 
@@ -54,7 +56,8 @@ describe("AreaDisplay (US03-P2 AC2, AC4, AC5)", () => {
       </AprincipalProvider>
     );
 
-    expect(screen.getByText(new RegExp(`^${expected.replace(".", "\\.")}\\s`))).toBeInTheDocument();
+    expect(screen.getByText(expected)).toBeInTheDocument();
+    expect(screen.getByText("km²")).toBeInTheDocument();
   });
 
   it("actualiza reactivamente al añadir un hexágono (AC4)", () => {
@@ -65,14 +68,14 @@ describe("AreaDisplay (US03-P2 AC2, AC4, AC5)", () => {
       </AprincipalProvider>
     );
 
-    expect(screen.getByText(/^0\s/)).toBeInTheDocument();
+    expect(screen.getByText("0")).toBeInTheDocument();
 
     const btn = screen.getByTestId("add-hex");
     act(() => btn.click());
 
     const hex = latLngToCell(6.25, -75.56, 7);
     const expected = fmt.format(cellArea(hex, "km2"));
-    expect(screen.getByText(new RegExp(`^${expected.replace(".", "\\.")}\\s`))).toBeInTheDocument();
+    expect(screen.getByText(expected)).toBeInTheDocument();
   });
 
   it("usa el mismo color de fondo que el SideBar (#165170)", () => {

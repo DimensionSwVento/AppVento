@@ -43,22 +43,14 @@ export const COLOMBIA_IGAC_POLYGONS: LngLat[][] = igacArtifact.polygons;
 
 export const COLOMBIA_POLYGON: LngLat[] = COLOMBIA_IGAC_POLYGONS[0];
 
-// Archipielago de San Andres, Providencia y Santa Catalina + mares territoriales.
-// Rectangulo amplio que cubre ambas islas y su cobertura offshore existente.
-// San Andres ~= [-81.75, 12.5], Providencia ~= [-81.37, 13.35].
-export const ARCHIPELAGO_POLYGON: LngLat[] = [
-  [-82.0, 12.2],
-  [-82.0, 13.5],
-  [-81.2, 13.5],
-  [-81.2, 12.2],
-  [-82.0, 12.2],
-];
+// El archipiélago de San Andrés, Providencia y Santa Catalina YA está cubierto
+// por los polígonos IGAC + las 12 millas náuticas oficiales (unión Nominatim).
+// Se deja el export como alias vacío para no romper imports existentes hasta
+// que se hayan limpiado todos los consumidores.
+export const ARCHIPELAGO_POLYGON: LngLat[] = [];
 
 // Conjunto completo usado por Map.tsx y por el filtro del indice H3.
-export const COLOMBIA_POLYGONS: LngLat[][] = [
-  ...COLOMBIA_IGAC_POLYGONS,
-  ARCHIPELAGO_POLYGON,
-];
+export const COLOMBIA_POLYGONS: LngLat[][] = [...COLOMBIA_IGAC_POLYGONS];
 
 // Aproximación de la línea de costa real (sólo tierra firme, sin la
 // expansión de ~22 km hacia el mar que tiene COLOMBIA_POLYGON). Se usa

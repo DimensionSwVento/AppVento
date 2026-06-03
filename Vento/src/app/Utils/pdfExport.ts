@@ -1,4 +1,7 @@
-import html2canvas from "html2canvas";
+// `html2canvas-pro` es un fork drop-in que soporta colores CSS modernos
+// (oklch / oklab / color-mix) emitidos por Tailwind v4. Reemplaza al
+// `html2canvas` clásico sin cambios de API.
+import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
 
 /**

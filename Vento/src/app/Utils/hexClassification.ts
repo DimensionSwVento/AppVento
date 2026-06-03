@@ -1,8 +1,5 @@
 import { cellToLatLng } from "h3-js";
-import {
-  ARCHIPELAGO_POLYGON,
-  COLOMBIA_LAND_POLYGON,
-} from "./h3Resolution";
+import { COLOMBIA_LAND_POLYGON } from "./h3Resolution";
 
 /**
  * Clasificación `onshore` / `offshore` para hexes de Colombia.
@@ -43,11 +40,10 @@ function pointInRing(
 /** Devuelve `onshore` / `offshore` para un hex H3 dado. */
 export function hexType(h: string): HexType {
   const [lat, lng] = cellToLatLng(h);
-  // El archipiélago + mar territorial se trata como offshore.
-  if (pointInRing(lat, lng, ARCHIPELAGO_POLYGON)) return "offshore";
   // Tierra firme: onshore.
   if (pointInRing(lat, lng, COLOMBIA_LAND_POLYGON)) return "onshore";
-  // Resto del territorio (mar territorial Caribe / Pacífico): offshore.
+  // Resto del territorio (mar territorial Caribe / Pacífico + archipiélago
+  // San Andrés/Providencia, ya cubiertos por IGAC + 12 millas): offshore.
   return "offshore";
 }
 

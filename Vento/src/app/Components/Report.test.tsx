@@ -30,7 +30,7 @@ describe("Report (US06-AC3) — pantalla de informe", () => {
     exportElementToPdfMock.mockClear();
   });
 
-  it("renderiza el título, 5 dimensiones y el bloque de resultado preliminar", () => {
+  it("renderiza el título, las 5 dimensiones y el bloque de resultado preliminar", () => {
     render(
       <AprincipalProvider>
         <Report />
@@ -39,18 +39,16 @@ describe("Report (US06-AC3) — pantalla de informe", () => {
     expect(
       screen.getByText("Consulta y descarga el resultado preliminar"),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("Promedio dimensión ambiental"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Promedio dimensión técnica")).toBeInTheDocument();
-    expect(
-      screen.getByText("Promedio dimensión regulatoria"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Promedio dimensión socioeconómica"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Dimensión macroeconómica")).toBeInTheDocument();
-    expect(screen.getByText(/Resultado preliminar/i)).toBeInTheDocument();
+    // Las 5 dimensiones del catálogo (excluido "General" — usado para el
+    // puntaje agregado, no para el listado de barras).
+    expect(screen.getByText("Ambiental")).toBeInTheDocument();
+    expect(screen.getByText("Técnica")).toBeInTheDocument();
+    expect(screen.getByText("Económica")).toBeInTheDocument();
+    expect(screen.getByText("Socioeconómica")).toBeInTheDocument();
+    expect(screen.getByText("Regulatoria")).toBeInTheDocument();
+    // Sección "Resultado preliminar" (exact, distingue del h2
+    // "Consulta y descarga el resultado preliminar").
+    expect(screen.getByText("Resultado preliminar")).toBeInTheDocument();
   });
 
   it("muestra '—' en región/coordenadas y 0 km² cuando no hay selección", () => {
