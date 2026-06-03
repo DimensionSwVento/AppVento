@@ -2,57 +2,52 @@
 
 import { useMemo, useState } from "react";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
+import { useVariables } from "../Utils/VariablesContext";
 import { dimensionHexScore } from "../Utils/heatmapPalette";
 import {
   INFO_VARS,
   formatVariableValue,
 } from "../Utils/informativeVariables";
+import { getVariableById } from "../Utils/variablesCatalog";
 
 /**
- * Lista provisional de "variables informativas" mostradas en el Informe.
+ * Lista de "variables informativas" mostradas en el flotante del Informe.
  *
- * Comienza con un subconjunto inicial de variables y permite al usuario
- * añadir/quitar variables del listado vía el botón "+" al pie de la card.
- *
- * Mientras no exista el catálogo (US04) + sistema de selección oficial,
- * este componente mantiene el estado localmente. Cuando regrese, reemplazar
- * la selección local por `useVariables().activeVariables`.
+ * El estado vive en el contexto global `VariablesContext` para que cualquier
+ * variable añadida desde el botón "+" se refleje automáticamente en el
+ * Report sidebar (sección "Variables informativas seleccionadas") y en el
+ * PDF descargable. El usuario también puede haber seleccionado variables
+ * en la subpágina Dimensiones — todas conviven en el mismo set.
  */
-const INITIAL_VISIBLE_IDS = INFO_VARS.slice(0, 4).map((v) => v.id);
-
 export default function InformativeVariablesList() {
   const { selectedHexes } = useAprincipal();
-  const [visibleIds, setVisibleIds] = useState<Set<string>>(
-    () => new Set(INITIAL_VISIBLE_IDS),
-  );
+  const { activeVariables, toggleVariable } = useVariables();
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const visibleVars = useMemo(
     () =>
-      INFO_VARS.filter((v) => visibleIds.has(v.id)).map((v) => {
+      INFO_VARS.filter((v) => activeVariables.has(v.id)).map((v) => {
         let sum = 0;
         for (const h of selectedHexes) sum += dimensionHexScore(v.id, h);
         const avg = selectedHexes.size > 0 ? sum / selectedHexes.size : 0;
         return { ...v, valueText: formatVariableValue(avg, v.unit) };
       }),
-    [visibleIds, selectedHexes],
+    [activeVariables, selectedHexes],
   );
 
   const availableVars = useMemo(
-    () => INFO_VARS.filter((v) => !visibleIds.has(v.id)),
-    [visibleIds],
+    () => INFO_VARS.filter((v) => !activeVariables.has(v.id)),
+    [activeVariables],
   );
 
+  // `toggleVariable` del contexto añade si no está, quita si está. Las
+  // variables `required` se ignoran al apagar (las protege el contexto).
   const addVar = (id: string) => {
-    setVisibleIds((prev) => new Set([...prev, id]));
+    toggleVariable(id);
     setPickerOpen(false);
   };
   const removeVar = (id: string) => {
-    setVisibleIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
+    toggleVariable(id);
   };
 
   if (selectedHexes.size === 0) return null;
@@ -92,20 +87,22 @@ export default function InformativeVariablesList() {
                   </span>
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => removeVar(v.id)}
-                aria-label={`Quitar ${v.label}`}
-                className="shrink-0 rounded text-gray-300 hover:text-red-600 focus:opacity-100 group-hover:opacity-100 md:opacity-0"
-              >
-                <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
-                  <path
-                    fillRule="evenodd"
-                    d="M4.29 4.29a1 1 0 011.42 0L10 8.59l4.29-4.3a1 1 0 011.42 1.42L11.41 10l4.3 4.29a1 1 0 01-1.42 1.42L10 11.41l-4.29 4.3a1 1 0 01-1.42-1.42L8.59 10 4.29 5.71a1 1 0 010-1.42z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
+              {!getVariableById(v.id)?.required && (
+                <button
+                  type="button"
+                  onClick={() => removeVar(v.id)}
+                  aria-label={`Quitar ${v.label}`}
+                  className="shrink-0 rounded text-gray-300 hover:text-red-600 focus:opacity-100 group-hover:opacity-100 md:opacity-0"
+                >
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
+                    <path
+                      fillRule="evenodd"
+                      d="M4.29 4.29a1 1 0 011.42 0L10 8.59l4.29-4.3a1 1 0 011.42 1.42L11.41 10l4.3 4.29a1 1 0 01-1.42 1.42L10 11.41l-4.29 4.3a1 1 0 01-1.42-1.42L8.59 10 4.29 5.71a1 1 0 010-1.42z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              )}
             </li>
           );
         })}
@@ -130,7 +127,7 @@ export default function InformativeVariablesList() {
           </button>
 
           {pickerOpen && (
-            <ul className="mt-2 flex max-h-40 flex-col gap-0.5 overflow-y-auto pr-0.5">
+            <ul className="mt-2 flex flex-col gap-0.5 pr-0.5">
               {availableVars.map((v) => {
                 const Icon = v.Icon;
                 return (

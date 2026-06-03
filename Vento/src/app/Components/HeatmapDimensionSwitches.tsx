@@ -9,11 +9,9 @@ import {
 /**
  * Selector compacto (dropdown) de la dimensión visualizada en el heatmap.
  *
- * Comportamiento radio/mutex (una dimensión a la vez). Primer item
- * (`Sin visualización`) apaga el heatmap.
- *
- * Reemplaza la antigua lista de 6 switches para ocupar menos espacio
- * en el flotante del mapa.
+ * Comportamiento radio/mutex (una dimensión a la vez). El heatmap está
+ * SIEMPRE encendido en Informe — no hay opción "sin visualización", el
+ * usuario sólo elige cuál de las 6 dimensiones se pinta.
  */
 export default function HeatmapDimensionSwitches() {
   const { activeDimension, setActiveDimension } = useHeatmapDimension();
@@ -29,16 +27,12 @@ export default function HeatmapDimensionSwitches() {
       <div className="relative mt-1">
         <select
           id="heatmap-dim-select"
-          value={activeDimension ?? ""}
+          value={activeDimension ?? "general"}
           onChange={(e) => {
-            const v = e.target.value;
-            setActiveDimension(
-              v === "" ? null : (v as HeatmapDimensionId),
-            );
+            setActiveDimension(e.target.value as HeatmapDimensionId);
           }}
           className="w-full appearance-none rounded-md border border-gray-300 bg-white py-2 pl-3 pr-8 text-sm font-medium text-[#165170ff] focus:border-[#165170ff] focus:outline-none focus:ring-2 focus:ring-[#165170ff]/30"
         >
-          <option value="">Sin visualización</option>
           {HEATMAP_DIMENSIONS.map((d) => (
             <option key={d.id} value={d.id}>
               {d.label}

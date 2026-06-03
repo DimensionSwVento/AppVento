@@ -106,10 +106,6 @@ export default function Report() {
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <h2 className="text-lg font-bold text-[#393939ff]">
-        Consulta y descarga el resultado preliminar
-      </h2>
-
       <div ref={reportRef} className="flex flex-col gap-4 bg-white">
         {/* Cabecera con identidad de marca — visible en PDF */}
         <header className="rounded-t-2xl bg-[#165170ff] px-5 py-4 text-white">

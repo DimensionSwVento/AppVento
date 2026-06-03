@@ -15,10 +15,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Map as MapGL, type MapRef } from "react-map-gl/maplibre";
 import { DeckGL } from "@deck.gl/react";
 import { TileLayer } from "@deck.gl/geo-layers";
-import { PolygonLayer, TextLayer } from "@deck.gl/layers";
+import { PolygonLayer } from "@deck.gl/layers";
 import { luma } from "@luma.gl/core";
 import { webgl2Adapter } from "@luma.gl/webgl";
-import { cellToBoundary, cellToChildren, cellToLatLng, cellsToMultiPolygon, getHexagonEdgeLengthAvg, getResolution, polygonToCells } from "h3-js";
+import { cellToBoundary, cellToChildren, cellToLatLng, cellsToMultiPolygon, getResolution, polygonToCells } from "h3-js";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
 import { useVariables } from "../Utils/VariablesContext";
 import { useHeatmapDimension } from "../Utils/HeatmapDimensionContext";
@@ -73,13 +73,6 @@ const TERRITORY_BORDER: [number, number, number, number] = [22, 81, 112, 160];
 // hover — misma familia que selected pero más tenue (alpha bajo) para distinguirse
 const HOVER_FILL: [number, number, number, number] = [224, 215, 221, 60];
 const HOVER_BORDER: [number, number, number, number] = [70, 90, 120, 120];
-// H3 ID label dentro de los hexágonos seleccionados — gris suave, no protagónico.
-const H3_LABEL_COLOR: [number, number, number, number] = [70, 90, 120, 180];
-// últimos 7 chars del h3 index — suficientemente único y legible
-function shortH3(h: string): string {
-  return h.length > 7 ? "…" + h.slice(-7) : h;
-}
-
 interface HexCell { h: string; }
 
 /**
@@ -501,6 +494,9 @@ export default function MapView() {
   //   `cellsToMultiPolygon` para fusionar bordes contiguos en una sola línea
   const selectedBordersLayer = useMemo(() => {
     if (selectedArr.length === 0) return null;
+    // En heatmap del informe se oculta el contorno también — la mancha
+    // Viridis ya delimita el área visualmente.
+    if (heatmapActive) return null;
     if (canSelect) {
       return new PolygonLayer<HexCell>({
         id: "selected-hex-borders",
@@ -531,37 +527,6 @@ export default function MapView() {
       lineWidthMinPixels: 2,
       filled: false,
       stroked: true,
-      pickable: false,
-    });
-  }, [selectedArr, canSelect]);
-
-  // H3 ID label solo en hexágonos seleccionados — sólo en fase "seleccion-area".
-  // Tamaño en metros proporcional al hex → el texto nunca sale del hexágono.
-  // sizeMinPixels/MaxPixels evitan textos ilegibles o gigantes a zooms extremos.
-  // Se oculta cuando el heatmap está activo (los IDs hex distraen del color).
-  const selectedLabelLayer = useMemo(() => {
-    if (selectedArr.length === 0) return null;
-    // Sólo en seleccion-area (no distrae en otras fases) y nunca sobre heatmap.
-    if (!canSelect || heatmapActive) return null;
-    return new TextLayer<HexCell>({
-      id: "selected-labels",
-      data: selectedArr,
-      sizeUnits: "meters",
-      getPosition: (d) => {
-        const [lat, lng] = cellToLatLng(d.h);
-        return [lng, lat];
-      },
-      getText: (d) => shortH3(d.h),
-      // edge_length * 0.3 m → el texto ocupa ~70% del ancho del hex
-      // Label más pequeño para no taparse a sí mismo a zoom alto.
-      getSize: (d) => getHexagonEdgeLengthAvg(getResolution(d.h), "m") * 0.18,
-      sizeMaxPixels: 11,
-      sizeMinPixels: 7,
-      getColor: H3_LABEL_COLOR,
-      fontFamily: "monospace",
-      fontWeight: "bold",
-      getTextAnchor: "middle",
-      getAlignmentBaseline: "center",
       pickable: false,
     });
   }, [selectedArr, canSelect, heatmapActive]);
@@ -692,7 +657,7 @@ export default function MapView() {
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => setViewState(clampViewState(vs as typeof INITIAL_VIEW_STATE))}
         controller={true}
-        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, selectedLabelLayer, hoverFillLayer]}
+        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer]}
         getCursor={({ isHovering }) => {
           if (!canSelect) return isHovering ? "not-allowed" : "grab";
           return isHovering ? "pointer" : "grab";
