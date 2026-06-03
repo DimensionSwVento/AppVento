@@ -1,15 +1,21 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
 import { usePathname, useRouter } from "next/navigation";
+
+const subscribeToHydration = () => () => {};
+const getHydratedSnapshot = () => true;
+const getServerHydrationSnapshot = () => false;
 
 export default function SideBar({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  void children;
   const { data: session } = useSession();
   const { accion, setAccion, selectedHexes } = useAprincipal();
   const pathname = usePathname();
@@ -17,6 +23,11 @@ export default function SideBar({
   const isAdmin = session?.roles?.includes("admin");
   const isAdminPage = pathname?.startsWith("/admin");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isHydrated = useSyncExternalStore(
+    subscribeToHydration,
+    getHydratedSnapshot,
+    getServerHydrationSnapshot,
+  );
 
   const ORDEN = [
     "seleccion-area",
@@ -26,6 +37,12 @@ export default function SideBar({
   ] as const;
   const pasoActual = ORDEN.indexOf(accion as (typeof ORDEN)[number]);
   const haySeleccion = selectedHexes.size > 0;
+  const esPasado = (paso: (typeof ORDEN)[number]) =>
+    !isAdminPage && ORDEN.indexOf(paso) < pasoActual;
+  const esActual = (paso: (typeof ORDEN)[number]) =>
+    !isAdminPage && accion === paso;
+  const showNextStepCta =
+    isHydrated && !isAdminPage && accion === "seleccion-area" && haySeleccion;
 
   function navegar(destino: (typeof ORDEN)[number]) {
     // Desde admin: "seleccion-area" siempre vuelve al dashboard;
@@ -57,6 +74,11 @@ export default function SideBar({
     return false;
   }
 
+  const dimensionesHabilitadas = isHydrated && habilitado("dimensiones");
+  const caracteristicasHabilitadas =
+    isHydrated && habilitado("caracteristicas");
+  const informeHabilitado = isHydrated && habilitado("informe");
+
   const fullMail = session?.user?.email ?? "test@gmail.com";
   // truncar a 26 caracteres para dar espacio a los botones
   const mail = fullMail.length > 18 ? fullMail.slice(0, 18) + "…" : fullMail;
@@ -67,20 +89,55 @@ export default function SideBar({
     !isAdminPage && accion !== "seleccion-area" && accion !== null;
   // en mobile con subpagina visible, sidebar queda colapsado (solo iconos)
   // clases compartidas para ocultar texto en mobile-colapsado
-  const labelCls = hasSubpage ? "hidden md:inline-block" : "";
+  const labelCls = hasSubpage  ? "hidden md:inline-block" : "";
   // iconos: en mobile colapsado se separan más (mx + mt); en desktop mantienen ml-[0.5rem]
   const iconCls = hasSubpage
-    ? "w-[15px] h-[15px] mx-auto mt-[0.5rem] mb-[0.5rem] md:mx-0 md:mt-0 md:ml-[0.5rem]"
-    : "w-[15px] h-[15px] ml-[0.5rem]";
+    ? "h-4 w-4 shrink-0 mx-auto my-[0.55rem] opacity-90 md:mx-0 md:my-0"
+    : "h-4 w-4 shrink-0 opacity-90";
+  const navItemBase =
+    "group flex min-h-[44px] w-full items-center gap-2 border border-l-[3px] border-transparent px-2.5 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#cce1eeff]";
+  const navItemEnabled =
+    "cursor-pointer text-white hover:border-white/15 hover:bg-white/10 hover:shadow-md hover:shadow-black/10";
+  const navItemDisabled = "cursor-not-allowed text-white/45 opacity-55";
+  const activeNavItem =
+    "border-white/20 border-l-[#cce1eeff] bg-white/15 shadow-lg shadow-black/15";
+  const nextNavItem = "";
+  const secondaryItemBase =
+    "group flex min-h-[40px] w-full cursor-default select-none items-center gap-2 border border-l-[3px] border-transparent px-2.5 text-white/90 transition-all duration-200 hover:border-white/10 hover:bg-white/10 hover:shadow-md hover:shadow-black/10";
   const ExitIconCls = mobileOpen
-    ? "mx-auto justify-center items-center   py-1 "
-    : "shrink-0 rounded px-2 py-1 text-[11px] text-gray-300 transition-colors hover:bg-white/10 hover:text-white border rounded-full border-[white]";
-  const ExitdivCls = mobileOpen
-    ? " w-full "
-    : "";
+    ? "mx-auto flex h-8 w-8 items-center justify-center rounded-full border border-white/25 text-white transition-colors hover:bg-white/10"
+    : "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/25 text-white/80 transition-colors hover:bg-white/10 hover:text-white";
+  const ExitdivCls = mobileOpen ? "w-full justify-center" : "";
 
-    // separadores entre items en mobile colapsado: gris claro azulado, sutil
-  const dividerCls = "w-full border-t border-[#7a8ea0] opacity-40";
+  // separadores entre items en mobile colapsado: gris claro azulado, sutil
+  const dividerCls = "mx-auto w-7 border-t border-[#cce1eeff]/25";
+  const stepCheckIcon = (
+    <svg
+      className={`ml-auto h-4 w-4 shrink-0 text-white/90 ${labelCls}`}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.4 14.6-4.2-4.2 1.4-1.4 2.8 2.8 5.8-5.8 1.4 1.4-7.2 7.2z" />
+    </svg>
+  );
+  const activeStepArrowIcon = (
+    <svg
+      className={`ml-auto h-4 w-4 shrink-0 text-white/90 ${labelCls}`}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="9 6 15 12 9 18" />
+    </svg>
+  );
+  const itemLabelCls = "min-w-0 select-none text-[12px] leading-tight text-white";
+  const sectionLabelCls =
+    "mx-[0.75rem] mb-[0.75rem] mt-[1rem] cursor-default select-none text-[10.5px] font-semibold text-white/65";
 
   return (
     <>
@@ -113,7 +170,7 @@ export default function SideBar({
           - Mobile + sin subpagina: overlay controlado por hamburguesa
       */}
       <div
-        className={`flex bg-[#165170ff] z-30 ${
+        className={`relative z-30 flex overflow-hidden bg-[#165170ff] bg-[linear-gradient(180deg,#165170ff_0%,#0b2a3c_135%)] shadow-2xl shadow-black/25 ring-1 ring-white/10 ${
           hasSubpage
             ? "flex md:relative"
             : mobileOpen
@@ -122,97 +179,130 @@ export default function SideBar({
         }`}
       >
         <div
-          className={`h-full text-[10.5px] flex flex-col justify-between ${hasSubpage ? "w-[3.5rem] md:w-[12rem]" : "w-[12rem]"}`}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[linear-gradient(180deg,rgba(204,225,238,0.14)_0%,rgba(204,225,238,0.08)_48%,rgba(204,225,238,0)_100%)]"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 w-px bg-white/20"
+        />
+        <div
+          className={`relative z-10 flex h-full flex-col justify-between py-3 text-[10.5px] ${hasSubpage ? "w-[3.75rem] md:w-[12rem]" : "w-[12rem]"}`}
         >
           <div>
-            <img
+            <Image
               src="/vento_logo.svg"
               alt="Logo"
-              className={`w-[111px] my-[1rem] ml-[1rem] h-[36px] ${labelCls}`}
+              width={118}
+              height={38}
+              className={`${hasSubpage ? "hidden md:block md:mb-[1.1rem] md:mx-auto md:h-[38px] md:w-[118px]" : "mb-[1.1rem] mx-auto h-[38px] w-[118px]"}`}
             />
-            <hr className={`mx-[1rem] ${labelCls}`} />
-            <div
-              className={`mx-[0.5rem] my-[1rem] text-gray-400 text-[10.5px] ${labelCls}`}
-            >
+            <hr className={`hidden md:mx-[1rem] md:block md:border-white/20 `} />
+            <div className={`${sectionLabelCls} ${labelCls}`}>
               ACCIONES PRINCIPALES
             </div>
 
-            <div
+            <button
+              type="button"
               onClick={() => navegar("seleccion-area")}
-              className={`flex items-center cursor-pointer ${!isAdminPage && accion === "seleccion-area" ? "bg-gray-400" : ""}`}
+              className={`${navItemBase} ${navItemEnabled} ${!isAdminPage && accion === "seleccion-area" ? activeNavItem : ""}`}
+              aria-current={
+                !isAdminPage && accion === "seleccion-area" ? "step" : undefined
+              }
             >
-              <img src="/area.png" alt="" className={iconCls} />
-              <p
-                className={`text-[14px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem] ${labelCls}`}
-              >
+              <Image src="/area.png" alt="" width={15} height={15} className={iconCls} />
+              <p className={`${itemLabelCls} ${labelCls}`}>
                 Selección de área
               </p>
-            </div>
+              {esPasado("seleccion-area") && stepCheckIcon}
+              {esActual("seleccion-area") && activeStepArrowIcon}
+            </button>
             {mobileOpen && hasSubpage ? (
               <hr className={dividerCls}></hr>
             ) : (
               <></>
             )}
 
-            <div
+            <button
+              type="button"
               onClick={() =>
-                habilitado("dimensiones") && navegar("dimensiones")
+                dimensionesHabilitadas && navegar("dimensiones")
               }
-              className={`flex items-center ${habilitado("dimensiones") ? "cursor-pointer" : "cursor-not-allowed opacity-40"} ${!isAdminPage && accion === "dimensiones" ? "bg-gray-400" : ""}`}
+              className={`${navItemBase} ${dimensionesHabilitadas ? navItemEnabled : navItemDisabled} ${showNextStepCta ? nextNavItem : ""} ${!isAdminPage && accion === "dimensiones" ? activeNavItem : ""}`}
+              aria-disabled={!dimensionesHabilitadas}
+              aria-current={
+                !isAdminPage && accion === "dimensiones" ? "step" : undefined
+              }
             >
-              <img src="/dim.png" alt="" className={iconCls} />
-              <p
-                className={`text-[14px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem] ${labelCls}`}
-              >
+              <Image src="/dim.png" alt="" width={15} height={15} className={iconCls} />
+              <p className={`${itemLabelCls} ${labelCls}`}>
                 Dimensiones
               </p>
-            </div>
+              {esPasado("dimensiones") && stepCheckIcon}
+              {esActual("dimensiones") && activeStepArrowIcon}
+            </button>
             {mobileOpen && hasSubpage ? (
               <hr className={dividerCls}></hr>
             ) : (
               <></>
             )}
 
-            <div
+            <button
+              type="button"
               onClick={() =>
-                habilitado("caracteristicas") && navegar("caracteristicas")
+                caracteristicasHabilitadas && navegar("caracteristicas")
               }
-              className={`flex items-center ${habilitado("caracteristicas") ? "cursor-pointer" : "cursor-not-allowed opacity-40"} ${!isAdminPage && accion === "caracteristicas" ? "bg-gray-400" : ""}`}
+              className={`${navItemBase} ${caracteristicasHabilitadas ? navItemEnabled : navItemDisabled} ${!isAdminPage && accion === "caracteristicas" ? activeNavItem : ""}`}
+              aria-disabled={!caracteristicasHabilitadas}
+              aria-current={
+                !isAdminPage && accion === "caracteristicas"
+                  ? "step"
+                  : undefined
+              }
             >
-              <img src="/caracteristicas.png" alt="" className={iconCls} />
-              <p
-                className={`text-[14px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem] ${labelCls}`}
-              >
+              <Image
+                src="/caracteristicas.png"
+                alt=""
+                width={15}
+                height={15}
+                className={iconCls}
+              />
+              <p className={`${itemLabelCls} ${labelCls}`}>
                 Características del proyecto
               </p>
-            </div>
+              {esPasado("caracteristicas") && stepCheckIcon}
+              {esActual("caracteristicas") && activeStepArrowIcon}
+            </button>
             {mobileOpen && hasSubpage ? (
               <hr className={dividerCls}></hr>
             ) : (
               <></>
             )}
 
-            <div
-              onClick={() => habilitado("informe") && navegar("informe")}
-              className={`flex items-center ${habilitado("informe") ? "cursor-pointer" : "cursor-not-allowed opacity-40"} ${!isAdminPage && accion === "informe" ? "bg-gray-400" : ""}`}
+            <button
+              type="button"
+              onClick={() => informeHabilitado && navegar("informe")}
+              className={`${navItemBase} ${informeHabilitado ? navItemEnabled : navItemDisabled} ${!isAdminPage && accion === "informe" ? activeNavItem : ""}`}
+              aria-disabled={!informeHabilitado}
+              aria-current={
+                !isAdminPage && accion === "informe" ? "step" : undefined
+              }
             >
-              <img src="/viab.png" alt="" className={iconCls} />
-              <p
-                className={`text-[14px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem] ${labelCls}`}
-              >
+              <Image src="/viab.png" alt="" width={15} height={15} className={iconCls} />
+              <p className={`${itemLabelCls} ${labelCls}`}>
                 Informe de viabilidad
               </p>
-            </div>
+              {esPasado("informe") && stepCheckIcon}
+              {esActual("informe") && activeStepArrowIcon}
+            </button>
             {mobileOpen && hasSubpage ? (
               <hr className={dividerCls}></hr>
             ) : (
               <></>
             )}
-            <div className="flex items-center">
-              <img src="/hist.png" alt="" className={iconCls} />
-              <p
-                className={`text-[14px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem] ${labelCls}`}
-              >
+            <div className={secondaryItemBase}>
+              <Image src="/hist.png" alt="" width={15} height={15} className={iconCls} />
+              <p className={`${itemLabelCls} ${labelCls}`}>
                 Histórico de viabilidad
               </p>
             </div>
@@ -224,20 +314,16 @@ export default function SideBar({
           </div>
 
           <div>
-            <div
-              className={`mx-[0.5rem] text-gray-400 text-[10.5px] mt-4 ${labelCls}`}
-            >
+            <div className={`${sectionLabelCls} mt-4 ${labelCls}`}>
               GESTIÓN Y AYUDA DE USUARIO
             </div>
             {isAdmin && (
               <Link
                 href="/admin/users"
-                className={`flex items-center ${isAdminPage ? "bg-gray-400" : ""}`}
+                className={`${navItemBase} ${navItemEnabled} ${isAdminPage ? activeNavItem : ""}`}
               >
-                <img src="/user.png" alt="" className={iconCls} />
-                <p
-                  className={`text-[14px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem] ${labelCls}`}
-                >
+                <Image src="/user.png" alt="" width={15} height={15} className={iconCls} />
+                <p className={`${itemLabelCls} ${labelCls}`}>
                   Gestión de usuarios
                 </p>
               </Link>
@@ -248,11 +334,9 @@ export default function SideBar({
               <></>
             )}
 
-            <div className="flex items-center">
-              <img src="/config.png" alt="" className={iconCls} />
-              <p
-                className={`text-[14px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem] ${labelCls}`}
-              >
+            <div className={secondaryItemBase}>
+              <Image src="/config.png" alt="" width={15} height={15} className={iconCls} />
+              <p className={`${itemLabelCls} ${labelCls}`}>
                 Configuraciones
               </p>
             </div>
@@ -262,11 +346,9 @@ export default function SideBar({
               <></>
             )}
 
-            <div className="flex items-center">
-              <img src="/manual.png" alt="" className={iconCls} />
-              <p
-                className={`text-[14px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem] ${labelCls}`}
-              >
+            <div className={secondaryItemBase}>
+              <Image src="/manual.png" alt="" width={15} height={15} className={iconCls} />
+              <p className={`${itemLabelCls} ${labelCls}`}>
                 Manual de uso
               </p>
             </div>
@@ -276,11 +358,9 @@ export default function SideBar({
               <></>
             )}
 
-            <div className="flex items-center">
-              <img src="/soporte.png" alt="" className={iconCls} />
-              <p
-                className={`text-[14px] mx-[0.5rem] mt-[0.5rem] text-white mb-[0.5rem] ${labelCls}`}
-              >
+            <div className={secondaryItemBase}>
+              <Image src="/soporte.png" alt="" width={15} height={15} className={iconCls} />
+              <p className={`${itemLabelCls} ${labelCls}`}>
                 Soporte
               </p>
             </div>
@@ -291,17 +371,21 @@ export default function SideBar({
               <></>
             )}
 
-            <div className="flex items-center justify-between px-[0.5rem]">
-              <div className={`flex h-[4rem] items-center  ${ExitdivCls}` }>
-                <img
+            <div className="mx-[0.5rem] mt-[0.85rem] flex items-center justify-between rounded-lg border border-white/10 bg-[#0b2a3c]/35 px-[0.65rem] shadow-inner shadow-black/20">
+              <div className={`flex h-[4rem] min-w-0 items-center gap-2 ${ExitdivCls}`}>
+                <Image
                   src="/user.png"
                   alt=""
-                  className={` ${labelCls} ${iconCls} `}
+                  width={15}
+                  height={15}
+                  className={`${labelCls} ${iconCls}`}
                 />
-                <div className={labelCls}>
-                  <p className="text-[10px] mx-[0.5rem] text-white">{name}</p>
+                <div className={`min-w-0 flex-1 ${labelCls}`}>
+                  <p className="truncate cursor-default select-none text-[10.5px] font-semibold text-white">
+                    {name}
+                  </p>
                   <p
-                    className="text-[10px] mx-[0.5rem] text-gray-400"
+                    className="truncate cursor-default select-none text-[10px] text-[#cce1eeff]/70"
                     title={fullMail}
                   >
                     {mail}
@@ -314,8 +398,22 @@ export default function SideBar({
                   }}
                   className={ExitIconCls}
                   title="Cerrar sesión"
+                  aria-label="Cerrar sesión"
                 >
-                  X
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <path d="m16 17 5-5-5-5" />
+                    <path d="M21 12H9" />
+                  </svg>
                 </button>
               </div>
             </div>

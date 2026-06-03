@@ -1,15 +1,15 @@
 {
   "node": {
-    "0029d944b2f4d5139864b0cba236e4b71ba4295dc7": {
+    "008d6613538bf7893f8ba53b34ce4f85ce997f8ed5": {
       "workers": {
         "app/page": {
-          "moduleId": 98295,
+          "moduleId": 298295,
           "async": false,
           "exportedName": "$$RSC_SERVER_ACTION_0",
           "filename": "src/app/Components/SignInButton.tsx"
         },
         "app/registration-success/page": {
-          "moduleId": 92255,
+          "moduleId": 592255,
           "async": false,
           "exportedName": "$$RSC_SERVER_ACTION_0",
           "filename": "src/app/Components/SignInButton.tsx"
@@ -20,5 +20,5 @@
     }
   },
   "edge": {},
-  "encryptionKey": "1PwlF5OOrOA26QkvrNO+VKNPSQop9pZMBQ/PmqGu1S0="
+  "encryptionKey": "MdXfh2fCPD+vPRw+17qf0KnXw/322YeHN7rusYl0+a4="
 }

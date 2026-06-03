@@ -21,6 +21,7 @@
   "/dashboard/page": "/dashboard",
   "/dimensions/page": "/dimensions",
   "/favicon.ico/route": "/favicon.ico",
+  "/icon.svg/route": "/icon.svg",
   "/not-authorized/page": "/not-authorized",
   "/page": "/",
   "/registration-success/page": "/registration-success"

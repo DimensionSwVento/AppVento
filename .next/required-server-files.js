@@ -334,6 +334,7 @@ self.__SERVER_FILES_MANIFEST={
   "appDir": "/home/jui43287prehuy/Documents/VP/AppVento",
   "relativeAppDir": "",
   "files": [
+    ".next/package.json",
     ".next/routes-manifest.json",
     ".next/server/pages-manifest.json",
     ".next/build-manifest.json",

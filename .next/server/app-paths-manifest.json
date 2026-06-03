@@ -21,6 +21,7 @@
   "/dashboard/page": "app/dashboard/page.js",
   "/dimensions/page": "app/dimensions/page.js",
   "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/icon.svg/route": "app/icon.svg/route.js",
   "/not-authorized/page": "app/not-authorized/page.js",
   "/page": "app/page.js",
   "/registration-success/page": "app/registration-success/page.js"

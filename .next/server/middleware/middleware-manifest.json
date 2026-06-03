@@ -3,35 +3,35 @@
   "middleware": {
     "/": {
       "files": [
-        "server/edge/chunks/node_modules_next_dist_esm_build_templates_edge-wrapper_0kvehva.js",
-        "server/edge/chunks/[root-of-the-server]__0x203wy._.js",
-        "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_0pnsb~w.js"
+        "server/edge/chunks/node_modules_next_dist_esm_build_templates_edge-wrapper_0_kjzx3.js",
+        "server/edge/chunks/[root-of-the-server]__1k3-gvz._.js",
+        "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_1l5pwhw.js"
       ],
       "name": "middleware",
       "page": "/",
-      "entrypoint": "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_0pnsb~w.js",
+      "entrypoint": "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_1l5pwhw.js",
       "matchers": [
         {
-          "regexp": "/:nextData(_next/data/[^/]{1,})?/dashboard/:path*{(\\\\.json)}?",
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/dashboard/:path*{(\\.json|\\.rsc|\\.segments/.+\\.segment\\.rsc)}?",
           "originalSource": "/dashboard/:path*"
         },
         {
-          "regexp": "/:nextData(_next/data/[^/]{1,})?/admin/:path*{(\\\\.json)}?",
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/admin/:path*{(\\.json|\\.rsc|\\.segments/.+\\.segment\\.rsc)}?",
           "originalSource": "/admin/:path*"
         },
         {
-          "regexp": "/:nextData(_next/data/[^/]{1,})?/dimensions/:path*{(\\\\.json)}?",
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/dimensions/:path*{(\\.json|\\.rsc|\\.segments/.+\\.segment\\.rsc)}?",
           "originalSource": "/dimensions/:path*"
         }
       ],
       "wasm": [],
       "assets": [],
       "env": {
-        "__NEXT_BUILD_ID": "ekkda-PdwMGml2XoQ2auN",
-        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "1PwlF5OOrOA26QkvrNO+VKNPSQop9pZMBQ/PmqGu1S0=",
-        "__NEXT_PREVIEW_MODE_ID": "25dd2d6ec425741deff9b96bb3a6c113",
-        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "7e63d519fcf45e4ad00879370c4d5a129b6e731388a11243fb1ff09967b2346d",
-        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "e2fa5d5d790fa17d52c0d69c4debec1263e8b45915c8ecf6a177fed8fe67c3ab"
+        "__NEXT_BUILD_ID": "idnVVCkHIDjvcfhLmpN9C",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "MdXfh2fCPD+vPRw+17qf0KnXw/322YeHN7rusYl0+a4=",
+        "__NEXT_PREVIEW_MODE_ID": "65435abf3bd379d97a4496f1309b56ff",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "b747eb6e0d0efb6a34615dc43d0fe432af9585312bc5fc6228ebd522b3a8bde2",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "9fb6cf66546054d3a3ff51cc9b388ce870fcb2e5bfbccdfb189fc527a9c440b7"
       }
     }
   },
