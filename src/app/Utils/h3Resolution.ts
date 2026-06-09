@@ -57,49 +57,140 @@ export const COLOMBIA_POLYGONS: LngLat[][] = [...COLOMBIA_IGAC_POLYGONS];
 // únicamente para clasificar hexes como `onshore` / `offshore` desde
 // `Utils/hexClassification.ts`; NO se usa para renderizado.
 //
-// Cuando llegue el polígono IGAC tierra-firme oficial, reemplazar estos
-// vértices manteniendo el mismo nombre.
-export const COLOMBIA_LAND_POLYGON: LngLat[] = [
-  // Costa Caribe (oeste → este)
-  [-77.2, 8.7],   // Cabo Tiburón (frontera Panamá)
-  [-76.5, 9.4],
-  [-75.8, 9.8],
-  [-75.5, 10.4], // Cartagena
-  [-74.8, 10.9], // Barranquilla
-  [-74.2, 11.2], // Santa Marta
-  [-73.5, 11.2],
-  [-72.9, 11.5], // Riohacha
-  [-71.7, 12.4], // Punta Gallinas (norte continental)
-  [-71.1, 11.0], // SE Guajira
-  // Frontera Venezuela (norte → sur)
-  [-72.0, 9.5],
-  [-72.4, 8.5],
-  [-72.5, 7.5], // Cúcuta
-  [-72.0, 6.5],
-  [-71.0, 6.5],
-  [-70.0, 6.0],
-  [-69.0, 6.0],
-  [-67.5, 6.2],
-  // Frontera Venezuela/Brasil (sur)
-  [-67.0, 1.5],
-  [-67.5, 0.7],
-  // Frontera Brasil
-  [-69.5, -0.5],
-  [-70.0, -4.2], // Leticia
-  // Frontera Perú/Ecuador (vuelta al oeste)
-  [-71.5, -2.5],
-  [-73.0, -1.0],
-  [-75.0, 0.0],
-  [-77.0, 0.6],
-  // Costa Pacífico (sur → norte)
-  [-78.8, 1.5], // Tumaco
-  [-79.0, 2.0],
-  [-78.3, 3.5], // Buenaventura
-  [-77.7, 5.5],
-  [-77.4, 6.5], // Bahía Solano
-  [-77.2, 7.5],
-  [-77.2, 8.7], // cierre del anillo en Cabo Tiburón
+/**
+ * Bounding boxes de zonas marítimas conocidas de Colombia.
+ *
+ * Enfoque pragmático para clasificar hexes como `offshore`: si el centroide
+ * del hex cae dentro de cualquiera de estas bboxes → mar. Cualquier otro
+ * hex dentro del territorio se considera `onshore`.
+ *
+ * Más simple y predecible que un polígono complejo de costa. Acepta
+ * imprecisión en las islas del archipiélago (San Andrés/Providencia son
+ * tan pequeñas que pierden contra el agua circundante en la bbox).
+ */
+export const SEA_BBOXES: readonly {
+  name: string;
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+}[] = [
+  // Mar Caribe — al norte del continente (excluye La Guajira: la peninsula
+  // continental termina ~12.4° lat al norte, lng -71.7 en Punta Gallinas).
+  { name: "Caribe norte", minLat: 12.5, maxLat: 16, minLng: -78, maxLng: -71 },
+  // Mar Caribe occidental — golfo de Urabá / norte Antioquia.
+  {
+    name: "Caribe oeste",
+    minLat: 9,
+    maxLat: 12.5,
+    minLng: -78,
+    maxLng: -75.8,
+  },
+  // Mar Caribe oriental — al este de La Guajira.
+  {
+    name: "Caribe este",
+    minLat: 11.5,
+    maxLat: 13,
+    minLng: -72,
+    maxLng: -70.5,
+  },
+  // Pacífico — al oeste del continente.
+  { name: "Pacifico", minLat: 1, maxLat: 8.5, minLng: -83, maxLng: -77.7 },
+  // Aguas del archipiélago San Andrés / Providencia. Las islas se rescatan
+  // explícitamente con `LAND_BBOXES` (abajo) — gana tierra si el centroide
+  // del hex cae sobre la isla, aunque también esté dentro de esta bbox.
+  {
+    name: "Archipielago aguas",
+    minLat: 12,
+    maxLat: 13.7,
+    minLng: -82.2,
+    maxLng: -81.2,
+  },
 ];
+
+/**
+ * Polígonos fieles al contorno de las islas del archipiélago
+ * (San Andrés, Providencia, Santa Catalina). Cada polígono es un anillo
+ * cerrado de coordenadas `[lng, lat]`.
+ *
+ * Onshore vs offshore = "¿necesita emplazamiento marítimo?". Las islas son
+ * tierra firme, no mar. Se usan polígonos (no bboxes rectangulares)
+ * porque la línea de costa es curva y los rectángulos atrapaban hexes
+ * en el agua o dejaban escapar hexes en la isla.
+ *
+ * Si el centroide del hex cae dentro de cualquier polígono → `onshore`.
+ */
+export const LAND_POLYGONS: readonly { name: string; polygon: LngLat[] }[] = [
+  {
+    name: "San Andres",
+    polygon: [
+      // Contorno fiel a la línea de costa de San Andrés (~12 km eje N-S,
+      // ~3 km ancho máx). 30 vértices con detalle en bahías y la cola SW
+      // que llega a South End.
+      [-81.7061, 12.5906],
+      [-81.7113, 12.5887],
+      [-81.7014, 12.5867],
+      [-81.7011, 12.5850],
+      [-81.6980, 12.5816],
+      [-81.6980, 12.5721],
+      [-81.6980, 12.5651],
+      [-81.6980, 12.5543],
+      [-81.6980, 12.5132],
+      [-81.7001, 12.5012],
+      [-81.7017, 12.4998],
+      [-81.7084, 12.5042],
+      [-81.7105, 12.5043],
+      [-81.7181, 12.4917],
+      [-81.7207, 12.4898],
+      [-81.7250, 12.4915],
+      [-81.7294, 12.4988],
+      [-81.7300, 12.5041],
+      [-81.7244, 12.5117],
+      [-81.7263, 12.5182],
+      [-81.7255, 12.5236],
+      [-81.7277, 12.5302],
+      [-81.7365, 12.5347],
+      [-81.7315, 12.5494],
+      [-81.7361, 12.5562],
+      [-81.7344, 12.5598],
+      [-81.7259, 12.5668],
+      [-81.7264, 12.5753],
+      [-81.7252, 12.5782],
+      [-81.7113, 12.5888],
+      [-81.7061, 12.5906],
+    ],
+  },
+  {
+    name: "Providencia",
+    polygon: [
+      // Providencia + Santa Catalina. ~7 km de largo. Recorrido horario
+      // desde el extremo norte de Santa Catalina, bajando por costa este
+      // (Manchineel Bay), rodeando el sur y subiendo por costa oeste
+      // (South West Bay).
+      [-81.380, 13.395],
+      [-81.372, 13.392],
+      [-81.367, 13.386],
+      [-81.365, 13.378],
+      [-81.362, 13.370],
+      [-81.360, 13.360],
+      [-81.362, 13.348],
+      [-81.368, 13.336],
+      [-81.378, 13.325],
+      [-81.388, 13.330],
+      [-81.395, 13.342],
+      [-81.398, 13.355],
+      [-81.395, 13.368],
+      [-81.390, 13.378],
+      [-81.388, 13.385],
+      [-81.385, 13.390],
+      [-81.382, 13.393],
+      [-81.380, 13.395],
+    ],
+  },
+];
+
+/** Solo los polígonos (sin nombre) para consumidores que necesiten iterar geometría. */
+export const LAND_POLYGON_RINGS: LngLat[][] = LAND_POLYGONS.map((p) => p.polygon);
 
 function pointInPolygon(lng: number, lat: number, polygon: LngLat[]): boolean {
   let inside = false;

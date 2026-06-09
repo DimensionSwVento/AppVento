@@ -78,7 +78,7 @@ export default function HexValuesTooltip({
       </header>
 
       <p className="px-2.5 pt-1.5 text-[9px] font-semibold uppercase tracking-wide text-gray-500">
-        Puntajes
+        Puntajes de idoneidad
       </p>
       <ul className="flex flex-col px-2.5 pb-1.5">
         {HEATMAP_DIMENSIONS.map((d) => {

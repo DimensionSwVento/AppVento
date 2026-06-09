@@ -38,7 +38,15 @@ const NOMINATIM_QUERY = {
 const NOMINATIM_USER_AGENT = "vento-app/1.0 (generate-igac-boundary.mjs)";
 
 const OUTPUT_PATH = resolve("src/app/Utils/data/colombia-igac-boundary.json");
+const LAND_OUTPUT_PATH = resolve(
+  "src/app/Utils/data/colombia-igac-land-boundary.json",
+);
 const MIN_RING_AREA = 0.000001;
+
+// Modo `--land-only` → tierra firme oficial sin la unión Nominatim (sin
+// mar territorial). Usado por `hexClassification.ts` para auto-detectar
+// onshore/offshore con precisión real (no la heurística manual previa).
+const LAND_ONLY_MODE = process.argv.includes("--land-only");
 
 function buildIgacUrl() {
   const params = new URLSearchParams(IGAC_QUERY);
@@ -181,6 +189,45 @@ async function fetchNominatim() {
 }
 
 async function main() {
+  if (LAND_ONLY_MODE) {
+    // Solo IGAC, sin Nominatim, sin union. Tierra firme oficial pura.
+    const igac = await fetchIgac();
+    const unionResult = polygonClipping.union(...igac.multiPolygons);
+    const polygons = normalizeUnion(unionResult);
+    if (polygons.length === 0) {
+      throw new Error("Union produced no usable outer rings");
+    }
+    const bounds = mergeBounds(polygons.map(ringBounds));
+    const artifact = {
+      metadata: {
+        source:
+          "IGAC departamentos (tierra firme oficial) — sin mar territorial. Usado por hexClassification para auto-detectar onshore/offshore.",
+        sources: {
+          land: {
+            name: "IGAC limites/limites MapServer layer 2 - Departamentos",
+            url: IGAC_SOURCE_URL,
+            sourceQueryUrl: igac.sourceQueryUrl,
+            query: IGAC_QUERY,
+            featureCount: igac.features.length,
+          },
+        },
+        generatedAt: new Date().toISOString(),
+        polygonCount: polygons.length,
+        bounds,
+        minRingArea: MIN_RING_AREA,
+        note:
+          "Sólo tierra firme IGAC (sin union Nominatim). Re-generable con `node Vento/scripts/generate-igac-boundary.mjs --land-only`.",
+      },
+      polygons,
+    };
+    await mkdir(dirname(LAND_OUTPUT_PATH), { recursive: true });
+    await writeFile(LAND_OUTPUT_PATH, `${JSON.stringify(artifact)}\n`);
+    console.log(
+      `Generated ${polygons.length} land-only polygons from IGAC (${igac.features.length} departments) at ${LAND_OUTPUT_PATH}`,
+    );
+    return;
+  }
+
   const [igac, nominatim] = await Promise.all([fetchIgac(), fetchNominatim()]);
 
   // Union: IGAC departments (tierra firme oficial) ∪ Nominatim Colombia
