@@ -351,9 +351,9 @@ function InfoPopover({
   const w = weightFor(variable.id);
   const polarityLabel =
     w > 0
-      ? "Suma a viabilidad"
+      ? "Suma a prefactibilidad"
       : w < 0
-        ? "Resta a viabilidad"
+        ? "Resta a prefactibilidad"
         : "No aporta al cálculo";
   const polarityClass =
     w > 0

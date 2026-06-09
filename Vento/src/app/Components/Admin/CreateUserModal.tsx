@@ -203,7 +203,7 @@ export default function CreateUserModal({
               <p className="mt-1.5 text-[11px] text-gray-500 leading-relaxed">
                 {role === "admin"
                   ? "Administrador: acceso completo a gestión de usuarios, privilegios y configuración."
-                  : "Analista: acceso al flujo principal de análisis de viabilidad, sin gestión de usuarios."}
+                  : "Analista: acceso al flujo principal de análisis de prefactibilidad, sin gestión de usuarios."}
               </p>
             </div>
 

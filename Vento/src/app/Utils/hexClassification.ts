@@ -1,64 +1,73 @@
 import { cellToLatLng } from "h3-js";
-import { COLOMBIA_LAND_POLYGON } from "./h3Resolution";
+import { LAND_POLYGON_RINGS, SEA_BBOXES, type LngLat } from "./h3Resolution";
 
 /**
  * Clasificación `onshore` / `offshore` para hexes de Colombia.
  *
- * Lógica:
- *   - Si el hex cae dentro del archipiélago → `offshore` (mar territorial
- *     alrededor de San Andrés / Providencia; las propias islas también se
- *     marcan así para tratar el archipiélago como un único proyecto marino).
- *   - Si el hex cae dentro de `COLOMBIA_LAND_POLYGON` (tierra firme
- *     aproximada) → `onshore`.
- *   - Cualquier otro hex dentro del territorio (mar territorial Caribe o
- *     Pacífico) → `offshore`.
+ * Pregunta que responde: ¿necesita emplazamiento marítimo o no?
  *
- * `COLOMBIA_LAND_POLYGON` es una aproximación manual de la costa real (sin
- * la expansión de ~22 km de `COLOMBIA_POLYGON`). Cuando llegue el polígono
- * IGAC tierra-firme oficial se reemplaza ese constante y la lógica de aquí
- * no cambia.
+ *  1. Si el centroide cae dentro de cualquier `LAND_POLYGON` (islas
+ *     demarcadas fielmente al contorno) → `onshore`. Gana sobre las
+ *     sea-bboxes que las contienen.
+ *  2. Si cae en una `SEA_BBOX` → `offshore`.
+ *  3. Cualquier otro hex → `onshore` (continente).
  */
 export type HexType = "onshore" | "offshore";
 
-function pointInRing(
-  lat: number,
-  lng: number,
-  ring: [number, number][],
-): boolean {
+type Box = { minLat: number; maxLat: number; minLng: number; maxLng: number };
+
+function inBox(lat: number, lng: number, b: Box): boolean {
+  return lat >= b.minLat && lat <= b.maxLat && lng >= b.minLng && lng <= b.maxLng;
+}
+
+/** Ray-casting clásico — funciona en cualquier orientación de vértices. */
+function pointInPolygon(lng: number, lat: number, ring: LngLat[]): boolean {
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const [xi, yi] = ring[i];
     const [xj, yj] = ring[j];
-    const intersect =
-      yi > lat !== yj > lat &&
-      lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
-    if (intersect) inside = !inside;
+    const crosses = (yi > lat) !== (yj > lat);
+    if (crosses && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
   }
   return inside;
+}
+
+function isInLand(lat: number, lng: number): boolean {
+  for (const ring of LAND_POLYGON_RINGS) {
+    if (pointInPolygon(lng, lat, ring)) return true;
+  }
+  return false;
+}
+
+function isInSea(lat: number, lng: number): boolean {
+  for (const b of SEA_BBOXES) if (inBox(lat, lng, b)) return true;
+  return false;
 }
 
 /** Devuelve `onshore` / `offshore` para un hex H3 dado. */
 export function hexType(h: string): HexType {
   const [lat, lng] = cellToLatLng(h);
-  // Tierra firme: onshore.
-  if (pointInRing(lat, lng, COLOMBIA_LAND_POLYGON)) return "onshore";
-  // Resto del territorio (mar territorial Caribe / Pacífico + archipiélago
-  // San Andrés/Providencia, ya cubiertos por IGAC + 12 millas): offshore.
-  return "offshore";
+  if (isInLand(lat, lng)) return "onshore";
+  if (isInSea(lat, lng)) return "offshore";
+  return "onshore";
 }
 
 /**
- * Lee el tipo dominante de un conjunto de hexes. `null` si no hay selección.
- * Si la selección está bien restringida por `toggleHex`, todos los hexes
- * comparten tipo y este helper devuelve ese tipo.
+ * Tipo dominante de un conjunto de hexes. Devuelve `offshore` si **al menos
+ * uno** de los hexes seleccionados cae en mar — política conservadora pedida
+ * por el cliente. `null` si el set está vacío.
  */
 export function dominantHexType(
   hexes: Iterable<string>,
 ): HexType | null {
-  const it = hexes[Symbol.iterator]();
-  const first = it.next();
-  if (first.done) return null;
-  return hexType(first.value);
+  let hasAny = false;
+  for (const h of hexes) {
+    hasAny = true;
+    if (hexType(h) === "offshore") return "offshore";
+  }
+  return hasAny ? "onshore" : null;
 }
 
 /**

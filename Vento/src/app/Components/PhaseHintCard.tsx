@@ -17,7 +17,7 @@ type Phase = Exclude<Aprincipal, null>;
  */
 const HINTS: Record<Phase, { text: string; persistent?: boolean }> = {
   "seleccion-area": {
-    text: "Selecciona un área en el mapa para poder analizar su viabilidad.",
+    text: "Selecciona un área en el mapa para poder analizar su prefactibilidad.",
     persistent: true,
   },
   dimensiones: {

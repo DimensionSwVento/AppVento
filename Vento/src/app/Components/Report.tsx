@@ -113,7 +113,7 @@ export default function Report() {
             Informe Vento
           </p>
           <h3 className="mt-1 text-xl font-bold">
-            Análisis preliminar de viabilidad eólica
+            Análisis preliminar de prefactibilidad eólica
           </h3>
           <p className="mt-1 text-[11px] text-white/80">{timestamp}</p>
         </header>
@@ -181,15 +181,15 @@ export default function Report() {
                 <span className="text-sm font-semibold text-gray-500">/ 100</span>
               </p>
               <p className="mt-1 text-[11px] leading-snug text-gray-600">
-                Promedio agregado de la evaluación de viabilidad para el área
-                seleccionada, según las dimensiones y variables analizadas.
+                Promedio agregado de la evaluación de prefactibilidad para el
+                área seleccionada, según las dimensiones y variables analizadas.
               </p>
             </section>
 
             {/* Puntajes por dimensión */}
             <section>
               <h4 className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                Puntajes por dimensión
+                Puntajes de idoneidad por dimensión
               </h4>
               <ul className="mt-2 flex flex-col gap-1.5">
                 {HEATMAP_DIMENSIONS.filter((d) => d.id !== "general").map((d) => {
