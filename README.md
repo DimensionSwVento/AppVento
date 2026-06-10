@@ -5,305 +5,302 @@
 Un convenio entre **ANH** (Agencia Nacional de Hidrocarburos) y **EAFIT** para acelerar la transicion energetica del pais.
 
 ---
+
 ## Que es Vento?
-Vento es una aplicacion web que muestra un **mapa interactivo de Colombia** dividido en miles de hexagonos. Cada hexagono tiene un **puntaje de viabilidad** que indica que tan factible es instalar un parque eolico en esa zona.
+
+Vento es una aplicacion web que muestra un **mapa interactivo de Colombia** dividido en hexagonos H3. El usuario selecciona un area, configura las caracteristicas tecnicas del proyecto eolico, y obtiene un **informe de prefactibilidad** con puntajes de idoneidad por dimension.
 
 | Pregunta | Respuesta |
 |----------|-----------|
 | Que problema resuelve? | Evaluar donde instalar parques eolicos toma semanas y requiere cruzar datos de muchas fuentes. Vento lo centraliza en un solo mapa. |
 | Para quien es? | Analistas de energia, investigadores y tomadores de decisiones de ANH/EAFIT. |
-| Que muestra el mapa? | Un mapa de calor donde los colores indican viabilidad: zonas rojas/calidas = alto potencial, zonas frias = bajo potencial. |
-| Que dimensiones evalua? | 5: Tecnica, Ambiental, Regulatoria, Socioeconomica y Macroeconomica. |
-| De donde vienen los datos? | El equipo de investigacion genera archivos `.h3.parquet` con los datos ya procesados por un modelo multicriterio  |
+| Que muestra el mapa? | Un heatmap en estandar Viridis (amarillo = alto, morado = bajo) centrado en una metrica a la vez (puntajes) + maximo una variable informativa simultanea por hex. Score agregado WLC con pesos signados. |
+| Que evalua? | Score general (WLC) + 5 dimensiones implementadas: Tecnica, Ambiental, Regulatoria, Socioeconomica, Macroeconomica. La spec del cliente menciona 7 puntajes (general + 6 dominios) — el 6to dominio queda pendiente de definicion en reunion. |
+| De donde vienen los datos? | El equipo de investigacion genera archivos `.h3.parquet` con los datos ya procesados por el modelo multicriterio. El backend FastAPI los sirve via tiles. |
 
 ---
 
 ## Flujo del Usuario
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        FLUJO COMPLETO DEL USUARIO                       │
-│                                                                         │
-│  ┌──────────┐    ┌──────────────┐    ┌──────────────┐                   │
-│  │  LOGIN   │───►│  MAPA SIG    │───►│  SELECCION   │                   │
-│  │          │    │  INTERACTIVO │    │  DE AREA     │                   │
-│  │ Correo   │    │              │    │              │                   │
-│  │ instit.  │    │ Mapa de calor│    │ Click en     │                   │
-│  │ + pwd    │    │ con hexagonos│    │ hexagonos    │                   │
-│  └──────────┘    └──────┬───────┘    └──────┬───────┘                   │
-│                         │                   │                           │
-│                         ▼                   ▼                           │
-│                  ┌──────────────┐    ┌──────────────────┐               │
-│                  │  FILTRADO    │    │  POPUP DETALLE   │               │
-│                  │              │    │                  │               │
-│                  │ Cambiar var. │    │ Score + variables│               │
-│                  │ del mapa de  │    │ del hexagono     │               │
-│                  │ calor        │    │ seleccionado     │               │
-│                  └──────────────┘    └──────────────────┘               │
-│                                                                         │
-│  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ FUTURO ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─   │
-│                                                                         │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐               │
-│  │ CONFIGURAR   │───►│  INFORME DE  │───►│  HISTORIAL   │               │
-│  │ VARIABLES    │    │  VIABILIDAD  │    │  DE INFORMES │               │
-│  │              │    │              │    │              │               │
-│  │ Por dimension│    │ Generacion   │    │ Consultar    │               │
-│  │ + parametros │    │ automatica   │    │ analisis     │               │
-│  │ tecnicos     │    │ + descarga   │    │ anteriores   │               │
-│  └──────────────┘    └──────────────┘    └──────────────┘               │
-└─────────────────────────────────────────────────────────────────────────┘
+Login (Keycloak)
+   |
+   v
+Mapa SIG interactivo
+   |
+   v
+Seleccion de area (onshore u offshore)
+   |
+   v
+Eleccion de dimensiones a evaluar
+   |
+   v
+Caracteristicas del proyecto (tipo emplazamiento auto, MW, distancia SIN)
+   |
+   v
+Informe de prefactibilidad
+   - Heatmap Viridis multidimensional
+   - Puntajes de idoneidad por dimension
+   - Variables informativas con catalogo
+   - Descarga PDF
 ```
 
-### Paso a paso
-
-| # | Paso | Que hace el usuarios | Que hace Vento | Entrega |
-|---|------|---------------------|----------------|---------|
-| 1 | **Login** | Ingresa correo institucional y contrasena | Valida dominio autorizado (ANH/EAFIT), emite token JWT | Primera |
-| 2 | **Ver mapa** | Navega, hace zoom y pan sobre Colombia | Renderiza ~4,500-31,000 hexagonos H3 con mapa de calor por score general | Primera |
-| 3 | **Filtrar** | Selecciona una variable especifica del selector | Re-colorea el mapa con los valores de esa variable en vez del score general | Primera |
-| 4 | **Explorar** | Hace click en un hexagono | Muestra popup con score, 2-3 variables secundarias y el ID H3 | Primera |
-| 5 | **Seleccionar area** | Hace click en multiples hexagonos | Resalta la zona seleccionada y muestra area aproximada | Primera |
-| 6 | **Configurar analisis** | Elige variables por dimension y parametros tecnicos (tipo turbina, MW) | Recalcula scores con el modelo multicriterio | Futura |
-| 7 | **Generar informe** | Solicita informe de la zona seleccionada | Genera reporte con desglose por dimension en <30 segundos | Futura |
-| 8 | **Descargar** | Click en "Descargar PDF" | Genera PDF con branding institucional ANH/EAFIT | Futura |
-| 9 | **Historial** | Accede a la seccion de informes anteriores | Muestra lista cronologica de analisis previos | Futura |
+Navegacion secuencial en el sidebar (area -> dimensiones -> caracteristicas -> informe); el usuario puede regresar libremente a fases anteriores.
 
 ---
 
-## Que se entrega y cuando?
+## Estado del Software
 
-### Primera Entrega (Sprint 1-4)
-
-Lo que el usuario puede hacer desde el dia uno:
+### Scope 1 (cerrado) — Login + Mapa + Admin
 
 | Modulo | Funcionalidad | Estado |
-|--------|--------------|--------|
-| **Login** | Keycloak OIDC via NextAuth, proteccion de rutas (middleware), logout federado | ✅ Hecho |
-| **Mapa interactivo** | Mapa Colombia con hex H3 client-side, click→H3 ID, seleccion con gris-azulado, hover+responsive | ✅ Hecho |
-| **Admin** | CRUD usuarios via Keycloak Admin API + UI integrada (crear, listar, editar, eliminar) | ✅ Hecho |
-| **Infraestructura** | Docker Compose Keycloak, deploy branches CI, standalone Next.js en AccuWeb | ✅ Hecho |
-| **Restricción dominio correo (US01.2)** | Whitelist en realm Keycloak | ⏳ Pendiente ~15min |
-| **Recovery contraseña (US01.3)** | SMTP en Keycloak | ⏳ Pendiente ~60min |
+|--------|---------------|--------|
+| Auth | Keycloak OIDC+PKCE via NextAuth, roles `admin` / `analista`, logout federado | OK |
+| Mapa interactivo | DeckGL + MapLibre, hexagonos H3, seleccion con polygon-clipping, hover, area en km^2 | OK |
+| Admin de usuarios | CRUD via Keycloak Admin REST API + UI integrada (crear, listar, editar, eliminar) | OK |
+| Notificacion email | Aviso al usuario al asignar rol admin (US-FB-06) | OK |
+| Infraestructura | Docker Compose Keycloak, deploy CI, Next.js standalone en AccuWeb (Apache) | OK |
 
-### Entregas Futuras (Sprint 5+)
+### Scope 2 (cerrado 2026-06-01) — Flujo completo de prefactibilidad
 
-| Modulo | Funcionalidad |
-|--------|--------------|
-| **Backend API** | API REST completa con FastAPI, reemplaza consumo de datos estaticos |
-| **Reportes** | Generacion de informes de viabilidad, descarga PDF, historial |
-| **Modelo multicriterio** | Configuracion de variables por dimension, parametros tecnicos del proyecto |
-| **Offshore** | Analisis de zonas maritimas con variables especificas (batimetria, oleaje) |
-| **Roles avanzados** | Sistema de permisos por rol (Admin, Analista, Visor) y auditoria |
-| **Analisis avanzado** | Sensibilidad de pesos, comparacion de escenarios, validacion TOPSIS |
+#### US03 Mapa
+
+| AC | Detalle | Estado |
+|----|---------|--------|
+| AC4 | Calculo de area en km^2 sobre la seleccion | OK |
+| AC extra | Busqueda tipo Google Maps para ubicacion de zona (sugerencia de expertos) | OK |
+
+#### US04 Variables / Configuracion de Dimensiones
+
+| Item | Detalle | Estado |
+|------|---------|--------|
+| Iconos | Iconos actualizados segun Figura 3 (identificador junto con el color para cada variable seleccionada) | OK |
+| Tooltip puntajes | Puntajes (general + dimensiones implementadas) en caja de tooltip de acceso permanente, aparte de las variables. Spec original pide 7 (general + 6 dominios), por aclarar | OK con observacion |
+| Popup por variable | Al click en una variable seleccionada se despliega un popup con icono, id y descripcion (no satura la pantalla; ampliable en sprint 3) | OK |
+
+#### US05 Caracteristicas del Proyecto
+
+| Item | Detalle | Estado |
+|------|---------|--------|
+| Formulario dinamico | Tres caracteristicas tecnicas para aerogeneradores | OK |
+| Catalogo de modelos | Seleccion entre 3 categorias estandar (S, M, L), ampliable a 5 | OK |
+| Validacion de rangos | Capacidad nominal valida con rangos tecnicos permitidos | OK |
+| Tipo de emplazamiento | Auto-deteccion onshore / offshore segun los hex seleccionados; restriccion a hex contiguos del mismo tipo (no se pueden mezclar) | OK |
+| Tecnologia offshore | Selector flotante / fija con cimentacion (se despliega solo si offshore) | OK |
+| Capacidad nominal | MWPicker de 4 ruedas (centenas / decenas / unidades / milesimas de 10 en 10), categoria derivada: Pequena <=1MW, Mediano >1MW, Grande >20MW | OK |
+| Tamano del proyecto | Numero de aerogeneradores + area + categoria S / M / L | OK |
+| Distancia al SIN | Tarea Felipe — derivada de la zona de interes | OK |
+
+#### US06 Informe — Previsualizacion y PDF
+
+| Item | Detalle | Estado |
+|------|---------|--------|
+| Score general | Mostrado en la previsualizacion del informe | OK |
+| Scores por dimension | Uno por dominio en la previsualizacion | OK |
+| Heatmap Viridis | Prefactibilidad en estandar Viridis (amarillo alto -> morado bajo) sobre el mapa | OK |
+| Foco una metrica | Visualizacion base centrada en UNA metrica a la vez (puntajes) + maximo OTRA simultanea (variables informativas) en el hex | OK |
+| Dos momentos de seleccion | Variables para visualizacion en la fase de dimensiones + variables para estadisticas en la fase de informe | OK |
+| Tooltip por hex / conjunto | Valor del hex (o promedio del conjunto) por cada puntaje y cada variable informativa seleccionada, con limite para no saturar | OK |
+| Rename UI | "Viabilidad (prefactibilidad)" y "Puntajes de idoneidad" en toda la UI del sprint 2 | OK |
+| Generacion PDF | Descarga del informe con branding | OK |
+
+
+### FB1 (cerrado) — Feedback Ronda 1
+
+| HU | Detalle | Estado |
+|----|---------|--------|
+| US-FB-01 | Keycloak en espanol + navegacion + politicas (mensajes, formularios y enlaces "Olvidaste tu contrasena" en es) | OK |
+| US-FB-02 | Flujo post-registro con confirmacion del lado app (pantalla intermedia + redireccion) | OK |
+| US-FB-03 | Gestion de expiracion de sesion con lifespans definidos en Keycloak | OK |
+| US-FB-04 | Territorio colombiano completo: offshore + insular (cartografia IGAC + Nominatim con mar territorial) | OK |
+| US-FB-05 | Admin: visibilidad y asignacion de roles desde la UI | OK |
+| US-FB-06 | Notificacion email al asignar admin (originalmente bloqueada por SMTP, implementada en scope 1) | OK |
+
+### FB2 (cerrado) — Feedback Ronda 2
+
+| HU | Detalle | Estado |
+|----|---------|--------|
+| US-FB2-01 | Guia visual del proximo paso (card flotante; tutoriales quedan para scope posterior) | OK |
+| US-FB2-02 | Cartografia oficial IGAC integrada al mapa | OK |
+| US-FB2-03 | Polish de layout landing/dashboard | OK |
+| US-FB2-04 | Transicion visual suave al cambiar resolucion H3 (slide via requestAnimationFrame + pill de "cargando") | OK |
+| US-FB2-05 | Icono claro de cierre de sesion | OK |
+
+### Pendiente
+
+Falta la conexion maestra a datos — ingesta del `.h3.parquet` al pipeline del backend para que el mapa base y los puntajes consuman datos reales en lugar de los mocks actuales.
 
 ---
 
 ## Arquitectura
 
-### Primera Entrega
-
 ```
-┌────────────────────────────────────────────────────────────┐
-│                   NAVEGADOR DEL USUARIO                    │
-│                                                            │
-│  ┌────────────┐  ┌───────────────────┐  ┌──────────────┐  │
-│  │  Modulo    │  │  Modulo Mapa SIG  │  │  Modulo      │  │
-│  │  Auth      │  │  (Leaflet + H3)   │  │  Admin       │  │
-│  │  (Login)   │  │                   │  │  (CRUD)      │  │
-│  └─────┬──────┘  └────────┬──────────┘  └──────┬───────┘  │
-│        │                  │                    │           │
-│        │     ┌────────────┴────────────┐       │           │
-│        │     │  JSON/GeoJSON estatico  │       │           │
-│        │     │  (hexagonos H3)         │       │           │
-│        │     └─────────────────────────┘       │           │
-│        │                                       │           │
-└────────┼───────────────────────────────────────┼───────────┘
-         │                                       │
-         ▼                                       ▼
-┌─────────────────────────────────────────────────────────┐
-│              MICRO-API  (Auth + Users)                  │
-│         POST /auth/login    GET /users                  │
-│         POST /auth/reset    POST/PUT/DELETE /users      │
-└────────────────────────┬────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────┐
-│              PostgreSQL + PostGIS                        │
-│         Tablas: users, sessions, password_resets         │
-└─────────────────────────────────────────────────────────┘
++--------------------------------------------------------------+
+|                  NAVEGADOR DEL USUARIO                       |
+|                                                              |
+|   Next.js 16 (App Router) + React 19 + Tailwind v4           |
+|   DeckGL (WebGL) + MapLibre GL + react-map-gl + h3-js        |
+|                                                              |
+|   Modulo Auth     Modulo Mapa SIG     Modulo Admin           |
+|   (NextAuth)      (US03..US06)        (Keycloak Admin API)   |
++----------+--------------+--------------+---------------------+
+           |              |              |
+           v              v              v
++--------------------------------------------------------------+
+|                   FastAPI Backend                            |
+|   /api/tiles/* (tiles, detail, variables, counts, warmup)    |
++----------+-----------------------------------+---------------+
+           |                                   |
+           v                                   v
++----------------------+              +------------------------+
+|   Parquet H3 maestro |              |   Keycloak (realm      |
+|   master_variables.  |              |   "vento", client      |
+|   h3.parquet         |              |   "vento-frontend"     |
++----------------------+              |   public OIDC+PKCE)    |
+                                      +------------------------+
 
-         ┌─────────────────────────────────┐
-         │  Script Python (offline)        │
-         │  .h3.parquet ──► JSON estatico  │
-         └─────────────────────────────────┘
+   Despliegue: AccuWeb.cloud (frontend via Apache, Keycloak en VM)
 ```
 
-### Arquitectura Futura
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                  NAVEGADOR DEL USUARIO                   │
-│   Mapa SIG  │  Reportes  │  Admin/Auth  │  Config MCDM  │
-└──────┬──────────────┬──────────────┬────────────┬───────┘
-       │              │              │            │
-       ▼              ▼              ▼            ▼
-┌─────────────────────────────────────────────────────────┐
-│                  API REST (FastAPI)                      │
-│  /hexagons  /reports  /users  /auth  /variables         │
-│  /filters   /metadata /sensitivity                      │
-└────────────────────────┬────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────┐
-│              PostgreSQL + PostGIS + H3                   │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
-│  │ Datos H3     │  │ Usuarios     │  │ Modelo MCDM  │  │
-│  │ (.parquet    │  │ Roles        │  │ (integracion │  │
-│  │  importados) │  │ Auditoria    │  │  futura)     │  │
-│  └──────────────┘  └──────────────┘  └──────────────┘  │
-└─────────────────────────────────────────────────────────┘
-```
+El backend FastAPI ya esta integrado. Los hexagonos se entregan por tile (z/x/y) para no enviar toda Colombia de una sola vez.
 
 ---
 
 ## Stack Tecnologico
 
-| Capa | Tecnologia | Por que? |
-|------|-----------|----------|
-| Frontend | Angular 17+ o React | Segun experiencia del equipo |
-| Mapas | Leaflet + plugin H3 (Canvas) | Suficiente para ~30K hexagonos, maduro y documentado |
-| Autenticacion | JWT | Estandar, stateless, simple |
-| Base de datos | PostgreSQL + PostGIS | Ya existe en el pipeline de investigacion |
-| Pre-proceso | Python + pandas + pyarrow | Compatible con pipeline existente |
-| Contenedores | Docker + docker-compose | Despliegue consistente |
-| Backend API (futuro) | FastAPI | Se implementa cuando se necesiten reportes y datos dinamicos |
+### Frontend (`Vento/`)
+
+| Capa | Tecnologia |
+|------|-----------|
+| Framework | Next.js 16 (App Router, standalone build) |
+| UI | React 19, Tailwind CSS v4 (OKLCH), lucide-react + iconos custom Tabler/SVG |
+| Mapas | DeckGL ~9.2 (TileLayer + PolygonLayer), MapLibre GL 5, react-map-gl 8, basemap CartoDB Positron |
+| H3 | h3-js 4.4 (cellToBoundary, polygonToCells, cellToChildren, etc.) |
+| Auth | NextAuth 5 (beta) con provider Keycloak |
+| Geocoding | Nominatim (OSM) + IGAC ArcGIS para union de cartografia |
+| Geometria | polygon-clipping para uniones, point-in-polygon ray-casting para clasificacion onshore/offshore |
+| PDF | html2canvas-pro + jsPDF (html2canvas-pro requerido por OKLCH/color-mix de Tailwind v4) |
+| Tests | Vitest + Testing Library (component + util tests) |
+
+### Backend (`AppVento---Backend/`)
+
+| Capa | Tecnologia |
+|------|-----------|
+| API | FastAPI + Uvicorn |
+| Datos | Parquet H3 master (`master_variables.h3.parquet`) cargado en memoria con indice espacial |
+| Lenguaje | Python (pandas, pyarrow) |
+| Arquitectura | Clean Architecture + DDD monorepo (ADR-007) |
+
+### Plataforma
+
+| Capa | Detalle |
+|------|---------|
+| Auth | Keycloak en VM (realm `vento`, client `vento-frontend` public OIDC+PKCE, client confidential `vento-web` para Admin API) |
+| Hosting | AccuWeb.cloud — frontend Next.js standalone tras Apache, backend FastAPI en mismo host |
+| CI | Build + deploy automatico por rama |
 
 ---
 
 ## Datos y Hexagonos H3
 
-### De donde vienen los datos?
+### Pipeline
 
 ```
 Equipo de investigacion
-        │
-        │  Genera archivo .h3.parquet
-        │  (modelo multicriterio ya procesado)
-        │
-        ▼
-Script de pre-proceso (Python)
-        │
-        │  Convierte a JSON/GeoJSON
-        │  Valida integridad de datos
-        │
-        ▼
-JSON estatico servido como asset del frontend
-        │
-        ▼
-El mapa renderiza los hexagonos
+        |
+        |  Genera master_variables.h3.parquet (modelo multicriterio)
+        v
+Backend FastAPI carga el parquet en warmup
+        |
+        |  Sirve hexagonos por tile (z/x/y) con variables y scores
+        v
+Frontend renderiza con DeckGL TileLayer
+        |
+        v
+Usuario interactua, selecciona, recibe informe
 ```
 
 ### Que contiene cada hexagono?
 
 | Campo | Descripcion | Ejemplo |
-|-------|------------|---------|
-| `h3_index` | Identificador unico del hexagono en el sistema H3 | `85283473fffffff` |
-| `score_general` | Promedio de viabilidad de las 5 dimensiones (0-1) | `0.73` |
-| `tipo_celda` | Si el hexagono es activo o excluido | `activa` / `excluida` |
-| Variables | Valores individuales por variable (velocidad viento, pendiente, etc.) | `6.2 m/s` |
+|-------|-------------|---------|
+| `h3_index` | Identificador unico H3 | `85283473fffffff` |
+| `score_general` | Promedio agregado WLC de las 5 dimensiones (0-1) | `0.73` |
+| `score_<dimension>` | Score por dimension (Tecnica / Ambiental / Regulatoria / Socioeconomica / Macroeconomica) | `0.81` |
+| Variables | Valores individuales (velocidad viento, pendiente, distancia SIN, etc.) | `6.2 m/s` |
 | Metadata | Origen y vigencia de cada variable | `GWA 2024` |
 
 ### Tipos de variables
 
 | Tipo | Que hace | Ejemplo |
-|------|---------|---------|
-| **Excluyente** | Descarta zonas automaticamente (si/no) | Area protegida, cuerpo de agua |
-| **De decision** | Contribuye al score con valor graduado | Velocidad de viento, densidad energetica |
-| **Penalizante** | Reduce el score sin excluir completamente | Pendiente pronunciada, distancia a red electrica |
-| **Informativa** | No afecta el score, pero ayuda a interpretar | Direccion del viento, composicion del terreno |
+|------|----------|---------|
+| Excluyente | Descarta zonas automaticamente | Area protegida |
+| De decision (suma) | Aumenta el score (peso positivo) | Velocidad de viento |
+| Penalizante (resta) | Reduce el score (peso negativo) | Pendiente pronunciada |
+| Informativa | No afecta el score, aparece en el informe para contexto | Direccion del viento |
 
-### Dimensiones de analisis
+### Dimensiones
 
 | Dimension | Que evalua |
-|-----------|-----------|
-| **Tecnica** | Recurso eolico, condiciones geologicas, logistica, implementacion |
-| **Ambiental** | Areas protegidas, impacto ecosistemas, restricciones ambientales |
-| **Regulatoria** | Normativa vigente, permisos, zonas de exclusion legal |
-| **Socioeconomica** | Impacto en comunidades, acceso, infraestructura social |
-| **Macroeconomica** | Costos, retorno de inversion, viabilidad financiera |
+|-----------|------------|
+| Tecnica | Recurso eolico, geologia, logistica, implementacion |
+| Ambiental | Areas protegidas, impacto ecosistemas |
+| Regulatoria | Normativa, permisos, zonas de exclusion legal |
+| Socioeconomica | Impacto en comunidades, acceso, infraestructura social |
+| Macroeconomica | Costos, retorno, viabilidad financiera |
 
 ---
 
 ## Estructura del Proyecto
 
 ```
-Vento-/
+AppVento/
+├── Vento/                              # Frontend Next.js
+│   ├── src/app/
+│   │   ├── Components/                 # Map, SideBar, Report, HeatmapLegend, etc.
+│   │   ├── Components/Admin/           # CRUD usuarios
+│   │   ├── Utils/
+│   │   │   ├── h3Resolution.ts         # SEA_BBOXES + LAND_POLYGONS (poligonos islas)
+│   │   │   ├── hexClassification.ts    # Clasificacion onshore/offshore
+│   │   │   ├── variableWeights.ts      # Pesos signados WLC (pendiente aval cliente)
+│   │   │   └── pdfExport.ts            # Exportacion PDF via html2canvas-pro + jsPDF
+│   │   └── contexts/                   # AprincipalContext, VariablesContext, etc.
+│   ├── scripts/
+│   │   └── generate-igac-boundary.mjs  # Genera poligono Colombia (IGAC + Nominatim union)
+│   └── package.json
 ├── docs/
-│   ├── project_knowledge.md          # Contexto completo del proyecto
+│   ├── project_knowledge.md
 │   └── spec/
-│       ├── architecture/
-│       │   └── architecture.md        # Arquitectura del sistema
-│       └── adr/                       # Decisiones arquitectonicas
-│           ├── ADR-001-stack-frontend.md
-│           ├── ADR-002-resolucion-h3.md
-│           ├── ADR-003-sin-backend-api-inicial.md
-│           └── ADR-004-equipo-viabilidad-1-mes.md
-├── _bmad-output/
-│   └── planning-artifacts/
-│       └── epics.md                   # Epicas e historias de usuario
-└── _bmad/                             # Configuracion BMAD (agentes de planificacion)
+│       ├── architecture/architecture.md
+│       └── adr/                        # ADR-001 a ADR-012
+├── Reportes_Entregas/
+│   ├── entrega-1/
+│   └── entrega-2/scope-2-entregado.md
+└── _bmad/                              # Configuracion BMAD multi-agente
 ```
+
+Backend en repo separado `AppVento---Backend/` (FastAPI clean-architecture, ver ADR-007).
 
 ---
 
-## Epicas del Proyecto
+## Decisiones Arquitectonicas (ADR)
 
-### Primera Entrega
+| ADR | Decision | Estado |
+|-----|----------|--------|
+| ADR-001 | Stack frontend (Next.js + DeckGL + MapLibre, no Leaflet) | Vigente |
+| ADR-002 | Resolucion H3 nivel 5-6 con downscale por zoom | Vigente |
+| ADR-003 | Sin backend API en scope 1 (luego revertido en scope 2) | Superada por ADR-007 |
+| ADR-004 | Scope inicial scope 1 a 1 mes | Cerrada |
+| ADR-005 | Keycloak como IdP institucional (realm `vento`) | Vigente |
+| ADR-006 | Storage y cache de datos geoespaciales | Vigente |
+| ADR-007 | Backend FastAPI con Clean Architecture + DDD, monorepo | Vigente |
+| ADR-008 | Arquitectura tile-based (`/api/tiles/{z}/{x}/{y}`) | Vigente |
+| ADR-009 | Notificaciones email pendientes de SMTP | Pendiente SMTP |
+| ADR-010 | Hosting AccuWeb (vs Supabase/Vercel) | Vigente |
+| ADR-011 | Procesamiento Parquet en backend, no en browser | Vigente |
+| ADR-012 | Confirmacion post-registro lado app | Vigente |
 
-| # | Epica | Historias | Prioridad |
-|---|-------|----------|-----------|
-| E1 | Fundacion y Setup | 6 (scaffold, datos, BD, Docker, spike H3, micro-API) | Critica |
-| E2 | Autenticacion Institucional | 4 (login, dominio, recuperar pwd, rutas) | Alta |
-| E3 | Mapa SIG Interactivo H3 | 9 (mapa, hexagonos, calor, filtro, popup, decorativos, dato central, seleccion area, panel control) | Critica |
-| E4 | Administracion de Usuarios | 3 (crear, listar, editar/eliminar) | Media |
-| E5 | Integracion, QA y Despliegue | 3 (integracion, testing E2E, deploy) | Alta |
-
-### Entregas Futuras
-
-| # | Epica | Historias |
-|---|-------|----------|
-| E6 | Backend API REST (FastAPI) | 5 |
-| E7 | Reportes e Informes de Viabilidad | 3 |
-| E8 | Integracion Modelo Multicriterio | 3 |
-| E9 | Analisis Maritimo (Offshore) | 3 |
-| E10 | Sistema de Roles y Permisos | 3 |
-| E11 | Analisis Avanzado y Sensibilidad | 3 |
-
-> Detalle completo de todas las historias con criterios de aceptacion en [`_bmad-output/planning-artifacts/epics.md`](_bmad-output/planning-artifacts/epics.md)
-
----
-
-## Mapa de Dependencias
-
-```
-                    PRIMERA ENTREGA
-                    ═══════════════
-
-E1.1 Scaffold ──► E1.5 Spike H3 ──► E1.2 Pre-proceso ──► E3 Mapa SIG
-                                                                │
-E1.1 Scaffold ──► E1.3 BD ──► E1.6 Micro-API ──► E2 Auth       │
-                                                    │           │
-                                                    ▼           ▼
-                                             E4 Admin    E5 Integracion + Deploy
-
-
-                    ENTREGAS FUTURAS
-                    ════════════════
-
-E1.6 Micro-API ──► E6 Backend API ──┬──► E7 Reportes
-                                    ├──► E8 MCDM ──► E9 Offshore
-                                    ├──► E10 Roles     E11 Analisis Avanzado
-                                    └──► E8 MCDM ──► E11 Analisis Avanzado
-```
+Detalle en [`docs/spec/adr/`](docs/spec/adr/).
 
 ---
 
@@ -312,36 +309,26 @@ E1.6 Micro-API ──► E6 Backend API ──┬──► E7 Reportes
 | Aspecto | Detalle |
 |---------|---------|
 | Institucion | Convenio ANH - Universidad EAFIT |
-| Fase del proyecto | Fase 2 (Desarrollo de herramienta SIG) con criterios para Fase 3 |
-| Equipo dev | 1 desarrollador fulltime + 2 part-time |
-| Plazo primera entrega | 1 mes (~230h de 320h disponibles) |
-| Metodologia | Agile con BMAD framework para planificacion asistida por IA |
-
----
-
-## Decisiones Arquitectonicas (ADR)
-
-| ADR | Decision | Justificacion |
-|-----|----------|---------------|
-| ADR-001 | Angular/React + Leaflet (sin WebGL pesado) | A res H3 nivel 5-6, Leaflet con Canvas es suficiente para ~30K hexagonos |
-| ADR-002 | Resolucion H3 nivel 5-6 | Balance entre precision y rendimiento (~4,500-31,000 hexagonos) |
-| ADR-003 | Sin backend API en primera entrega | Reduce complejidad; el equipo se concentra en mapa + login + admin |
-| ADR-004 | Viabilidad equipo 1 mes | 230h estimadas de 320h disponibles; scope ajustado a lo esencial |
+| Fase | Fase 2 (desarrollo herramienta SIG) con criterios para Fase 3 |
+| Metodologia | Agile + BMAD framework para planificacion asistida por IA |
 
 ---
 
 ## Glosario
 
 | Termino | Significado |
-|---------|------------|
-| **H3** | Sistema de indexacion hexagonal creado por Uber. Divide el planeta en hexagonos de diferentes resoluciones. Vento usa resolucion 5-6. |
-| **SIG** | Sistema de Informacion Geografica. Software para capturar, gestionar y visualizar datos georreferenciados. |
-| **MCDM** | Multi-Criteria Decision Making. Modelo matematico que pondera multiples variables para calcular un score de viabilidad. |
-| **AHP** | Analytic Hierarchy Process. Metodo para asignar pesos a los criterios del modelo multicriterio. |
-| **Score general** | Promedio ponderado de viabilidad considerando las 5 dimensiones. Valor entre 0 (no viable) y 1 (altamente viable). |
-| **Hexagono excluido** | Zona donde no es posible instalar (area protegida, cuerpo de agua, etc.). Se muestra en el mapa pero no es interactuable. |
-| **Parquet** | Formato de archivo columnar eficiente para datos grandes. El equipo de investigacion entrega los datos en `.h3.parquet`. |
-| **JWT** | JSON Web Token. Estandar para autenticacion segura sin estado en el servidor. |
-| **HAWT/VAWT** | Tipos de turbina eolica: eje horizontal (HAWT, las clasicas) y eje vertical (VAWT, para vientos turbulentos). |
-| **Offshore/Onshore** | Offshore = instalacion en el mar. Onshore = instalacion en tierra firme. |
-| **LCOE** | Levelized Cost of Energy. Costo promedio de generar electricidad durante la vida util del proyecto. |
+|---------|-------------|
+| H3 | Sistema de indexacion hexagonal de Uber. Vento usa resolucion 5-6. |
+| SIG | Sistema de Informacion Geografica. |
+| MCDM | Multi-Criteria Decision Making. Modelo que pondera variables para un score. |
+| WLC | Weighted Linear Combination. Tecnica de agregacion del score (pesos signados, suma/resta segun polaridad). |
+| AHP | Analytic Hierarchy Process. Metodo para derivar pesos del modelo. |
+| Prefactibilidad | Antes "viabilidad". Termino normalizado en UI tras feedback del cliente. |
+| Puntaje de idoneidad | Antes "puntaje". Termino normalizado tras feedback. |
+| Onshore / Offshore | Onshore = tierra firme. Offshore = mar. La clasificacion automatica usa `SEA_BBOXES` + `LAND_POLYGONS` (poligonos fieles a la costa, no rectangulos). |
+| Score general | Promedio ponderado WLC de las 5 dimensiones, [0, 1]. |
+| Hexagono excluido | Zona no instalable (area protegida, cuerpo de agua). Se muestra pero no es seleccionable. |
+| Parquet | Formato columnar eficiente. El equipo de investigacion entrega `.h3.parquet`. |
+| OIDC + PKCE | Estandar de autenticacion publica de Keycloak. Lo usa `vento-frontend`. |
+| HAWT / VAWT | Turbinas eje horizontal / vertical. |
+| LCOE | Levelized Cost of Energy. |
