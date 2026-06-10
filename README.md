@@ -15,7 +15,7 @@ Vento es una aplicacion web que muestra un **mapa interactivo de Colombia** divi
 | Que problema resuelve? | Evaluar donde instalar parques eolicos toma semanas y requiere cruzar datos de muchas fuentes. Vento lo centraliza en un solo mapa. |
 | Para quien es? | Analistas de energia, investigadores y tomadores de decisiones de ANH/EAFIT. |
 | Que muestra el mapa? | Un heatmap en estandar Viridis (amarillo = alto, morado = bajo) centrado en una metrica a la vez (puntajes) + maximo una variable informativa simultanea por hex. Score agregado WLC con pesos signados. |
-| Que evalua? | Score general (WLC) + 5 dimensiones implementadas: Tecnica, Ambiental, Regulatoria, Socioeconomica, Macroeconomica. La spec del cliente menciona 7 puntajes (general + 6 dominios) — el 6to dominio queda pendiente de definicion en reunion. |
+| Que evalua? | Score general (WLC) + 5-6 dimensiones implementadas: Tecnica, Ambiental, Regulatoria, Socioeconomica, Macroeconomica, Actualizable con la integracio a Datos|
 | De donde vienen los datos? | El equipo de investigacion genera archivos `.h3.parquet` con los datos ya procesados por el modelo multicriterio. El backend FastAPI los sirve via tiles. |
 
 ---
@@ -75,7 +75,7 @@ Navegacion secuencial en el sidebar (area -> dimensiones -> caracteristicas -> i
 | Item | Detalle | Estado |
 |------|---------|--------|
 | Iconos | Iconos actualizados segun Figura 3 (identificador junto con el color para cada variable seleccionada) | OK |
-| Tooltip puntajes | Puntajes (general + dimensiones implementadas) en caja de tooltip de acceso permanente, aparte de las variables. Spec original pide 7 (general + 6 dominios), por aclarar | OK con observacion |
+| Tooltip puntajes | Puntajes (general + dimensiones implementadas) en caja de tooltip de acceso permanente, aparte de las variables. | OK  |
 | Popup por variable | Al click en una variable seleccionada se despliega un popup con icono, id y descripcion (no satura la pantalla; ampliable en sprint 3) | OK |
 
 #### US05 Caracteristicas del Proyecto
@@ -296,7 +296,7 @@ Backend en repo separado `AppVento---Backend/` (FastAPI clean-architecture, ver 
 | ADR-006 | Storage y cache de datos geoespaciales | Vigente |
 | ADR-007 | Backend FastAPI con Clean Architecture + DDD, monorepo | Vigente |
 | ADR-008 | Arquitectura tile-based (`/api/tiles/{z}/{x}/{y}`) | Vigente |
-| ADR-009 | Notificaciones email pendientes de SMTP | Pendiente SMTP |
+| ADR-009 | Notificaciones email pendientes de SMTP | OK Pendiente SMTP oficial |
 | ADR-010 | Hosting AccuWeb (vs Supabase/Vercel) | Vigente |
 | ADR-011 | Procesamiento Parquet en backend, no en browser | Vigente |
 | ADR-012 | Confirmacion post-registro lado app | Vigente |
