@@ -104,12 +104,28 @@ Navegacion secuencial en el sidebar (area -> dimensiones -> caracteristicas -> i
 | Rename UI | "Viabilidad (prefactibilidad)" y "Puntajes de idoneidad" en toda la UI del sprint 2 | OK |
 | Generacion PDF | Descarga del informe con branding | OK |
 
-#### Feedback cerrado
 
-| Ronda | Detalle | Estado |
-|-------|---------|--------|
-| FB1 | Primera ronda de feedback de cliente, items cerrados | OK |
-| FB2 | Segunda ronda — slide rAF, pill cargando, card flotante, popover doble scroll, entre otros | OK |
+### FB1 (cerrado) — Feedback Ronda 1
+
+| HU | Detalle | Estado |
+|----|---------|--------|
+| US-FB-01 | Keycloak en espanol + navegacion + politicas (mensajes, formularios y enlaces "Olvidaste tu contrasena" en es) | OK |
+| US-FB-02 | Flujo post-registro con confirmacion del lado app (pantalla intermedia + redireccion) | OK |
+| US-FB-03 | Gestion de expiracion de sesion con lifespans definidos en Keycloak | OK |
+| US-FB-04 | Territorio colombiano completo: offshore + insular (cartografia IGAC + Nominatim con mar territorial) | OK |
+| US-FB-05 | Admin: visibilidad y asignacion de roles desde la UI | OK |
+| US-FB-06 | Notificacion email al asignar admin (originalmente bloqueada por SMTP, implementada en scope 1) | OK |
+
+### FB2 (cerrado) — Feedback Ronda 2
+
+| HU | Detalle | Estado |
+|----|---------|--------|
+| US-FB2-01 | Guia visual del proximo paso (card flotante; tutoriales quedan para scope posterior) | OK |
+| US-FB2-02 | Cartografia oficial IGAC integrada al mapa | OK |
+| US-FB2-03 | Polish de layout landing/dashboard | OK |
+| US-FB2-04 | Transicion visual suave al cambiar resolucion H3 (slide via requestAnimationFrame + pill de "cargando") | OK |
+| US-FB2-05 | Icono claro de cierre de sesion | OK |
+
 
 ### Pendiente
 
