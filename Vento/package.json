@@ -10,7 +10,8 @@
     "geo:igac": "node scripts/generate-igac-boundary.mjs",
     "test": "vitest --project unit",
     "test:run": "vitest run --project unit",
-    "test:ci": "vitest run --project unit"
+    "test:ci": "vitest run --project unit",
+    "test:coverage": "vitest run --project unit --coverage"
   },
   "dependencies": {
     "@deck.gl/core": "~9.2.11",
@@ -43,6 +44,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/coverage-v8": "^4.1.8",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",

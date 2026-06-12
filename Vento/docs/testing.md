@@ -9,10 +9,17 @@
 ## Cómo correr los tests
 
 ```bash
-npm test          # modo watch
-npm run test:run  # una sola corrida (local)
-npm run test:ci   # corrida para CI
+npm test               # modo watch
+npm run test:run       # una sola corrida (local)
+npm run test:ci        # corrida para CI
+npm run test:coverage  # corrida + reporte de cobertura (coverage/index.html)
 ```
+
+## Cobertura
+
+- Provider: `@vitest/coverage-v8`; reportes `text` + `lcov` + `html` en `coverage/` (gitignored).
+- Umbrales en `vitest.config.ts`, fijados ~5 puntos por debajo de la medición vigente.
+- **Política ratchet**: cuando la cobertura real sube de forma estable, sube los umbrales en el mismo PR. Nunca los bajes para "arreglar" CI — agrega tests o ajusta el `exclude` con justificación.
 
 ## Convención de ubicación
 

@@ -56,7 +56,9 @@ describe("h3Resolution - cartografia oficial IGAC (US-FB2-02)", () => {
     expect(isPointInColombia(15, -74)).toBe(false);
   });
 
-  it("polygonToCells produce celdas en zonas de control: Caribe, Pacifico, frontera y archipielago", () => {
+  // cellsForPolygons(5) tarda ~4s en frío y >20s bajo instrumentación de
+  // cobertura V8 — el timeout default de 5s lo hacía flaky.
+  it("polygonToCells produce celdas en zonas de control: Caribe, Pacifico, frontera y archipielago", { timeout: 60_000 }, () => {
     const cells = cellsForPolygons(5);
     const controls = [
       { name: "Caribe", lat: 10.9639, lng: -74.7964 },
