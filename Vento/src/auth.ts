@@ -134,7 +134,10 @@ console.log("[AUTH] ENV CHECK:", {
 // AccuWeb: Keycloak reporta HTTPS como issuer pero internamente solo acepta HTTP.
 // AUTH_KEYCLOAK_ISSUER debe ser la URL HTTP interna (ej: http://midominio.com/identity/realms/vento)
 // Reescribimos a HTTPS para que coincida con lo que Keycloak valida en el token.
-const issuerEnv = process.env.AUTH_KEYCLOAK_ISSUER!;
+// Fallback "" en vez de `!`: este módulo se evalúa también durante
+// `next build` (collecting page data), donde no hay env de auth — sin el
+// fallback, `.replace` sobre undefined rompe el build.
+const issuerEnv = process.env.AUTH_KEYCLOAK_ISSUER ?? "";
 // En local (localhost/127.0.0.1) Keycloak emite el issuer HTTP tal cual —
 // reescribirlo a HTTPS rompería la validación del "iss" (dev y e2e).
 const isLocalIssuer = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(issuerEnv);
@@ -154,23 +157,26 @@ function httpsToHttp(url: string): string {
   return url.replace(/^https:\/\//, "http://");
 }
 
-// Pre-fetch para diagnosticar qué devuelve Keycloak
-fetch(wellKnownUrl)
-  .then((res) => res.json())
-  .then((config) => {
-    console.log("[AUTH] DISCOVERY OK:", {
-      issuerFromKeycloak: config.issuer,
-      issuerWeExpect: issuer,
-      match: config.issuer === issuer ? "✅" : "❌ MISMATCH",
-      tokenEndpoint: config.token_endpoint,
-      tokenEndpointRewritten: httpsToHttp(config.token_endpoint),
-      authEndpoint: config.authorization_endpoint,
-      authEndpointRewritten: httpsToHttp(config.authorization_endpoint),
+// Pre-fetch para diagnosticar qué devuelve Keycloak (sólo si hay issuer —
+// en build no lo hay y el fetch sería ruido).
+if (issuerEnv) {
+  fetch(wellKnownUrl)
+    .then((res) => res.json())
+    .then((config) => {
+      console.log("[AUTH] DISCOVERY OK:", {
+        issuerFromKeycloak: config.issuer,
+        issuerWeExpect: issuer,
+        match: config.issuer === issuer ? "✅" : "❌ MISMATCH",
+        tokenEndpoint: config.token_endpoint,
+        tokenEndpointRewritten: httpsToHttp(config.token_endpoint),
+        authEndpoint: config.authorization_endpoint,
+        authEndpointRewritten: httpsToHttp(config.authorization_endpoint),
+      });
+    })
+    .catch((err) => {
+      console.error("[AUTH] DISCOVERY FETCH FAILED:", err.message);
     });
-  })
-  .catch((err) => {
-    console.error("[AUTH] DISCOVERY FETCH FAILED:", err.message);
-  });
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
