@@ -1,4 +1,6 @@
 "use client";
+
+import Image from "next/image";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
 
 const ORDEN = [
@@ -43,7 +45,7 @@ export default function NextStepButton({
           </span>
         )}
       </span>
-      <img src="/next.png" alt="Siguiente" className="w-[32px] h-[32px]" />
+      <Image src="/next.png" alt="Siguiente" width={32} height={32} className="w-[32px] h-[32px]" />
     </button>
   );
 }

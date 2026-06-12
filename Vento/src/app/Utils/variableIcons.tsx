@@ -13,7 +13,7 @@
  * `public/icons/…`), basta con cambiar este archivo: el catálogo y los
  * consumidores no se tocan.
  */
-import type { ComponentType, SVGProps } from "react";
+import { createElement, type ComponentType, type SVGProps } from "react";
 import * as lucide from "lucide-react";
 import { CUSTOM_ICONS, type CustomIconKey } from "./customIcons";
 import { TABLER_ICONS, type TablerIconKey } from "./tablerIcons";
@@ -47,4 +47,18 @@ export function getIconByVariableId(variableId: string): VariableIconComponent {
   const v = getVariableById(variableId);
   if (!v) return FALLBACK_ICON;
   return getIconByKey(v.iconKey);
+}
+
+/**
+ * Componente estático que resuelve y renderiza el ícono de una variable.
+ * Úsalo en vez de `const Icon = getIconByVariableId(...)` dentro de un
+ * render: asignar componentes durante el render dispara la regla
+ * react-hooks/static-components. Internamente usa createElement porque el
+ * componente resuelto sale de mapas estáticos (no se crea en cada render).
+ */
+export function VariableIcon({
+  variableId,
+  ...svgProps
+}: { variableId: string } & SVGProps<SVGSVGElement>) {
+  return createElement(getIconByVariableId(variableId), svgProps);
 }

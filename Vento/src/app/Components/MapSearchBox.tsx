@@ -31,14 +31,12 @@ export default function MapSearchBox({
   // Debounce + AbortController para cancelar peticiones obsoletas
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) {
-      setResults([]);
-      setLoading(false);
-      return;
-    }
+    // Las queries cortas se limpian en el onChange del input (event handler),
+    // no aquí — el effect sólo orquesta el fetch debounced.
+    if (q.length < 2) return;
     const controller = new AbortController();
-    setLoading(true);
     const t = setTimeout(() => {
+      setLoading(true);
       searchPlace(q, controller.signal)
         .then((places) => {
           setResults(places);
@@ -107,7 +105,14 @@ export default function MapSearchBox({
           ref={inputRef}
           type="search"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value;
+            setQuery(v);
+            if (v.trim().length < 2) {
+              setResults([]);
+              setLoading(false);
+            }
+          }}
           onFocus={() => results.length > 0 && setOpen(true)}
           placeholder="Buscar corregimiento, municipio…"
           aria-label="Buscar lugar"
@@ -156,7 +161,7 @@ export default function MapSearchBox({
             <li className="px-3 py-2 text-xs text-gray-500">Sin resultados</li>
           )}
           {results.map((place, i) => (
-            <li key={`${place.lat}-${place.lng}-${i}`} role="option">
+            <li key={`${place.lat}-${place.lng}-${i}`} role="option" aria-selected={false}>
               <button
                 type="button"
                 onClick={() => handleSelect(place)}

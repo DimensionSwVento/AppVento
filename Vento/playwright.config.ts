@@ -15,6 +15,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
+  // Local: 1 worker — dos dashboards WebGL-por-software en paralelo se
+  // matan de hambre de CPU en máquinas modestas y la página nunca hidrata
+  // (override: --workers=N). En CI los runners aguantan el default.
+  workers: process.env.CI ? undefined : 1,
   reporter: [["html", { open: "never" }], ["list"]],
   use: {
     baseURL: "http://localhost:3000",

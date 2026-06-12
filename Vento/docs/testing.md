@@ -43,6 +43,10 @@ npx playwright test --project=chromium   # sólo chromium (lo que corre CI)
 npm run e2e:ui                           # modo interactivo
 ```
 
+En local la suite corre con **1 worker** (dos dashboards WebGL-por-software en
+paralelo dejan sin CPU la hidratación en máquinas modestas); en máquinas
+potentes se puede paralelizar con `--workers=4`.
+
 - Specs en `e2e/`, mapeados a los RNF: seguridad (`auth-redirects`, `login-flow`, `admin-gating`), rendimiento (`dashboard-heatmap`, presupuesto ajustable con `E2E_CANVAS_BUDGET_MS`), usabilidad (`a11y` con axe-core), compatibilidad (chromium/firefox/webkit).
 - La autenticación usa usuarios reales sembrados en `infra/keycloak/realm-export.json` (SOLO DEV/E2E); el login se hace una vez por rol (`auth.setup.ts`) y se reutiliza vía storageState.
 - El backend FastAPI no vive en este repo: los datos se stubbean con `page.route()` (`e2e/fixtures/networkStubs.ts`).
@@ -53,7 +57,7 @@ npm run e2e:ui                           # modo interactivo
 
 | Job | Qué hace | Bloqueante |
 |---|---|---|
-| Lint | `npm run lint` | No (errores pre-existentes; ver TODO en el workflow) |
+| Lint | `npm run lint` (0 errores, 0 warnings) | Sí |
 | Unit tests + coverage | `npm run test:coverage` (resumen de cobertura en el log) | Sí |
 | Build | `npm run build` | Sí |
 | E2E | Keycloak via docker compose + Playwright chromium | Sí |

@@ -18,7 +18,6 @@ interface InlineEditState {
   lastName: string;
   email: string;
   enabled: boolean;
-  role: AppRole;
 }
 
 export default function UsersTable({
@@ -30,13 +29,15 @@ export default function UsersTable({
   onPageChange,
   hasMore,
 }: UsersTableProps) {
+  // onActivate forma parte del contrato del componente (lo pasa la página
+  // admin) pero la activación hoy se maneja con el select inline de estado.
+  void onActivate;
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [editState, setEditState] = useState<InlineEditState>({
     firstName: "",
     lastName: "",
     email: "",
     enabled: true,
-    role: "analista",
   });
   const [rolesCache, setRolesCache] = useState<Record<string, AppRole>>({});
   const containerRef = useRef<HTMLDivElement>(null);
@@ -48,7 +49,6 @@ export default function UsersTable({
   // el cache completo para que los cambios de rol se reflejen sin recargar (AC4).
   useEffect(() => {
     let cancelled = false;
-    setRolesCache({});
     Promise.allSettled(
       users.map(async (u) => {
         const res = await fetch(`/api/admin/users/${u.id}/roles`);
@@ -64,23 +64,14 @@ export default function UsersTable({
       for (const r of results) {
         if (r.status === "fulfilled") patch[r.value.id] = r.value.role;
       }
-      if (Object.keys(patch).length > 0) {
-        setRolesCache(patch);
-      }
+      // Reemplaza el cache completo: invalida entradas obsoletas (AC4) sin
+      // necesidad de un reset síncrono previo.
+      setRolesCache(patch);
     });
     return () => {
       cancelled = true;
     };
   }, [users]);
-
-  // Sync rol cacheado al abrir editor
-  useEffect(() => {
-    if (!selectedUserId) return;
-    const cached = rolesCache[selectedUserId];
-    if (cached) {
-      setEditState((prev) => ({ ...prev, role: cached }));
-    }
-  }, [selectedUserId, rolesCache]);
 
   // Close selection when clicking outside the list
   useEffect(() => {
@@ -99,13 +90,11 @@ export default function UsersTable({
       return;
     }
     setSelectedUserId(user.id);
-    const cachedRole = rolesCache[user.id] ?? "analista";
     setEditState({
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
       enabled: user.enabled,
-      role: cachedRole,
     });
   };
 

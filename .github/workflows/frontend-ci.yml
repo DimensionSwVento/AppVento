@@ -37,10 +37,6 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    # TODO: quitar continue-on-error cuando se corrijan los ~23 errores
-    # pre-existentes (no-explicit-any en api/admin, react-hooks/* del
-    # React Compiler). Hasta entonces el job reporta sin bloquear.
-    continue-on-error: true
     steps:
       - name: Checkout (sin actions de marketplace)
         run: |

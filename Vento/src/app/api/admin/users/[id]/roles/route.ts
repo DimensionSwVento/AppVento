@@ -20,8 +20,8 @@ export async function GET(
     const roles = keycloakRoles.map((r) => r.name);
 
     return NextResponse.json({ roles });
-  } catch (err: any) {
-    console.error(`GET /users/${id}/roles Error:`, err.message);
+  } catch (err) {
+    console.error(`GET /users/${id}/roles Error:`, err instanceof Error ? err.message : err);
     const status = err instanceof KeycloakAdminError ? err.status : 500;
     return NextResponse.json(
       { error: "Error al obtener roles del usuario" },
