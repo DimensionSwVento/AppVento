@@ -1,0 +1,128 @@
+# CI del frontend (Vento/). No requiere secrets del repositorio: las
+# credenciales de Keycloak para e2e son de DEV/E2E y viven en
+# infra/keycloak/realm-export.json (jamás usarlas en producción).
+#
+# Pendiente para un admin del repo (los contribuidores no podemos):
+#   - Marcar unit / build / e2e como required status checks en main
+#   - Activar branch protection en main
+name: Frontend CI
+
+on:
+  pull_request:
+    paths:
+      - "Vento/**"
+      - "infra/keycloak/**"
+      - ".github/workflows/frontend-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "Vento/**"
+      - "infra/keycloak/**"
+      - ".github/workflows/frontend-ci.yml"
+
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: Vento
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    # TODO: quitar continue-on-error cuando se corrijan los ~23 errores
+    # pre-existentes (no-explicit-any en api/admin, react-hooks/* del
+    # React Compiler). Hasta entonces el job reporta sin bloquear.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: Vento/.nvmrc
+          cache: npm
+          cache-dependency-path: Vento/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+
+  unit:
+    name: Unit tests + coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: Vento/.nvmrc
+          cache: npm
+          cache-dependency-path: Vento/package-lock.json
+      - run: npm ci
+      - run: npm run test:coverage
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: Vento/coverage/
+          retention-days: 14
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: Vento/.nvmrc
+          cache: npm
+          cache-dependency-path: Vento/package-lock.json
+      - run: npm ci
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: ""
+          NEXT_PUBLIC_KEYCLOAK_URL: "http://localhost:8080"
+          NEXT_PUBLIC_KEYCLOAK_REALM: "vento"
+
+  e2e:
+    name: E2E (Playwright, chromium)
+    runs-on: ubuntu-latest
+    needs: [unit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: Vento/.nvmrc
+          cache: npm
+          cache-dependency-path: Vento/package-lock.json
+      - run: npm ci
+
+      - name: Start Keycloak (realm vento + usuarios e2e)
+        working-directory: infra/keycloak
+        run: docker compose up -d --wait
+
+      - name: Wait for realm import
+        working-directory: infra/keycloak
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/realms/vento/.well-known/openid-configuration > /dev/null; then
+              echo "Realm vento listo"; exit 0
+            fi
+            sleep 5
+          done
+          echo "Keycloak no respondió a tiempo"; docker compose logs --tail 50; exit 1
+
+      - name: Install Playwright chromium
+        run: npx playwright install --with-deps chromium
+
+      # El webServer de playwright.config.ts compila y sirve el build de
+      # producción con el env e2e (credenciales dev in-repo).
+      - name: Run e2e suite
+        run: npx playwright test --project=chromium
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: Vento/playwright-report/
+          retention-days: 14
