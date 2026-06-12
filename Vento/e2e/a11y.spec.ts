@@ -35,6 +35,10 @@ test.describe("Accesibilidad (axe-core)", () => {
 
     test("sin violaciones serias", async ({ page, browserName }) => {
       test.skip(browserName !== "chromium", "WebGL sólo en chromium");
+      // axe corre en el main thread de la página, que compite con el render
+      // continuo de deck.gl (WebGL por software en máquinas sin GPU) —
+      // triplicar el timeout evita falsos timeouts bajo contención.
+      test.slow();
       await stubBasemap(page);
       await stubTilesApi(page);
       await page.goto("/dashboard");
