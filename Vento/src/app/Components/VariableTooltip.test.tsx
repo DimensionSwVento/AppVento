@@ -34,20 +34,20 @@ describe("VariableTooltip (US04-AC2)", () => {
     expect(screen.getByText(additive.description)).toBeInTheDocument();
   });
 
-  it("muestra 'Suma a viabilidad' para variable con peso positivo", () => {
+  it("muestra 'Suma a prefactibilidad' para variable con peso positivo", () => {
     render(<VariableTooltip variable={additive} />);
     fireEvent.click(
       screen.getByRole("button", { name: /Información sobre/i }),
     );
-    expect(screen.getByText("Suma a viabilidad")).toBeInTheDocument();
+    expect(screen.getByText("Suma a prefactibilidad")).toBeInTheDocument();
   });
 
-  it("muestra 'Resta a viabilidad' para variable con peso negativo", () => {
+  it("muestra 'Resta a prefactibilidad' para variable con peso negativo", () => {
     render(<VariableTooltip variable={penalizing} />);
     fireEvent.click(
       screen.getByRole("button", { name: /Información sobre/i }),
     );
-    expect(screen.getByText("Resta a viabilidad")).toBeInTheDocument();
+    expect(screen.getByText("Resta a prefactibilidad")).toBeInTheDocument();
   });
 
   it("segundo click sobre el icono cierra el popover", () => {

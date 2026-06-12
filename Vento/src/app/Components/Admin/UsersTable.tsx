@@ -306,7 +306,7 @@ export default function UsersTable({
                     <>
                       {/* Edit icon — always visible */}
                       <button
-                        onClick={() => onEdit(user)}
+                        onClick={() => handleSelectUser(user)}
                         title="Editar usuario"
                         className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 hover:border-[#165170] transition-colors"
                         style={{ color: "#165170" }}

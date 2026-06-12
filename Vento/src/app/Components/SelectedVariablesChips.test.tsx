@@ -96,7 +96,7 @@ describe("SelectedVariablesChips (US04-AC4) — panel default, pill al colapsar"
     expect(
       within(info).getByText(penalizingVar.description),
     ).toBeInTheDocument();
-    expect(within(info).getByText("Resta a viabilidad")).toBeInTheDocument();
+    expect(within(info).getByText("Resta a prefactibilidad")).toBeInTheDocument();
   });
 
   it("info popover tiene su propio botón de cerrar", () => {

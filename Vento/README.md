@@ -55,6 +55,14 @@ npm run dev
 
 Abre `http://localhost:3000` — el mapa cargara los hexagonos desde el backend en `:8000`.
 
+## Testing
+
+```bash
+npm run test:run   # suite unitaria (Vitest + React Testing Library)
+```
+
+Convenciones, patrones de mocking y guía completa en [`docs/testing.md`](docs/testing.md).
+
 ## API Endpoints consumidos
 
 Todos provistos por el backend FastAPI:
