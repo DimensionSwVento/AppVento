@@ -54,11 +54,13 @@ npm run e2e:ui                           # modo interactivo
 | Job | Qué hace | Bloqueante |
 |---|---|---|
 | Lint | `npm run lint` | No (errores pre-existentes; ver TODO en el workflow) |
-| Unit tests + coverage | `npm run test:coverage` + artefacto `coverage/` | Sí |
+| Unit tests + coverage | `npm run test:coverage` (resumen de cobertura en el log) | Sí |
 | Build | `npm run build` | Sí |
-| E2E | Keycloak via docker compose + Playwright chromium + artefacto `playwright-report/` | Sí |
+| E2E | Keycloak via docker compose + Playwright chromium | Sí |
 
-No usa secrets del repositorio (restricción: los contribuidores no pueden crearlos). **Pendiente para un admin**: marcar unit/build/e2e como required checks y activar branch protection en `main`.
+No usa secrets del repositorio (restricción: los contribuidores no pueden crearlos) **ni actions de marketplace**: la política de la organización sólo permite actions de repos propios, así que el checkout se hace con `git` + `github.token` y Node sale del tool cache del runner.
+
+**Pendiente para un admin**: (1) permitir "actions created by GitHub" en Settings → Actions → General — habilita `actions/checkout`, cache de npm y la subida de artefactos (`coverage/`, `playwright-report/`); (2) marcar unit/build/e2e como required checks y activar branch protection en `main`.
 
 ## Patrones de mocking reutilizables
 
