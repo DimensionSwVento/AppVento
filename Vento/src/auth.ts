@@ -135,7 +135,12 @@ console.log("[AUTH] ENV CHECK:", {
 // AUTH_KEYCLOAK_ISSUER debe ser la URL HTTP interna (ej: http://midominio.com/identity/realms/vento)
 // Reescribimos a HTTPS para que coincida con lo que Keycloak valida en el token.
 const issuerEnv = process.env.AUTH_KEYCLOAK_ISSUER!;
-const issuer = issuerEnv.replace(/^http:\/\//, "https://");
+// En local (localhost/127.0.0.1) Keycloak emite el issuer HTTP tal cual —
+// reescribirlo a HTTPS rompería la validación del "iss" (dev y e2e).
+const isLocalIssuer = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(issuerEnv);
+const issuer = isLocalIssuer
+  ? issuerEnv
+  : issuerEnv.replace(/^http:\/\//, "https://");
 const wellKnownUrl = `${issuerEnv}/.well-known/openid-configuration`;
 
 console.log("[AUTH] ISSUER CONFIG:", {

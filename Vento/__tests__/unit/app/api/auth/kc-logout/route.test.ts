@@ -24,15 +24,26 @@ function makeRequest(origin: string, forwardedProto?: string, forwardedHost?: st
 }
 
 describe("GET /api/auth/kc-logout", () => {
-  it("redirige a Keycloak con issuer reescrito a HTTPS, client_id y post_logout_redirect_uri", async () => {
+  it("issuer localhost se preserva en HTTP (Keycloak local sin TLS)", async () => {
     const { GET } = await import("@/app/api/auth/kc-logout/route");
     const req = makeRequest("http://localhost:3000");
     const res = await GET(req);
     expect(res.status).toBe(307);
     const location = res.headers.get("location")!;
-    expect(location).toContain("https://localhost:8080/realms/vento/protocol/openid-connect/logout");
+    expect(location).toContain("http://localhost:8080/realms/vento/protocol/openid-connect/logout");
     expect(location).toContain("client_id=vento-web");
     expect(location).toContain(`post_logout_redirect_uri=${encodeURIComponent("http://localhost:3000/")}`);
+  });
+
+  it("issuer no-local HTTP se reescribe a HTTPS (AccuWeb)", async () => {
+    process.env.AUTH_KEYCLOAK_ISSUER = "http://vento.dominio.com/identity/realms/vento";
+    const { GET } = await import("@/app/api/auth/kc-logout/route");
+    const req = makeRequest("http://localhost:3000");
+    const res = await GET(req);
+    const location = res.headers.get("location")!;
+    expect(location).toContain(
+      "https://vento.dominio.com/identity/realms/vento/protocol/openid-connect/logout",
+    );
   });
 
   it("prioriza AUTH_URL sobre x-forwarded-* y nextUrl.origin", async () => {

@@ -111,6 +111,9 @@ export default function MapSearchBox({
           onFocus={() => results.length > 0 && setOpen(true)}
           placeholder="Buscar corregimiento, municipio…"
           aria-label="Buscar lugar"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-controls="map-search-listbox"
           aria-expanded={open}
           className="w-full rounded-full bg-white/95 px-9 py-2 text-sm text-[#393939] placeholder:text-gray-400 shadow-md outline-none focus:bg-white"
         />
@@ -145,6 +148,7 @@ export default function MapSearchBox({
 
       {open && (
         <ul
+          id="map-search-listbox"
           role="listbox"
           className="mt-1 max-h-80 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-black/5"
         >
