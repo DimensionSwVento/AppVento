@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { readFileSync } from "node:fs";
 import polygonClipping from "polygon-clipping";
 
 // --- Fuente A: IGAC departamentos (tierra firme, fuente oficial colombiana) ---
@@ -17,25 +18,12 @@ const IGAC_QUERY = {
   f: "json",
 };
 
-// --- Fuente B: Nominatim/OSM admin_level=2 Colombia (incluye mar territorial ~22 km) ---
-//
-// El mismo patrón que usa el geocoder cliente (`Vento/src/app/Utils/geocoder.ts`).
-// Se aprovecha que OSM mantiene los polígonos administrativos con mar territorial
-// para que el borde quede ~20 km offshore en la costa sin necesidad de buffer.
+// --- Fuente B: h3.parquet — boundary real según celdas H3 ---
+// Lee el parquet, convierte cada celda H3 a polígono hexagonal y une todo.
+// No se usa Nominatim ni buffer marítimo: el boundary es exactamente lo que
+// cubre el parquet, sin más ni menos.
 
-const NOMINATIM_SOURCE_URL = "https://nominatim.openstreetmap.org/search";
-
-const NOMINATIM_QUERY = {
-  q: "Colombia",
-  countrycodes: "co",
-  format: "jsonv2",
-  polygon_geojson: "1",
-  limit: "1",
-  "accept-language": "es",
-};
-
-// Nominatim exige User-Agent identificable (https://operations.osmfoundation.org/policies/nominatim/).
-const NOMINATIM_USER_AGENT = "vento-app/1.0 (generate-igac-boundary.mjs)";
+const H3_PARQUET_PATH = resolve("tabla_maestra.h3.parquet"); // ← EDITA AQUÍ si la ruta es distinta
 
 const OUTPUT_PATH = resolve("src/app/Utils/data/colombia-igac-boundary.json");
 const LAND_OUTPUT_PATH = resolve(
@@ -43,19 +31,15 @@ const LAND_OUTPUT_PATH = resolve(
 );
 const MIN_RING_AREA = 0.000001;
 
-// Modo `--land-only` → tierra firme oficial sin la unión Nominatim (sin
-// mar territorial). Usado por `hexClassification.ts` para auto-detectar
-// onshore/offshore con precisión real (no la heurística manual previa).
 const LAND_ONLY_MODE = process.argv.includes("--land-only");
+
+// ---------------------------------------------------------------------------
+// Helpers geométricos (sin cambios)
+// ---------------------------------------------------------------------------
 
 function buildIgacUrl() {
   const params = new URLSearchParams(IGAC_QUERY);
   return `${IGAC_SOURCE_URL}?${params.toString()}`;
-}
-
-function buildNominatimUrl() {
-  const params = new URLSearchParams(NOMINATIM_QUERY);
-  return `${NOMINATIM_SOURCE_URL}?${params.toString()}`;
 }
 
 function closeRing(ring) {
@@ -76,30 +60,12 @@ function ringArea(ring) {
   return area / 2;
 }
 
-/** Convierte feature ArcGIS REST (IGAC) a MultiPolygons separados para polygon-clipping. */
 function igacFeatureToMultiPolygons(feature) {
   const rings = feature.geometry?.rings ?? [];
   return rings
     .map((ring) => closeRing(ring))
     .filter((ring) => ring.length >= 4)
     .map((ring) => [[ring]]);
-}
-
-/**
- * Convierte GeoJSON Polygon/MultiPolygon (Nominatim) a UNA MultiPolygon de
- * polygon-clipping. Soporta huecos (rings interiores).
- */
-function nominatimGeojsonToMultiPolygon(geojson) {
-  if (!geojson) return null;
-  if (geojson.type === "Polygon") {
-    // coordinates = [outer, hole1, hole2, ...] → MultiPolygon con un polígono
-    return [geojson.coordinates];
-  }
-  if (geojson.type === "MultiPolygon") {
-    // coordinates = [[outer, holes...], [outer2, holes...]] → ya es MultiPolygon
-    return geojson.coordinates;
-  }
-  return null;
 }
 
 function ringBounds(ring) {
@@ -135,6 +101,55 @@ function normalizeUnion(result) {
     .sort((a, b) => Math.abs(ringArea(b)) - Math.abs(ringArea(a)));
 }
 
+// ---------------------------------------------------------------------------
+// Leer h3.parquet y convertir celdas H3 → MultiPolygons para polygon-clipping
+// ---------------------------------------------------------------------------
+
+async function loadH3MultiPolygons(parquetPath) {
+  // Usamos Python como subprocess para leer el parquet y volcar
+  // los vértices de cada celda H3 en JSON — evita dependencia nativa de parquet en Node.
+  const { execSync } = await import("node:child_process");
+
+  const pythonScript = `
+import sys, json, pandas as pd, h3
+
+df = pd.read_parquet(r"${parquetPath}")
+
+# Detectar columna H3 automáticamente
+col = next(
+    (c for c in df.columns if any(k in c.lower() for k in ("h3", "index", "cell"))),
+    df.columns[0]
+)
+sys.stderr.write(f"Columna H3: {col}, filas: {len(df)}\\n")
+
+cells = df[col].dropna().astype(str).unique().tolist()
+sys.stderr.write(f"Celdas únicas: {len(cells)}\\n")
+
+# h3.cells_to_geo devuelve GeoJSON geometry (Polygon o MultiPolygon)
+geo = h3.cells_to_geo(cells)
+print(json.dumps(geo))
+`;
+
+  const stdout = execSync(`python3 -c "${pythonScript.replace(/"/g, '\\"')}"`, {
+    maxBuffer: 512 * 1024 * 1024, // 512 MB
+  });
+
+  const geo = JSON.parse(stdout.toString());
+
+  // Convertir GeoJSON geometry → formato MultiPolygon de polygon-clipping
+  if (geo.type === "Polygon") {
+    return [geo.coordinates];
+  }
+  if (geo.type === "MultiPolygon") {
+    return geo.coordinates;
+  }
+  throw new Error(`Tipo GeoJSON inesperado desde h3.cells_to_geo: ${geo.type}`);
+}
+
+// ---------------------------------------------------------------------------
+// Fetch IGAC
+// ---------------------------------------------------------------------------
+
 async function fetchIgac() {
   const sourceQueryUrl = buildIgacUrl();
   const response = await fetch(sourceQueryUrl);
@@ -155,53 +170,22 @@ async function fetchIgac() {
   };
 }
 
-async function fetchNominatim() {
-  const sourceQueryUrl = buildNominatimUrl();
-  const response = await fetch(sourceQueryUrl, {
-    headers: {
-      "User-Agent": NOMINATIM_USER_AGENT,
-      "Accept-Language": "es",
-    },
-  });
-  if (!response.ok) {
-    throw new Error(
-      `Nominatim request failed: ${response.status} ${response.statusText}`,
-    );
-  }
-  const payload = await response.json();
-  if (!Array.isArray(payload) || payload.length === 0) {
-    throw new Error("Nominatim did not return any result for 'Colombia'");
-  }
-  const colombia = payload[0];
-  const multiPolygon = nominatimGeojsonToMultiPolygon(colombia.geojson);
-  if (!multiPolygon) {
-    throw new Error(
-      `Nominatim Colombia entry has no usable polygon (type=${colombia.geojson?.type})`,
-    );
-  }
-  return {
-    sourceQueryUrl,
-    displayName: colombia.display_name,
-    osmType: colombia.osm_type,
-    osmId: colombia.osm_id,
-    multiPolygon,
-  };
-}
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
 
 async function main() {
   if (LAND_ONLY_MODE) {
-    // Solo IGAC, sin Nominatim, sin union. Tierra firme oficial pura.
+    // Solo IGAC tierra firme, sin h3.parquet
     const igac = await fetchIgac();
     const unionResult = polygonClipping.union(...igac.multiPolygons);
     const polygons = normalizeUnion(unionResult);
-    if (polygons.length === 0) {
-      throw new Error("Union produced no usable outer rings");
-    }
+    if (polygons.length === 0) throw new Error("Union produced no usable outer rings");
+
     const bounds = mergeBounds(polygons.map(ringBounds));
     const artifact = {
       metadata: {
-        source:
-          "IGAC departamentos (tierra firme oficial) — sin mar territorial. Usado por hexClassification para auto-detectar onshore/offshore.",
+        source: "IGAC departamentos (tierra firme oficial) — sin mar territorial.",
         sources: {
           land: {
             name: "IGAC limites/limites MapServer layer 2 - Departamentos",
@@ -215,36 +199,34 @@ async function main() {
         polygonCount: polygons.length,
         bounds,
         minRingArea: MIN_RING_AREA,
-        note:
-          "Sólo tierra firme IGAC (sin union Nominatim). Re-generable con `node Vento/scripts/generate-igac-boundary.mjs --land-only`.",
+        note: "Sólo tierra firme IGAC. Re-generable con `node generate-igac-boundary.mjs --land-only`.",
       },
       polygons,
     };
     await mkdir(dirname(LAND_OUTPUT_PATH), { recursive: true });
     await writeFile(LAND_OUTPUT_PATH, `${JSON.stringify(artifact)}\n`);
-    console.log(
-      `Generated ${polygons.length} land-only polygons from IGAC (${igac.features.length} departments) at ${LAND_OUTPUT_PATH}`,
-    );
+    console.log(`Generated ${polygons.length} land-only polygons → ${LAND_OUTPUT_PATH}`);
     return;
   }
 
-  const [igac, nominatim] = await Promise.all([fetchIgac(), fetchNominatim()]);
+  // Modo normal: IGAC tierra firme ∪ boundary real del h3.parquet
+  console.log("Cargando IGAC...");
+  const igac = await fetchIgac();
 
-  // Union: IGAC departments (tierra firme oficial) ∪ Nominatim Colombia
-  // (silueta incluyendo mar territorial). Resultado: borde a ~22 km offshore
-  // con la precisión interna de departamentos del IGAC.
-  const allMultiPolygons = [...igac.multiPolygons, nominatim.multiPolygon];
+  console.log(`Leyendo ${H3_PARQUET_PATH} y calculando boundary H3...`);
+  const h3MultiPolygon = await loadH3MultiPolygons(H3_PARQUET_PATH);
+
+  console.log("Uniendo IGAC + H3 boundary...");
+  const allMultiPolygons = [...igac.multiPolygons, h3MultiPolygon];
   const unionResult = polygonClipping.union(...allMultiPolygons);
   const polygons = normalizeUnion(unionResult);
-  if (polygons.length === 0) {
-    throw new Error("Union produced no usable outer rings");
-  }
+  if (polygons.length === 0) throw new Error("Union produced no usable outer rings");
 
   const bounds = mergeBounds(polygons.map(ringBounds));
   const artifact = {
     metadata: {
       source:
-        "Union de IGAC departamentos (tierra firme, oficial) + Nominatim/OSM admin_level=2 Colombia (incluye mar territorial ~22 km offshore)",
+        "Union de IGAC departamentos (tierra firme, oficial) + boundary real de celdas H3 del parquet (sin mar territorial fijo)",
       sources: {
         land: {
           name: "IGAC limites/limites MapServer layer 2 - Departamentos",
@@ -253,22 +235,17 @@ async function main() {
           query: IGAC_QUERY,
           featureCount: igac.features.length,
         },
-        sea: {
-          name: "Nominatim OSM admin_level=2 Colombia (mar territorial)",
-          url: NOMINATIM_SOURCE_URL,
-          sourceQueryUrl: nominatim.sourceQueryUrl,
-          query: NOMINATIM_QUERY,
-          osmType: nominatim.osmType,
-          osmId: nominatim.osmId,
-          displayName: nominatim.displayName,
+        h3: {
+          name: "h3.parquet — boundary derivado de celdas H3",
+          path: H3_PARQUET_PATH,
+          note: "El boundary marítimo refleja exactamente la cobertura del parquet, no una distancia fija.",
         },
       },
       generatedAt: new Date().toISOString(),
       polygonCount: polygons.length,
       bounds,
       minRingArea: MIN_RING_AREA,
-      note:
-        "Tierra firme: IGAC oficial. Mar territorial (~22 km offshore): Nominatim/OSM. Decisión documentada en ADR-014. Re-generable con `node Vento/scripts/generate-igac-boundary.mjs`.",
+      note: "Re-generable con `node generate-igac-boundary.mjs`.",
     },
     polygons,
   };
@@ -276,9 +253,7 @@ async function main() {
   await mkdir(dirname(OUTPUT_PATH), { recursive: true });
   await writeFile(OUTPUT_PATH, `${JSON.stringify(artifact)}\n`);
 
-  console.log(
-    `Generated ${polygons.length} polygons from union of IGAC (${igac.features.length} departments) + Nominatim Colombia at ${OUTPUT_PATH}`,
-  );
+  console.log(`✅ Generated ${polygons.length} polygons → ${OUTPUT_PATH}`);
 }
 
 main().catch((error) => {
