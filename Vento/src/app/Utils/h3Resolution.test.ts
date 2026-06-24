@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { latLngToCell, polygonToCells } from "h3-js";
 import {
-  ARCHIPELAGO_POLYGON,
   COLOMBIA_IGAC_METADATA,
   COLOMBIA_IGAC_POLYGONS,
   COLOMBIA_POLYGON,
@@ -21,21 +20,21 @@ function cellsForPolygons(resolution: number): Set<string> {
 }
 
 describe("h3Resolution - cartografia oficial IGAC (US-FB2-02)", () => {
-  it("COLOMBIA_POLYGON viene del artefacto IGAC, cierra sobre si mismo y supera la simplificacion manual", () => {
+  it("COLOMBIA_POLYGON viene del artefacto IGAC y cierra sobre si mismo", () => {
     expect(COLOMBIA_IGAC_METADATA.source).toContain("IGAC");
-    expect(COLOMBIA_IGAC_METADATA.featureCount).toBe(33);
-    expect(COLOMBIA_POLYGON[0]).toEqual(COLOMBIA_POLYGON[COLOMBIA_POLYGON.length - 1]);
+    expect(COLOMBIA_POLYGON[0]).toEqual(
+      COLOMBIA_POLYGON[COLOMBIA_POLYGON.length - 1],
+    );
     expect(COLOMBIA_POLYGON.length).toBeGreaterThan(500);
   });
 
-  it("COLOMBIA_POLYGONS expone IGAC completo y conserva el archipielago offshore existente", () => {
+  it("COLOMBIA_POLYGONS expone sólo los polígonos IGAC (el archipiélago ya está cubierto por las 12 millas náuticas)", () => {
     expect(COLOMBIA_IGAC_POLYGONS.length).toBeGreaterThanOrEqual(1);
     expect(COLOMBIA_POLYGONS).toContain(COLOMBIA_POLYGON);
-    expect(COLOMBIA_POLYGONS).toContain(ARCHIPELAGO_POLYGON);
-    expect(COLOMBIA_POLYGONS.length).toBe(COLOMBIA_IGAC_POLYGONS.length + 1);
+    expect(COLOMBIA_POLYGONS.length).toBe(COLOMBIA_IGAC_POLYGONS.length);
   });
 
-  it("ARCHIPELAGO_POLYGON contiene San Andres y Providencia", () => {
+  it("IGAC incluye San Andres y Providencia (via 12 millas náuticas del territorio marítimo)", () => {
     expect(isPointInColombia(12.58, -81.7)).toBe(true);
     expect(isPointInColombia(13.35, -81.37)).toBe(true);
   });

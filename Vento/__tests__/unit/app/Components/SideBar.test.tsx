@@ -119,32 +119,14 @@ describe("SideBar — Navegación", () => {
     expect(dim.className).toContain("cursor-pointer");
   });
 
-  it("oculta el CTA de próximo paso si no hay hexágonos seleccionados", () => {
+  it("ya no renderiza el CTA de próximo paso dentro del SideBar (vive en el mapa)", () => {
+    useAprincipalMock.mockReturnValue({
+      accion: "seleccion-area",
+      setAccion: setAccionMock,
+      selectedHexes: new Set(["8a2a1072b59ffff"]),
+    });
     renderSideBar();
     expect(screen.queryByTestId("next-step-cta")).not.toBeInTheDocument();
-  });
-
-  it("muestra el CTA de próximo paso cuando hay selección activa", () => {
-    useAprincipalMock.mockReturnValue({
-      accion: "seleccion-area",
-      setAccion: setAccionMock,
-      selectedHexes: new Set(["8a2a1072b59ffff"]),
-    });
-    renderSideBar();
-    expect(screen.getByTestId("next-step-cta")).toHaveTextContent(
-      "Continuar a Dimensiones",
-    );
-  });
-
-  it("click en el CTA cambia la acción principal a dimensiones", () => {
-    useAprincipalMock.mockReturnValue({
-      accion: "seleccion-area",
-      setAccion: setAccionMock,
-      selectedHexes: new Set(["8a2a1072b59ffff"]),
-    });
-    renderSideBar();
-    fireEvent.click(screen.getByTestId("next-step-cta"));
-    expect(setAccionMock).toHaveBeenCalledWith("dimensiones");
   });
 
   it("click en un paso anterior navega hacia atrás (retroceso libre)", () => {

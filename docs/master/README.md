@@ -128,8 +128,9 @@ Leyenda: 🟢 ok · 🟡 parcial · 🔵 planeado · 🟠 en proceso externo · 
 | [ADR-010](../spec/adr/ADR-010-hosting-accuweb-vs-supabase-vercel.md) | Hosting AccuWeb vs Supabase+Vercel | ✅ Aceptado |
 | [ADR-011](../spec/adr/ADR-011-parquet-procesamiento-backend-no-browser.md) | Parquet backend, no browser | ✅ Aceptado |
 | [ADR-012](../spec/adr/ADR-012-post-registration-confirmation-app-side.md) | Confirmación post-registro app-side | ✅ Aceptado |
-| ADR-013 (pendiente) | PDF: WeasyPrint vs ReportLab vs jsPDF | 🔵 Por escribir antes de US06 |
-| ADR-014 (pendiente) | Catálogo aerogeneradores: JSON vs BE | 🔵 Por escribir tras reunión datos |
+| ADR-013 | PDF generation lib (WeasyPrint / ReportLab / jsPDF) | ✅ Aceptado — el cliente permitió usar cualquiera a conveniencia del equipo |
+| [ADR-014](../spec/adr/ADR-014-validacion-per-tile-point-in-polygon.md) | Validación per-tile point-in-polygon (sin cache global de Colombia) | ✅ Aceptado |
+| ADR-015 | Catálogo aerogeneradores: JSON vs BE | ✅ Resuelto en reunión datos — el catálogo + restricciones se cubren en US05-AC1/AC2/AC3 |
 
 ---
 
