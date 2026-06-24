@@ -3,35 +3,35 @@
   "middleware": {
     "/": {
       "files": [
-        "server/edge/chunks/node_modules_next_dist_esm_build_templates_edge-wrapper_0kvehva.js",
-        "server/edge/chunks/[root-of-the-server]__0x203wy._.js",
-        "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_0pnsb~w.js"
+        "server/edge/chunks/node_modules_next_dist_esm_build_templates_edge-wrapper_0_kjzx3.js",
+        "server/edge/chunks/[root-of-the-server]__1k3-gvz._.js",
+        "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_1l5pwhw.js"
       ],
       "name": "middleware",
       "page": "/",
-      "entrypoint": "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_0pnsb~w.js",
+      "entrypoint": "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_1l5pwhw.js",
       "matchers": [
         {
-          "regexp": "/:nextData(_next/data/[^/]{1,})?/dashboard/:path*{(\\\\.json)}?",
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/dashboard/:path*{(\\.json|\\.rsc|\\.segments/.+\\.segment\\.rsc)}?",
           "originalSource": "/dashboard/:path*"
         },
         {
-          "regexp": "/:nextData(_next/data/[^/]{1,})?/admin/:path*{(\\\\.json)}?",
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/admin/:path*{(\\.json|\\.rsc|\\.segments/.+\\.segment\\.rsc)}?",
           "originalSource": "/admin/:path*"
         },
         {
-          "regexp": "/:nextData(_next/data/[^/]{1,})?/dimensions/:path*{(\\\\.json)}?",
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/dimensions/:path*{(\\.json|\\.rsc|\\.segments/.+\\.segment\\.rsc)}?",
           "originalSource": "/dimensions/:path*"
         }
       ],
       "wasm": [],
       "assets": [],
       "env": {
-        "__NEXT_BUILD_ID": "bWAeDZIBLF7Kh3TWxL2YY",
-        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "+CZqcrSd9CcGjFAyznrPjg8c1uC/vNmu+ycdjzWLs2s=",
-        "__NEXT_PREVIEW_MODE_ID": "a1f90e7f31d0c891bfe962136bfbd67d",
-        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "e3a7f7c5ef5de514a2210a0820c2845488e99539a2d059a47d05a7dbac629d5a",
-        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "b060aaa73cd5eff76098e80f33a795100f57ac4a16a2fd0ad846ce9621529d0c"
+        "__NEXT_BUILD_ID": "FHe92bxOlcfmmG9J8Ox8X",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "mBk4KraHwrBzddAcv7ET2B5jzOP2MvcPETEE2L7nMSY=",
+        "__NEXT_PREVIEW_MODE_ID": "a3622fad4c8e155a03fede109b72bbc8",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "d13591f24743ec6f0a9b338113be6b4001093b96d1b6e8c63faea3932cba0d46",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "fdce2c9adcf80827dc1df8f5932464641f8e7ad18cb09d901be55bf0ea349e6d"
       }
     }
   },
