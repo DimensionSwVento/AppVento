@@ -52,8 +52,16 @@ export default function HexPopup({ h3Index, x, y, onClose }: HexPopupProps) {
   const [detail, setDetail] = useState<HexDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  // Reset del estado cuando cambia el hex — patrón "adjust state during
+  // render" (evita setState síncrono dentro del effect de fetch).
+  const [currentIndex, setCurrentIndex] = useState(h3Index);
+  if (currentIndex !== h3Index) {
+    setCurrentIndex(h3Index);
     setLoading(true);
+    setDetail(null);
+  }
+
+  useEffect(() => {
     fetch(`${API_BASE}/api/tiles/detail/${h3Index}`)
       .then((res) => {
         if (!res.ok) throw new Error("Not found");

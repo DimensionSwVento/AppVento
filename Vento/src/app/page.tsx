@@ -74,7 +74,8 @@ export default async function Home({
           <SignUpButton />
         </div>
 
-        <p className="text-xs text-gray-500">
+        {/* gray-400: contraste AA (≥4.5:1) sobre el fondo #0b2a3c */}
+        <p className="text-xs text-gray-400">
           La autenticación es gestionada por un servicio de identidad externo.
         </p>
       </div>

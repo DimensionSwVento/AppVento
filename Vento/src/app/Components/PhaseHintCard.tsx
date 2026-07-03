@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { useAprincipal, type Aprincipal } from "../Utils/AccionPrincipalContext";
 
 type Phase = Exclude<Aprincipal, null>;
@@ -35,36 +35,60 @@ const HINTS: Record<Phase, { text: string; persistent?: boolean }> = {
 };
 
 const STORAGE_KEY = "vento:phaseHint:dismissed";
+const STORAGE_CHANGE_EVENT = "vento:phaseHint:changed";
 
-function readDismissed(): Set<Phase> {
-  if (typeof window === "undefined") return new Set();
+/**
+ * localStorage como external store via useSyncExternalStore: en SSR el
+ * snapshot es "" (sin hints descartados) y en cliente se lee el valor real
+ * sin riesgo de hydration mismatch ni setState síncrono en effects.
+ */
+function subscribeToDismissed(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener(STORAGE_CHANGE_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(STORAGE_CHANGE_EVENT, callback);
+  };
+}
+
+function getDismissedSnapshot(): string {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return new Set();
-    const arr = JSON.parse(raw) as Phase[];
-    return new Set(arr);
+    return window.localStorage.getItem(STORAGE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function getDismissedServerSnapshot(): string {
+  return "";
+}
+
+function parseDismissed(raw: string): Set<Phase> {
+  if (!raw) return new Set();
+  try {
+    return new Set(JSON.parse(raw) as Phase[]);
   } catch {
     return new Set();
   }
 }
 
 function writeDismissed(set: Set<Phase>) {
-  if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(set)));
   } catch {
     /* storage lleno o bloqueado → silenciar */
   }
+  window.dispatchEvent(new Event(STORAGE_CHANGE_EVENT));
 }
 
 export default function PhaseHintCard() {
   const { accion, selectedHexes } = useAprincipal();
-  const [dismissed, setDismissed] = useState<Set<Phase>>(new Set());
-
-  // Cargar dismissed-state al montar (cliente sólo)
-  useEffect(() => {
-    setDismissed(readDismissed());
-  }, []);
+  const dismissedRaw = useSyncExternalStore(
+    subscribeToDismissed,
+    getDismissedSnapshot,
+    getDismissedServerSnapshot,
+  );
+  const dismissed = useMemo(() => parseDismissed(dismissedRaw), [dismissedRaw]);
 
   if (!accion) return null;
   const phase = accion as Phase;
@@ -80,8 +104,7 @@ export default function PhaseHintCard() {
   const handleDismiss = () => {
     const next = new Set(dismissed);
     next.add(phase);
-    setDismissed(next);
-    writeDismissed(next);
+    writeDismissed(next); // dispara el evento → useSyncExternalStore re-renderiza
   };
 
   // Estilos: persistent = grande centrado abajo (mismo skin que NextStepFloatingCard);

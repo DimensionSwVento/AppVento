@@ -95,7 +95,6 @@ export default function Report() {
       );
     } catch (e) {
       // Log la causa real (Tailwind v4 OKLCH + color-mix rompen html2canvas).
-      // eslint-disable-next-line no-console
       console.error("[pdfExport]", e);
       const msg = e instanceof Error ? e.message : "Error desconocido";
       setError(`No se pudo generar el PDF: ${msg}`);

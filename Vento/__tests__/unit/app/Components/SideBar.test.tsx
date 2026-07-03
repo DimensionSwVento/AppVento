@@ -97,7 +97,12 @@ describe("SideBar — Navegación", () => {
     expect(screen.getByText("Selección de área")).toBeInTheDocument();
     expect(screen.getByText("Dimensiones")).toBeInTheDocument();
     expect(screen.getByText("Características del proyecto")).toBeInTheDocument();
-    expect(screen.getByText("Informe de viabilidad")).toBeInTheDocument();
+    expect(screen.getByText("Informe de prefactibilidad")).toBeInTheDocument();
+  });
+
+  it("oculta el panel de children en seleccion-area", () => {
+    renderSideBar();
+    expect(screen.queryByText("child")).not.toBeInTheDocument();
   });
 
   it("Dimensiones está deshabilitado si no hay hexágonos seleccionados", () => {
