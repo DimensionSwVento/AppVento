@@ -15,7 +15,7 @@ Vento es una aplicacion web que muestra un **mapa interactivo de Colombia** divi
 | Que problema resuelve? | Evaluar donde instalar parques eolicos toma semanas y requiere cruzar datos de muchas fuentes. Vento lo centraliza en un solo mapa. |
 | Para quien es? | Analistas de energia, investigadores y tomadores de decisiones de ANH/EAFIT. |
 | Que muestra el mapa? | Un heatmap en estandar Viridis (amarillo = alto, morado = bajo) centrado en una metrica a la vez (puntajes) + maximo una variable informativa simultanea por hex. Score agregado WLC con pesos signados. |
-| Que evalua? | Score general (WLC) + 5 dimensiones implementadas: Tecnica, Ambiental, Regulatoria, Socioeconomica, Macroeconomica. La spec del cliente menciona 7 puntajes (general + 6 dominios) — el 6to dominio queda pendiente de definicion en reunion. |
+| Que evalua? | Score general (WLC) sobre 4 dimensiones puntuables (Tecnica, Ambiental, Socioeconomica, Macroeconomica) — la Regulatoria pasa a informativa en Sprint 3 (US-FB3-06). |
 | De donde vienen los datos? | El equipo de investigacion genera archivos `.h3.parquet` con los datos ya procesados por el modelo multicriterio. El backend FastAPI los sirve via tiles. |
 
 ---
@@ -35,7 +35,7 @@ Seleccion de area (onshore u offshore)
 Eleccion de dimensiones a evaluar
    |
    v
-Caracteristicas del proyecto (tipo emplazamiento auto, MW, distancia SIN)
+Caracteristicas del proyecto (tipo emplazamiento auto, capacidad MW, categoria S/M/L)
    |
    v
 Informe de prefactibilidad
@@ -75,7 +75,7 @@ Navegacion secuencial en el sidebar (area -> dimensiones -> caracteristicas -> i
 | Item | Detalle | Estado |
 |------|---------|--------|
 | Iconos | Iconos actualizados segun Figura 3 (identificador junto con el color para cada variable seleccionada) | OK |
-| Tooltip puntajes | Puntajes (general + dimensiones implementadas) en caja de tooltip de acceso permanente, aparte de las variables. Spec original pide 7 (general + 6 dominios), por aclarar | OK con observacion |
+| Tooltip puntajes | Puntajes (general + dimensiones) en caja de tooltip de acceso permanente, aparte de las variables | OK |
 | Popup por variable | Al click en una variable seleccionada se despliega un popup con icono, id y descripcion (no satura la pantalla; ampliable en sprint 3) | OK |
 
 #### US05 Caracteristicas del Proyecto
@@ -125,6 +125,21 @@ Navegacion secuencial en el sidebar (area -> dimensiones -> caracteristicas -> i
 | US-FB2-03 | Polish de layout landing/dashboard | OK |
 | US-FB2-04 | Transicion visual suave al cambiar resolucion H3 (slide via requestAnimationFrame + pill de "cargando") | OK |
 | US-FB2-05 | Icono claro de cierre de sesion | OK |
+
+### Sprint 3 (en curso) — Feedback v2
+
+Trabajo activo derivado del feedback post-cierre del Scope 2. Detalle completo con AC en [`docs/spec/stories/feedback-cliente-v2.md`](docs/spec/stories/feedback-cliente-v2.md).
+
+| HU | Detalle | Estado |
+|----|---------|--------|
+| US-FB3-01 | SIN pasa a variable informativa (no característica). Numero de aerogeneradores + energia + area se derivan de la capacidad. Distancia al SIN precalculada por hex; en multi-hex se reporta el mas cercano | En desarrollo |
+| US-FB3-02 | Botones permanentes de navegacion: zoom a seleccion, reset a Colombia, borrar seleccion | En desarrollo |
+| US-FB3-03 | Fix tooltip incompleto en paso final (Firefox/Windows — cursor "prohibido") | En desarrollo |
+| US-FB3-04 | Capacidad nominal con entrada por teclado + saltos configurables (5 en 5 o 10 en 10) | En desarrollo |
+| US-FB3-05 | Icono de ayuda con guia / video tutorial | En desarrollo |
+| US-FB3-06 | Regulatoria pasa a dimension informativa (deja de contarse en WLC) | En desarrollo |
+
+Temporales (blockers externos + bugs a reproducir) y preguntas para próxima reunión también documentados en [`feedback-cliente-v2.md`](docs/spec/stories/feedback-cliente-v2.md).
 
 ### Pendiente
 
@@ -225,8 +240,8 @@ Usuario interactua, selecciona, recibe informe
 | Campo | Descripcion | Ejemplo |
 |-------|-------------|---------|
 | `h3_index` | Identificador unico H3 | `85283473fffffff` |
-| `score_general` | Promedio agregado WLC de las 5 dimensiones (0-1) | `0.73` |
-| `score_<dimension>` | Score por dimension (Tecnica / Ambiental / Regulatoria / Socioeconomica / Macroeconomica) | `0.81` |
+| `score_general` | Promedio agregado WLC de las 4 dimensiones puntuables (0-1) | `0.73` |
+| `score_<dimension>` | Score por dimension puntuable (Tecnica / Ambiental / Socioeconomica / Macroeconomica). Regulatoria queda como informativa post US-FB3-06. | `0.81` |
 | Variables | Valores individuales (velocidad viento, pendiente, distancia SIN, etc.) | `6.2 m/s` |
 | Metadata | Origen y vigencia de cada variable | `GWA 2024` |
 
@@ -241,13 +256,13 @@ Usuario interactua, selecciona, recibe informe
 
 ### Dimensiones
 
-| Dimension | Que evalua |
-|-----------|------------|
-| Tecnica | Recurso eolico, geologia, logistica, implementacion |
-| Ambiental | Areas protegidas, impacto ecosistemas |
-| Regulatoria | Normativa, permisos, zonas de exclusion legal |
-| Socioeconomica | Impacto en comunidades, acceso, infraestructura social |
-| Macroeconomica | Costos, retorno, viabilidad financiera |
+| Dimension | Que evalua | Rol |
+|-----------|------------|-----|
+| Tecnica | Recurso eolico, geologia, logistica, implementacion | Puntuable |
+| Ambiental | Areas protegidas, impacto ecosistemas | Puntuable |
+| Socioeconomica | Impacto en comunidades, acceso, infraestructura social | Puntuable |
+| Macroeconomica | Costos, retorno, viabilidad financiera | Puntuable |
+| Regulatoria | Normativa, permisos, zonas de exclusion legal | Informativa (post US-FB3-06) |
 
 ---
 
