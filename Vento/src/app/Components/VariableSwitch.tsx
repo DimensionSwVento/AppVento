@@ -2,7 +2,7 @@
 
 import { useVariables } from "../Utils/VariablesContext";
 import { colorForVariable } from "../Utils/dimensionColors";
-import { getIconByVariableId } from "../Utils/variableIcons";
+import { VariableIcon } from "../Utils/variableIcons";
 import type { Variable } from "../Utils/variablesCatalog";
 
 /**
@@ -17,7 +17,6 @@ export default function VariableSwitch({ variable }: { variable: Variable }) {
   const active = isActive(variable.id);
   const required = Boolean(variable.required);
   const color = colorForVariable(variable.id);
-  const Icon = getIconByVariableId(variable.id);
 
   return (
     <div className="flex items-start gap-3 py-2">
@@ -59,7 +58,7 @@ export default function VariableSwitch({ variable }: { variable: Variable }) {
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md shadow-sm ring-1 ring-white/60"
         style={{ backgroundColor: color }}
       >
-        <Icon className="h-4 w-4 text-white" strokeWidth={2.2} />
+        <VariableIcon variableId={variable.id} className="h-4 w-4 text-white" strokeWidth={2.2} />
       </span>
     </div>
   );

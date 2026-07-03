@@ -108,7 +108,7 @@ describe("geocoder — searchPlace (mock fetch)", () => {
         },
       ],
     });
-    const out = await searchPlace("X");
+    const out = await searchPlace("Punto");
     expect(out[0].polygons).toEqual([]);
   });
 

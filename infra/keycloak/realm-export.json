@@ -23,7 +23,9 @@
       }
     ]
   },
-  "defaultRoles": ["analista"],
+  "defaultRoles": [
+    "analista"
+  ],
   "clients": [
     {
       "clientId": "vento-web",
@@ -54,7 +56,48 @@
   "scopeMappings": [
     {
       "client": "vento-web",
-      "roles": ["analista"]
+      "roles": [
+        "analista"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "e2e-analista",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "E2E",
+      "lastName": "Analista",
+      "email": "e2e-analista@vento.test",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "e2e-analista-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "analista"
+      ]
+    },
+    {
+      "username": "e2e-admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "E2E",
+      "lastName": "Admin",
+      "email": "e2e-admin@vento.test",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "e2e-admin-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin",
+        "analista"
+      ]
     }
   ]
 }

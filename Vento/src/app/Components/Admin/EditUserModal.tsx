@@ -54,12 +54,10 @@ export default function EditUserModal({
       await onSubmit(user.id, { firstName, lastName, enabled, role: newrole });
 
       if (newrole.includes("admin") && role.includes("analista")) {
-        const resnotify = await fetch(`/api/admin/users/notify`, {
+        await fetch(`/api/admin/users/notify`, {
           method: "POST",
           body: JSON.stringify({ mail, name }),
         });
-        const data = await resnotify.json(); // text() en vez de json() por si falla
-
       }
       onClose();
     } catch (err: unknown) {

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import SideBar from "../../Components/SideBar";
 import UsersTable from "../../Components/Admin/UsersTable";
 import UserSearchBar from "../../Components/Admin/UserSearchBar";
@@ -21,7 +21,7 @@ export default function AdminUsersPage() {
   const limit = 20;
   const router = useRouter();
 
-  const { accion, setAccion, selectedHexes } = useAprincipal();
+  const { setAccion } = useAprincipal();
 
   // Modals state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -34,38 +34,60 @@ export default function AdminUsersPage() {
     //   return;
   };
 
-  const fetchUsers = async () => {
+  // Sin setState síncrono aquí: el loading/error se ajusta en el bloque de
+  // render de abajo (cambio de page/search) o en refreshUsers (handlers).
+  // Estilo promise-chain: los setState viven en callbacks (.then/.catch),
+  // nunca en el cuerpo síncrono — apto para llamarse desde el effect.
+  const fetchUsers = useCallback(() => {
+    const qs = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      ...(search && { search }),
+    });
+
+    return fetch(`/api/admin/users?${qs.toString()}`)
+      .then((res) => {
+        if (!res.ok) {
+          if (res.status === 403)
+            throw new Error(
+              "No estás autorizado para ver esta página. Se requiere rol de Administrador.",
+            );
+          throw new Error("Error al obtener usuarios");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setUsers(data.users);
+        setHasMore(data.users.length === limit);
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "Error desconocido");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [page, search]);
+
+  /** Refresco disparado desde handlers (crear/editar/borrar): ahí sí es
+   *  válido el setState síncrono. */
+  const refreshUsers = async () => {
     setLoading(true);
     setError(null);
-    try {
-      const qs = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
-        ...(search && { search }),
-      });
-
-      const res = await fetch(`/api/admin/users?${qs.toString()}`);
-      if (!res.ok) {
-        if (res.status === 403)
-          throw new Error(
-            "No estás autorizado para ver esta página. Se requiere rol de Administrador.",
-          );
-        throw new Error("Error al obtener usuarios");
-      }
-
-      const data = await res.json();
-      setUsers(data.users);
-      setHasMore(data.users.length === limit);
-    } catch (err: any) {
-      setError(err.message || "Error desconocido");
-    } finally {
-      setLoading(false);
-    }
+    await refreshUsers();
   };
+
+  // Ajuste de estado durante el render cuando cambian page/search — patrón
+  // recomendado en vez de setState síncrono dentro del effect.
+  const [lastQuery, setLastQuery] = useState({ page, search });
+  if (lastQuery.page !== page || lastQuery.search !== search) {
+    setLastQuery({ page, search });
+    setLoading(true);
+    setError(null);
+  }
 
   useEffect(() => {
     fetchUsers();
-  }, [page, search]);
+  }, [fetchUsers]);
 
   const handleSearch = (term: string) => {
     setSearch(term);
@@ -82,7 +104,7 @@ export default function AdminUsersPage() {
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.error || "Error al crear usuario");
     }
-    await fetchUsers();
+    await refreshUsers();
   };
 
   const handleUpdate = async (id: string, payload: UpdateUserPayload) => {
@@ -95,7 +117,7 @@ export default function AdminUsersPage() {
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.error || "Error al actualizar usuario");
     }
-    await fetchUsers();
+    await refreshUsers();
   };
 
   const handleDelete = async (id: string) => {
@@ -106,7 +128,7 @@ export default function AdminUsersPage() {
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.error || "Error al desactivar usuario");
     }
-    await fetchUsers();
+    await refreshUsers();
   };
 
   const handleActivate = async (id: string) => {
@@ -119,7 +141,7 @@ export default function AdminUsersPage() {
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.error || "Error al activar usuario");
     }
-    await fetchUsers();
+    await refreshUsers();
   };
 
   return (

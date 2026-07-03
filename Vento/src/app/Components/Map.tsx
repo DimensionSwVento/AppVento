@@ -323,6 +323,9 @@ export default function MapView() {
   // capa de cuadrícula con tiles — solo renderiza lo visible, cachea por tile.
   // Cuando el heatmap del informe está activo, oculto la malla entera para
   // no superponer bordes de hexágonos sobre el mapa de calor.
+  // isFlyingRef se lee dentro de callbacks de deck.gl (onViewportLoad) que
+  // corren DESPUÉS del render; el linter no distingue el momento de ejecución.
+  // eslint-disable-next-line react-hooks/refs
   const gridTileLayer = useMemo(() => new TileLayer<HexCell>({
     id: "colombia-grid-tiles",
     visible: !heatmapActive,
@@ -547,7 +550,7 @@ export default function MapView() {
       stroked: true,
       pickable: false,
     });
-  }, [hoveredHex, isMobile]);
+  }, [canSelect, hoveredHex, isMobile]);
 
   // El "+" en el hex hovered se removió: el `TextLayer` recreado por cada
   // cambio de hoveredHex disparaba un race en luma.gl
