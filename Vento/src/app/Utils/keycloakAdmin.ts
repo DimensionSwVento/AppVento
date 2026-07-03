@@ -1,5 +1,21 @@
 import { KeycloakUser, KeycloakRole } from "../types/user";
 
+/**
+ * Representación (parcial) de usuario que acepta la Admin REST API de
+ * Keycloak en create/update. El index signature admite atributos extra
+ * del UserRepresentation sin recurrir a `any`.
+ */
+export interface KeycloakUserInput {
+  username?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  enabled?: boolean;
+  emailVerified?: boolean;
+  credentials?: { type: string; value: string; temporary: boolean }[];
+  [key: string]: unknown;
+}
+
 export class KeycloakAdminError extends Error {
   public status: number;
   constructor(message: string, status: number) {
@@ -102,7 +118,9 @@ export async function getUserCount(search?: string): Promise<number> {
   return fetchAdminApi(endpoint);
 }
 
-export async function createUser(userData: any): Promise<string | undefined> {
+export async function createUser(
+  userData: KeycloakUserInput,
+): Promise<string | undefined> {
   const token = await getAdminToken();
   const url = `${getBaseAdminUrl()}/users`;
 
@@ -136,7 +154,10 @@ export async function createUser(userData: any): Promise<string | undefined> {
   return undefined;
 }
 
-export async function updateUser(userId: string, userData: any): Promise<void> {
+export async function updateUser(
+  userId: string,
+  userData: KeycloakUserInput,
+): Promise<void> {
   await fetchAdminApi(`/users/${userId}`, {
     method: "PUT",
     body: JSON.stringify(userData),

@@ -301,6 +301,8 @@ export default function HeatmapDemo() {
 
       {mapState === "frozen" && snapshot ? (
         <>
+          {/* eslint-disable-next-line @next/next/no-img-element -- snapshot es
+              un data-URL generado en runtime; next/image no puede optimizarlo */}
           <img src={snapshot} alt="Mapa congelado" className="h-full w-full object-cover" />
           <button onClick={unfreeze} className="absolute top-3 right-3 z-10 rounded bg-blue-600 px-3 py-1.5 text-sm text-white shadow hover:bg-blue-700">Reactivar mapa</button>
         </>

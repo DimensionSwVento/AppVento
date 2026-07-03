@@ -9,7 +9,7 @@ import {
   type Variable,
 } from "../Utils/variablesCatalog";
 import { colorForVariable } from "../Utils/dimensionColors";
-import { getIconByVariableId } from "../Utils/variableIcons";
+import { VariableIcon } from "../Utils/variableIcons";
 import { weightFor } from "../Utils/variableWeights";
 
 /** Label corto de la dimensión para el subtítulo (sin el prefijo "Dimensión "). */
@@ -50,9 +50,11 @@ export default function SelectedVariablesChips() {
 
   // Cuando se abre el detalle de una variable, colapsa el panel a pill para
   // dejar más espacio al popover; el usuario puede re-expandir tocando la pill.
-  useEffect(() => {
-    if (infoVarId) setExpanded(false);
-  }, [infoVarId]);
+  // (Se hace en el handler que abre el popover, no en un effect.)
+  const openInfo = (id: string) => {
+    setInfoVarId(id);
+    setExpanded(false);
+  };
 
   if (variables.length === 0) return null;
 
@@ -63,7 +65,7 @@ export default function SelectedVariablesChips() {
           <PanelExpanded
             variables={variables}
             onCollapse={() => setExpanded(false)}
-            onSelectInfo={(id) => setInfoVarId(id)}
+            onSelectInfo={openInfo}
             onDeselect={(id) => toggleVariable(id)}
             onClear={clearNonRequired}
             activeInfoId={infoVarId}
@@ -127,14 +129,13 @@ function PillCompact({
       </span>
       <span className="flex flex-wrap items-center gap-2" aria-hidden="true">
         {variables.slice(0, PILL_VISIBLE_LIMIT).map((v) => {
-          const Icon = getIconByVariableId(v.id);
           return (
             <span
               key={v.id}
               className="flex h-8 w-8 items-center justify-center rounded-full ring-2 ring-white shadow"
               style={{ backgroundColor: colorForVariable(v.id) }}
             >
-              <Icon className="h-4 w-4 text-white" strokeWidth={2.2} />
+              <VariableIcon variableId={v.id} className="h-4 w-4 text-white" strokeWidth={2.2} />
             </span>
           );
         })}
@@ -226,14 +227,13 @@ function PanelExpanded({
                 className="group flex flex-1 items-center gap-3 text-left cursor-pointer"
               >
                 {(() => {
-                  const Icon = getIconByVariableId(v.id);
-                  return (
+                          return (
                     <span
                       aria-hidden="true"
                       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md shadow-sm"
                       style={{ backgroundColor: colorForVariable(v.id) }}
                     >
-                      <Icon className="h-5 w-5 text-white" strokeWidth={2.2} />
+                      <VariableIcon variableId={v.id} className="h-5 w-5 text-white" strokeWidth={2.2} />
                     </span>
                   );
                 })()}
@@ -362,7 +362,6 @@ function InfoPopover({
         ? "text-red-700 bg-red-50"
         : "text-gray-600 bg-gray-100";
 
-  const Icon = getIconByVariableId(variable.id);
   const bg = colorForVariable(variable.id);
 
   return (
@@ -427,7 +426,7 @@ function InfoPopover({
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md shadow-sm"
                   style={{ backgroundColor: bg }}
                 >
-                  <Icon className="h-6 w-6 text-white" strokeWidth={2.2} />
+                  <VariableIcon variableId={variable.id} className="h-6 w-6 text-white" strokeWidth={2.2} />
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-[#383838] leading-tight">

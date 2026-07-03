@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 
 /**
@@ -18,22 +18,20 @@ export default function SessionGuard({
   children: React.ReactNode;
 }>) {
   const { data: session } = useSession();
-  const [expired, setExpired] = useState(false);
+  // Derivado de la sesión — no necesita estado propio.
+  const expired =
+    session?.error === "RefreshTokenError" ||
+    session?.error === "NoRefreshToken";
 
   useEffect(() => {
-    if (
-      session?.error === "RefreshTokenError" ||
-      session?.error === "NoRefreshToken"
-    ) {
-      setExpired(true);
-      const timer = setTimeout(() => {
-        signOut({ redirect: false }).then(() => {
-          globalThis.location.href = "/?expired=true";
-        });
-      }, REDIRECT_DELAY_MS);
-      return () => clearTimeout(timer);
-    }
-  }, [session?.error]);
+    if (!expired) return;
+    const timer = setTimeout(() => {
+      signOut({ redirect: false }).then(() => {
+        globalThis.location.href = "/?expired=true";
+      });
+    }, REDIRECT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [expired]);
 
   return (
     <>

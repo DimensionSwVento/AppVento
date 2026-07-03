@@ -6,7 +6,13 @@ export async function GET(req: NextRequest) {
   if (!issuerEnv || !clientId) {
     return NextResponse.redirect(new URL("/", req.url));
   }
-  const issuer = issuerEnv.replace(/^http:\/\//, "https://").replace(/\/$/, "");
+  // En local (localhost/127.0.0.1) Keycloak sirve HTTP plano — reescribir a
+  // HTTPS rompería el redirect de logout (mismo criterio que src/auth.ts).
+  const isLocalIssuer = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(issuerEnv);
+  const issuer = (isLocalIssuer
+    ? issuerEnv
+    : issuerEnv.replace(/^http:\/\//, "https://")
+  ).replace(/\/$/, "");
 
   // Detrás de proxy (nginx AccuWeb), req.nextUrl.origin es la URL interna.
   // Prioridad: AUTH_URL (env) > x-forwarded-* headers > req.nextUrl.origin

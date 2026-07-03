@@ -21,6 +21,8 @@ function Seed({
   useEffect(() => {
     if (accion !== undefined) setAccion(accion);
     if (hexes && hexes.length > 0) setSelectedHexes(new Set(hexes));
+    // Helper de test: siembra el contexto tras montar y libera el render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReady(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

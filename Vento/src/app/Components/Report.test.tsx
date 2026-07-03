@@ -36,9 +36,8 @@ describe("Report (US06-AC3) — pantalla de informe", () => {
         <Report />
       </AprincipalProvider>,
     );
-    expect(
-      screen.getByText("Consulta y descarga el resultado preliminar"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Informe Vento")).toBeInTheDocument();
+    expect(screen.getByText("Descarga del informe")).toBeInTheDocument();
     // Las 5 dimensiones del catálogo (excluido "General" — usado para el
     // puntaje agregado, no para el listado de barras).
     expect(screen.getByText("Ambiental")).toBeInTheDocument();
@@ -46,8 +45,6 @@ describe("Report (US06-AC3) — pantalla de informe", () => {
     expect(screen.getByText("Económica")).toBeInTheDocument();
     expect(screen.getByText("Socioeconómica")).toBeInTheDocument();
     expect(screen.getByText("Regulatoria")).toBeInTheDocument();
-    // Sección "Resultado preliminar" (exact, distingue del h2
-    // "Consulta y descarga el resultado preliminar").
     expect(screen.getByText("Resultado preliminar")).toBeInTheDocument();
   });
 

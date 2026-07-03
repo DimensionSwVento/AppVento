@@ -67,8 +67,9 @@ export async function PUT(
     }
 
     return NextResponse.json({ message: "Usuario actualizado" }, { status: 200 });
-  } catch (err: any) {
-    console.error(`PUT /users/[id] Error (id=${(await params).id}):`, err.message);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`PUT /users/[id] Error (id=${(await params).id}):`, message);
     const status = err instanceof KeycloakAdminError ? err.status : 500;
     return NextResponse.json(
       { error: "Error al actualizar usuario" },
@@ -95,8 +96,9 @@ export async function DELETE(
       { message: "Usuario desactivado correctamente" },
       { status: 200 }
     );
-  } catch (err: any) {
-    console.error(`DELETE /users/[id] Error (id=${(await params).id}):`, err.message);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`DELETE /users/[id] Error (id=${(await params).id}):`, message);
     const status = err instanceof KeycloakAdminError ? err.status : 500;
     return NextResponse.json(
       { error: "Error al desactivar usuario" },
