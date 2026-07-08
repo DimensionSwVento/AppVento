@@ -1,13 +1,23 @@
 "use client";
+import { useEffect, useState } from "react";
 import SideBar from "../Components/SideBar";
 import Dimensions from "../Components/Dimensions";
 import Caracteristicas from "../Components/Caracteristicas";
 import Report from "../Components/Report";
 import MapView from "../Components/Map";
+import OnboardingModal from "../Components/OnboardingModal";
+import { hasSeenOnboarding } from "../Utils/onboarding";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
 
 export default function AreaSelectionPage() {
   const { accion } = useAprincipal();
+
+  // Onboarding en el primer ingreso. Se decide en efecto (client-only) para
+  // evitar mismatch de hidratación con el estado de localStorage.
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  useEffect(() => {
+    setShowOnboarding(!hasSeenOnboarding());
+  }, []);
 
   const subpage = (() => {
     switch (accion) {
@@ -43,6 +53,7 @@ export default function AreaSelectionPage() {
           <MapView />
         </div>
       </div>
+      <OnboardingModal open={showOnboarding} onClose={() => setShowOnboarding(false)} />
     </main>
   );
 }

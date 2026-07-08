@@ -35,6 +35,7 @@ import AreaDisplay from "./AreaDisplay";
 import MapSearchBox from "./MapSearchBox";
 import NextStepFloatingCard from "./NextStepFloatingCard";
 import PhaseHintCard from "./PhaseHintCard";
+import LoadingOverlay, { LoadingPill } from "./LoadingOverlay";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 try { luma.registerAdapters([webgl2Adapter]); } catch { /* ok */ }
@@ -570,20 +571,8 @@ export default function MapView() {
 
   return (
     <div ref={containerRef} className={`relative h-full w-full ${fullscreen ? "bg-black" : ""}`}>
-      {!mapReady && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-gray-100">
-          <p className="text-gray-500 text-lg">... cargando mapa</p>
-        </div>
-      )}
-      {mapReady && isTilesLoading && (
-        // Overlay transparente: bloquea clicks pero deja ver el slide del mapa.
-        // Pill "cargando mapa" arriba para feedback sin tapar la vista.
-        <div className="absolute inset-0 z-30 pointer-events-auto cursor-wait">
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-white/90 text-gray-700 text-sm font-medium px-4 py-2 rounded-full shadow-md">
-            ... cargando mapa
-          </div>
-        </div>
-      )}
+      {!mapReady && <LoadingOverlay />}
+      {mapReady && isTilesLoading && <LoadingPill />}
 
       {/* Widgets fijos del mapa — visibles sólo en las fases donde aportan,
           para evitar superposición con paneles flotantes de cada fase
