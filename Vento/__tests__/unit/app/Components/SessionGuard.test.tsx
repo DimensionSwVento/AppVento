@@ -9,7 +9,7 @@ vi.mock("next-auth/react", () => ({
   useSession: () => useSessionMock(),
 }));
 
-import SessionGuard from "@/app/Components/SessionGuard";
+import SessionGuard from "@/app/Components/auth/SessionGuard";
 
 beforeEach(() => {
   signOutMock.mockClear();

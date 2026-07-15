@@ -1,13 +1,14 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import SideBar from "../../Components/SideBar";
+import SideBar from "../../Components/layout/SideBar";
 import UsersTable from "../../Components/Admin/UsersTable";
 import UserSearchBar from "../../Components/Admin/UserSearchBar";
 import CreateUserModal from "../../Components/Admin/CreateUserModal";
 import EditUserModal from "../../Components/Admin/EditUserModal";
 import DeleteUserDialog from "../../Components/Admin/DeleteUserDialog";
 import { User, CreateUserPayload, UpdateUserPayload } from "../../types/user";
-import { useAprincipal } from "@/app/Utils/AccionPrincipalContext";
+import { useAprincipal } from "@/app/Utils/contexts/AccionPrincipalContext";
+import { useToast } from "../../Components/ui/Toast";
 import { useRouter } from "next/navigation";
 
 export default function AdminUsersPage() {
@@ -22,6 +23,7 @@ export default function AdminUsersPage() {
   const router = useRouter();
 
   const { setAccion } = useAprincipal();
+  const toast = useToast();
 
   // Modals state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -73,7 +75,7 @@ export default function AdminUsersPage() {
   const refreshUsers = async () => {
     setLoading(true);
     setError(null);
-    await refreshUsers();
+    await fetchUsers();
   };
 
   // Ajuste de estado durante el render cuando cambian page/search — patrón
@@ -105,6 +107,7 @@ export default function AdminUsersPage() {
       throw new Error(errData.error || "Error al crear usuario");
     }
     await refreshUsers();
+    toast.success("Usuario creado correctamente");
   };
 
   const handleUpdate = async (id: string, payload: UpdateUserPayload) => {
@@ -118,6 +121,7 @@ export default function AdminUsersPage() {
       throw new Error(errData.error || "Error al actualizar usuario");
     }
     await refreshUsers();
+    toast.success("Cambios guardados correctamente");
   };
 
   const handleDelete = async (id: string) => {
@@ -129,6 +133,7 @@ export default function AdminUsersPage() {
       throw new Error(errData.error || "Error al desactivar usuario");
     }
     await refreshUsers();
+    toast.success("Usuario desactivado");
   };
 
   const handleActivate = async (id: string) => {
@@ -142,6 +147,7 @@ export default function AdminUsersPage() {
       throw new Error(errData.error || "Error al activar usuario");
     }
     await refreshUsers();
+    toast.success("Usuario activado");
   };
 
   return (

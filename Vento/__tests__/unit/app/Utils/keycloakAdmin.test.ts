@@ -42,7 +42,7 @@ import {
   removeRealmRole,
   resetUserPassword,
   KeycloakAdminError,
-} from "@/app/Utils/keycloakAdmin";
+} from "@/app/Utils/apis/keycloakAdmin";
 
 // ── Tests ────────────────────────────────────────────────────────────
 

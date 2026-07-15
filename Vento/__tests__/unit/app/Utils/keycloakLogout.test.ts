@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { keycloakLogoutUrl } from "@/app/Utils/keycloakLogout";
+import { keycloakLogoutUrl } from "@/app/Utils/apis/keycloakLogout";
 
 beforeEach(() => {
   vi.unstubAllEnvs();

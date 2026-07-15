@@ -232,5 +232,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   pages: {
     signIn: "/",
+    // Evita la página cruda /api/auth/error?error=... (se veía mal en la app):
+    // cualquier error de auth redirige limpio al inicio.
+    error: "/",
   },
 });

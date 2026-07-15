@@ -3,7 +3,7 @@ import { requireAdmin } from "../../route";
 import {
   getUserRoles,
   KeycloakAdminError,
-} from "../../../../../Utils/keycloakAdmin";
+} from "../../../../../Utils/apis/keycloakAdmin";
 
 export async function GET(
   _request: Request,

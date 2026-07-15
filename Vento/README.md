@@ -61,7 +61,8 @@ Abre `http://localhost:3000` — el mapa cargara los hexagonos desde el backend 
 npm run test:run   # suite unitaria (Vitest + React Testing Library)
 ```
 
-Convenciones, patrones de mocking y guía completa en [`docs/testing.md`](docs/testing.md).
+Estrategia, inventario por módulo y cómo replicar las pruebas: [`docs/testing/test-strategy.md`](../docs/testing/test-strategy.md).
+Guía específica del frontend (cómo correr, E2E Playwright, trazabilidad RNF): [`docs/testing/frontend-testing.md`](../docs/testing/frontend-testing.md).
 
 ## API Endpoints consumidos
 

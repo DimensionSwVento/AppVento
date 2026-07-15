@@ -23,11 +23,11 @@ vi.mock("next/image", () => ({
   ),
 }));
 
-vi.mock("@/app/Components/SignInButton", () => ({
+vi.mock("@/app/Components/auth/SignInButton", () => ({
   default: () => <button>Iniciar sesión</button>,
 }));
 
-vi.mock("@/app/Components/SignUpButton", () => ({
+vi.mock("@/app/Components/auth/SignUpButton", () => ({
   default: () => (
     // eslint-disable-next-line @next/next/no-html-link-for-pages
     <a href="/api/auth/register">Crear cuenta</a>

@@ -6,7 +6,7 @@ import {
   assignRealmRole,
   resetUserPassword,
   KeycloakAdminError,
-} from "../../../Utils/keycloakAdmin";
+} from "../../../Utils/apis/keycloakAdmin";
 import { CreateUserPayload, User } from "../../../types/user";
 
 // Reusable function to check admin role

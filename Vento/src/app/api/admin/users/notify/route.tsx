@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../route";
-import { KeycloakAdminError } from "../../../../Utils/keycloakAdmin";
+import { KeycloakAdminError } from "../../../../Utils/apis/keycloakAdmin";
 
 export async function POST(request: Request) {
   if (!(await requireAdmin())) {

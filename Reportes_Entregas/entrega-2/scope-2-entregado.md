@@ -8,7 +8,7 @@ estado: entregado — pendiente integración con datos reales (US03-AC6), aval c
 
 # Scope Segunda Entrega — Entregado
 
-Reporte de lo desarrollado en la rama de cierre de scope 2 + feedback rondas 1 y 2. Cubre todas las HUs originales de [scope-dos.md](../../docs/spec/stories/scope-dos.md), las HUs adicionales de [feedback-cliente-v1.md](../../docs/spec/stories/feedback-cliente-v1.md) y [feedback-1-round2.md](../../docs/spec/stories/feedback-1-round2.md), y las decisiones/iteraciones del cliente durante el sprint.
+Reporte de lo desarrollado en la rama de cierre de scope 2 + feedback rondas 1 y 2. Cubre todas las HUs originales de [scope-dos.md](../../docs/stories/scope-dos.md), las HUs adicionales de [feedback-cliente-v1.md](../../docs/stories/feedback-cliente-v1.md) y [feedback-1-round2.md](../../docs/stories/feedback-1-round2.md), y las decisiones/iteraciones del cliente durante el sprint.
 
 ---
 

@@ -16,7 +16,7 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-import SignUpButton from "@/app/Components/SignUpButton";
+import SignUpButton from "@/app/Components/auth/SignUpButton";
 
 describe("SignUpButton", () => {
   it("renderiza un link con label 'Crear cuenta'", () => {

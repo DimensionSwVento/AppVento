@@ -1,7 +1,7 @@
 ---
 version: 1.0
 date: 2026-04-20
-author: winx (tech lead)
+author: Mavalan Software
 scope: infraestructura Keycloak — dev (docker-compose) y producción (AccuWeb)
 ---
 
@@ -85,7 +85,7 @@ Exportado en `realm-export.json`. Campos clave:
 | `resetPasswordAllowed` | `true` | Flujo "olvidé mi contraseña" habilitado |
 | `loginWithEmailAllowed` | `true` | Login con email (no username separado) |
 | `duplicateEmailsAllowed` | `false` | Un email = un usuario |
-| `verifyEmail` | `false` | ⛔ Deshabilitado por stopper SMTP (ver [ADR-009](../spec/adr/ADR-009-notificaciones-email-pendientes-smtp.md)) |
+| `verifyEmail` | `false` | ⛔ Deshabilitado por stopper SMTP (ver [ADR-009](../adr/ADR-009-notificaciones-email-pendientes-smtp.md)) |
 | `editUsernameAllowed` | `false` | Username inmutable tras crear |
 | `rememberMe` | `true` | Checkbox "Recordarme" en login |
 | `loginTheme` | `keycloakify-starter` | Theme custom — ver §5 |
@@ -156,11 +156,11 @@ Ver [infra/keycloak/themes/README.md](../../infra/keycloak/themes/README.md):
 3. Commit
 4. En producción: subir al servidor + reiniciar Keycloak
 
-### Pendiente relacionado
-El feedback cliente (US-FB-01) pide **formularios 100% en español + rename "email" → "Correo de Usuario"**. Esto se hace **ajustando el theme** (archivos `.properties` de i18n) — no tocando backend. Tiempo estimado: 2-3h (ver [feedback-cliente-v1.md](../spec/stories/feedback-cliente-v1.md#us-fb-01)).
+### Localización en español (US-FB-01) — ✅ implementado
+Los formularios de Keycloak están **100% en español** y "email" se renombró a **"Correo de Usuario"**, vía el theme (archivos `.properties` de i18n en el JAR de Keycloakify) — sin tocar backend. Entregado en **FB1** (ver [feedback-cliente-v1.md](../stories/feedback-cliente-v1.md#us-fb-01)). Para ajustar textos: editar el theme y regenerar el JAR (ver *Actualizar el theme* arriba).
 
 ### US-FB-02 — confirmación post-registro (resuelta app-side)
-El flujo `Registro → Confirmación → Login → Dashboard` se implementa con rutas custom en Next.js en lugar de `info.ftl`/`register-complete.ftl` en el theme. Decisión documentada en [ADR-012](../spec/adr/ADR-012-post-registration-confirmation-app-side.md). El realm no requiere cambios: el wildcard `http://localhost:3000/*` ya cubre los nuevos endpoints (`/api/auth/register/callback` y `/registration-success`). En producción, los wildcards en `redirectUris` y `post.logout.redirect.uris` del cliente `vento-web` deben apuntar al dominio real (ya documentado en §3).
+El flujo `Registro → Confirmación → Login → Dashboard` se implementa con rutas custom en Next.js en lugar de `info.ftl`/`register-complete.ftl` en el theme. Decisión documentada en [ADR-012](../adr/ADR-012-post-registration-confirmation-app-side.md). El realm no requiere cambios: el wildcard `http://localhost:3000/*` ya cubre los nuevos endpoints (`/api/auth/register/callback` y `/registration-success`). En producción, los wildcards en `redirectUris` y `post.logout.redirect.uris` del cliente `vento-web` deben apuntar al dominio real (ya documentado en §3).
 
 ---
 
@@ -302,7 +302,7 @@ docker compose logs keycloak -f
 
 ### Access token expira muy rápido (<1 min)
 - Admin → Realm Settings → Tokens → "Access Token Lifespan" — ajustar
-- Default Keycloak: 5 min. Propuesta [US-FB-03](../spec/stories/feedback-cliente-v1.md#us-fb-03): 15 min
+- Default Keycloak: 5 min. Propuesta [US-FB-03](../stories/feedback-cliente-v1.md#us-fb-03): 15 min
 
 ---
 
@@ -310,7 +310,7 @@ docker compose logs keycloak -f
 
 - [auth-strategy.md](../security/auth-strategy.md) — cómo el frontend usa Keycloak
 - [frontend-backend-integration.md](../architecture/frontend-backend-integration.md) — integración Next.js ↔ FastAPI (ambos validan contra Keycloak)
-- [ADR-005 Keycloak como IdP](../spec/adr/ADR-005-keycloak-identidad.md)
-- [ADR-009 SMTP stopper](../spec/adr/ADR-009-notificaciones-email-pendientes-smtp.md)
-- [US-FB-01 Keycloak ES + botón inicio + password policy](../spec/stories/feedback-cliente-v1.md#us-fb-01) — trabajo pendiente en theme
+- [ADR-005 Keycloak como IdP](../adr/ADR-005-keycloak-identidad.md)
+- [ADR-009 SMTP stopper](../adr/ADR-009-notificaciones-email-pendientes-smtp.md)
+- [US-FB-01 Keycloak ES + botón inicio + password policy](../stories/feedback-cliente-v1.md#us-fb-01) — ✅ entregado en FB1
 - [accuweb-runbook.md §5](../ops/accuweb-runbook.md) — config Keycloak para producción

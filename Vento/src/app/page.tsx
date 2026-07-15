@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import Image from "next/image";
-import SignInButton from "./Components/SignInButton";
-import SignUpButton from "./Components/SignUpButton";
+import SignInButton from "./Components/auth/SignInButton";
+import SignUpButton from "./Components/auth/SignUpButton";
 
 type RegisterError =
   | "register_config"

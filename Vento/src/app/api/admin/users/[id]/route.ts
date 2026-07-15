@@ -6,7 +6,7 @@ import {
   removeRealmRole,
   assignRealmRole,
   KeycloakAdminError,
-} from "../../../../Utils/keycloakAdmin";
+} from "../../../../Utils/apis/keycloakAdmin";
 import { UpdateUserPayload, APP_ROLES } from "../../../../types/user";
 
 export async function PUT(
