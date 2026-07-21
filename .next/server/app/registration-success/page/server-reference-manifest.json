@@ -1,16 +1,16 @@
 {
   "node": {
-    "007411eb48d344eb50c03ab04db25e5555acb29b4b": {
+    "00181b3c316a3b6d36f0264af3ba9acc4c8168979e": {
       "workers": {
         "app/registration-success/page": {
-          "moduleId": 592255,
+          "moduleId": 371120,
           "async": false,
           "exportedName": "$$RSC_SERVER_ACTION_0",
-          "filename": "src/app/Components/SignInButton.tsx"
+          "filename": "src/app/Components/auth/SignInButton.tsx"
         }
       },
       "exportedName": "$$RSC_SERVER_ACTION_0",
-      "filename": "src/app/Components/SignInButton.tsx"
+      "filename": "src/app/Components/auth/SignInButton.tsx"
     }
   },
   "edge": {}

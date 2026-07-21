@@ -191,6 +191,33 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../src/app/api/historico/[id]/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/historico/[id]">> = Specific
+  const handler = {} as typeof import("../../src/app/api/historico/[id]/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/api/historico/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/historico">> = Specific
+  const handler = {} as typeof import("../../src/app/api/historico/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/api/tiles/[...path]/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/tiles/[...path]">> = Specific
+  const handler = {} as typeof import("../../src/app/api/tiles/[...path]/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../src/app/api/tiles/[z]/[x]/[y]/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/tiles/[z]/[x]/[y]">> = Specific

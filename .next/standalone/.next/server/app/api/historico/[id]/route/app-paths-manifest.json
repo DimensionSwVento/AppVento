@@ -1,0 +1,3 @@
+{
+  "/api/historico/[id]/route": "app/api/historico/[id]/route.js"
+}

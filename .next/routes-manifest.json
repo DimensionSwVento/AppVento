@@ -53,6 +53,14 @@
       "namedRegex": "^/api/auth/(?<nxtPnextauth>.+?)(?:/)?$"
     },
     {
+      "page": "/api/historico/[id]",
+      "regex": "^/api/historico/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/historico/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
       "page": "/api/tiles/detail/[h3]",
       "regex": "^/api/tiles/detail/([^/]+?)(?:/)?$",
       "routeKeys": {
@@ -69,6 +77,14 @@
         "nxtPy": "nxtPy"
       },
       "namedRegex": "^/api/tiles/(?<nxtPz>[^/]+?)/(?<nxtPx>[^/]+?)/(?<nxtPy>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/tiles/[...path]",
+      "regex": "^/api/tiles/(.+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPpath": "nxtPpath"
+      },
+      "namedRegex": "^/api/tiles/(?<nxtPpath>.+?)(?:/)?$"
     }
   ],
   "staticRoutes": [
@@ -137,6 +153,12 @@
       "regex": "^/api/hexagons(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/api/hexagons(?:/)?$"
+    },
+    {
+      "page": "/api/historico",
+      "regex": "^/api/historico(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/historico(?:/)?$"
     },
     {
       "page": "/api/tiles/counts",
