@@ -23,6 +23,7 @@ import {
   formatVariableValue,
   getInfoVarById,
 } from "../Utils/informativeVariables";
+import { variablesByDimension } from "../Utils/variablesCatalog";
 
 const fmtKm2 = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 });
 
@@ -34,6 +35,10 @@ export default function Report() {
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(true);
+
+  // Variables de la dimensión Regulatoria — se muestran como bloque
+  // informativo (US-FB3-05 / feedback item 11): contexto, sin score.
+  const regulatoriaVars = useMemo(() => variablesByDimension("regulatoria"), []);
 
   const area = useMemo(() => calcAreaKm2(selectedHexes), [selectedHexes]);
   const centroid = useMemo(() => getCentroid(selectedHexes), [selectedHexes]);
@@ -185,13 +190,17 @@ export default function Report() {
               </p>
             </section>
 
-            {/* Puntajes por dimensión */}
+            {/* Puntajes por dimensión — sólo las dimensiones PUNTUABLES.
+                "Regulatoria" queda fuera del score y se muestra como bloque
+                informativo aparte (US-FB3-05 / feedback item 11). */}
             <section>
               <h4 className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
                 Puntajes de idoneidad por dimensión
               </h4>
               <ul className="mt-2 flex flex-col gap-1.5">
-                {HEATMAP_DIMENSIONS.filter((d) => d.id !== "general").map((d) => {
+                {HEATMAP_DIMENSIONS.filter(
+                  (d) => d.scorable && d.id !== "general",
+                ).map((d) => {
                   const val = scores.byDim[d.id] ?? 0;
                   const isActive = activeDimension === d.id;
                   return (
@@ -216,6 +225,39 @@ export default function Report() {
                     </li>
                   );
                 })}
+              </ul>
+            </section>
+
+            {/* Regulatoria — bloque informativo (US-FB3-05 / feedback item 11).
+                No puntúa: se listan sus variables como contexto, sin score. */}
+            <section className="rounded-lg border border-gray-200 bg-gray-50/60 px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <h4 className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                  Regulatoria
+                </h4>
+                <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gray-600">
+                  Informativa
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] leading-snug text-gray-600">
+                Contexto regulatorio del área. No se incluye en el cálculo del
+                puntaje general.
+              </p>
+              <ul className="mt-2 flex flex-col gap-1">
+                {regulatoriaVars.map((v) => (
+                  <li
+                    key={v.id}
+                    className="flex items-center gap-2 text-[11px] text-gray-700"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-gray-400"
+                    />
+                    <span className="min-w-0 truncate" title={v.description}>
+                      {v.label}
+                    </span>
+                  </li>
+                ))}
               </ul>
             </section>
 

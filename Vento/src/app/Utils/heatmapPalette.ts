@@ -7,6 +7,8 @@
  * y un selector externo.
  */
 
+import { SCORABLE_DIMENSION_IDS } from "./variablesCatalog";
+
 /** 11 stops Viridis (matplotlib estándar). */
 const VIRIDIS: [number, number, number][] = [
   [68, 1, 84],
@@ -79,24 +81,17 @@ export function dimensionScore(
 }
 
 /**
- * Puntaje general placeholder del área seleccionada (promedio entre las 5
- * dimensiones para mantener coherencia visual con `dimensionScore`).
- * Devuelve string en formato `XX.X`.
+ * Puntaje general placeholder del área seleccionada: promedio entre las
+ * dimensiones PUNTUABLES (`SCORABLE_DIMENSION_IDS` — 4 dimensiones).
+ * "Regulatoria" queda excluida del cálculo (US-FB3-05 / feedback item 11) y
+ * pasa a ser información contextual. Devuelve string en formato `XX.X`.
  */
 export function generalScore(hexes: Iterable<string>): string {
   const arr = Array.from(hexes);
   if (arr.length === 0) return "0.0";
-  const dims = [
-    "ambiental",
-    "tecnica",
-    "economica",
-    "socioeconomica",
-    "regulatoria",
-  ];
   let sum = 0;
-  for (const dim of dims) {
-    const s = parseFloat(dimensionScore(dim, arr));
-    sum += s;
+  for (const dim of SCORABLE_DIMENSION_IDS) {
+    sum += parseFloat(dimensionScore(dim, arr));
   }
-  return (sum / dims.length).toFixed(1);
+  return (sum / SCORABLE_DIMENSION_IDS.length).toFixed(1);
 }

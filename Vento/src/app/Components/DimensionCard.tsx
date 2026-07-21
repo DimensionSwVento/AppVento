@@ -3,7 +3,11 @@
 import { useState } from "react";
 import VariableSwitch from "./VariableSwitch";
 import { useVariables } from "../Utils/VariablesContext";
-import type { Dimension, Variable } from "../Utils/variablesCatalog";
+import {
+  isScorableDimension,
+  type Dimension,
+  type Variable,
+} from "../Utils/variablesCatalog";
 
 interface DimensionCardProps {
   dimension: Dimension;
@@ -20,6 +24,9 @@ export default function DimensionCard({
   const { activeCountByDimension, totalByDimension } = useVariables();
   const active = activeCountByDimension(dimension.id);
   const total = totalByDimension(dimension.id);
+  // Regulatoria pasó a ser informativa (US-FB3-05 / feedback item 11): sus
+  // variables se pueden seleccionar como contexto pero no puntúan en el score.
+  const informative = !isScorableDimension(dimension.id);
 
   if (variables.length === 0) return null;
 
@@ -32,11 +39,18 @@ export default function DimensionCard({
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between px-3 py-3"
       >
-        <span className="text-sm font-bold text-[#383838]">
-          {dimension.label} -{" "}
-          <span className="text-gray-500 font-normal">
-            {active}/{total}
+        <span className="flex items-center gap-2 text-sm font-bold text-[#383838]">
+          <span>
+            {dimension.label} -{" "}
+            <span className="text-gray-500 font-normal">
+              {active}/{total}
+            </span>
           </span>
+          {informative && (
+            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gray-500">
+              informativa · no puntúa
+            </span>
+          )}
         </span>
         <svg
           viewBox="0 0 20 20"

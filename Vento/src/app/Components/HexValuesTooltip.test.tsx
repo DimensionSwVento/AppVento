@@ -16,13 +16,20 @@ describe("HexValuesTooltip", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renderiza el tooltip con las 6 dimensiones y su puntaje", () => {
+  it("renderiza los puntajes de las dimensiones puntuables y su valor", () => {
     render(<HexValuesTooltip hex={HEX} x={100} y={50} />);
     const tooltip = screen.getByRole("tooltip", { name: "Valores del hexágono" });
     expect(tooltip).toBeInTheDocument();
-    for (const d of HEATMAP_DIMENSIONS) {
+    for (const d of HEATMAP_DIMENSIONS.filter((d) => d.scorable)) {
       expect(screen.getByText(d.label)).toBeInTheDocument();
     }
+  });
+
+  // US-FB3-05 / feedback item 11 — "Regulatoria" al lado como informativa.
+  it("muestra 'Regulatoria' aparte, marcada como informativa", () => {
+    render(<HexValuesTooltip hex={HEX} x={100} y={50} />);
+    expect(screen.getByText("Regulatoria")).toBeInTheDocument();
+    expect(screen.getByText("informativa")).toBeInTheDocument();
   });
 
   it("se ancla al cursor con offset de 12px", () => {

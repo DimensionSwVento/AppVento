@@ -48,6 +48,29 @@ export const DIMENSIONS: Dimension[] = [
   { id: "regulatoria", label: "Dimensión regulatoria" },
 ];
 
+/**
+ * Dimensiones que SÍ puntúan en el modelo multicriterio (WLC) — 4 en total
+ * (decisión del cliente, feedback item 11 / US-FB3-05). "Regulatoria" queda
+ * fuera del cálculo y pasa a mostrarse como información contextual.
+ *
+ * Fuente única de verdad de la exclusión: el score general (`heatmapPalette`),
+ * la lista de barras del informe, el tooltip y el heatmap derivan de aquí.
+ */
+export const SCORABLE_DIMENSION_IDS: DimensionId[] = [
+  "ambiental",
+  "tecnica",
+  "economica",
+  "socioeconomica",
+];
+
+/** Dimensiones informativas (no puntúan; se muestran como contexto). */
+export const INFORMATIVE_DIMENSION_IDS: DimensionId[] = ["regulatoria"];
+
+/** `true` si la dimensión aporta al score general (WLC). */
+export function isScorableDimension(id: DimensionId): boolean {
+  return SCORABLE_DIMENSION_IDS.includes(id);
+}
+
 export const VARIABLES: Variable[] = [
   // ─── Ambiental ──────────────────────────────────────────────────────
   { id: "especies-endemicas", dimension: "ambiental", label: "Especies endémicas", description: "Presencia de especies endémicas en la zona de interés", iconKey: "lucide:Bird" },

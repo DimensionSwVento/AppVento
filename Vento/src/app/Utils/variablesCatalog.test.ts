@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   DIMENSIONS,
   VARIABLES,
+  SCORABLE_DIMENSION_IDS,
+  isScorableDimension,
   getVariableById,
   variablesByDimension,
 } from "./variablesCatalog";
@@ -30,6 +32,21 @@ describe("variablesCatalog — estructura", () => {
     for (const v of VARIABLES) {
       expect(validDims.has(v.dimension)).toBe(true);
     }
+  });
+
+  // US-FB3-05 / feedback item 11 — 4 dimensiones puntuables; regulatoria fuera.
+  it("expone 4 dimensiones puntuables sin 'regulatoria'", () => {
+    expect(SCORABLE_DIMENSION_IDS).toHaveLength(4);
+    expect(SCORABLE_DIMENSION_IDS).not.toContain("regulatoria");
+    expect([...SCORABLE_DIMENSION_IDS].sort()).toEqual(
+      ["ambiental", "economica", "socioeconomica", "tecnica"].sort(),
+    );
+  });
+
+  it("isScorableDimension: true para puntuables, false para regulatoria", () => {
+    expect(isScorableDimension("tecnica")).toBe(true);
+    expect(isScorableDimension("economica")).toBe(true);
+    expect(isScorableDimension("regulatoria")).toBe(false);
   });
 });
 

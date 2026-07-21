@@ -81,8 +81,10 @@ export const VARIABLE_WEIGHTS: Record<string, number> = {
   "zomac": -0.4,
 
   // ─── Regulatoria ───────────────────────────────────────────────────
-  "tasa-exito-proyectos": 0.8,
-  "proyectos-xm": 0.6,
+  // EXCLUIDA del cálculo WLC (US-FB3-05 / feedback item 11). Las variables
+  // regulatorias (`tasa-exito-proyectos`, `proyectos-xm`) NO llevan peso: pasan
+  // a ser información contextual. Al no estar en el mapa, `weightFor` devuelve 0
+  // y no aportan al agregado (ver `SCORABLE_DIMENSION_IDS` en variablesCatalog).
 };
 
 /**

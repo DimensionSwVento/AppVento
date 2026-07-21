@@ -21,9 +21,10 @@ const TOOLTIP_INFO_VARS_LIMIT = 4;
 /**
  * Mini-tooltip que se muestra al hacer **hover** sobre un hexágono.
  *
- * Renderiza los puntajes placeholder (General + 5 dimensiones) del hex bajo
- * el cursor, resaltando la dimensión que está pintando el heatmap (si hay).
- * Anclado a la posición del cursor con offset para no taparlo.
+ * Renderiza los puntajes placeholder (General + 4 dimensiones puntuables) del
+ * hex bajo el cursor, resaltando la dimensión que está pintando el heatmap
+ * (si hay). "Regulatoria" se muestra aparte como valor informativo (no puntúa,
+ * US-FB3-05 / feedback item 11). Anclado a la posición del cursor con offset.
  *
  * Los valores son placeholder deterministas hasta US03-AC6.
  */
@@ -81,7 +82,7 @@ export default function HexValuesTooltip({
         Puntajes de idoneidad
       </p>
       <ul className="flex flex-col px-2.5 pb-1.5">
-        {HEATMAP_DIMENSIONS.map((d) => {
+        {HEATMAP_DIMENSIONS.filter((d) => d.scorable).map((d) => {
           const value = (scores[d.id] * 100).toFixed(1);
           const isActive = activeDimension === d.id;
           return (
@@ -113,6 +114,25 @@ export default function HexValuesTooltip({
           );
         })}
       </ul>
+
+      {/* Regulatoria — informativa, al lado de los puntajes puntuables.
+          No cuenta para el score (US-FB3-05 / feedback item 11). */}
+      {HEATMAP_DIMENSIONS.filter((d) => !d.scorable).map((d) => (
+        <div
+          key={d.id}
+          className="mx-2.5 mb-1.5 flex items-baseline justify-between gap-2 rounded border border-dashed border-gray-200 px-1.5 py-1"
+        >
+          <span className="flex items-center gap-1 text-[10px] text-gray-600">
+            <span>{d.label}</span>
+            <span className="rounded bg-gray-100 px-1 text-[8px] font-semibold uppercase tracking-wide text-gray-500">
+              informativa
+            </span>
+          </span>
+          <span className="font-mono text-[10px] font-semibold text-gray-500">
+            {(scores[d.id] * 100).toFixed(1)}
+          </span>
+        </div>
+      ))}
 
       <p className="border-t border-gray-200 px-2.5 pt-1.5 text-[9px] font-semibold uppercase tracking-wide text-gray-500">
         Variables informativas
