@@ -24,6 +24,17 @@ vi.mock("@deck.gl/react", () => ({
 vi.mock("react-map-gl/maplibre", () => ({
   Map: () => <div data-testid="maplibre" />,
 }));
+// @deck.gl/core arrastra @luma.gl/shadertools → wgsl_reflect, un paquete con
+// "type": "module" cuyo `main` es CommonJS: el loader ESM de Node no le ve
+// exports nombrados y revienta al importarlo. Mockearlo (igual que Map.test.tsx)
+// evita cargarlo; sólo se usa WebMercatorViewport.fitBounds en Map.tsx.
+vi.mock("@deck.gl/core", () => ({
+  WebMercatorViewport: class {
+    fitBounds() {
+      return { longitude: -73.5, latitude: 4.5, zoom: 8 };
+    }
+  },
+}));
 vi.mock("@deck.gl/geo-layers", () => ({
   TileLayer: vi.fn(function (this: object, props: object) {
     Object.assign(this, props);
