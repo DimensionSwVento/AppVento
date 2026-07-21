@@ -111,3 +111,40 @@ export const BANNED_HEXES: ReadonlySet<string> = new Set<string>([
  * Poner en `false` cuando se conecten los datos reales (o se pueble `BANNED_HEXES`).
  */
 export const SHOW_PLACEHOLDER_EXCLUDED = true;
+
+/**
+ * ════════════════════════════════════════════════════════════════════════
+ *  DESPLIEGUE POR FASES
+ * ════════════════════════════════════════════════════════════════════════
+ * `USE_BACKEND = false` (por defecto) → **modo template SIN API**: el histórico
+ * usa cache local (localStorage) y scores/heatmap/detalle usan placeholders, sin
+ * llamar al backend. Ideal para la **fase 1** del despliegue (solo frontend).
+ * `true` → backend conectado (BFF `/api/tiles/*` + `/api/historico`).
+ *
+ * Se controla por entorno: `NEXT_PUBLIC_USE_BACKEND=true` para la fase con API.
+ * No borra nada — solo cambia el modo.
+ */
+export const USE_BACKEND = process.env.NEXT_PUBLIC_USE_BACKEND === "true";
+
+/**
+ * ════════════════════════════════════════════════════════════════════════
+ *  PLACEHOLDERS — ELIMINAR AL CONECTAR DATOS REALES
+ * ════════════════════════════════════════════════════════════════════════
+ * Interruptor maestro de los datos placeholder. Mientras el backend/parquet no
+ * entregue datos reales, la UI cae a valores placeholder deterministas para
+ * seguir funcionando. Al terminar de **testear → conectar → subir a prod**:
+ *   1. Poner `USE_PLACEHOLDER_FALLBACK = false` (la UI mostrará SOLO lo real;
+ *      sin backend, scores en 0 y heatmap sin variación por dimensión).
+ *   2. Verificar que todo viene del backend.
+ *   3. ELIMINAR los placeholders del inventario de abajo (y este bloque).
+ *
+ * Inventario a eliminar (todo lo placeholder está referenciado desde aquí):
+ *   - `Utils/report/heatmapPalette.ts` → `dimensionHexScore` / `dimensionScore`
+ *     / `generalScore` (scores fake por hash). Conservar `viridis` (paleta real).
+ *   - `Utils/variables/variableWeights.ts` → pesos WLC placeholder.
+ *   - `Utils/variables/informativeVariables.tsx` → conversión de valores placeholder.
+ *   - Este archivo: `SHOW_PLACEHOLDER_EXCLUDED` + specs placeholder de `AEROGENERADORES`.
+ *   - Fallbacks que consumen lo anterior: `useSelectionScores`, `useAreaScores`,
+ *     `useInformeHeatmapLayer` (rama placeholder).
+ */
+export const USE_PLACEHOLDER_FALLBACK = true;

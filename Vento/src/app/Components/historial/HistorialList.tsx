@@ -6,7 +6,7 @@ import { useVariables } from "../../Utils/contexts/VariablesContext";
 import { useCaracteristicas } from "../../Utils/contexts/CaracteristicasContext";
 import { useHistorial } from "../../Utils/historial/HistorialContext";
 import { groupByRecency } from "../../Utils/historial/grouping";
-import { MAX_ENTRIES } from "../../Utils/historial/LocalStorageHistorialRepo";
+import { MAX_HISTORIAL_ENTRIES as MAX_ENTRIES } from "../../Utils/projectData";
 import type { InformeEntry } from "../../Utils/historial/types";
 import { useToast } from "../ui/Toast";
 
@@ -175,10 +175,9 @@ export default function HistorialList() {
       <p className="mt-auto flex items-start gap-2 rounded-lg border-l-4 border-[#165170ff] bg-[#cce1eeff]/40 px-3 py-2.5 text-[11px] leading-snug text-gray-600">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#165170ff]" aria-hidden="true" />
         <span>
-          Los análisis guardados ocupan espacio en este navegador. Puedes
-          conservar hasta <strong>{MAX_ENTRIES}</strong> ({entries.length}/
-          {MAX_ENTRIES}); al superar el límite se elimina automáticamente el más
-          antiguo.
+          Se conservan hasta <strong>{MAX_ENTRIES}</strong> informes
+          ({entries.length}/{MAX_ENTRIES}); al superar el límite se elimina
+          automáticamente el más antiguo.
         </span>
       </p>
     </div>

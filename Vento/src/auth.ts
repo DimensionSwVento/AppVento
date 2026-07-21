@@ -33,6 +33,7 @@ declare module "next-auth" {
   interface Session {
     roles?: string[];
     error?: string; // para que SessionGuard detecte RefreshTokenError/NoRefreshToken
+    sub?: string; // id del usuario (Keycloak `sub`) — lo consume el BFF del histórico
   }
 }
 
@@ -227,6 +228,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // Logout federado se hace con client_id + post_logout_redirect_uri (sin id_token_hint).
       session.roles = token.roles;  // necesario para RBAC en middleware y UI
       session.error = token.error;  // SessionGuard detecta RefreshTokenError para sign-out automático
+      session.sub = token.sub;      // id de usuario para el BFF del histórico (ya está en la cookie)
       return session;
     },
   },

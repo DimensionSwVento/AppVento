@@ -2,21 +2,24 @@ import type { InformeEntry } from "./types";
 import type { HistorialRepository } from "./HistorialRepository";
 
 /**
- * Implementación backend (Postgres) — PENDIENTE. Punto de enganche del seam.
- * Cuando exista la tabla `informe` + endpoints, se activa cambiando una línea
- * en HistorialProvider (`new LocalStorageHistorialRepo()` → `new ApiHistorialRepo()`).
- * El backend valida los límites por usuario/área y rechaza con 413/422.
+ * Implementación backend (Postgres) del histórico. Llama a las rutas Next
+ * `/api/historico` (BFF), que reenvían la identidad del usuario al FastAPI
+ * privado y persisten por `user_id`. El backend filtra por usuario, valida
+ * límites y rota los más antiguos.
  */
 export class ApiHistorialRepo implements HistorialRepository {
   async list(): Promise<InformeEntry[]> {
-    // TODO: GET /api/historico (filtrado por user_id del token)
-    const res = await fetch("/api/historico");
-    if (!res.ok) throw new Error("No se pudo cargar el histórico");
-    return res.json();
+    // Resiliente: si el backend no responde, el histórico se ve vacío (no rompe la UI).
+    try {
+      const res = await fetch("/api/historico", { cache: "no-store" });
+      if (!res.ok) return [];
+      return (await res.json()) as InformeEntry[];
+    } catch {
+      return [];
+    }
   }
 
   async save(entry: InformeEntry): Promise<void> {
-    // TODO: POST /api/historico — el backend compacta hexes y valida límites
     const res = await fetch("/api/historico", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -26,8 +29,9 @@ export class ApiHistorialRepo implements HistorialRepository {
   }
 
   async remove(id: string): Promise<void> {
-    // TODO: DELETE /api/historico/:id
     const res = await fetch(`/api/historico/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("No se pudo eliminar el informe");
+    if (!res.ok && res.status !== 404) {
+      throw new Error("No se pudo eliminar el informe");
+    }
   }
 }

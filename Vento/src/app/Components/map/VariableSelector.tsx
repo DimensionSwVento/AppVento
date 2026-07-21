@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { API_BASE } from "../../Utils/apis/apiUrl";
+import { USE_BACKEND } from "../../Utils/projectData";
 
 interface VariableInfo {
   name: string;
@@ -18,7 +18,8 @@ export default function VariableSelector({ selected, onSelect }: VariableSelecto
   const [variables, setVariables] = useState<VariableInfo[]>([]);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/tiles/variables`)
+    if (!USE_BACKEND) return; // modo template: sin backend, no hay lista de variables
+    fetch(`/api/tiles/variables`)
       .then((res) => res.json())
       .then((data) => {
         if (data.variables) setVariables(data.variables);

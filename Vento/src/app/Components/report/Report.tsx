@@ -20,7 +20,7 @@ import {
 } from "../../Utils/contexts/HeatmapDimensionContext";
 import RadarChart from "./RadarChart";
 import { dimensionScore } from "../../Utils/report/heatmapPalette";
-import { useSelectionScores } from "../../Utils/report/useSelectionScores";
+import { useAreaScores } from "../../Utils/report/useAreaScores";
 import { useVariables } from "../../Utils/contexts/VariablesContext";
 import {
   formatVariableValue,
@@ -66,9 +66,9 @@ export default function Report() {
   const region = useMemo(() => getRegion(selectedHexes), [selectedHexes]);
   const timestamp = useMemo(() => formatReportTimestamp(), []);
 
-  // Puntajes agregados (general + por dimensión) — fuente única compartida por
-  // las barras y el radar. Ver Utils/useSelectionScores (evita doble cálculo).
-  const scores = useSelectionScores(selectedHexes);
+  // Puntajes agregados (general + por dimensión) — del backend (POST /tiles/area)
+  // con fallback al placeholder local. Fuente única para barras, radar y snapshot.
+  const scores = useAreaScores(selectedHexes);
 
   // Ejes del radar a partir de los puntajes por dimensión.
   const radarAxes = useMemo(

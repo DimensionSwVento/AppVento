@@ -10,11 +10,15 @@ import {
 } from "react";
 import type { InformeEntry } from "./types";
 import type { HistorialRepository } from "./HistorialRepository";
+import { ApiHistorialRepo } from "./ApiHistorialRepo";
 import { LocalStorageHistorialRepo } from "./LocalStorageHistorialRepo";
-// import { ApiHistorialRepo } from "./ApiHistorialRepo"; // ← activar cuando exista el backend
+import { USE_BACKEND } from "../projectData";
 
-// Fuente de datos activa (seam). Hoy: localStorage. Mañana: `new ApiHistorialRepo()`.
-const repo: HistorialRepository = new LocalStorageHistorialRepo();
+// Fuente de datos según la fase de despliegue: con backend → Postgres (BFF);
+// en modo template sin API → cache local (localStorage). Ambos se conservan.
+const repo: HistorialRepository = USE_BACKEND
+  ? new ApiHistorialRepo()
+  : new LocalStorageHistorialRepo();
 
 type HistorialApi = {
   entries: InformeEntry[];
