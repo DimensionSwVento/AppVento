@@ -486,7 +486,13 @@ export default function MapView() {
       // del área completa lo sigue dibujando `selectedLayer`.
       filled: true,
       stroked: false,
-      pickable: false,
+      // US-FB3-03 (feedback item 8): ÚNICA capa pickable durante el informe.
+      // `gridTileLayer` y `selectedLayer` van con `visible: !heatmapActive`, y
+      // deck.gl no hace picking sobre capas invisibles: con el heatmap activo
+      // no quedaba nada que pickear, `onHover` nunca recibía objeto y el
+      // tooltip no aparecía en NINGÚN hex. El click no es un riesgo aquí:
+      // `toggleHex` corta cuando `!canSelect`.
+      pickable: true,
       updateTriggers: { getFillColor: [dim] },
     });
   }, [heatmapActive, activeDimension, informeHeatmapData]);
@@ -661,9 +667,15 @@ export default function MapView() {
         onViewStateChange={({ viewState: vs }) => setViewState(clampViewState(vs as typeof INITIAL_VIEW_STATE))}
         controller={true}
         layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer]}
+        // US-FB3-03 (feedback item 8): nunca "not-allowed". Fuera de la fase de
+        // selección el hex NO es inerte — en el informe se consulta con el
+        // tooltip —, y el cursor de "prohibido" (muy marcado en Firefox/Windows)
+        // se leía como "el mapa está bloqueado". El cursor ahora refleja qué se
+        // puede hacer sobre la capa pickable: "pointer" si el hex responde
+        // (selección o tooltip del informe), "default" si sólo es decorativo.
         getCursor={({ isHovering }) => {
-          if (!canSelect) return isHovering ? "not-allowed" : "grab";
-          return isHovering ? "pointer" : "grab";
+          if (!isHovering) return "grab";
+          return canSelect || heatmapActive ? "pointer" : "default";
         }}
         onHover={(info) => {
           const cell = info.object as HexCell | undefined;
