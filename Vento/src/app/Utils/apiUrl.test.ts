@@ -21,4 +21,20 @@ describe("apiUrl — API_BASE", () => {
     const { API_BASE } = await import("./apiUrl");
     expect(API_BASE).toBe("");
   });
+
+  it("construye una URL normalizada con base configurada", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:8000/");
+    const { apiUrl } = await import("./apiUrl");
+    expect(apiUrl("/api/tiles/detail/abc")).toBe(
+      "http://localhost:8000/api/tiles/detail/abc",
+    );
+  });
+
+  it("conserva rutas same-origin cuando no hay base", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "");
+    const { apiUrl } = await import("./apiUrl");
+    expect(apiUrl("api/tiles/detail/abc")).toBe("/api/tiles/detail/abc");
+  });
 });

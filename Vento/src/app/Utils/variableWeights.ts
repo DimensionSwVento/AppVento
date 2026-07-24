@@ -45,6 +45,7 @@ export const VARIABLE_WEIGHTS: Record<string, number> = {
   "turbulencia": -0.5,
   "rugosidad": -0.3,
   "nodos-conexion": -0.7,
+  "distancia-sin": -0.7,
   "distancia-vial": -0.5,
   "lcoe": -0.8,
   "factor-capacidad": 0.9,

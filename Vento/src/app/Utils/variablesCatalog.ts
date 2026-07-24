@@ -76,6 +76,7 @@ export const VARIABLES: Variable[] = [
   { id: "turbulencia", dimension: "tecnica", label: "Turbulencia", description: "Intensidad de turbulencia del viento", iconKey: "lucide:Tornado" },
   { id: "rugosidad", dimension: "tecnica", label: "Longitud de rugosidad", description: "Parámetro de rugosidad superficial del terreno", iconKey: "lucide:WavesHorizontal" },
   { id: "nodos-conexion", dimension: "tecnica", label: "Distancia a nodos de conexión", description: "Distancia a subestaciones y nodos eléctricos", iconKey: "lucide:MapPin" },
+  { id: "distancia-sin", dimension: "tecnica", label: "Distancia al SIN", description: "Distancia lineal mínima al Sistema Interconectado Nacional para el área seleccionada", iconKey: "lucide:TowerControl" },
   { id: "distancia-vial", dimension: "tecnica", label: "Distancia a infraestructura vial", description: "Distancia a vías principales para logística", iconKey: "tabler:road" },
   { id: "lcoe", dimension: "tecnica", label: "LCOE", description: "Levelized Cost of Energy estimado", iconKey: "lucide:CircleDollarSign" },
   { id: "factor-capacidad", dimension: "tecnica", label: "Factor de capacidad", description: "Factor de capacidad esperado del aerogenerador", iconKey: "lucide:Gauge" },

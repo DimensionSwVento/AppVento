@@ -26,24 +26,14 @@ export interface CaracteristicasState {
   tipoTecnologiaOffshore: TipoTecnologiaOffshore;
   /** Capacidad nominal del proyecto en MW. `null` si no se ha capturado. */
   capacidadMW: number | null;
-  /** Número de aerogeneradores previstos. */
-  numAerogeneradores: number | null;
   categoriaAerogenerador: CategoriaAerogenerador;
-  /**
-   * Distancia al Sistema Interconectado Nacional (SIN) en km.
-   * Pendiente del lado de datos (tarea Felipe — auto-cálculo desde el área).
-   * Por ahora es un valor manual override que ingresa el usuario.
-   */
-  distanciaSINKm: number | null;
 }
 
 interface CaracteristicasContextValue extends CaracteristicasState {
   setTipoEmplazamiento: (v: TipoEmplazamiento) => void;
   setTipoTecnologiaOffshore: (v: TipoTecnologiaOffshore) => void;
   setCapacidadMW: (v: number | null) => void;
-  setNumAerogeneradores: (v: number | null) => void;
   setCategoriaAerogenerador: (v: CategoriaAerogenerador) => void;
-  setDistanciaSINKm: (v: number | null) => void;
   /** Resetea todas las características a valores iniciales. */
   reset: () => void;
 }
@@ -52,9 +42,7 @@ const INITIAL_STATE: CaracteristicasState = {
   tipoEmplazamiento: null,
   tipoTecnologiaOffshore: null,
   capacidadMW: null,
-  numAerogeneradores: null,
   categoriaAerogenerador: null,
-  distanciaSINKm: null,
 };
 
 const noopContext: CaracteristicasContextValue = {
@@ -62,9 +50,7 @@ const noopContext: CaracteristicasContextValue = {
   setTipoEmplazamiento: () => {},
   setTipoTecnologiaOffshore: () => {},
   setCapacidadMW: () => {},
-  setNumAerogeneradores: () => {},
   setCategoriaAerogenerador: () => {},
-  setDistanciaSINKm: () => {},
   reset: () => {},
 };
 
@@ -104,21 +90,9 @@ export function CaracteristicasProvider({
     [],
   );
 
-  const setNumAerogeneradores = useCallback(
-    (v: number | null) =>
-      setState((prev) => ({ ...prev, numAerogeneradores: v })),
-    [],
-  );
-
   const setCategoriaAerogenerador = useCallback(
     (v: CategoriaAerogenerador) =>
       setState((prev) => ({ ...prev, categoriaAerogenerador: v })),
-    [],
-  );
-
-  const setDistanciaSINKm = useCallback(
-    (v: number | null) =>
-      setState((prev) => ({ ...prev, distanciaSINKm: v })),
     [],
   );
 
@@ -130,9 +104,7 @@ export function CaracteristicasProvider({
       setTipoEmplazamiento,
       setTipoTecnologiaOffshore,
       setCapacidadMW,
-      setNumAerogeneradores,
       setCategoriaAerogenerador,
-      setDistanciaSINKm,
       reset,
     }),
     [
@@ -140,9 +112,7 @@ export function CaracteristicasProvider({
       setTipoEmplazamiento,
       setTipoTecnologiaOffshore,
       setCapacidadMW,
-      setNumAerogeneradores,
       setCategoriaAerogenerador,
-      setDistanciaSINKm,
       reset,
     ],
   );

@@ -15,18 +15,14 @@ function Probe() {
           tipo: c.tipoEmplazamiento,
           tec: c.tipoTecnologiaOffshore,
           mw: c.capacidadMW,
-          num: c.numAerogeneradores,
           cat: c.categoriaAerogenerador,
-          sin: c.distanciaSINKm,
         })}
       </span>
       <button onClick={() => c.setTipoEmplazamiento("offshore")}>offshore</button>
       <button onClick={() => c.setTipoTecnologiaOffshore("flotante")}>flotante</button>
       <button onClick={() => c.setTipoEmplazamiento("onshore")}>onshore</button>
       <button onClick={() => c.setCapacidadMW(150.5)}>mw</button>
-      <button onClick={() => c.setNumAerogeneradores(25)}>num</button>
       <button onClick={() => c.setCategoriaAerogenerador("M")}>cat</button>
-      <button onClick={() => c.setDistanciaSINKm(12.3)}>sin</button>
       <button onClick={() => c.reset()}>reset</button>
     </div>
   );
@@ -47,9 +43,7 @@ describe("CaracteristicasContext", () => {
       tipo: null,
       tec: null,
       mw: null,
-      num: null,
       cat: null,
-      sin: null,
     });
   });
 
@@ -62,16 +56,12 @@ describe("CaracteristicasContext", () => {
     fireEvent.click(screen.getByText("offshore"));
     fireEvent.click(screen.getByText("flotante"));
     fireEvent.click(screen.getByText("mw"));
-    fireEvent.click(screen.getByText("num"));
     fireEvent.click(screen.getByText("cat"));
-    fireEvent.click(screen.getByText("sin"));
     expect(state()).toEqual({
       tipo: "offshore",
       tec: "flotante",
       mw: 150.5,
-      num: 25,
       cat: "M",
-      sin: 12.3,
     });
   });
 
@@ -101,9 +91,7 @@ describe("CaracteristicasContext", () => {
       tipo: null,
       tec: null,
       mw: null,
-      num: null,
       cat: null,
-      sin: null,
     });
   });
 
