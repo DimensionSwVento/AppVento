@@ -7,6 +7,11 @@ import {
   useCaracteristicas,
   type CategoriaAerogenerador,
 } from "../../Utils/contexts/CaracteristicasContext";
+import {
+  isCapacityWithinRange,
+  MAX_CAPACITY_MW,
+  MIN_CAPACITY_MW,
+} from "../../Utils/capacity";
 import { dominantHexType } from "../../Utils/h3/hexClassification";
 import { calcNumAerogeneradores, AEROGENERADORES } from "../../Utils/projectData";
 import MWPicker from "./MWPicker";
@@ -49,11 +54,13 @@ export default function Caracteristicas() {
       e.tipoTecnologiaOffshore =
         "Selecciona el tipo de tecnología offshore (flotante o fija).";
     }
-    if (capacidadMW === null || capacidadMW <= 0) {
+    if (!isCapacityWithinRange(capacidadMW)) {
       e.capacidadMW =
-        "La capacidad nominal debe ser mayor a 0 MW (rango permitido 0.01 – 999.99).";
-    } else if (capacidadMW > 999.99) {
-      e.capacidadMW = "La capacidad excede el límite de 999.99 MW.";
+        capacidadMW !== null &&
+        Number.isFinite(capacidadMW) &&
+        capacidadMW > MAX_CAPACITY_MW
+          ? `La capacidad excede el límite de ${MAX_CAPACITY_MW} MW.`
+          : `La capacidad nominal debe ser de al menos ${MIN_CAPACITY_MW} MW (rango permitido ${MIN_CAPACITY_MW} – ${MAX_CAPACITY_MW}).`;
     }
     if (!categoriaAerogenerador) {
       e.categoriaAerogenerador =
@@ -220,6 +227,7 @@ function CapacidadSection({
   onChange: (n: number | null) => void;
   error?: string;
 }) {
+  const errorId = "capacidad-mw-error";
   const current = capacidadMW ?? 0;
   const sizeLabel =
     current >= 20 ? "Grande" : current > 1 ? "Mediano" : "Pequeña";
@@ -237,12 +245,17 @@ function CapacidadSection({
         Capacidad nominal (MW)
       </h3>
       <p className="mt-0.5 text-[11px] text-gray-500">
-        Define la capacidad instalada esperada para el proyecto. Ajusta cada
-        dígito con las flechas o con la rueda del mouse / teclas ↑ ↓.
+        Define la capacidad instalada esperada para el proyecto. Escribe cada
+        dígito o ajústalo con las flechas, la rueda del mouse o las teclas ↑ ↓.
       </p>
 
       <div className="mt-4 rounded-md bg-gray-50 p-3">
-        <MWPicker value={current} onChange={onChange} />
+        <MWPicker
+          value={current}
+          onChange={onChange}
+          invalid={Boolean(error)}
+          describedBy={error ? errorId : undefined}
+        />
       </div>
 
       <div className="mt-3 flex items-center justify-between">
@@ -258,7 +271,7 @@ function CapacidadSection({
           {sizeLabel} ({sizeRange} MW)
         </span>
       </div>
-      <FieldError message={error} />
+      <FieldError id={errorId} message={error} />
     </section>
   );
 }
@@ -395,15 +408,18 @@ function RadioCard({
 }
 
 function FieldError({
+  id,
   message,
   className = "",
 }: {
+  id?: string;
   message?: string;
   className?: string;
 }) {
   if (!message) return null;
   return (
     <p
+      id={id}
       role="alert"
       className={`text-[11px] font-medium text-red-600 ${className || "mt-2"}`}
     >
