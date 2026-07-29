@@ -92,7 +92,11 @@ export function useInformeHeatmapLayer(
       },
       filled: true,
       stroked: false,
-      pickable: false,
+      // US-FB3-03 (feedback item 8): ÚNICA capa pickable durante el informe.
+      // gridTileLayer/selectedLayer van con visible:!heatmapActive y deck.gl no
+      // hace picking sobre capas invisibles → sin esto onHover nunca recibía
+      // objeto y el tooltip por hexágono no aparecía en la fase de informe.
+      pickable: true,
       updateTriggers: { getFillColor: [dim, areaData] },
     });
   }, [heatmapActive, activeDimension, data, areaData]);

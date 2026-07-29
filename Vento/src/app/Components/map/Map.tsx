@@ -253,6 +253,8 @@ export default function MapView() {
   }), [selectedArr, heatmapActive]);
 
   // Heatmap del informe (US06-HEAT) — ver useInformeHeatmapLayer.
+  // US-FB3-03 (feedback item 8): el hook marca esta capa como la única
+  // `pickable` durante el informe para que el tooltip por hexágono aparezca.
   const informeHeatmapLayer = useInformeHeatmapLayer(
     heatmapActive,
     selectedHexes,
@@ -539,14 +541,21 @@ export default function MapView() {
         onViewStateChange={({ viewState: vs }) => setViewState(clampViewState(vs as typeof INITIAL_VIEW_STATE))}
         controller={true}
         layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer]}
+        // US-FB3-03 (feedback item 8): nunca "not-allowed". Fuera de la fase de
+        // selección el hex NO es inerte — en el informe se consulta con el
+        // tooltip —, y el cursor de "prohibido" (muy marcado en Firefox/Windows)
+        // se leía como "el mapa está bloqueado". El cursor ahora refleja qué se
+        // puede hacer sobre la capa pickable: "pointer" si el hex responde
+        // (selección o tooltip del informe), "default" si sólo es decorativo.
         getCursor={({ isHovering }) => {
-          if (!canSelect) return isHovering ? "not-allowed" : "grab";
           if (!isHovering) return "grab";
           // Zoom lejano: invita a acercarse en vez de sugerir que es clicable.
           if (selectionZoomTooFar) return "zoom-in";
-          // Zona prohibida: no seleccionable.
-          if (hoveredHex && isHexBanned(hoveredHex)) return "not-allowed";
-          return "pointer";
+          // US-FB3-03 (item 8): nunca "not-allowed" — en el informe el hex se
+          // consulta con tooltip y las zonas excluidas se explican con leyenda,
+          // no se leen como "bloqueado". "pointer" si es seleccionable o
+          // consultable en el heatmap; "grab" en el resto.
+          return canSelect || heatmapActive ? "pointer" : "grab";
         }}
         onHover={(info) => {
           const cell = info.object as HexCell | undefined;
