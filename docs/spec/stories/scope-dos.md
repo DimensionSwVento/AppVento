@@ -3,7 +3,7 @@ version: 3.0
 date: 2026-04-20
 scope: contractual-segunda-entrega
 origen: continuación del scope-primera-entrega.md
-equipo: 1 fulltime (winx) + 2 part-time
+equipo: mavalan Software (1 full-time + 2 part-time)
 estado: borrador propuesto — HUs estrictamente del spec del cliente, con tareas técnicas detalladas adentro
 ---
 
@@ -388,13 +388,13 @@ ADR-013 + US04 + US05 (placeholder OK) ──► US06-AC3
 
 ## Bloqueadas por decisión interna (1 HU)
 
-- US06-AC3 — espera ADR-013 (decisión interna de winx) + Figma del informe
+- US06-AC3 — espera ADR-013 (decisión interna de mavalan Software) + Figma del informe
 
 ## Propuesta de asignación
 
 | Dev | HUs |
 |-----|-----|
-| **Winx (full-time)** | ADR-013 + US06-AC3 (UI Figma + generación + template + descarga) + reviews + reuniones |
+| **mavalan Software (full-time)** | ADR-013 + US06-AC3 (UI Figma + generación + template + descarga) + reviews + reuniones |
 | **Part-time A** | US04-AC1 (catálogo hardcoded + cards colapsables + switches + búsqueda) + US04-AC2 (tooltips) |
 | **Part-time B** | US03-P2 + US03-AC10/AC11/AC12 (heatmap clippeado + paleta + bloqueo selección) + (tras reunión) US05-AC1/AC2/AC3 |
 
@@ -402,7 +402,7 @@ ADR-013 + US04 + US05 (placeholder OK) ──► US06-AC3
 
 | # | Decisión | Owner |
 |---|----------|-------|
-| 1 | ADR-013 — Motor PDF | winx |
+| 1 | ADR-013 — Motor PDF | mavalan Software |
 | 2 | Fuente del catálogo aerogeneradores | reunión datos |
 | 3 | Persistencia del proyecto (transitorio vs BD) | reunión datos |
 

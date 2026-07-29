@@ -2,7 +2,7 @@
 version: 1.0
 date: 2026-04-20
 scope: post-primera-entrega (feedback cliente)
-equipo: 1 fulltime (winx) + 2 part-time
+equipo: mavalan Software (1 full-time + 2 part-time)
 origen: revisión cliente post-deploy AccuWeb
 ---
 
@@ -211,7 +211,7 @@ Ver [ADR-009](../adr/ADR-009-notificaciones-email-pendientes-smtp.md) para conte
 
 | Dev | Horas semana 1 | HUs asignadas |
 |-----|----------------|---------------|
-| **Winx (tú)** | 20h | 🛠️ Realm configs (US-FB-01 AC3, US-FB-03 AC1) · 📚 Docs (US-DOC-01) · ADR-009 · Review PRs |
+| **mavalan Software** | 20h | 🛠️ Realm configs (US-FB-01 AC3, US-FB-03 AC1) · 📚 Docs (US-DOC-01) · ADR-009 · Review PRs |
 | **Part-time A** | 15h | 🎨 Theme Keycloak (US-FB-01 AC1, 2, 4, 5 + US-FB-02) |
 | **Part-time B** | 15h | 📦 FE Mapa (US-FB-04) + Admin (US-FB-05) + SessionGuard (US-FB-03 AC2, 3, 4) |
 

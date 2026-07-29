@@ -92,5 +92,5 @@ Se rescató previamente el Keycloak server, pero SMTP sigue sin configurar porqu
 
 ---
 
-**Aceptado por**: winx (tech lead)
+**Aceptado por**: mavalan Software
 **Próxima revisión**: al recibir credenciales SMTP del cliente, o a los 14 días (2026-05-04) si sigue sin resolverse.

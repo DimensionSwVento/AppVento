@@ -1,7 +1,7 @@
 ---
 version: 1.0
 date: 2026-04-20
-author: winx (tech lead)
+author: mavalan Software
 scope: estrategia de testing unitario del frontend Vento
 ---
 

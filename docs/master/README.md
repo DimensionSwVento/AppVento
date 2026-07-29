@@ -3,7 +3,7 @@ version: 1.0
 date: 2026-04-20
 audience: cliente · stakeholders · devs · PM
 revisar: cada 30 días
-maintainer: winx (tech lead)
+maintainer: mavalan Software
 ---
 
 # Vento — Documentación Maestra
@@ -71,7 +71,6 @@ Leyenda: 🟢 ok · 🟡 parcial · 🔵 planeado · 🟠 en proceso externo · 
 | 2 | **Catálogo de aerogeneradores** no definido | Externo (cliente + datos) | Bloquea US05-AC1/AC2/AC3/AC5 | [scope-dos §Reuniones](../spec/stories/scope-dos.md#reuniones-requeridas) |
 | 3 | **Modelo multicriterio** todavía preliminar | Externo (investigación) | US06-AC5 esperando — los informes usan placeholders mientras tanto | [scope-dos US06-AC5](../spec/stories/scope-dos.md#us06-ac5--conexión-a-datos-reales-del-modelo-multicriterio) |
 | 4 | **CI GitHub Actions** inestable en ramas de desarrollo | Interno | Deploys vía CI solo confiables tras llegar a `main`; deploy manual en `develop` | [accuweb-runbook §8](../ops/accuweb-runbook.md#8-pipeline-ci--estado-y-troubleshooting) |
-| 5 | **Bus factor = 1** (winx concentra full-stack + DevOps + coordinación) | Interno | Si winx no está, no hay backup operativo | Mitigación: [accuweb-runbook](../ops/accuweb-runbook.md) + onboarding part-time |
 
 ---
 
@@ -104,6 +103,7 @@ Leyenda: 🟢 ok · 🟡 parcial · 🔵 planeado · 🟠 en proceso externo · 
 |-----|----------|
 | [tech-stack-validation.md](../architecture/tech-stack-validation.md) | Qué tecnologías se usan y por qué — retrospectiva práctica del stack |
 | [frontend-backend-integration.md](../architecture/frontend-backend-integration.md) | Cómo Next.js se conecta a FastAPI (rewrites, proxy, dónde van los handlers locales vs proxy) |
+| [backend-api.md](../architecture/backend-api.md) | Referencia técnica del backend FastAPI: endpoints, modelo de datos, auth, scoring, ingesta, config y despliegue |
 | [auth-strategy.md](../security/auth-strategy.md) | Cómo funciona el login y la protección de rutas (middleware + layouts + API guards) |
 | [infra/keycloak.md](../infra/keycloak.md) | Cómo desplegar y configurar Keycloak para Vento (dev + prod, theme, realm) |
 | [test-strategy.md](../testing/test-strategy.md) | Estrategia de testing: dónde viven los tests, qué validan, cómo añadir nuevos |
@@ -188,7 +188,6 @@ Leyenda: 🟢 ok · 🟡 parcial · 🔵 planeado · 🟠 en proceso externo · 
 | **ADR** | Architecture Decision Record. Documento que registra una decisión técnica, su contexto y consecuencias. |
 | **HU (Historia de Usuario)** | Unidad de trabajo: "Como X quiero Y para Z" + criterios de aceptación. |
 | **AC (Criterio de Aceptación)** | Cláusula verificable que dice cuándo una HU está "lista". |
-| **Bus factor** | Cuántas personas pueden caer del equipo antes de que el proyecto se detenga. Idealmente >1. |
 | **Standalone** | Modo de build de Next.js que produce un servidor Node minimalista sin necesidad de `npm install` en producción. |
 | **SMTP** | Protocolo de envío de email. Vento depende del cliente para proveerlo (bloqueante ADR-009). |
 
@@ -205,7 +204,7 @@ Leyenda: 🟢 ok · 🟡 parcial · 🔵 planeado · 🟠 en proceso externo · 
 5. ¿Hay nuevos términos técnicos no explicados en el glosario?
 6. Fecha de la última revisión arriba en el frontmatter.
 
-**Mantenedor**: winx (tech lead). Si otro dev edita, marca el cambio en commit message como `docs(master): ...` para no pasar desapercibido.
+**Mantenedor**: mavalan Software. Si otro dev edita, marca el cambio en commit message como `docs(master): ...` para no pasar desapercibido.
 
 ---
 

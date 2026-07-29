@@ -1,14 +1,14 @@
 ---
 version: 1.0
 date: 2026-04-20
-author: winx (tech lead)
+author: mavalan Software
 audience: dev team + future on-call
 scope: operación de producción Vento en AccuWeb
 ---
 
 # Runbook — Operación Vento en AccuWeb
 
-Guía operativa para despliegue, monitoreo y resolución de incidentes del frontend Vento en hosting AccuWeb. Mitiga bus-factor y sirve de onboarding para los devs part-time.
+Guía operativa para despliegue, monitoreo y resolución de incidentes del frontend Vento en hosting AccuWeb. Sirve de onboarding para los devs part-time.
 
 > **Antes de operar**: lee [auth-strategy.md](../security/auth-strategy.md) y [tech-stack-validation.md](../architecture/tech-stack-validation.md) §13 — lecciones aprendidas.
 
@@ -288,7 +288,7 @@ Deploy manual (§4.2) si CI no entrega artefactos.
 |----------|----------------|-----------|
 | App caída | §7.4 | Soporte AccuWeb vía panel |
 | Keycloak caído | Revisar contenedor Keycloak | Responsable de infra (otro dev) |
-| Backend FastAPI caído | Logs del backend | Responsable backend (winx o dev rotativo) |
+| Backend FastAPI caído | Logs del backend | Responsable backend (mavalan Software) |
 | Certificado SSL expirado | AccuWeb debe renovar automáticamente | Ticket a AccuWeb |
 | Filtración de secreto | §9 rotación inmediata | Notificar cliente + equipo |
 

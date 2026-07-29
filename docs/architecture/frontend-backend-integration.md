@@ -1,13 +1,15 @@
 ---
 version: 1.0
 date: 2026-04-20
-author: winx (tech lead)
+author: mavalan Software
 scope: integración Next.js (Vento) ↔ FastAPI (repo separado) + API local standalone
 ---
 
 # Integración Frontend ↔ Backend
 
 Cómo el frontend Next.js se conecta al backend FastAPI (repo separado), cuándo usar rutas API locales de Next.js vs proxy al backend, y cómo funciona en dev y prod.
+
+> Referencia completa del backend (endpoints, modelo de datos, auth, scoring, despliegue): [backend-api.md](./backend-api.md).
 
 ---
 

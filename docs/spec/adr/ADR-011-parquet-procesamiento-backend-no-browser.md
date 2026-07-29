@@ -86,5 +86,5 @@ Añadir comentario al head de [parseH3Parquet.ts](../../../Vento/src/app/Utils/p
 
 ---
 
-**Aceptado por**: winx (tech lead).
+**Aceptado por**: mavalan Software.
 **Próxima revisión**: si el volumen de datos baja drásticamente (<10 MB) o si el backend se vuelve cuello de botella.

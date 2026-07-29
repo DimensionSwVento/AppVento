@@ -1,7 +1,7 @@
 ---
 version: 1.0
 date: 2026-04-20
-author: winx (tech lead)
+author: mavalan Software
 scope: catálogo de librerías y APIs usadas en Vento — qué hacen, dónde se usan, métodos clave
 ---
 

@@ -78,5 +78,5 @@ Este ADR se revisa si:
 
 ---
 
-**Aceptado por**: winx (tech lead) en consulta con cliente (mavalan).
+**Aceptado por**: mavalan Software en consulta con el cliente.
 **Próxima revisión**: a los 6 meses post-deploy v1.0 (evaluar métricas reales de AccuWeb vs proyecciones).
