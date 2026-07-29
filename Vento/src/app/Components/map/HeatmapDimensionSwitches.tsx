@@ -10,8 +10,11 @@ import {
  * Selector compacto (dropdown) de la dimensión visualizada en el heatmap.
  *
  * Comportamiento radio/mutex (una dimensión a la vez). El heatmap está
- * SIEMPRE encendido en Informe — no hay opción "sin visualización", el
- * usuario sólo elige cuál de las 6 dimensiones se pinta.
+ * SIEMPRE encendido en Informe — no hay opción "sin visualización".
+ *
+ * Las dimensiones PUNTUABLES (General + 4) van en el grupo principal.
+ * "Regulatoria" ya no es una métrica puntuable (US-FB3-05 / feedback item 11):
+ * se ofrece aparte como capa informativa opcional.
  */
 export default function HeatmapDimensionSwitches() {
   const { activeDimension, setActiveDimension } = useHeatmapDimension();
@@ -33,11 +36,20 @@ export default function HeatmapDimensionSwitches() {
           }}
           className="w-full appearance-none rounded-md border border-gray-300 bg-white py-2 pl-3 pr-8 text-sm font-medium text-[#165170ff] focus:border-[#165170ff] focus:outline-none focus:ring-2 focus:ring-[#165170ff]/30"
         >
-          {HEATMAP_DIMENSIONS.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.label}
-            </option>
-          ))}
+          <optgroup label="Dimensiones puntuables">
+            {HEATMAP_DIMENSIONS.filter((d) => d.scorable).map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.label}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="Informativa">
+            {HEATMAP_DIMENSIONS.filter((d) => !d.scorable).map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.label}
+              </option>
+            ))}
+          </optgroup>
         </select>
         <span
           aria-hidden="true"

@@ -1,11 +1,25 @@
 import { describe, it, expect } from "vitest";
 import { VARIABLE_WEIGHTS, weightFor } from "@/app/Utils/variables/variableWeights";
-import { VARIABLES } from "@/app/Utils/variables/variablesCatalog";
+import {
+  VARIABLES,
+  isScorableDimension,
+  variablesByDimension,
+} from "@/app/Utils/variables/variablesCatalog";
 
 describe("variableWeights — estructura", () => {
-  it("toda variable del catálogo tiene un peso definido", () => {
+  it("toda variable de una dimensión PUNTUABLE tiene un peso definido", () => {
     for (const v of VARIABLES) {
+      if (!isScorableDimension(v.dimension)) continue;
       expect(weightFor(v.id)).not.toBe(0);
+    }
+  });
+
+  // US-FB3-05 / feedback item 11: "Regulatoria" queda fuera del cálculo WLC.
+  it("las variables de 'regulatoria' NO aportan al WLC (peso 0)", () => {
+    const regulatorias = variablesByDimension("regulatoria");
+    expect(regulatorias.length).toBeGreaterThan(0);
+    for (const v of regulatorias) {
+      expect(weightFor(v.id)).toBe(0);
     }
   });
 

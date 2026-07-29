@@ -43,7 +43,7 @@ describe("Report (US06-AC3) — pantalla de informe", () => {
     generateReportPdfMock.mockClear();
   });
 
-  it("renderiza el título, las 5 dimensiones y el bloque de resultado preliminar", () => {
+  it("renderiza el título, las 4 dimensiones puntuables y el bloque de resultado preliminar", () => {
     render(
       <Wrapper>
         <Report />
@@ -51,15 +51,37 @@ describe("Report (US06-AC3) — pantalla de informe", () => {
     );
     expect(screen.getByText("Informe Vento")).toBeInTheDocument();
     expect(screen.getByText("Descarga del informe")).toBeInTheDocument();
-    // Las 5 dimensiones del catálogo (excluido "General" — usado para el
-    // puntaje agregado, no para el listado de barras). Sin selección el radar
-    // no se renderiza, así que cada label aparece una sola vez.
+    // Las 4 dimensiones PUNTUABLES (excluido "General" — puntaje agregado — y
+    // "Regulatoria" — informativa, US-FB3-05 / feedback item 11). Sin selección
+    // el radar no se renderiza, así que cada label aparece una sola vez.
     expect(screen.getByText("Ambiental")).toBeInTheDocument();
     expect(screen.getByText("Técnica")).toBeInTheDocument();
     expect(screen.getByText("Económica")).toBeInTheDocument();
     expect(screen.getByText("Socioeconómica")).toBeInTheDocument();
-    expect(screen.getByText("Regulatoria")).toBeInTheDocument();
     expect(screen.getByText("Resultado preliminar")).toBeInTheDocument();
+  });
+
+  // US-FB3-05 / feedback item 11 — "Regulatoria" como bloque informativo.
+  it("muestra 'Regulatoria' como bloque informativo (variables, sin score)", () => {
+    render(
+      <AprincipalProvider>
+        <Report />
+      </AprincipalProvider>,
+    );
+    // Título del bloque + etiqueta "Informativa".
+    expect(screen.getByText("Regulatoria")).toBeInTheDocument();
+    expect(screen.getByText("Informativa")).toBeInTheDocument();
+    // Sus variables aparecen listadas como contexto…
+    expect(
+      screen.getByText("Tasa de éxito en implementación de proyectos"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Proyectos de generación implementados XM"),
+    ).toBeInTheDocument();
+    // …y deja claro que no entra al puntaje.
+    expect(
+      screen.getByText(/No se incluye en el cálculo del puntaje general/i),
+    ).toBeInTheDocument();
   });
 
   it("muestra '—' en región/coordenadas y 0 km² cuando no hay selección", () => {

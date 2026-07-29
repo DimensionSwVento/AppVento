@@ -20,13 +20,23 @@ export type HeatmapDimensionId =
   | "socioeconomica"
   | "regulatoria";
 
-export const HEATMAP_DIMENSIONS: { id: HeatmapDimensionId; label: string }[] = [
-  { id: "general", label: "General" },
-  { id: "ambiental", label: "Ambiental" },
-  { id: "tecnica", label: "Técnica" },
-  { id: "economica", label: "Económica" },
-  { id: "socioeconomica", label: "Socioeconómica" },
-  { id: "regulatoria", label: "Regulatoria" },
+/**
+ * `scorable`: si la dimensión puntúa en el modelo (WLC). "Regulatoria" es
+ * informativa (US-FB3-05 / feedback item 11) → `scorable: false`. Coherente
+ * con `SCORABLE_DIMENSION_IDS` de variablesCatalog. "general" es el agregado
+ * de las puntuables, por eso cuenta como puntuable a efectos de UI.
+ */
+export const HEATMAP_DIMENSIONS: {
+  id: HeatmapDimensionId;
+  label: string;
+  scorable: boolean;
+}[] = [
+  { id: "general", label: "General", scorable: true },
+  { id: "ambiental", label: "Ambiental", scorable: true },
+  { id: "tecnica", label: "Técnica", scorable: true },
+  { id: "economica", label: "Económica", scorable: true },
+  { id: "socioeconomica", label: "Socioeconómica", scorable: true },
+  { id: "regulatoria", label: "Regulatoria", scorable: false },
 ];
 
 interface HeatmapDimensionContextValue {
