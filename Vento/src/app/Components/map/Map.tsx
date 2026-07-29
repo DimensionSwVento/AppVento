@@ -12,8 +12,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Map as MapGL, type MapRef } from "react-map-gl/maplibre";
 import { DeckGL } from "@deck.gl/react";
+import { WebMercatorViewport } from "@deck.gl/core";
 import { TileLayer } from "@deck.gl/geo-layers";
 import { PolygonLayer } from "@deck.gl/layers";
+import { Crosshair, Home, Trash2 } from "lucide-react";
 import { luma } from "@luma.gl/core";
 import { webgl2Adapter } from "@luma.gl/webgl";
 import { cellToBoundary, cellToLatLng, cellsToMultiPolygon, polygonToCells } from "h3-js";
@@ -330,6 +332,63 @@ export default function MapView() {
 
   const zoomIn = () => setViewState((v) => clampViewState({ ...v, zoom: v.zoom + 1 }));
   const zoomOut = () => setViewState((v) => clampViewState({ ...v, zoom: v.zoom - 1 }));
+
+  const hasSelection = selectedHexes.size > 0;
+
+  // Zoom a la selección: fit view al bounding box de los hexes
+  // seleccionados. El bbox se calcula sobre los vértices reales de cada hex
+  // (cellToBoundary en formato GeoJSON [lng, lat]) y WebMercatorViewport.fitBounds
+  // deriva center+zoom; se clampa a los límites/zoom permitidos del mapa.
+  const zoomToSelection = useCallback(() => {
+    if (selectedHexes.size === 0) return;
+    let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+    for (const h of selectedHexes) {
+      for (const [lng, lat] of cellToBoundary(h, true)) {
+        if (lng < minLng) minLng = lng;
+        if (lng > maxLng) maxLng = lng;
+        if (lat < minLat) minLat = lat;
+        if (lat > maxLat) maxLat = lat;
+      }
+    }
+    const el = containerRef.current;
+    const width = el?.clientWidth || 800;
+    const height = el?.clientHeight || 600;
+    try {
+      const { longitude, latitude, zoom } = new WebMercatorViewport({
+        width,
+        height,
+      }).fitBounds(
+        [[minLng, minLat], [maxLng, maxLat]],
+        { padding: 80 },
+      );
+      setViewState((v) => clampViewState({ ...v, longitude, latitude, zoom }));
+    } catch {
+      // Fallback si fitBounds no puede resolver (p.ej. width/height 0):
+      // centrar en el punto medio del bbox conservando el zoom actual.
+      setViewState((v) =>
+        clampViewState({
+          ...v,
+          longitude: (minLng + maxLng) / 2,
+          latitude: (minLat + maxLat) / 2,
+        }),
+      );
+    }
+  }, [selectedHexes, clampViewState]);
+
+  // US-FB3-02 AC2 — Reset a Colombia: vuelve a la vista inicial (INITIAL_VIEW_STATE).
+  const resetView = useCallback(() => {
+    setViewState(INITIAL_VIEW_STATE);
+  }, []);
+
+  // Borrar selección: limpia por completo selectedHexes. También
+  // resetea los refs del search para que no queden hexes "huérfanos" del buscador
+  // pendientes de deseleccionar por un cambio de resolución H3 posterior.
+  const clearSelection = useCallback(() => {
+    setSelectedHexes(new Set());
+    searchHexesRef.current = new Set();
+    searchH3ResRef.current = null;
+  }, [setSelectedHexes]);
+
   const toggleFullscreen = () => {
     const el = containerRef.current;
     if (!el) return;
@@ -399,17 +458,49 @@ export default function MapView() {
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" /></svg>
             )}
           </button>
-          {/* Zoom + fullscreen: solo desktop, apilados bottom-right */}
-          <div className="absolute bottom-9 right-4 z-10 flex flex-col items-end gap-2 max-md:hidden">
-            <button onClick={toggleFullscreen} className="flex h-6 w-6 items-center justify-center rounded text-white shadow bg-[#165170ff]" title={fullscreen ? "Salir" : "Pantalla completa"}>
-              {fullscreen ? (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 1v4H2M10 1v4h4M6 15v-4H2M10 15v-4h4" /></svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" /></svg>
-              )}
+          <div className="absolute bottom-9 right-4 z-10 flex flex-col items-end gap-2">
+            <button
+              onClick={zoomToSelection}
+              disabled={!hasSelection}
+              aria-label="Zoom a la selección"
+              title={hasSelection ? "Zoom a la selección" : "Selecciona hexágonos para hacer zoom"}
+              className="flex h-8 w-8 items-center justify-center rounded text-white shadow bg-[#165170ff] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Crosshair size={16} />
             </button>
-            <button onClick={zoomIn} className="flex h-6 w-6 items-center justify-center rounded text-lg font-bold text-white shadow bg-[#165170ff]" title="Acercar">+</button>
-            <button onClick={zoomOut} className="flex h-6 w-6 items-center justify-center rounded text-lg font-bold text-white shadow bg-[#165170ff]" title="Alejar">-</button>
+            <button
+              onClick={resetView}
+              aria-label="Reset a Colombia"
+              title="Reset a Colombia"
+              className="flex h-8 w-8 items-center justify-center rounded text-white shadow bg-[#165170ff]"
+            >
+              <Home size={16} />
+            </button>
+            <button
+              onClick={clearSelection}
+              disabled={!hasSelection}
+              aria-label="Borrar selección"
+              title={hasSelection ? "Borrar selección" : "No hay selección para borrar"}
+              className="flex h-8 w-8 items-center justify-center rounded text-white shadow bg-[#165170ff] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Trash2 size={16} />
+            </button>
+
+            {/* Separador visual entre la toolbar de selección y el zoom */}
+            <div className="h-px w-6 bg-white/50 my-0.5 max-md:hidden" />
+
+            {/* Zoom + fullscreen: solo desktop */}
+            <div className="flex flex-col items-end gap-2 max-md:hidden">
+              <button onClick={toggleFullscreen} className="flex h-6 w-6 items-center justify-center rounded text-white shadow bg-[#165170ff]" title={fullscreen ? "Salir" : "Pantalla completa"}>
+                {fullscreen ? (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 1v4H2M10 1v4h4M6 15v-4H2M10 15v-4h4" /></svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" /></svg>
+                )}
+              </button>
+              <button onClick={zoomIn} className="flex h-6 w-6 items-center justify-center rounded text-lg font-bold text-white shadow bg-[#165170ff]" title="Acercar">+</button>
+              <button onClick={zoomOut} className="flex h-6 w-6 items-center justify-center rounded text-lg font-bold text-white shadow bg-[#165170ff]" title="Alejar">-</button>
+            </div>
           </div>
         </>
       )}
