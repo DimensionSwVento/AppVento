@@ -79,36 +79,30 @@ describe("Caracteristicas (US05)", () => {
     expect(
       screen.getByText(/La capacidad nominal debe ser mayor a 0 MW/),
     ).toBeInTheDocument();
-    expect(screen.getByText("Ingresa el número de aerogeneradores.")).toBeInTheDocument();
     expect(
       screen.getByText(/Selecciona la categoría\/perfil del aerogenerador/),
     ).toBeInTheDocument();
-    expect(screen.getByText("Ingresa la distancia al SIN.")).toBeInTheDocument();
     expect(screen.getByTestId("next-step")).toBeDisabled();
   });
 
-  it("valida el rango del número de aerogeneradores (máx. 500)", () => {
+  it("elimina los inputs manuales de aerogeneradores y distancia al SIN", () => {
     renderCaracteristicas();
-    const input = screen.getByPlaceholderText("0");
-    fireEvent.change(input, { target: { value: "501" } });
-    expect(
-      screen.getByText(/Cantidad fuera del rango técnico permitido/),
-    ).toBeInTheDocument();
-    fireEvent.change(input, { target: { value: "10" } });
-    expect(
-      screen.queryByText(/Cantidad fuera del rango técnico permitido/),
-    ).not.toBeInTheDocument();
+
+    expect(screen.queryByText("Distancia al SIN")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Ingresa el número de aerogeneradores/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Ingresa la distancia al SIN/)).not.toBeInTheDocument();
   });
 
-  it("valida el rango de la distancia al SIN (máx. 500 km)", () => {
+  it("deriva aerogeneradores, energía y área desde capacidad y categoría", () => {
     renderCaracteristicas();
-    const input = screen.getByPlaceholderText("0.0");
-    fireEvent.change(input, { target: { value: "600" } });
-    expect(screen.getByText(/Distancia fuera del rango técnico/)).toBeInTheDocument();
-    fireEvent.change(input, { target: { value: "42.5" } });
-    expect(
-      screen.queryByText(/Distancia fuera del rango técnico/),
-    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Aumentar Unidades" }));
+    fireEvent.click(screen.getByRole("button", { name: /Mediano · 2–4 MW/ }));
+
+    const turbineLabel = screen.getByText("Número de aerogeneradores");
+    expect(turbineLabel.nextElementSibling).toHaveTextContent("1");
+    expect(screen.getByText("3,07 GWh/año")).toBeInTheDocument();
+    expect(screen.getByText("0,2 km²")).toBeInTheDocument();
   });
 
   it("formulario completo habilita el siguiente paso", () => {
@@ -116,12 +110,8 @@ describe("Caracteristicas (US05)", () => {
 
     // Capacidad: subir las unidades del picker (0 → 1 MW).
     fireEvent.click(screen.getByRole("button", { name: "Aumentar Unidades" }));
-    // Número de aerogeneradores.
-    fireEvent.change(screen.getByPlaceholderText("0"), { target: { value: "10" } });
     // Categoría M.
     fireEvent.click(screen.getByRole("button", { name: /Mediano · 2–4 MW/ }));
-    // Distancia al SIN.
-    fireEvent.change(screen.getByPlaceholderText("0.0"), { target: { value: "12" } });
 
     expect(screen.getByTestId("next-step")).toBeEnabled();
   });

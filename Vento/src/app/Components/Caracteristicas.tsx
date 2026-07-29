@@ -8,6 +8,10 @@ import {
   type CategoriaAerogenerador,
 } from "../Utils/CaracteristicasContext";
 import { dominantHexType } from "../Utils/hexClassification";
+import {
+  deriveProjectMetrics,
+  type DerivedProjectMetrics,
+} from "../Utils/projectDerivations";
 import MWPicker from "./MWPicker";
 import NextStepButton from "./NextStepButton";
 
@@ -26,12 +30,8 @@ export default function Caracteristicas() {
     setTipoTecnologiaOffshore,
     capacidadMW,
     setCapacidadMW,
-    numAerogeneradores,
-    setNumAerogeneradores,
     categoriaAerogenerador,
     setCategoriaAerogenerador,
-    distanciaSINKm,
-    setDistanciaSINKm,
   } = useCaracteristicas();
 
   const areaKm2 = useMemo(() => {
@@ -39,6 +39,14 @@ export default function Caracteristicas() {
     for (const h of selectedHexes) acc += cellArea(h, "km2");
     return acc;
   }, [selectedHexes]);
+
+  const derivedMetrics = useMemo(
+    () =>
+      capacidadMW !== null && capacidadMW > 0 && categoriaAerogenerador
+        ? deriveProjectMetrics(capacidadMW, categoriaAerogenerador)
+        : null,
+    [capacidadMW, categoriaAerogenerador],
+  );
 
   // US05-AC3 — Validación de rangos técnicos.
   const errors = useMemo<Record<string, string>>(() => {
@@ -56,34 +64,16 @@ export default function Caracteristicas() {
     } else if (capacidadMW > 999.99) {
       e.capacidadMW = "La capacidad excede el límite de 999.99 MW.";
     }
-    if (numAerogeneradores === null) {
-      e.numAerogeneradores = "Ingresa el número de aerogeneradores.";
-    } else if (numAerogeneradores < 1) {
-      e.numAerogeneradores = "Debe haber al menos 1 aerogenerador.";
-    } else if (numAerogeneradores > 500) {
-      e.numAerogeneradores =
-        "Cantidad fuera del rango técnico permitido (máx. 500).";
-    }
     if (!categoriaAerogenerador) {
       e.categoriaAerogenerador =
         "Selecciona la categoría/perfil del aerogenerador.";
-    }
-    if (distanciaSINKm === null) {
-      e.distanciaSINKm = "Ingresa la distancia al SIN.";
-    } else if (distanciaSINKm < 0) {
-      e.distanciaSINKm = "La distancia no puede ser negativa.";
-    } else if (distanciaSINKm > 500) {
-      e.distanciaSINKm =
-        "Distancia fuera del rango técnico (máx. 500 km en territorio colombiano).";
     }
     return e;
   }, [
     tipoEmplazamiento,
     tipoTecnologiaOffshore,
     capacidadMW,
-    numAerogeneradores,
     categoriaAerogenerador,
-    distanciaSINKm,
   ]);
 
   const hasErrors = Object.keys(errors).length > 0;
@@ -126,18 +116,10 @@ export default function Caracteristicas() {
 
         <TamañoSection
           areaKm2={areaKm2}
-          numAerogeneradores={numAerogeneradores}
-          onNumChange={setNumAerogeneradores}
           categoria={categoriaAerogenerador}
           onCategoriaChange={setCategoriaAerogenerador}
-          numError={errors.numAerogeneradores}
           categoriaError={errors.categoriaAerogenerador}
-        />
-
-        <DistanciaSINSection
-          distanciaSINKm={distanciaSINKm}
-          onChange={setDistanciaSINKm}
-          error={errors.distanciaSINKm}
+          derivedMetrics={derivedMetrics}
         />
       </div>
 
@@ -283,30 +265,27 @@ const CATEGORIAS: {
 
 function TamañoSection({
   areaKm2,
-  numAerogeneradores,
-  onNumChange,
   categoria,
   onCategoriaChange,
-  numError,
   categoriaError,
+  derivedMetrics,
 }: {
   areaKm2: number;
-  numAerogeneradores: number | null;
-  onNumChange: (n: number | null) => void;
   categoria: CategoriaAerogenerador;
   onCategoriaChange: (c: CategoriaAerogenerador) => void;
-  numError?: string;
   categoriaError?: string;
+  derivedMetrics: DerivedProjectMetrics | null;
 }) {
   return (
     <section className="mt-4 rounded-md bg-white p-4 shadow-sm">
       <h3 className="text-sm font-bold text-[#383838]">Tamaño del proyecto</h3>
       <p className="mt-0.5 text-[11px] text-gray-500">
-        Define el alcance físico y el perfil de los aerogeneradores.
+        Elige el perfil de los aerogeneradores. Las métricas del proyecto se
+        calculan automáticamente a partir de la capacidad nominal.
       </p>
 
       <dl className="mt-3 grid grid-cols-[8rem_1fr] gap-x-3 gap-y-2 text-xs">
-        <dt className="font-semibold text-gray-500">Área del proyecto</dt>
+        <dt className="font-semibold text-gray-500">Área seleccionada</dt>
         <dd className="text-gray-700">
           {areaKm2 > 0 ? (
             <span className="font-mono font-semibold text-[#165170ff]">
@@ -327,26 +306,27 @@ function TamañoSection({
           Número de aerogeneradores
         </dt>
         <dd>
-          <input
-            type="number"
-            min={0}
-            step={1}
-            value={numAerogeneradores ?? ""}
-            onChange={(e) => {
-              const raw = e.target.value;
-              if (raw === "") return onNumChange(null);
-              const n = Number.parseInt(raw, 10);
-              onNumChange(Number.isFinite(n) && n >= 0 ? n : null);
-            }}
-            placeholder="0"
-            aria-invalid={Boolean(numError)}
-            className={`w-24 rounded border px-2 py-1 text-right font-mono text-sm text-[#165170ff] focus:outline-none focus:ring-2 ${
-              numError
-                ? "border-red-400 focus:border-red-500 focus:ring-red-400/30"
-                : "border-gray-300 focus:border-[#165170ff] focus:ring-[#165170ff]/30"
-            }`}
-          />
-          <FieldError message={numError} className="mt-1" />
+          <span className="font-mono font-semibold text-[#165170ff]">
+            {derivedMetrics
+              ? derivedMetrics.turbineCount.toLocaleString("es-CO")
+              : "—"}
+          </span>
+        </dd>
+
+        <dt className="font-semibold text-gray-500">
+          Energía generable estimada
+        </dt>
+        <dd>
+          <span className="font-mono font-semibold text-[#165170ff]">
+            {derivedMetrics ? formatAnnualEnergy(derivedMetrics) : "—"}
+          </span>
+        </dd>
+
+        <dt className="font-semibold text-gray-500">Área requerida</dt>
+        <dd>
+          <span className="font-mono font-semibold text-[#165170ff]">
+            {derivedMetrics ? formatRequiredArea(derivedMetrics) : "—"}
+          </span>
         </dd>
       </dl>
 
@@ -384,6 +364,18 @@ function TamañoSection({
       </div>
     </section>
   );
+}
+
+function formatAnnualEnergy(metrics: DerivedProjectMetrics): string {
+  return `${(metrics.estimatedAnnualEnergyMWh / 1_000).toLocaleString("es-CO", {
+    maximumFractionDigits: 2,
+  })} GWh/año`;
+}
+
+function formatRequiredArea(metrics: DerivedProjectMetrics): string {
+  return `${metrics.requiredAreaKm2.toLocaleString("es-CO", {
+    maximumFractionDigits: 2,
+  })} km²`;
 }
 
 function Badge({
@@ -433,52 +425,6 @@ function RadioCard({
         {hint}
       </span>
     </button>
-  );
-}
-
-function DistanciaSINSection({
-  distanciaSINKm,
-  onChange,
-  error,
-}: {
-  distanciaSINKm: number | null;
-  onChange: (n: number | null) => void;
-  error?: string;
-}) {
-  return (
-    <section className="mt-4 rounded-md bg-white p-4 shadow-sm">
-      <h3 className="text-sm font-bold text-[#383838]">Distancia al SIN</h3>
-      <p className="mt-0.5 text-[11px] text-gray-500">
-        Distancia al Sistema Interconectado Nacional más cercano. El
-        auto-cálculo desde el área seleccionada está pendiente — por ahora
-        ingrésala manualmente.
-      </p>
-
-      <div className="mt-3 flex items-center gap-2">
-        <input
-          type="number"
-          min={0}
-          step={0.1}
-          value={distanciaSINKm ?? ""}
-          onChange={(e) => {
-            const raw = e.target.value;
-            if (raw === "") return onChange(null);
-            const n = Number.parseFloat(raw);
-            onChange(Number.isFinite(n) && n >= 0 ? n : null);
-          }}
-          placeholder="0.0"
-          aria-invalid={Boolean(error)}
-          className={`w-28 rounded border px-2 py-1 text-right font-mono text-sm text-[#165170ff] focus:outline-none focus:ring-2 ${
-            error
-              ? "border-red-400 focus:border-red-500 focus:ring-red-400/30"
-              : "border-gray-300 focus:border-[#165170ff] focus:ring-[#165170ff]/30"
-          }`}
-        />
-        <span className="text-xs font-semibold text-gray-500">km</span>
-      </div>
-
-      <FieldError message={error} />
-    </section>
   );
 }
 

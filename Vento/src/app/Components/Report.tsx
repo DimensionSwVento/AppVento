@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAprincipal } from "../Utils/AccionPrincipalContext";
 import { calcAreaKm2 } from "../Utils/areaCalc";
 import {
@@ -24,7 +24,16 @@ import {
   getInfoVarById,
 } from "../Utils/informativeVariables";
 
+import {
+  fetchNearestSinDistance,
+  type HexSinDistance,
+} from "../Utils/sinDistance";
 const fmtKm2 = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 });
+
+interface SinDistanceState {
+  selectionKey: string;
+  value: HexSinDistance | null;
+}
 
 export default function Report() {
   const { selectedHexes } = useAprincipal();
@@ -34,6 +43,38 @@ export default function Report() {
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(true);
+
+  const wantsSinDistance = activeVariables.has("distancia-sin");
+  const sinSelectionKey = useMemo(
+    () => Array.from(selectedHexes).sort().join("|"),
+    [selectedHexes],
+  );
+  const [sinDistanceState, setSinDistanceState] =
+    useState<SinDistanceState | null>(null);
+
+  useEffect(() => {
+    if (!wantsSinDistance || selectedHexes.size === 0) return;
+
+    let cancelled = false;
+    void fetchNearestSinDistance(selectedHexes).then((value) => {
+      if (!cancelled) {
+        setSinDistanceState({ selectionKey: sinSelectionKey, value });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedHexes, sinSelectionKey, wantsSinDistance]);
+
+  const nearestSinDistance =
+    sinDistanceState?.selectionKey === sinSelectionKey
+      ? sinDistanceState.value
+      : null;
+  const isSinDistanceLoading =
+    wantsSinDistance &&
+    selectedHexes.size > 0 &&
+    sinDistanceState?.selectionKey !== sinSelectionKey;
 
   const area = useMemo(() => calcAreaKm2(selectedHexes), [selectedHexes]);
   const centroid = useMemo(() => getCentroid(selectedHexes), [selectedHexes]);
@@ -55,7 +96,7 @@ export default function Report() {
     };
   }, [selectedHexes]);
 
-  // Variables informativas activas con su valor promedio sobre el área.
+  // Variables informativas activas; Distancia al SIN usa el mínimo multi-hex.
   const informativeRows = useMemo(() => {
     const rows: {
       id: string;
@@ -63,10 +104,30 @@ export default function Report() {
       unit: string;
       color: string;
       valueText: string;
+      source?: HexSinDistance["source"];
     }[] = [];
     for (const id of activeVariables) {
       const meta = getInfoVarById(id);
       if (!meta) continue;
+
+      if (id === "distancia-sin") {
+        rows.push({
+          id: meta.id,
+          label: meta.label,
+          unit: isSinDistanceLoading ? "" : meta.unit,
+          color: meta.color,
+          valueText: isSinDistanceLoading
+            ? "Calculando…"
+            : nearestSinDistance
+              ? nearestSinDistance.distanceKm.toLocaleString("es-CO", {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1,
+                })
+              : "—",
+          source: nearestSinDistance?.source,
+        });
+        continue;
+      }
       // El score promedio sobre los hexes seleccionados, usando dimensionScore
       // como hash determinista (mismo que el mapa para coherencia visual).
       const seedScore =
@@ -82,7 +143,12 @@ export default function Report() {
       });
     }
     return rows;
-  }, [activeVariables, selectedHexes]);
+  }, [
+    activeVariables,
+    isSinDistanceLoading,
+    nearestSinDistance,
+    selectedHexes,
+  ]);
 
   const handleDownloadPdf = async () => {
     if (!reportRef.current) return;
@@ -230,6 +296,11 @@ export default function Report() {
                     <li
                       key={v.id}
                       className="flex items-center gap-2 rounded-md border border-gray-100 px-2 py-1.5"
+                      title={
+                        v.id === "distancia-sin" && nearestSinDistance
+                          ? `Hex más cercano: ${nearestSinDistance.h3Index}`
+                          : undefined
+                      }
                     >
                       <span
                         aria-hidden="true"
@@ -239,11 +310,16 @@ export default function Report() {
                       <span className="flex-1 min-w-0 truncate text-[11px] text-gray-700">
                         {v.label}
                       </span>
-                      <span className="font-mono text-[11px] font-semibold text-[#165170ff]">
+                      <span className="inline-flex items-center font-mono text-[11px] font-semibold text-[#165170ff]">
                         {v.valueText}
                         <span className="ml-0.5 text-[9px] font-normal text-gray-500">
                           {v.unit}
                         </span>
+                        {v.source === "demo" && (
+                          <span className="ml-1 rounded bg-amber-100 px-1 text-[8px] font-normal text-amber-700">
+                            demo
+                          </span>
+                        )}
                       </span>
                     </li>
                   ))}
@@ -254,8 +330,8 @@ export default function Report() {
             {/* Pie de informe */}
             <footer className="border-t border-gray-200 pt-3 text-[10px] text-gray-400">
               <p>
-                Valores placeholder en sprint 2 — el modelo multicriterio y la
-                ingesta de datos reales se conectarán en sprint 3 (US03-AC6).
+                Las variables sin dataset conectado usan valores demo; su origen
+                se identifica explícitamente en el informe.
               </p>
               <p className="mt-1">
                 Vento · ANH · EAFIT · Mavalan Software · {timestamp}

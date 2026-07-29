@@ -7,13 +7,22 @@ import {
   AprincipalProvider,
   useAprincipal,
 } from "../Utils/AccionPrincipalContext";
+import {
+  VariablesProvider,
+  useVariables,
+} from "../Utils/VariablesContext";
 
-const { exportElementToPdfMock } = vi.hoisted(() => ({
+const { exportElementToPdfMock, fetchNearestSinDistanceMock } = vi.hoisted(() => ({
   exportElementToPdfMock: vi.fn().mockResolvedValue(undefined),
+  fetchNearestSinDistanceMock: vi.fn(),
 }));
 
 vi.mock("../Utils/pdfExport", () => ({
   exportElementToPdf: exportElementToPdfMock,
+}));
+
+vi.mock("../Utils/sinDistance", () => ({
+  fetchNearestSinDistance: fetchNearestSinDistanceMock,
 }));
 
 function Seeder({ hexes }: { hexes: string[] }) {
@@ -25,9 +34,24 @@ function Seeder({ hexes }: { hexes: string[] }) {
   return null;
 }
 
+
+function VariableSeeder({ id }: { id: string }) {
+  const { toggleVariable } = useVariables();
+  useEffect(() => {
+    toggleVariable(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
 describe("Report (US06-AC3) — pantalla de informe", () => {
   beforeEach(() => {
     exportElementToPdfMock.mockClear();
+    fetchNearestSinDistanceMock.mockReset();
+    fetchNearestSinDistanceMock.mockResolvedValue({
+      h3Index: "hex-near",
+      distanceKm: 2.5,
+      source: "backend",
+    });
   });
 
   it("renderiza el título, las 5 dimensiones y el bloque de resultado preliminar", () => {
@@ -71,6 +95,26 @@ describe("Report (US06-AC3) — pantalla de informe", () => {
     expect(screen.getByText(/-72,/)).toBeInTheDocument();
   });
 
+  it("reporta la distancia del hex más cercano al SIN en selección múltiple", async () => {
+    const firstHex = latLngToCell(11.5, -72.5, 7);
+    const secondHex = latLngToCell(11.6, -72.4, 7);
+    render(
+      <AprincipalProvider>
+        <Seeder hexes={[firstHex, secondHex]} />
+        <VariablesProvider>
+          <VariableSeeder id="distancia-sin" />
+          <Report />
+        </VariablesProvider>
+      </AprincipalProvider>,
+    );
+
+    const row = (await screen.findByText("Distancia al SIN")).closest("li");
+    await waitFor(() => {
+      expect(row).toHaveTextContent("2,5km");
+    });
+    expect(fetchNearestSinDistanceMock).toHaveBeenCalledTimes(1);
+
+  });
   it("dispara exportElementToPdf al hacer click en 'Descargar PDF'", async () => {
     render(
       <AprincipalProvider>
