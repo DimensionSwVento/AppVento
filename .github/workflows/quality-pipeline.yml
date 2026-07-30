@@ -119,6 +119,22 @@ jobs:
       - name: Validate evidence bundle
         run: node quality/scripts/validate-bundle.mjs "quality/evidence/run-${GITHUB_RUN_ID}.json"
 
+      # One call per failed gate. With every gate green this step makes no call
+      # at all. continue-on-error so that a missing key or a provider outage
+      # degrades the analysis without hiding the evidence collected above.
+      - name: Analyzer level 1 (diagnostic)
+        continue-on-error: true
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          AI_ANALYZER_MODEL: ${{ vars.AI_ANALYZER_MODEL }}
+        run: node quality/scripts/analyze-level1.mjs "quality/evidence/run-${GITHUB_RUN_ID}.json"
+
+      - name: Render job summary
+        if: always()
+        run: |
+          node quality/scripts/render-summary.mjs "quality/evidence/run-${GITHUB_RUN_ID}.json" \
+            >> "$GITHUB_STEP_SUMMARY"
+
       # actions/upload-artifact is a marketplace action and is blocked by the
       # organization policy, so the bundle is emitted into the job log instead.
       # It is a single self-contained JSON document and can be copied from here.

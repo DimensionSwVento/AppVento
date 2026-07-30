@@ -64,6 +64,18 @@ function truncate(text, limit = LOG_EXCERPT_LIMIT) {
   return `${clean.slice(0, limit)}\n[...truncated, ${clean.length - limit} more characters]`;
 }
 
+/**
+ * Drops stack frames that point inside node_modules. They are the bulk of a
+ * Vitest failure message and carry nothing about the defect: every frame that
+ * names project code is kept verbatim.
+ */
+function stripVendorFrames(text) {
+  const kept = String(text ?? "")
+    .split("\n")
+    .filter((line) => !/^\s*at .*node_modules/.test(line));
+  return kept.join("\n");
+}
+
 /** Runs a shell command, never throwing: the exit code is part of the evidence. */
 function run(command, cwd, extraEnv = {}) {
   const started = Date.now();
@@ -108,9 +120,14 @@ function countAssertions(relativeFiles) {
  */
 function runVitestOnce(rawDir) {
   const reportPath = path.join(rawDir, "vitest-results.json");
+  // `coverage.reportOnFailure` defaults to false in Vitest: without it a run
+  // with any failing test produces no coverage report at all, and the bundle of
+  // precisely the runs we most want to analyse would carry null coverage.
+  // Passed on the command line so that `npm run test:coverage` keeps its
+  // current behaviour for the team.
   const command =
     "npx --no-install vitest run --project unit " +
-    "--coverage --coverage.reporter=json-summary --coverage.reporter=text " +
+    "--coverage --coverage.reportOnFailure --coverage.reporter=json-summary --coverage.reporter=text " +
     `--reporter=json --outputFile=${JSON.stringify(reportPath)}`;
 
   const result = run(command, FRONTEND_DIR, { CI: "true" });
@@ -171,7 +188,8 @@ function evaluateVitestGate(gate, vitest, byFile) {
       if (assertion.status === "passed") testsPassed += 1;
       else if (assertion.status === "failed") {
         failureMessages.push(
-          `${file} > ${assertion.fullName}\n${(assertion.failureMessages ?? []).join("\n")}`,
+          `${file} > ${assertion.fullName}\n` +
+            stripVendorFrames((assertion.failureMessages ?? []).join("\n")),
         );
       }
     }
