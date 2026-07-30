@@ -78,3 +78,54 @@ jobs:
         run: |
           node quality/scripts/coverage-inventory.mjs
           node quality/scripts/coverage-inventory.mjs --markdown >> "$GITHUB_STEP_SUMMARY"
+
+      # The two Playwright gates (accessibility-tests, map-render-performance)
+      # need a running Keycloak; the realm and its DEV-ONLY credentials live in
+      # infra/keycloak/realm-export.json, same as frontend-ci.yml.
+      - name: Start Keycloak (realm vento)
+        working-directory: infra/keycloak
+        run: docker compose up -d --wait
+
+      - name: Wait for realm import
+        working-directory: infra/keycloak
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/realms/vento/.well-known/openid-configuration > /dev/null; then
+              echo "Realm vento ready"; exit 0
+            fi
+            sleep 5
+          done
+          echo "Keycloak did not answer in time"; docker compose logs --tail 50; exit 1
+
+      - name: Install Playwright chromium
+        working-directory: Vento
+        run: npx playwright install --with-deps chromium
+
+      # Runs every enabled gate and reduces their heterogeneous outputs to a
+      # single normalized bundle. The collector never fails the job: producing
+      # the evidence is its only responsibility, and a failed gate is evidence.
+      - name: Collect quality evidence
+        env:
+          NEXT_PUBLIC_API_URL: ""
+          NEXT_PUBLIC_KEYCLOAK_URL: "http://localhost:8080"
+          NEXT_PUBLIC_KEYCLOAK_REALM: "vento"
+          AUTH_SECRET: "ci-quality-pipeline-only-secret"
+          AUTH_TRUST_HOST: "true"
+          AUTH_KEYCLOAK_ID: "vento-web"
+          AUTH_KEYCLOAK_SECRET: "dev-secret-change-in-production"
+          AUTH_KEYCLOAK_ISSUER: "http://localhost:8080/realms/vento"
+        run: node quality/scripts/collect-evidence.mjs
+
+      - name: Validate evidence bundle
+        run: node quality/scripts/validate-bundle.mjs "quality/evidence/run-${GITHUB_RUN_ID}.json"
+
+      # actions/upload-artifact is a marketplace action and is blocked by the
+      # organization policy, so the bundle is emitted into the job log instead.
+      # It is a single self-contained JSON document and can be copied from here.
+      - name: Publish evidence bundle
+        if: always()
+        run: |
+          BUNDLE="quality/evidence/run-${GITHUB_RUN_ID}.json"
+          echo "::group::Evidence bundle ($BUNDLE)"
+          cat "$BUNDLE"
+          echo "::endgroup::"
