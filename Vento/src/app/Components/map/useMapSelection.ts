@@ -225,5 +225,13 @@ export function useMapSelection({
     searchH3ResRef.current = null;
   }, [canSelect, viewState.zoom, setSelectedHexes]);
 
-  return { toggleHex, handlePlaceSelect, isFlyingRef };
+  // Reset de los refs del buscador. Lo usa "Borrar selección" (US-FB3-02) para
+  // que no queden hexes de búsqueda pendientes de deseleccionar en un cambio de
+  // resolución H3 posterior.
+  const resetSearch = useCallback(() => {
+    searchHexesRef.current = new Set();
+    searchH3ResRef.current = null;
+  }, []);
+
+  return { toggleHex, handlePlaceSelect, isFlyingRef, resetSearch };
 }

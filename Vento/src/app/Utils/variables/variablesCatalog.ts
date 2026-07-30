@@ -44,7 +44,7 @@ export const DIMENSIONS: Dimension[] = [
   { id: "ambiental", label: "Dimensión ambiental" },
   { id: "tecnica", label: "Dimensión técnica" },
   { id: "economica", label: "Dimensión económica" },
-  { id: "socioeconomica", label: "Dimensión socioeconómica" },
+  { id: "socioeconomica", label: "Dimensión social" },
   { id: "regulatoria", label: "Dimensión regulatoria" },
 ];
 

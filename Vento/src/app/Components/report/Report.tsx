@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Maximize2 } from "lucide-react";
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
 import { calcAreaKm2 } from "../../Utils/report/areaCalc";
 import {
@@ -19,6 +21,9 @@ import {
   type HeatmapDimensionId,
 } from "../../Utils/contexts/HeatmapDimensionContext";
 import RadarChart from "./RadarChart";
+import AreaMiniMap from "./AreaMiniMap";
+import { useCachedImage } from "../../Utils/useCachedImage";
+import { SNAPSHOT_KEY } from "../../Utils/h3/h3Resolution";
 import { dimensionScore } from "../../Utils/report/heatmapPalette";
 import { useAreaScores } from "../../Utils/report/useAreaScores";
 import { useVariables } from "../../Utils/contexts/VariablesContext";
@@ -58,6 +63,20 @@ export default function Report() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(true);
+  // Previsualización a pantalla completa antes de descargar (sprint 3).
+  const [fullscreen, setFullscreen] = useState(false);
+  // Screenshot del mapa (capturado en la fase informe por Map.tsx vía SNAPSHOT_KEY).
+  const { loadFromCache } = useCachedImage();
+  const [mapSnapshot, setMapSnapshot] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    loadFromCache(SNAPSHOT_KEY).then((url) => {
+      if (alive) setMapSnapshot(url);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [loadFromCache, selectedHexes]);
 
   // Al cambiar el área seleccionada es un informe distinto → permitir guardar de nuevo.
   useEffect(() => setSaved(false), [selectedHexes]);
@@ -177,7 +196,7 @@ export default function Report() {
       await saveInforme({
         id: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
-        nombre: region ? `Informe — ${region}` : "Informe de prefactibilidad",
+        nombre: region ? `Informe — ${region}` : "Informe de idoneidad",
         hexes: Array.from(selectedHexes),
         variables: Array.from(activeVariables),
         caracteristicas: caracteristicasState,
@@ -194,16 +213,53 @@ export default function Report() {
     }
   };
 
-  return (
-    <div className="flex flex-col gap-4 p-4">
-      <div ref={reportRef} className="flex flex-col gap-4 bg-white">
+  const content = (
+    <div
+      className={
+        fullscreen
+          ? "fixed inset-0 z-[100] flex flex-col gap-4 overflow-y-auto bg-white p-4 md:p-8"
+          : "flex flex-col gap-4 p-4"
+      }
+    >
+      {fullscreen && (
+        <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+          <p className="text-sm font-semibold text-[#165170ff]">
+            Previsualización del informe
+          </p>
+          <button
+            type="button"
+            onClick={() => setFullscreen(false)}
+            className="rounded-full border border-gray-300 px-4 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+          >
+            Salir de pantalla completa
+          </button>
+        </div>
+      )}
+      <div ref={reportRef} className="relative flex flex-col gap-4 bg-white">
+        {/* Expandir a pantalla completa — icono llamativo en la esquina del
+            preview (sprint 3). Al abrir, el informe se renderiza en un PORTAL
+            a document.body para escapar de la subpágina que lo confinaba. */}
+        {!fullscreen && (
+          <button
+            type="button"
+            onClick={() => {
+              setFullscreen(true);
+              setPreviewOpen(true);
+            }}
+            aria-label="Ver informe a pantalla completa"
+            title="Pantalla completa"
+            className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white ring-1 ring-white/50 backdrop-blur transition hover:bg-white/35"
+          >
+            <Maximize2 size={16} />
+          </button>
+        )}
         {/* Cabecera con identidad de marca — visible en PDF */}
         <header className="rounded-t-2xl bg-[#165170ff] px-5 py-4 text-white">
           <p className="text-[10px] uppercase tracking-[0.2em] text-white/70">
             Informe Vento
           </p>
           <h3 className="mt-1 text-xl font-bold">
-            Análisis preliminar de prefactibilidad eólica
+            Análisis preliminar de idoneidad eólica
           </h3>
           <p className="mt-1 text-[11px] text-white/80">{timestamp}</p>
         </header>
@@ -271,9 +327,31 @@ export default function Report() {
                 <span className="text-sm font-semibold text-gray-500">/ 100</span>
               </p>
               <p className="mt-1 text-[11px] leading-snug text-gray-600">
-                Promedio agregado de la evaluación de prefactibilidad para el
+                Promedio agregado de la evaluación de idoneidad para el
                 área seleccionada, según las dimensiones y variables analizadas.
               </p>
+            </section>
+
+            {/* Mapa del área seleccionada — captura enfocada coloreada por
+                idoneidad GENERAL (sprint 3). Vectorial: no rasteriza el canvas
+                WebGL de deck.gl (que sale en blanco). Color placeholder por hex
+                hasta que la API entregue el general por hexágono. */}
+            <section>
+              <h4 className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                Área seleccionada · idoneidad general
+              </h4>
+              <div className="mt-2 overflow-hidden rounded-lg border border-gray-200">
+                {mapSnapshot ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- blob URL en cache, no un asset estático
+                  <img
+                    src={mapSnapshot}
+                    alt="Captura del mapa del área seleccionada"
+                    className="w-full object-cover"
+                  />
+                ) : (
+                  <AreaMiniMap selectedHexes={selectedHexes} className="w-full" />
+                )}
+              </div>
             </section>
 
             {/* Puntajes por dimensión — sólo las dimensiones PUNTUABLES.
@@ -438,6 +516,12 @@ export default function Report() {
 
     </div>
   );
+
+  // En pantalla completa: portal a document.body para NO quedar atrapado en la
+  // subpágina del informe (que está confinada a <40% del ancho con overflow).
+  return fullscreen && typeof document !== "undefined"
+    ? createPortal(content, document.body)
+    : content;
 }
 
 function Stat({

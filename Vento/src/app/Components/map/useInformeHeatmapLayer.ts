@@ -88,7 +88,9 @@ export function useInformeHeatmapLayer(
           t = d.baseScore; // solo gradiente radial neutro (sin datos fake)
         }
         const [r, g, b] = viridis(Math.max(0, Math.min(1, t)));
-        return [r, g, b, 160];
+        // Alpha bajo (sprint 3): los hexes no deben tapar el relieve/mapa de
+        // abajo — se busca ver el basemap a través del heatmap.
+        return [r, g, b, 110];
       },
       filled: true,
       stroked: false,

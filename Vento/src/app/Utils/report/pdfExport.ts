@@ -121,11 +121,11 @@ export async function generateReportPdf(
   doc.setTextColor(...BRAND);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
-  doc.text("Análisis preliminar de prefactibilidad eólica", titleX, 13);
+  doc.text("Análisis preliminar de idoneidad eólica", titleX, 13);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(120);
-  doc.text(`Informe de prefactibilidad · ${data.timestamp}`, titleX, 18);
+  doc.text(`Informe de idoneidad · ${data.timestamp}`, titleX, 18);
 
   // Logos institucionales (texto — faltan assets ANH/EAFIT/Mavalan)
   doc.setFont("helvetica", "bold");
@@ -159,7 +159,7 @@ export async function generateReportPdf(
   doc.setTextColor(90);
   doc.text(
     doc.splitTextToSize(
-      "Promedio agregado de la evaluación de prefactibilidad para el área seleccionada.",
+      "Promedio agregado de la evaluación de idoneidad para el área seleccionada.",
       120,
     ),
     LX,

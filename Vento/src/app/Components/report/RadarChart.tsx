@@ -43,7 +43,7 @@ export default function RadarChart({
       viewBox={`${-padX} 0 ${size + padX * 2} ${size}`}
       className={className}
       role="img"
-      aria-label={`Radar de prefactibilidad por dimensión: ${axes
+      aria-label={`Radar de idoneidad por dimensión: ${axes
         .map((a) => `${a.label} ${Math.round(a.value)} de 100`)
         .join(", ")}`}
     >

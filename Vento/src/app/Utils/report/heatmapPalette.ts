@@ -7,7 +7,7 @@
  * y un selector externo.
  */
 
-import { SCORABLE_DIMENSION_IDS } from "./variablesCatalog";
+import { SCORABLE_DIMENSION_IDS } from "../variables/variablesCatalog";
 
 /** 11 stops Viridis (matplotlib estándar). */
 const VIRIDIS: [number, number, number][] = [

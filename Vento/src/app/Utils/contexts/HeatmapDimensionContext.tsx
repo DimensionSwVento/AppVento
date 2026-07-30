@@ -35,7 +35,7 @@ export const HEATMAP_DIMENSIONS: {
   { id: "ambiental", label: "Ambiental", scorable: true },
   { id: "tecnica", label: "Técnica", scorable: true },
   { id: "economica", label: "Económica", scorable: true },
-  { id: "socioeconomica", label: "Socioeconómica", scorable: true },
+  { id: "socioeconomica", label: "Social", scorable: true },
   { id: "regulatoria", label: "Regulatoria", scorable: false },
 ];
 

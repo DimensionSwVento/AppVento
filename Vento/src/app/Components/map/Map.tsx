@@ -22,7 +22,8 @@ import { cellToBoundary, cellToLatLng, cellsToMultiPolygon, polygonToCells } fro
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
 import { useVariables } from "../../Utils/contexts/VariablesContext";
 import { useHeatmapDimension } from "../../Utils/contexts/HeatmapDimensionContext";
-import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS } from "../../Utils/h3/h3Resolution";
+import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS, SNAPSHOT_KEY } from "../../Utils/h3/h3Resolution";
+import { useCachedImage } from "../../Utils/useCachedImage";
 import { zoomToH3Res, tileToBBox, isInColombia } from "../../Utils/h3/mapGeo";
 import { isHexBanned } from "../../Utils/h3/hexClassification";
 import { MAX_SELECTION_GAP_KM, MIN_SELECTION_H3_RES } from "../../Utils/projectData";
@@ -57,8 +58,10 @@ const TERRITORY_BORDER: [number, number, number, number] = [22, 81, 112, 160];
 const HOVER_FILL: [number, number, number, number] = [224, 215, 221, 60];
 const HOVER_BORDER: [number, number, number, number] = [70, 90, 120, 120];
 // Zonas prohibidas / inviables — gris sólido, no seleccionables (BANNED_HEXES).
-const BANNED_FILL: [number, number, number, number] = [130, 130, 130, 205];
-const BANNED_BORDER: [number, number, number, number] = [110, 110, 110, 220];
+// Zonas excluidas = 0% idoneidad → color viridis(0) (morado oscuro), no gris,
+// para que sean coherentes con la paleta de idoneidad (sprint 3).
+const BANNED_FILL: [number, number, number, number] = [68, 1, 84, 205];
+const BANNED_BORDER: [number, number, number, number] = [59, 1, 74, 230];
 interface HexCell { h: string; banned?: boolean; }
 
 export default function MapView() {
@@ -104,7 +107,7 @@ export default function MapView() {
   }, []);
 
   // Selección de hexágonos + fly-to del buscador (comparten searchHexesRef).
-  const { toggleHex, handlePlaceSelect, isFlyingRef } = useMapSelection({
+  const { toggleHex, handlePlaceSelect, isFlyingRef, resetSearch } = useMapSelection({
     canSelect,
     viewState,
     selectedHexes,
@@ -149,6 +152,40 @@ export default function MapView() {
       }),
     );
   }, [accion, selectedHexes, clampViewState]);
+
+  // Snapshot del mapa para el informe (sprint 3): compone TODOS los <canvas>
+  // del contenedor (basemap MapLibre + capas deck/hexes) en uno solo y lo
+  // cachea con SNAPSHOT_KEY. El informe lo muestra como <img> (screenshot real
+  // del mapa, no un dibujo aparte). Porta el patrón de la demo previa; requiere
+  // preserveDrawingBuffer en ambos canvas.
+  const { saveToCache } = useCachedImage();
+  const captureSnapshot = useCallback(async () => {
+    const container = containerRef.current;
+    if (!container) return;
+    const canvases = container.querySelectorAll("canvas");
+    if (canvases.length === 0) return;
+    const composite = document.createElement("canvas");
+    composite.width = canvases[0].width;
+    composite.height = canvases[0].height;
+    const ctx = composite.getContext("2d");
+    if (!ctx) return;
+    canvases.forEach((c) => ctx.drawImage(c, 0, 0));
+    try {
+      await saveToCache(composite.toDataURL("image/png"), SNAPSHOT_KEY);
+    } catch {
+      /* captura best-effort — si algún canvas no preserva buffer, se omite */
+    }
+  }, [saveToCache]);
+
+  // Al entrar al informe, capturar el mapa ya reencuadrado sobre la selección
+  // (delay para que deck termine de pintar tiles + heatmap antes del toDataURL).
+  useEffect(() => {
+    if (accion !== "informe") return;
+    const id = setTimeout(() => {
+      void captureSnapshot();
+    }, 1200);
+    return () => clearTimeout(id);
+  }, [accion, selectedHexes, activeDimension, captureSnapshot]);
 
   // capa de cuadrícula con tiles — solo renderiza lo visible, cachea por tile.
   // Cuando el heatmap del informe está activo, oculto la malla entera para
@@ -387,9 +424,8 @@ export default function MapView() {
   // pendientes de deseleccionar por un cambio de resolución H3 posterior.
   const clearSelection = useCallback(() => {
     setSelectedHexes(new Set());
-    searchHexesRef.current = new Set();
-    searchH3ResRef.current = null;
-  }, [setSelectedHexes]);
+    resetSearch();
+  }, [setSelectedHexes, resetSearch]);
 
   const toggleFullscreen = () => {
     const el = containerRef.current;
@@ -446,21 +482,27 @@ export default function MapView() {
       {mapReady && <NextStepFloatingCard />}
       {mapReady && <PhaseHintCard />}
 
-      {mapReady && (
+      {/* Botones del mapa: SOLO en selección de área o en informe (sprint 3). */}
+      {mapReady && (canSelect || accion === "informe") && (
         <>
-          {/* Fullscreen: solo mobile, top-derecha */}
-          <button
-            onClick={toggleFullscreen}
-            className="absolute top-3 right-3 z-10 flex h-6 w-6 items-center justify-center rounded text-white shadow bg-[#165170ff] md:hidden"
-            title={fullscreen ? "Salir" : "Pantalla completa"}
-          >
-            {fullscreen ? (
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 1v4H2M10 1v4h4M6 15v-4H2M10 15v-4h4" /></svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" /></svg>
-            )}
-          </button>
-          <div className="absolute bottom-9 right-4 z-10 flex flex-col items-end gap-2">
+          {/* Fullscreen mobile (top-derecha): solo en selección — en informe
+              chocaría con el panel de variables/informativas (top-3 right-3). */}
+          {canSelect && (
+            <button
+              onClick={toggleFullscreen}
+              className="absolute top-3 right-3 z-10 flex h-6 w-6 items-center justify-center rounded text-white shadow bg-[#165170ff] md:hidden"
+              title={fullscreen ? "Salir" : "Pantalla completa"}
+            >
+              {fullscreen ? (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 1v4H2M10 1v4h4M6 15v-4H2M10 15v-4h4" /></svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" /></svg>
+              )}
+            </button>
+          )}
+          {/* En informe la toolbar va a la IZQUIERDA para no cruzarse con el
+              panel de variables (top-3 right-3) ni la previsualización. */}
+          <div className={`absolute bottom-9 z-10 flex flex-col gap-2 ${canSelect ? "right-4 items-end" : "left-4 items-start"}`}>
             <button
               onClick={zoomToSelection}
               disabled={!hasSelection}
@@ -470,29 +512,36 @@ export default function MapView() {
             >
               <Crosshair size={16} />
             </button>
-            <button
-              onClick={resetView}
-              aria-label="Reset a Colombia"
-              title="Reset a Colombia"
-              className="flex h-8 w-8 items-center justify-center rounded text-white shadow bg-[#165170ff]"
-            >
-              <Home size={16} />
-            </button>
-            <button
-              onClick={clearSelection}
-              disabled={!hasSelection}
-              aria-label="Borrar selección"
-              title={hasSelection ? "Borrar selección" : "No hay selección para borrar"}
-              className="flex h-8 w-8 items-center justify-center rounded text-white shadow bg-[#165170ff] disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Trash2 size={16} />
-            </button>
+            {/* Reset a Colombia + Borrar selección: SOLO en selección de área.
+                En informe se quitan (sprint 3): ya no se selecciona ni se
+                reencuadra a Colombia desde aquí. */}
+            {canSelect && (
+              <>
+                <button
+                  onClick={resetView}
+                  aria-label="Reset a Colombia"
+                  title="Reset a Colombia"
+                  className="flex h-8 w-8 items-center justify-center rounded text-white shadow bg-[#165170ff]"
+                >
+                  <Home size={16} />
+                </button>
+                <button
+                  onClick={clearSelection}
+                  disabled={!hasSelection}
+                  aria-label="Borrar selección"
+                  title={hasSelection ? "Borrar selección" : "No hay selección para borrar"}
+                  className="flex h-8 w-8 items-center justify-center rounded text-white shadow bg-[#165170ff] disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </>
+            )}
 
             {/* Separador visual entre la toolbar de selección y el zoom */}
             <div className="h-px w-6 bg-white/50 my-0.5 max-md:hidden" />
 
             {/* Zoom + fullscreen: solo desktop */}
-            <div className="flex flex-col items-end gap-2 max-md:hidden">
+            <div className={`flex flex-col gap-2 max-md:hidden ${canSelect ? "items-end" : "items-start"}`}>
               <button onClick={toggleFullscreen} className="flex h-6 w-6 items-center justify-center rounded text-white shadow bg-[#165170ff]" title={fullscreen ? "Salir" : "Pantalla completa"}>
                 {fullscreen ? (
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 1v4H2M10 1v4h4M6 15v-4H2M10 15v-4h4" /></svg>
@@ -536,6 +585,9 @@ export default function MapView() {
       )}
 
       <DeckGL
+        // preserveDrawingBuffer: permite capturar el canvas de deck para el
+        // snapshot del informe (se compone con el canvas de MapLibre).
+        glOptions={{ preserveDrawingBuffer: true }}
         style={{ position: "relative", width: "auto", height: "100%" }}
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => setViewState(clampViewState(vs as typeof INITIAL_VIEW_STATE))}
@@ -589,7 +641,7 @@ export default function MapView() {
       >
         <MapGL
           ref={mapRef}
-          mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+          mapStyle="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
           canvasContextAttributes={{ preserveDrawingBuffer: true }}
           // Atribución sin el toggle "ⓘ" (que parecía botón muerto): texto fijo.
           attributionControl={{ compact: false }}

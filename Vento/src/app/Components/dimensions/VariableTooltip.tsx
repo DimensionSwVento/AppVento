@@ -37,9 +37,9 @@ export default function VariableTooltip({ variable }: { variable: Variable }) {
   const weight = weightFor(variable.id);
   const polarityLabel =
     weight > 0
-      ? "Suma a prefactibilidad"
+      ? "Suma a idoneidad"
       : weight < 0
-        ? "Resta a prefactibilidad"
+        ? "Resta a idoneidad"
         : "No aporta al cálculo";
   const polarityClass =
     weight > 0

@@ -290,7 +290,7 @@ export default function SideBar({
             >
               <Image src="/viab.png" alt="" width={15} height={15} className={iconCls} />
               <p className={`${itemLabelCls} ${labelCls}`}>
-                Informe de prefactibilidad
+                Informe de idoneidad
               </p>
               {esPasado("informe") && stepCheckIcon}
               {esActual("informe") && activeStepArrowIcon}
@@ -307,7 +307,7 @@ export default function SideBar({
             >
               <Image src="/hist.png" alt="" width={15} height={15} className={iconCls} />
               <p className={`${itemLabelCls} ${labelCls}`}>
-                Histórico de prefactibilidad
+                Histórico de informes
               </p>
             </button>
             {mobileOpen && hasSubpage ? (

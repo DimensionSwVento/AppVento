@@ -87,7 +87,7 @@ export default function HistorialList() {
   return (
     <div className="flex h-full flex-col gap-4 p-4">
       <h3 className="text-lg font-bold text-[#165170ff]">
-        Histórico de prefactibilidad
+        Histórico de informes
       </h3>
 
       {/* Búsqueda por nombre + filtros por periodo */}

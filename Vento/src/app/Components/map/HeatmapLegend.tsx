@@ -36,7 +36,7 @@ export default function HeatmapLegend() {
   return (
     <div className="rounded-2xl bg-white p-2.5 shadow-sm">
       <h3 className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-        Prefactibilidad (%)
+        Idoneidad (%)
       </h3>
 
       <div className="mt-2 flex items-stretch gap-2">

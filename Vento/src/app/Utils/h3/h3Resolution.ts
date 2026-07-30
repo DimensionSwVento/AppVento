@@ -19,7 +19,7 @@ const igacArtifact = igacBoundary as unknown as IgacBoundaryArtifact;
 
 // --- constantes del mapa ---
 
-export const MAP_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+export const MAP_STYLE = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
 
 export const INITIAL_VIEW_STATE = {
   longitude: -73.5,

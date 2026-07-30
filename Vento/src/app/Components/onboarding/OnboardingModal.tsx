@@ -37,7 +37,7 @@ const STEPS: Step[] = [
   {
     // TODO: falta la 5ª imagen (on5) — placeholder hasta que la entreguen.
     img: null,
-    titulo: "Informe de prefactibilidad",
+    titulo: "Informe de idoneidad",
     texto: "Revisa los puntajes de idoneidad por dimensión y descarga el informe en PDF.",
   },
 ];
