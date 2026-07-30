@@ -1,0 +1,68 @@
+# Quality Attributes Pipeline.
+#
+# Executes the tests declared in the quality attributes catalog
+# (quality/quality-attributes.json) on every change, collects the resulting
+# evidence, and decides whether the change can be deployed.
+#
+# This workflow is additive: it does NOT replace frontend-ci.yml, which remains
+# the pipeline that gates merges today.
+#
+# NOTE: the organization's Actions policy only allows actions from
+# DimensionSwVento repositories, so this workflow uses no marketplace action
+# (not even actions/checkout): checkout is done with git + github.token and Node
+# comes from the runner tool cache. Same constraint and same workaround as
+# frontend-ci.yml.
+name: Quality Attributes Pipeline
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "Vento/**"
+      - "quality/**"
+      - ".github/workflows/quality-pipeline.yml"
+  push:
+    branches: [main, develop, "feature/quality-attributes-pipeline"]
+    paths:
+      - "Vento/**"
+      - "quality/**"
+      - ".github/workflows/quality-pipeline.yml"
+
+concurrency:
+  group: quality-pipeline-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality-evidence:
+    name: Quality evidence
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (no marketplace actions)
+        run: |
+          git init -q .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch -q --depth 1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Node 22 from the runner tool cache
+        run: |
+          NODE_DIR=$(ls -d /opt/hostedtoolcache/node/22.*/x64/bin 2>/dev/null | sort -V | tail -1)
+          if [ -n "$NODE_DIR" ]; then echo "$NODE_DIR" >> "$GITHUB_PATH"; fi
+          node --version
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: Vento
+
+      # The catalog is the reference model for every later stage: gates declare
+      # the attribute they cover and the analyzer is grounded on catalog entries.
+      # A malformed catalog must stop the pipeline here, before any evidence is
+      # collected against it.
+      - name: Validate quality attributes catalog
+        run: node quality/scripts/validate-catalog.mjs
