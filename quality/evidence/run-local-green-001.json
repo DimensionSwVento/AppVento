@@ -435,5 +435,124 @@
       }
     ]
   },
-  "analysis": null
+  "analysis": {
+    "level": 2,
+    "model": "google/gemini-3.1-flash-lite",
+    "usage": {
+      "prompt_tokens": 4311,
+      "completion_tokens": 706,
+      "total_tokens": 5017,
+      "cost": 0.00213675,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.00213675,
+        "upstream_inference_prompt_cost": 0.00107775,
+        "upstream_inference_completions_cost": 0.001059
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "uncoveredAttributes": [
+      "data-integration",
+      "result-quality",
+      "scalability",
+      "traceability-auditability",
+      "resilience",
+      "geoethics"
+    ],
+    "weaklyCoveredAttributes": [
+      {
+        "attributeId": "processing",
+        "missing": "CRS consistency tests; reproducibility tests"
+      },
+      {
+        "attributeId": "availability",
+        "missing": "connectivity tests to data sources; fault tolerance tests; GIS service recovery tests"
+      },
+      {
+        "attributeId": "performance",
+        "missing": "layer loading time; spatial query latency"
+      },
+      {
+        "attributeId": "security",
+        "missing": "spatial integrity"
+      },
+      {
+        "attributeId": "data-quality",
+        "missing": "temporal consistency tests"
+      },
+      {
+        "attributeId": "interoperability",
+        "missing": "OGC services testing; import/export format testing; standards and schema validation"
+      },
+      {
+        "attributeId": "usability-geospatial",
+        "missing": "cartographic comprehension tests; spatial cognitive load tests"
+      }
+    ],
+    "recommendations": [
+      {
+        "attributeId": "result-quality",
+        "suggestedTests": [
+          "topological consistency",
+          "validation against reference data"
+        ],
+        "rationale": "Ensuring the correctness of spatial outputs is critical for Vento's role in informing energy-investment decisions; topological errors directly undermine the validity of territorial assessments.",
+        "priority": "high"
+      },
+      {
+        "attributeId": "processing",
+        "suggestedTests": [
+          "CRS consistency tests",
+          "reproducibility tests"
+        ],
+        "rationale": "The application performs complex H3 spatial operations; verifying coordinate reference system consistency and result reproducibility is essential to prevent silent errors in spatial calculations.",
+        "priority": "high"
+      },
+      {
+        "attributeId": "security",
+        "suggestedTests": [
+          "spatial integrity"
+        ],
+        "rationale": "While access control is implemented, verifying spatial integrity ensures that the data consumed by the frontend has not been tampered with or corrupted during transit.",
+        "priority": "medium"
+      },
+      {
+        "attributeId": "performance",
+        "suggestedTests": [
+          "layer loading time",
+          "spatial query latency"
+        ],
+        "rationale": "Performance is vital for user experience in GIS applications; current gaps in measuring loading times and query latency hinder the ability to optimize map responsiveness.",
+        "priority": "medium"
+      },
+      {
+        "attributeId": "data-quality",
+        "suggestedTests": [
+          "temporal consistency tests"
+        ],
+        "rationale": "Vento relies on time-sensitive energy data; verifying temporal consistency is necessary to ensure that the displayed information remains relevant for current territorial planning.",
+        "priority": "low"
+      }
+    ],
+    "validation": {
+      "droppedSuggestedTests": [],
+      "droppedRecommendations": [],
+      "coverageComparison": {
+        "uncoveredClaimedButCovered": [],
+        "uncoveredMissedByModel": [],
+        "weakClaimedButNotWeak": [],
+        "weakMissedByModel": []
+      }
+    }
+  }
 }

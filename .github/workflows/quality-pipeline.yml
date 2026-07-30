@@ -129,6 +129,16 @@ jobs:
           AI_ANALYZER_MODEL: ${{ vars.AI_ANALYZER_MODEL }}
         run: node quality/scripts/analyze-level1.mjs "quality/evidence/run-${GITHUB_RUN_ID}.json"
 
+      # Exactly one call per run, green or not: the question it answers is what
+      # the catalog demands that the repository does not yet implement, which
+      # does not depend on this run having failed.
+      - name: Analyzer level 2 (coverage recommendation)
+        continue-on-error: true
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          AI_ANALYZER_MODEL: ${{ vars.AI_ANALYZER_MODEL }}
+        run: node quality/scripts/analyze-level2.mjs "quality/evidence/run-${GITHUB_RUN_ID}.json"
+
       - name: Render job summary
         if: always()
         run: |

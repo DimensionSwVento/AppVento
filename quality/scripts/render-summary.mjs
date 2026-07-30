@@ -80,6 +80,67 @@ function renderDiagnostics(bundle, attributeNames) {
   return lines.join("\n");
 }
 
+function renderCoverageRecommendation(bundle, attributeNames) {
+  const analysis = bundle.analysis;
+  if (!analysis) return null;
+
+  const lines = [];
+  lines.push("## Coverage recommendation (level 2)");
+  lines.push("");
+
+  if (analysis.error) {
+    lines.push(`> Coverage recommendation unavailable: ${analysis.error}`);
+    return lines.join("\n");
+  }
+
+  const name = (id) => attributeNames.get(id) ?? id;
+
+  lines.push(
+    `**Uncovered (${analysis.uncoveredAttributes.length}):** ` +
+      (analysis.uncoveredAttributes.map(name).join(", ") || "none"),
+  );
+  lines.push("");
+
+  if (analysis.weaklyCoveredAttributes.length > 0) {
+    lines.push("**Weakly covered**");
+    lines.push("");
+    lines.push("| Attribute | What is missing |");
+    lines.push("| --- | --- |");
+    for (const entry of analysis.weaklyCoveredAttributes) {
+      lines.push(`| ${name(entry.attributeId)} | ${escapePipes(entry.missing)} |`);
+    }
+    lines.push("");
+  }
+
+  lines.push("**Recommended next, in priority order**");
+  lines.push("");
+  for (const [index, recommendation] of analysis.recommendations.entries()) {
+    lines.push(
+      `${index + 1}. **${name(recommendation.attributeId)}** — _${recommendation.priority} priority_`,
+    );
+    for (const test of recommendation.suggestedTests) {
+      lines.push(`   - \`${test}\``);
+    }
+    lines.push(`   ${recommendation.rationale}`);
+  }
+  lines.push("");
+
+  const dropped = analysis.validation?.droppedSuggestedTests ?? [];
+  const droppedRecs = analysis.validation?.droppedRecommendations ?? [];
+  if (dropped.length > 0 || droppedRecs.length > 0) {
+    lines.push(
+      `_Discarded as not traceable to the catalog: ${dropped.length} suggested test(s), ` +
+        `${droppedRecs.length} recommendation(s)._`,
+    );
+  } else {
+    lines.push(
+      "_Every recommended test is traceable verbatim to the catalog entry of its attribute._",
+    );
+  }
+
+  return lines.join("\n");
+}
+
 function main() {
   const bundlePath = process.argv[2];
   if (!bundlePath) {
@@ -126,6 +187,11 @@ function main() {
   const diagnostics = renderDiagnostics(bundle, attributeNames);
   if (diagnostics) {
     out.push(diagnostics);
+  }
+
+  const recommendation = renderCoverageRecommendation(bundle, attributeNames);
+  if (recommendation) {
+    out.push(recommendation);
   }
 
   console.log(out.join("\n"));
