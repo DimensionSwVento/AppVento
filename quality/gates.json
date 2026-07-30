@@ -1,0 +1,205 @@
+{
+  "$schema": "./gates.schema.json",
+  "gatesVersion": "1.0.0",
+  "description": "Inventory of the quality gates that exist in this repository. Every gate declares the single quality attribute it serves and, when applicable, which of that attribute's catalog tests it actually implements. This file is the only place where gate-to-attribute mapping lives; the coverage inventory and the evidence bundle are derived from it, never hardcoded.",
+  "coveragePolicy": {
+    "strongCoverageMinRatio": 0.5,
+    "note": "An attribute is 'covered' when it has at least one gate and those gates implement at least strongCoverageMinRatio of the catalog tests declared for it; 'weak' when it has gates but implements less than that; 'uncovered' when no gate declares it."
+  },
+  "vitest": {
+    "note": "Vitest gates partition a SINGLE `vitest run` into disjoint file sets. Every unit test file belongs to exactly one gate, so tests and assertions per attribute add up without double counting.",
+    "workingDirectory": "Vento"
+  },
+  "gates": [
+    {
+      "id": "typescript-check",
+      "name": "TypeScript check",
+      "attributeId": "processing",
+      "description": "Static type checking of the whole frontend, including the geospatial modules. Guards against type-level defects in GIS operations before any test runs.",
+      "source": { "kind": "command", "command": "npx --no-install tsc --noEmit", "workingDirectory": "Vento" },
+      "catalogTests": [],
+      "blocking": true,
+      "enabled": true
+    },
+    {
+      "id": "spatial-operations-tests",
+      "name": "Spatial operations tests",
+      "attributeId": "processing",
+      "description": "Unit tests of the H3 spatial operations: area computation against h3-js cellArea, tile-to-hexagon indexing with web-mercator tile math, parent-resolution rollup, and centroid/region derivation for the report.",
+      "source": {
+        "kind": "vitest",
+        "include": [
+          "src/app/Utils/areaCalc.test.ts",
+          "src/app/Utils/h3TileIndex.test.ts",
+          "src/app/Utils/reportData.test.ts"
+        ]
+      },
+      "catalogTests": ["spatial unit tests (vector/raster)", "geometric precision tests"],
+      "blocking": true,
+      "enabled": true
+    },
+    {
+      "id": "h3-boundary-tests",
+      "name": "H3 boundary and geospatial constant tests",
+      "attributeId": "data-quality",
+      "description": "Tests of the official IGAC boundary artifact and the derived territorial constants: polygon closure and vertex count, point-in-Colombia for the San Andres and Providencia archipelago, department coverage, and rejection of coordinates outside the territory.",
+      "source": {
+        "kind": "vitest",
+        "include": [
+          "src/app/Utils/h3Resolution.test.ts",
+          "src/app/Utils/colombiaRegions.test.ts"
+        ]
+      },
+      "catalogTests": [
+        "positional accuracy tests",
+        "spatial completeness tests",
+        "metadata validation"
+      ],
+      "blocking": true,
+      "enabled": true
+    },
+    {
+      "id": "external-service-client-tests",
+      "name": "External geospatial service client tests",
+      "attributeId": "interoperability",
+      "description": "Tests of the Nominatim geocoding client: request parameters, parsing of the returned GeoJSON geometry, MultiPolygon flattening into rings, and error propagation when the service answers with a non-ok status.",
+      "source": { "kind": "vitest", "include": ["src/app/Utils/geocoder.test.ts"] },
+      "catalogTests": ["integration with external systems"],
+      "blocking": true,
+      "enabled": true
+    },
+    {
+      "id": "spatial-data-cache-tests",
+      "name": "Spatial data cache tests",
+      "attributeId": "availability",
+      "description": "Tests of the client-side cache that keeps H3 datasets available between sessions: empty read, write-then-read, and replacement of a previous dataset.",
+      "source": { "kind": "vitest", "include": ["src/app/Utils/h3DataCache.test.ts"] },
+      "catalogTests": [],
+      "blocking": true,
+      "enabled": true
+    },
+    {
+      "id": "health-route-test",
+      "name": "Health route test",
+      "attributeId": "availability",
+      "description": "Test of the application liveness endpoint. Verifies the contract of /api/health only; it does not exercise any upstream spatial data source.",
+      "source": {
+        "kind": "vitest",
+        "include": ["__tests__/unit/app/api/health/route.test.ts"]
+      },
+      "catalogTests": [],
+      "blocking": true,
+      "enabled": true
+    },
+    {
+      "id": "auth-rbac-tests",
+      "name": "Authentication and RBAC tests",
+      "attributeId": "security",
+      "description": "Tests of the Keycloak-backed authentication and role-based access control: route protection middleware for /dashboard, /admin and /dimensions, role extraction from the access and id tokens, refresh-failure handling, admin API handlers, and the guarantee that tokens never reach the client session.",
+      "source": {
+        "kind": "vitest",
+        "include": [
+          "__tests__/unit/auth.test.ts",
+          "__tests__/unit/middleware.test.ts",
+          "__tests__/unit/app/Utils/keycloakAdmin.test.ts",
+          "__tests__/unit/app/Utils/keycloakLogout.test.ts",
+          "__tests__/unit/app/api/auth/**/*.test.ts",
+          "__tests__/unit/app/api/users/route.test.ts",
+          "__tests__/unit/app/Components/SessionGuard.test.tsx",
+          "__tests__/unit/app/Components/SideBar.admin-nav.test.tsx",
+          "__tests__/unit/app/Components/Admin/UsersTable.test.tsx"
+        ]
+      },
+      "catalogTests": [
+        "layer access control protection",
+        "GIS API security",
+        "sensitive data"
+      ],
+      "blocking": true,
+      "enabled": true
+    },
+    {
+      "id": "dependency-audit",
+      "name": "Dependency vulnerability audit",
+      "attributeId": "security",
+      "description": "npm audit over the production and development dependency tree. Records vulnerability counts by severity as evidence. Non-blocking on purpose: the current tree has known high and critical advisories, and blocking on them would stop all work on the pipeline itself.",
+      "source": { "kind": "npm-audit", "workingDirectory": "Vento" },
+      "catalogTests": [],
+      "blocking": false,
+      "enabled": true
+    },
+    {
+      "id": "ui-component-tests",
+      "name": "Cartographic UI component tests",
+      "attributeId": "usability-geospatial",
+      "description": "Tests of the components that present spatial information: heatmap legend and colour ramps, dimension and variable selectors, hexagon popups and tooltips, map search box, area display, and the prefeasibility report view, plus the contexts that hold their state.",
+      "source": {
+        "kind": "vitest",
+        "include": [
+          "src/app/Components/**/*.test.tsx",
+          "src/app/Utils/AccionPrincipalContext.test.tsx",
+          "src/app/Utils/CaracteristicasContext.test.tsx",
+          "src/app/Utils/HeatmapDimensionContext.test.tsx",
+          "src/app/Utils/VariablesContext.test.tsx",
+          "src/app/Utils/apiUrl.test.ts",
+          "src/app/Utils/customIcons.test.tsx",
+          "src/app/Utils/dimensionColors.test.ts",
+          "src/app/Utils/variableWeights.test.ts",
+          "src/app/Utils/variablesCatalog.test.ts",
+          "src/app/dashboard/page.test.tsx",
+          "__tests__/unit/app/Providers.test.tsx",
+          "__tests__/unit/app/page.test.tsx",
+          "__tests__/unit/app/registration-success/page.test.tsx",
+          "__tests__/unit/app/Components/SideBar.test.tsx",
+          "__tests__/unit/app/Components/SignInButton.test.tsx",
+          "__tests__/unit/app/Components/SignUpButton.test.tsx"
+        ]
+      },
+      "catalogTests": ["symbology and scale evaluation"],
+      "blocking": true,
+      "enabled": true
+    },
+    {
+      "id": "accessibility-tests",
+      "name": "Accessibility tests",
+      "attributeId": "usability-geospatial",
+      "description": "axe-core accessibility audit over the public landing, the dashboard and the report screens. Fails on critical and serious violations.",
+      "source": {
+        "kind": "playwright",
+        "include": ["e2e/a11y.spec.ts"],
+        "project": "chromium",
+        "workingDirectory": "Vento",
+        "requires": ["keycloak"]
+      },
+      "catalogTests": ["accessibility testing"],
+      "blocking": true,
+      "enabled": true
+    },
+    {
+      "id": "map-render-performance",
+      "name": "Map render performance budget",
+      "attributeId": "performance",
+      "description": "End-to-end time-to-canvas budget for the dashboard map: the WebGL canvas must be painted within E2E_CANVAS_BUDGET_MS (30000 by default) with no uncaught page errors.",
+      "source": {
+        "kind": "playwright",
+        "include": ["e2e/dashboard-heatmap.spec.ts"],
+        "project": "chromium",
+        "workingDirectory": "Vento",
+        "requires": ["keycloak"]
+      },
+      "catalogTests": ["map rendering"],
+      "blocking": true,
+      "enabled": true
+    },
+    {
+      "id": "production-build",
+      "name": "Production build",
+      "attributeId": "availability",
+      "description": "Next.js production build. Verifies the application can be compiled and served, including page data collection for the authenticated routes.",
+      "source": { "kind": "command", "command": "npm run build", "workingDirectory": "Vento" },
+      "catalogTests": [],
+      "blocking": true,
+      "enabled": true
+    }
+  ]
+}

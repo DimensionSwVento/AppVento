@@ -66,3 +66,15 @@ jobs:
       # collected against it.
       - name: Validate quality attributes catalog
         run: node quality/scripts/validate-catalog.mjs
+
+      # Cross-checks the gate inventory against the catalog: unknown attribute
+      # ids, invented catalog tests, and unit test files claimed by zero or by
+      # more than one gate all stop the pipeline here. Without this, the coverage
+      # figures reported downstream could drift from what the repository does.
+      - name: Validate quality gate inventory
+        run: node quality/scripts/validate-gates.mjs
+
+      - name: Attribute coverage inventory
+        run: |
+          node quality/scripts/coverage-inventory.mjs
+          node quality/scripts/coverage-inventory.mjs --markdown >> "$GITHUB_STEP_SUMMARY"
