@@ -39,6 +39,7 @@ import NextStepFloatingCard from "./NextStepFloatingCard";
 import PhaseHintCard from "./PhaseHintCard";
 import LoadingOverlay from "../ui/LoadingOverlay";
 import { useInformeHeatmapLayer } from "./useInformeHeatmapLayer";
+import { useAreaHexData } from "../../Utils/report/useAreaHexData";
 import { useMapSelection } from "./useMapSelection";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -362,6 +363,10 @@ export default function MapView() {
     activeDimension,
   );
 
+  // Datos reales por hex del backend (mismo fetch cacheado que el heatmap) para
+  // que el tooltip de hover muestre scores/variables reales en modo API.
+  const areaData = useAreaHexData(selectedHexes, heatmapActive);
+
   // Bordes de la selección — comportamiento condicional por fase:
   // - En "seleccion-area": cada hex tiene su borde completo (grid de selección)
   // - En otras fases: sólo el contorno exterior (perímetro) del conjunto, usando
@@ -663,6 +668,7 @@ export default function MapView() {
           hex={hoveredHex}
           x={hoverPos?.x ?? null}
           y={hoverPos?.y ?? null}
+          areaData={areaData}
         />
       )}
 

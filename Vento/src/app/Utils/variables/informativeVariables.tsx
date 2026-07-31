@@ -22,6 +22,8 @@ import { colorForVariable } from "./dimensionColors";
 
 export interface InfoVar {
   id: string;
+  /** Código master del catálogo (para casar con `variables` del backend). */
+  masterId: string;
   label: string;
   unit: string;
   /** Componente SVG genérico — puede venir de Lucide, Tabler o custom. */
@@ -74,6 +76,7 @@ function unitFor(id: string): string {
 function toInfoVar(v: Variable): InfoVar {
   return {
     id: v.id,
+    masterId: v.masterId,
     label: v.label,
     unit: unitFor(v.id),
     Icon: getIconByVariableId(v.id),

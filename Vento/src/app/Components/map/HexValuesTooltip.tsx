@@ -10,6 +10,20 @@ import {
   INFO_VARS,
   formatVariableValue,
 } from "../../Utils/variables/informativeVariables";
+import {
+  backendScore,
+  hexVariableValue,
+  type AreaHexMap,
+} from "../../Utils/report/useAreaHexData";
+import { USE_PLACEHOLDER_FALLBACK } from "../../Utils/projectData";
+
+/** Formatea un valor CRUDO del backend para el tooltip (sin fórmulas fake). */
+function formatRawValue(v: number): string {
+  const abs = Math.abs(v);
+  if (abs >= 1000) return Math.round(v).toLocaleString("es-CO");
+  if (abs >= 10) return v.toFixed(1);
+  return v.toFixed(2);
+}
 
 /**
  * Tope de variables informativas mostradas en el tooltip de hover.
@@ -32,29 +46,45 @@ export default function HexValuesTooltip({
   hex,
   x,
   y,
+  areaData,
 }: {
   hex: string | null;
   x: number | null;
   y: number | null;
+  /** Datos reales por hex del backend (informe). Ausente/sin dato → template. */
+  areaData?: AreaHexMap | null;
 }) {
   const { activeDimension } = useHeatmapDimension();
+  const info = hex ? areaData?.get(hex) : undefined;
 
+  // Puntajes por dimensión: en modo API, reales del backend (`null` si el backend
+  // aún no entrega esa dimensión → se muestra "—"); en template, placeholder.
   const scores = useMemo(() => {
     if (!hex) return null;
-    const result: Record<string, number> = {};
+    const result: Record<string, number | null> = {};
     for (const dim of HEATMAP_DIMENSIONS) {
-      result[dim.id] = dimensionHexScore(dim.id, hex);
+      if (USE_PLACEHOLDER_FALLBACK) {
+        result[dim.id] = dimensionHexScore(dim.id, hex);
+      } else {
+        const real = backendScore(info, dim.id);
+        result[dim.id] = typeof real === "number" ? real : null;
+      }
     }
     return result;
-  }, [hex]);
+  }, [hex, info]);
 
   const infoRows = useMemo(() => {
     if (!hex) return [];
     return INFO_VARS.map((v) => {
-      const score = dimensionHexScore(v.id, hex);
-      return { ...v, valueText: formatVariableValue(score, v.unit) };
+      if (USE_PLACEHOLDER_FALLBACK) {
+        const score = dimensionHexScore(v.id, hex);
+        return { ...v, valueText: formatVariableValue(score, v.unit) };
+      }
+      // Modo API: valor crudo real del backend, o "—" si no lo entrega.
+      const raw = hexVariableValue(info, v.masterId);
+      return { ...v, valueText: raw == null ? "—" : formatRawValue(raw) };
     });
-  }, [hex]);
+  }, [hex, info]);
 
   if (!hex || !scores || x === null || y === null) return null;
 
@@ -83,7 +113,8 @@ export default function HexValuesTooltip({
       </p>
       <ul className="flex flex-col px-2.5 pb-1.5">
         {HEATMAP_DIMENSIONS.filter((d) => d.scorable).map((d) => {
-          const value = (scores[d.id] * 100).toFixed(1);
+          const s = scores[d.id];
+          const value = s == null ? "—" : (s * 100).toFixed(1);
           const isActive = activeDimension === d.id;
           return (
             <li
@@ -129,7 +160,7 @@ export default function HexValuesTooltip({
             </span>
           </span>
           <span className="font-mono text-[10px] font-semibold text-gray-500">
-            {(scores[d.id] * 100).toFixed(1)}
+            {scores[d.id] == null ? "—" : ((scores[d.id] as number) * 100).toFixed(1)}
           </span>
         </div>
       ))}

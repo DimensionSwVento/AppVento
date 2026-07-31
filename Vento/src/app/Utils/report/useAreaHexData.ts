@@ -45,6 +45,75 @@ type AreaHexRow = {
  * aquí antes de leer); (b) si el valor viene 0–1 (para "puntaje 0–100", habría
  * que ×100) o crudo (informativas con unidad).
  */
+/**
+ * id de dimensión del frontend → clave(s) de `scores` del backend.
+ * El backend usa MAYÚSCULA (`TEC`/`AMB`/`SOE`/`MAC`/`REG`); `social` llega como
+ * `SOE` (a veces `SOC`) → se prueban ambas. `general` NO va en `scores`: usa el
+ * campo aparte `score_general`.
+ */
+const DIM_TO_CATS: Record<string, string[]> = {
+  tecnica: ["TEC"],
+  ambiental: ["AMB"],
+  social: ["SOE", "SOC"],
+  macroeconomica: ["MAC"],
+  regulatoria: ["REG"],
+};
+
+/**
+ * Score real del backend (0..1) para (hex, dimensión), o `undefined` si no hay
+ * dato (p.ej. `general` usa `score_general`; `AMB`/`MAC` aún sin master).
+ */
+export function backendScore(
+  info: AreaHexInfo | undefined,
+  dim: string,
+): number | undefined {
+  if (!info) return undefined;
+  if (dim === "general")
+    return typeof info.score_general === "number" ? info.score_general : undefined;
+  for (const c of DIM_TO_CATS[dim] ?? []) {
+    if (typeof info.scores?.[c] === "number") return info.scores[c];
+  }
+  return undefined;
+}
+
+/**
+ * `masterId` del catálogo → código de variable del backend.
+ * El catálogo usa guiones y a veces un sufijo de dimensión (`TEC-004-T`,
+ * `AMB-005-A`, `SOC-001-SE`); el backend usa guion bajo y sin ese sufijo
+ * (`TEC_004`, `SOE_001`). Ej.: `SOE-001`→`SOE_001`, `TEC-004-T`→`TEC_004`,
+ * `SOC-001-SE`→`SOC_001`, `TEC-016`→`TEC_016`.
+ */
+export function backendVarCode(masterId: string): string {
+  return masterId.replace(/-/g, "_").replace(/_[A-Z]+$/, "");
+}
+
+/**
+ * Valor CRUDO de UNA variable en UN hex, desde `variables` del backend. Si el
+ * backend parte la variable en subvariables `code_svNNN` (p.ej. WPD por altura),
+ * promedia las disponibles. `undefined` si no hay dato.
+ */
+export function hexVariableValue(
+  info: AreaHexInfo | undefined,
+  masterId: string,
+): number | undefined {
+  const vars = info?.variables;
+  if (!vars) return undefined;
+  const key = backendVarCode(masterId);
+  const v = vars[key];
+  if (typeof v === "number") return v;
+  let s = 0;
+  let k = 0;
+  for (const vk of Object.keys(vars)) {
+    const sv = vars[vk];
+    if (vk.startsWith(`${key}_sv`) && typeof sv === "number") {
+      s += sv;
+      k += 1;
+    }
+  }
+  return k > 0 ? s / k : undefined;
+}
+
+/** Promedio del valor crudo de una variable sobre el área (o `null`). */
 export function areaVariableAverage(
   areaData: AreaHexMap | null,
   hexes: Set<string>,
@@ -54,7 +123,7 @@ export function areaVariableAverage(
   let sum = 0;
   let n = 0;
   for (const h of hexes) {
-    const v = areaData.get(h)?.variables?.[code];
+    const v = hexVariableValue(areaData.get(h), code);
     if (typeof v === "number") {
       sum += v;
       n += 1;
