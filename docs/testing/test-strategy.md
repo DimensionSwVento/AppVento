@@ -1,7 +1,7 @@
 ---
 version: 1.0
 date: 2026-04-20
-author: mavalan Software
+author: Mavalan Software
 scope: estrategia de testing unitario del frontend Vento
 ---
 
@@ -13,11 +13,9 @@ Documento que responde al feedback cliente item #7: **qué pruebas se hicieron, 
 
 ## 1. Resumen ejecutivo
 
-- **21 archivos de test** cubriendo autenticación, navegación, componentes UI, rutas API, middleware, utilidades geoespaciales y módulos del feedback-sprint
+- **57 archivos de test** cubriendo autenticación, navegación/UI, admin, mapa/selección, dimensiones/variables, características, reportes, utilidades geoespaciales y páginas/rutas
 - **Framework**: Vitest + React Testing Library + jsdom
-- **Ubicación doble** (por convención, ambas válidas):
-  - `Vento/__tests__/unit/**` — tests fuera del árbol de código (pattern de tests centralizados)
-  - `Vento/src/**/*.test.{ts,tsx}` — tests co-localizados con el código que prueban
+- **Ubicación**: todos centralizados en `Vento/__tests__/unit/**` (espejo de `src/app/**`). Tras el refactor ya **no** hay tests co-localizados en `src/`
 - **Ejecución**:
   - Local: `npm run test` (watch mode) o `npm run test:run` (one-shot)
   - CI: `npm run test:ci` en GitHub Actions (pipeline falla si algún test falla)
@@ -49,54 +47,111 @@ src/**/*.test.{ts,tsx}
 
 ---
 
-## 3. Inventario completo de tests (17 archivos)
+## 3. Inventario completo de tests (57 archivos)
 
-### 3.1 Autenticación y seguridad
+> Todas las rutas cuelgan de `Vento/__tests__/unit/`. Agrupados por módulo/dominio.
 
-| Archivo | Qué prueba | Qué devuelve / valida |
-|---------|------------|----------------------|
-| [__tests__/unit/auth.test.ts](../../Vento/__tests__/unit/auth.test.ts) | Configuración NextAuth: callbacks `jwt` y `session`, extracción de roles desde access_token Keycloak, refresh de tokens | Valida que `roles` se extraen de `realm_access.roles`, que `session` no expone `refreshToken`, que refresh falla gracefully con `RefreshTokenError` |
-| [__tests__/unit/middleware.test.ts](../../Vento/__tests__/unit/middleware.test.ts) | Middleware de rutas protegidas (`/dashboard`, `/admin`, `/dimensions`) | Valida: redirige a `/` sin sesión; redirige a `/not-authorized` si `/admin/*` sin rol admin; permite paso con sesión válida |
-| [__tests__/unit/app/api/auth/[...nextauth]/route.test.ts](../../Vento/__tests__/unit/app/api/auth/%5B...nextauth%5D/route.test.ts) | Handler NextAuth expone GET/POST | Valida que los handlers están exportados correctamente y responden al schema esperado |
+### 3.1 Autenticación y seguridad (11)
 
-### 3.2 Administración de usuarios
+| Archivo | Qué valida |
+|---------|------------|
+| [auth.test.ts](../../Vento/__tests__/unit/auth.test.ts) | NextAuth: callbacks `jwt`/`session`, roles desde `realm_access.roles`, refresh de tokens, `session` no expone `refreshToken` |
+| [middleware.test.ts](../../Vento/__tests__/unit/middleware.test.ts) | Rutas protegidas: redirige a `/` sin sesión, a `/not-authorized` sin rol admin |
+| [app/api/auth/[...nextauth]/route.test.ts](../../Vento/__tests__/unit/app/api/auth/%5B...nextauth%5D/route.test.ts) | Handler NextAuth expone GET/POST |
+| [app/api/auth/kc-logout/route.test.ts](../../Vento/__tests__/unit/app/api/auth/kc-logout/route.test.ts) | Logout federado server-side hacia Keycloak |
+| [app/api/auth/register/route.test.ts](../../Vento/__tests__/unit/app/api/auth/register/route.test.ts) | Endpoint de registro |
+| [app/api/auth/register/callback/route.test.ts](../../Vento/__tests__/unit/app/api/auth/register/callback/route.test.ts) | Callback post-registro (confirmación app-side, ADR-012) |
+| [app/Components/SessionGuard.test.tsx](../../Vento/__tests__/unit/app/Components/SessionGuard.test.tsx) | Expiración de sesión y guardia de cliente |
+| [app/Components/SignInButton.test.tsx](../../Vento/__tests__/unit/app/Components/SignInButton.test.tsx) | Botón login → `signIn("keycloak")` |
+| [app/Components/SignUpButton.test.tsx](../../Vento/__tests__/unit/app/Components/SignUpButton.test.tsx) | Botón registro |
+| [app/Utils/keycloakAdmin.test.ts](../../Vento/__tests__/unit/app/Utils/keycloakAdmin.test.ts) | Admin API: URLs, `401`+re-fetch, `Location` tras `createUser`, `KeycloakAdminError` |
+| [app/Utils/keycloakLogout.test.ts](../../Vento/__tests__/unit/app/Utils/keycloakLogout.test.ts) | Utility de logout federado |
 
-| Archivo | Qué prueba | Qué devuelve / valida |
-|---------|------------|----------------------|
-| [__tests__/unit/app/Utils/keycloakAdmin.test.ts](../../Vento/__tests__/unit/app/Utils/keycloakAdmin.test.ts) | Cliente Keycloak Admin API — `getUsers`, `createUser`, `assignRealmRole`, `resetUserPassword` | Valida: construcción correcta de URLs del admin API, manejo de `401` (token expirado) con re-fetch, parseo de `Location` header tras `createUser`, propagación de `KeycloakAdminError` con status HTTP |
-| [__tests__/unit/app/Utils/keycloakLogout.test.ts](../../Vento/__tests__/unit/app/Utils/keycloakLogout.test.ts) | (Histórico) Utility de logout federado — **puede estar obsoleto tras refactor a `/api/auth/kc-logout`** | — |
-| [__tests__/unit/app/api/users/route.test.ts](../../Vento/__tests__/unit/app/api/users/route.test.ts) | Route handler `/api/admin/users` GET/POST | Valida: 403 sin rol admin, 400 en payload incompleto, 201 con usuario creado, propagación de errores Keycloak con status HTTP correcto |
-| [__tests__/unit/app/Components/Admin/UsersTable.test.tsx](../../Vento/__tests__/unit/app/Components/Admin/UsersTable.test.tsx) | Componente de tabla de usuarios — render, selección, edición inline, paginación | Valida: renderiza N filas, `onEdit`/`onDelete`/`onActivate` se llaman con el usuario correcto, selección de fila carga roles via API |
+### 3.2 Administración de usuarios (1)
 
-### 3.3 Navegación y UI
+| Archivo | Qué valida |
+|---------|------------|
+| [app/Components/Admin/UsersTable.test.tsx](../../Vento/__tests__/unit/app/Components/Admin/UsersTable.test.tsx) | Tabla de usuarios: render, `onEdit`/`onDelete`/`onActivate`, carga de roles |
 
-| Archivo | Qué prueba | Qué devuelve / valida |
-|---------|------------|----------------------|
-| [__tests__/unit/app/Components/SideBar.test.tsx](../../Vento/__tests__/unit/app/Components/SideBar.test.tsx) | SideBar — render, role-based visibility del link admin, logout, botón hamburguesa mobile | Valida: link "Gestión de usuarios" solo visible con rol admin, click en logout redirige a `/api/auth/kc-logout`, mobile overlay abre/cierra |
-| [src/app/Components/SideBar.test.tsx](../../Vento/src/app/Components/SideBar.test.tsx) | (Duplicado o variante co-localizada) | Consolidar con el anterior en próxima refactor |
-| [src/app/Components/NextStepButton.test.tsx](../../Vento/src/app/Components/NextStepButton.test.tsx) | Botón "Siguiente paso" del flujo de selección | Valida: habilitado solo si hay hexágonos seleccionados, avanza `accion` en el context al paso siguiente |
-| [__tests__/unit/app/Components/SignInButton.test.tsx](../../Vento/__tests__/unit/app/Components/SignInButton.test.tsx) | Botón de login | Valida: llama a `signIn("keycloak")` al click, muestra spinner durante loading |
-| [__tests__/unit/app/Providers.test.tsx](../../Vento/__tests__/unit/app/Providers.test.tsx) | Providers wrapper (SessionProvider + AprincipalProvider) | Valida: children reciben ambos contexts |
+### 3.3 Navegación, layout y UI (5)
 
-### 3.4 Contexto de negocio y flujo
+| Archivo | Qué valida |
+|---------|------------|
+| [app/Components/SideBar.test.tsx](../../Vento/__tests__/unit/app/Components/SideBar.test.tsx) | Render, logout, overlay mobile, retroceso libre a fases previas |
+| [app/Components/SideBar.admin-nav.test.tsx](../../Vento/__tests__/unit/app/Components/SideBar.admin-nav.test.tsx) | Link "Gestión de usuarios" solo visible con rol admin |
+| [app/Components/ui/Card.test.tsx](../../Vento/__tests__/unit/app/Components/ui/Card.test.tsx) | Componente Card base |
+| [app/Components/ui/NextStepButton.test.tsx](../../Vento/__tests__/unit/app/Components/ui/NextStepButton.test.tsx) | Habilitado solo con selección; avanza `accion` al siguiente paso |
+| [app/Providers.test.tsx](../../Vento/__tests__/unit/app/Providers.test.tsx) | Wrapper de contexts (Session + Aprincipal + …) |
 
-| Archivo | Qué prueba | Qué devuelve / valida |
-|---------|------------|----------------------|
-| [src/app/Utils/AccionPrincipalContext.test.tsx](../../Vento/src/app/Utils/AccionPrincipalContext.test.tsx) | Context del flujo principal (seleccion-area → dimensiones → caracteristicas → informe) | Valida: estado inicial `seleccion-area`, `setAccion` dispara re-renders, `selectedHexes` Set persiste entre cambios de paso |
+### 3.4 Mapa y selección — US03 (13)
 
-### 3.5 Mapa y selección
+| Archivo | Qué valida |
+|---------|------------|
+| [app/Components/map/Map.test.tsx](../../Vento/__tests__/unit/app/Components/map/Map.test.tsx) | Click añade/quita `h3Index`; `polygonToCells` con resolución según zoom |
+| [app/Components/map/AreaDisplay.test.tsx](../../Vento/__tests__/unit/app/Components/map/AreaDisplay.test.tsx) | Área total de la selección en km² |
+| [app/Components/map/MapSearchBox.test.tsx](../../Vento/__tests__/unit/app/Components/map/MapSearchBox.test.tsx) | Búsqueda de lugar, dropdown, autoselección/exploración |
+| [app/Components/map/HeatmapDimensionSwitches.test.tsx](../../Vento/__tests__/unit/app/Components/map/HeatmapDimensionSwitches.test.tsx) | Selector de dimensión del heatmap |
+| [app/Components/map/HeatmapLegend.test.tsx](../../Vento/__tests__/unit/app/Components/map/HeatmapLegend.test.tsx) | Leyenda Viridis |
+| [app/Components/map/HexPopup.test.tsx](../../Vento/__tests__/unit/app/Components/map/HexPopup.test.tsx) | Popup por hexágono |
+| [app/Components/map/HexValuesTooltip.test.tsx](../../Vento/__tests__/unit/app/Components/map/HexValuesTooltip.test.tsx) | Tooltip de valores por hex |
+| [app/Components/map/InformativeVariablesList.test.tsx](../../Vento/__tests__/unit/app/Components/map/InformativeVariablesList.test.tsx) | Lista de variables informativas |
+| [app/Components/map/LayerInfo.test.tsx](../../Vento/__tests__/unit/app/Components/map/LayerInfo.test.tsx) | Info de capa del heatmap |
+| [app/Components/map/VariableSelector.test.tsx](../../Vento/__tests__/unit/app/Components/map/VariableSelector.test.tsx) | Selector de variable del heat |
+| [app/Components/map/NextStepFloatingCard.test.tsx](../../Vento/__tests__/unit/app/Components/map/NextStepFloatingCard.test.tsx) | Card flotante de próximo paso |
+| [app/Components/map/PhaseHintCard.test.tsx](../../Vento/__tests__/unit/app/Components/map/PhaseHintCard.test.tsx) | Hint por fase del flujo |
+| [app/Utils/AccionPrincipalContext.test.tsx](../../Vento/__tests__/unit/app/Utils/AccionPrincipalContext.test.tsx) | Flujo `seleccion-area → dimensiones → caracteristicas → informe`; `selectedHexes` persiste |
 
-| Archivo | Qué prueba | Qué devuelve / valida |
-|---------|------------|----------------------|
-| [src/app/Components/Map.test.tsx](../../Vento/src/app/Components/Map.test.tsx) | Componente Map — render, click en hexágono, selección/deselección | Valida: click añade `h3Index` al set de seleccionados, re-click lo quita, `polygonToCells` se llama con resolución correcta según zoom |
+### 3.5 Dimensiones y variables — US04 (10)
 
-### 3.6 Páginas y rutas
+| Archivo | Qué valida |
+|---------|------------|
+| [app/Components/dimensions/Dimensions.test.tsx](../../Vento/__tests__/unit/app/Components/dimensions/Dimensions.test.tsx) | Subpágina de dimensiones |
+| [app/Components/dimensions/DimensionCard.test.tsx](../../Vento/__tests__/unit/app/Components/dimensions/DimensionCard.test.tsx) | Card colapsable de dimensión |
+| [app/Components/dimensions/VariableSwitch.test.tsx](../../Vento/__tests__/unit/app/Components/dimensions/VariableSwitch.test.tsx) | Switch de variable |
+| [app/Components/dimensions/VariableTooltip.test.tsx](../../Vento/__tests__/unit/app/Components/dimensions/VariableTooltip.test.tsx) | Tooltip con definición de variable |
+| [app/Components/dimensions/SelectedVariablesChips.test.tsx](../../Vento/__tests__/unit/app/Components/dimensions/SelectedVariablesChips.test.tsx) | Chips de variables seleccionadas |
+| [app/Utils/VariablesContext.test.tsx](../../Vento/__tests__/unit/app/Utils/VariablesContext.test.tsx) | Estado de variables activas |
+| [app/Utils/variablesCatalog.test.ts](../../Vento/__tests__/unit/app/Utils/variablesCatalog.test.ts) | Catálogo de variables/dimensiones |
+| [app/Utils/variableWeights.test.ts](../../Vento/__tests__/unit/app/Utils/variableWeights.test.ts) | Pesos signados WLC (Regulatoria fuera del score) |
+| [app/Utils/dimensionColors.test.ts](../../Vento/__tests__/unit/app/Utils/dimensionColors.test.ts) | Colores por dimensión |
+| [app/Utils/HeatmapDimensionContext.test.tsx](../../Vento/__tests__/unit/app/Utils/HeatmapDimensionContext.test.tsx) | Dimensión activa del heatmap |
 
-| Archivo | Qué prueba | Qué devuelve / valida |
-|---------|------------|----------------------|
-| [__tests__/unit/app/page.test.tsx](../../Vento/__tests__/unit/app/page.test.tsx) | Landing page `/` | Valida: muestra SignInButton si no hay sesión, redirige a `/dashboard` si autenticado |
-| [src/app/dashboard/page.test.tsx](../../Vento/src/app/dashboard/page.test.tsx) | Dashboard — renderiza Map + subpage según `accion` | Valida: `accion === "dimensiones"` renderiza `<Dimensions/>`, `accion === "informe"` renderiza `<Report/>` |
-| [__tests__/unit/app/api/health/route.test.ts](../../Vento/__tests__/unit/app/api/health/route.test.ts) | Healthcheck endpoint | Valida: retorna 200 + JSON `{ status: "ok" }` |
+### 3.6 Características del proyecto — US05 (3)
+
+| Archivo | Qué valida |
+|---------|------------|
+| [app/Components/caracteristicas/Caracteristicas.test.tsx](../../Vento/__tests__/unit/app/Components/caracteristicas/Caracteristicas.test.tsx) | Emplazamiento, capacidad, categoría; Nº aerogeneradores calculado |
+| [app/Components/caracteristicas/MWPicker.test.tsx](../../Vento/__tests__/unit/app/Components/caracteristicas/MWPicker.test.tsx) | Picker de capacidad nominal + categoría derivada |
+| [app/Utils/CaracteristicasContext.test.tsx](../../Vento/__tests__/unit/app/Utils/CaracteristicasContext.test.tsx) | Estado de características del proyecto |
+
+### 3.7 Reportes — US06 (2)
+
+| Archivo | Qué valida |
+|---------|------------|
+| [app/Components/report/Report.test.tsx](../../Vento/__tests__/unit/app/Components/report/Report.test.tsx) | Previsualización + radar + descarga PDF (`generateReportPdf`) |
+| [app/Utils/reportData.test.ts](../../Vento/__tests__/unit/app/Utils/reportData.test.ts) | Armado de datos del informe |
+
+### 3.8 Utilidades geoespaciales y de datos (8)
+
+| Archivo | Qué valida |
+|---------|------------|
+| [app/Utils/h3Resolution.test.ts](../../Vento/__tests__/unit/app/Utils/h3Resolution.test.ts) | Polígonos IGAC, mar/tierra, `isPointInColombia` |
+| [app/Utils/h3TileIndex.test.ts](../../Vento/__tests__/unit/app/Utils/h3TileIndex.test.ts) | Índice por tile, scores placeholder, `zoomToH3Res` |
+| [app/Utils/h3DataCache.test.ts](../../Vento/__tests__/unit/app/Utils/h3DataCache.test.ts) | Cache de datos H3 por tile |
+| [app/Utils/geocoder.test.ts](../../Vento/__tests__/unit/app/Utils/geocoder.test.ts) | Geocoding Nominatim + polígonos |
+| [app/Utils/areaCalc.test.ts](../../Vento/__tests__/unit/app/Utils/areaCalc.test.ts) | Cálculo de área en km² |
+| [app/Utils/colombiaRegions.test.ts](../../Vento/__tests__/unit/app/Utils/colombiaRegions.test.ts) | Regiones de Colombia (usado por reportes) |
+| [app/Utils/apiUrl.test.ts](../../Vento/__tests__/unit/app/Utils/apiUrl.test.ts) | Resolución de URL base del backend |
+| [app/Utils/customIcons.test.tsx](../../Vento/__tests__/unit/app/Utils/customIcons.test.tsx) | Íconos SVG custom |
+
+### 3.9 Páginas y rutas (4)
+
+| Archivo | Qué valida |
+|---------|------------|
+| [app/page.test.tsx](../../Vento/__tests__/unit/app/page.test.tsx) | Landing `/`: SignInButton sin sesión, redirige a `/dashboard` si autenticado |
+| [app/dashboard/page.test.tsx](../../Vento/__tests__/unit/app/dashboard/page.test.tsx) | Dashboard: Map + subpágina según `accion` |
+| [app/registration-success/page.test.tsx](../../Vento/__tests__/unit/app/registration-success/page.test.tsx) | Pantalla de confirmación post-registro |
+| [app/api/health/route.test.ts](../../Vento/__tests__/unit/app/api/health/route.test.ts) | Healthcheck → 200 `{ status: "ok" }` |
 
 ---
 
@@ -106,17 +161,16 @@ src/**/*.test.{ts,tsx}
 |------|--------|-----------|
 | Cambios recientes de cookie reduction en `auth.ts` (idToken fuera de JWT) | ❌ Sin test nuevo | Alta — agregar en Sprint estabilización |
 | Ruta `/api/auth/kc-logout` | ✅ **Añadido** — `__tests__/unit/app/api/auth/kc-logout/route.test.ts` | — |
-| Navegación SideBar desde `/admin/*` → `/dashboard` (fix reciente) | ❌ Sin test | Media |
-| Extensión `COLOMBIA_POLYGON` para archipiélago | ❌ Pendiente US-FB-04 | Media (cuando se implemente) |
+| Navegación SideBar desde `/admin/*` → `/dashboard` | ✅ Cubierto — `SideBar.admin-nav.test.tsx` | — |
+| Territorio archipiélago (`COLOMBIA_POLYGONS`) | ✅ Cubierto — `h3Resolution.test.ts` (US-FB-04 entregada) | — |
 | `SessionGuard` con `RefreshTokenError`/`NoRefreshToken` | ✅ **Añadido** — `__tests__/unit/app/Components/SessionGuard.test.tsx` | — |
-| `HeatmapDemo.tsx` (referencia, no contractual) | ❌ Sin test | Baja |
-| Tests E2E (Playwright/Cypress) | ❌ No implementado | Futuro (v1.1) |
+| Tests E2E (Playwright) | ✅ Implementado — ver [frontend-testing.md](frontend-testing.md) | — |
 | Tests del backend FastAPI | — | Fuera de alcance de este doc (repo separado) |
 
 ### Tests añadidos en esta iteración
 - [kc-logout/route.test.ts](../../Vento/__tests__/unit/app/api/auth/kc-logout/route.test.ts) — 4 casos: build URL Keycloak; AUTH_URL > x-forwarded-* > nextUrl.origin; faltan env vars críticas
 - [SessionGuard.test.tsx](../../Vento/__tests__/unit/app/Components/SessionGuard.test.tsx) — 5 casos: sin error no muestra modal, RefreshTokenError abre modal inmediato, tras 3s dispara sign-out + redirect a `/?expired=true`, también reacciona a `NoRefreshToken`, children siempre se renderizan (US-FB-03 AC2-AC4)
-- [h3Resolution.test.ts](../../Vento/src/app/Utils/h3Resolution.test.ts) — 4 casos: COLOMBIA_POLYGON cerrado, ARCHIPELAGO_POLYGON cubre San Andrés + Providencia, COLOMBIA_POLYGONS incluye ambos, MAX_BOUNDS cubre archipiélago (US-FB-04 AC3-AC4-AC6)
+- [h3Resolution.test.ts](../../Vento/__tests__/unit/app/Utils/h3Resolution.test.ts) — 4 casos: COLOMBIA_POLYGON cerrado, ARCHIPELAGO_POLYGON cubre San Andrés + Providencia, COLOMBIA_POLYGONS incluye ambos, MAX_BOUNDS cubre archipiélago (US-FB-04 AC3-AC4-AC6)
 - [SideBar.admin-nav.test.tsx](../../Vento/__tests__/unit/app/Components/SideBar.admin-nav.test.tsx) — 5 casos: click en 'Selección de área' desde admin → `router.push("/dashboard")`, pasos bloqueados no navegan, paso habilitado sí navega, highlights no aplican en admin, en dashboard sí aplican
 - [UsersTable.test.tsx](../../Vento/__tests__/unit/app/Components/Admin/UsersTable.test.tsx) — ampliado con 4 casos sobre role badge: prefetch dispara 1 fetch/usuario, badge "Analista" cuando roles=["analista"], badge "Administrador" cuando roles=["admin"], cache se invalida al cambiar users ref (US-FB-05 AC1-AC4)
 
@@ -138,7 +192,7 @@ npm run test:run    # una sola corrida, falla con exit code 1 si algo falla
   run: npm run test:ci
   working-directory: Vento
 ```
-Ver [.github/workflows/ci.yml](../../.github/workflows/ci.yml) — pipeline completo: `lint → typecheck → test → build`.
+Ver [.github/workflows/ci.yml](../.github/workflows/ci.yml) — pipeline completo: `lint → typecheck → test → build`.
 
 ### Coverage (opcional, no en CI aún)
 ```bash
@@ -183,9 +237,8 @@ Un test se considera bien hecho cuando:
 ## 8. Flujo al añadir un test nuevo
 
 ```
-1. Identificar qué archivo de código prueba → decidir ubicación:
-   - Si es UI + quieres co-localizar → src/**/*.test.tsx
-   - Si es infra/route/middleware → __tests__/unit/**
+1. Ubicación: en `__tests__/unit/**` espejando la ruta del código en `src/app/**`
+   (p. ej. `src/app/Components/map/Map.tsx` → `__tests__/unit/app/Components/map/Map.test.tsx`)
 2. Crear archivo con nombre terminando en .test.ts o .test.tsx
 3. Escribir describe/it centrado en comportamiento, no implementación
 4. Correr local: npm run test
@@ -213,10 +266,11 @@ Un test se considera bien hecho cuando:
 
 ## 10. Referencias cruzadas
 
-- Historia origen del requerimiento: **US-DOC-01 AC2** en [feedback-cliente-v1.md](../spec/stories/feedback-cliente-v1.md)
+- Historia origen del requerimiento: **US-DOC-01 AC2** en [feedback-cliente-v1.md](../stories/feedback-cliente-v1.md)
 - Estrategia de auth que estos tests validan: [auth-strategy.md](../security/auth-strategy.md)
 - Stack general: [tech-stack-validation.md](../architecture/tech-stack-validation.md)
-- CI pipeline: [.github/workflows/ci.yml](../../.github/workflows/ci.yml)
+- **Guía del frontend (cómo correr, E2E Playwright, trazabilidad RNF→tests):** [frontend-testing.md](frontend-testing.md)
+- CI pipeline: [.github/workflows/ci.yml](../.github/workflows/ci.yml)
 
 ---
 
@@ -226,5 +280,5 @@ Un test se considera bien hecho cuando:
 |--------|----------|
 | **Actual (estabilización)** | Cubrir cambios recientes: `kc-logout` route, SideBar admin nav, SessionGuard expiración |
 | **v1.0** | Añadir coverage reporter a CI con umbral mínimo 70% |
-| **v1.1** | Tests E2E críticos (login + selección hex + logout) con Playwright |
+| **v1.1** | ✅ Tests E2E con Playwright (login + selección + logout) — ver [frontend-testing.md](frontend-testing.md) |
 | **v1.2** | Tests de performance (render >10K hexágonos sin jank) |

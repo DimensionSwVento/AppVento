@@ -1,7 +1,7 @@
 ---
 version: 1.0
 date: 2026-04-20
-author: mavalan Software
+author: Mavalan Software
 scope: catálogo de librerías y APIs usadas en Vento — qué hacen, dónde se usan, métodos clave
 ---
 
@@ -22,12 +22,12 @@ Inventario de las librerías externas que toca el proyecto y de los métodos con
 ### `h3-js` (Uber H3 — indexación hexagonal)
 
 **Doc oficial:** https://h3geo.org/docs/api/indexing
-**Usado en:** [Map.tsx](../../Vento/src/app/Components/Map.tsx), [HeatmapDemo.tsx](../../Vento/src/app/Components/HeatmapDemo.tsx), [h3TileIndex.ts](../../Vento/src/app/Utils/h3TileIndex.ts), [areaCalc.ts](../../Vento/src/app/Utils/areaCalc.ts)
+**Usado en:** [Map.tsx](../../Vento/src/app/Components/map/Map.tsx), [h3TileIndex.ts](../../Vento/src/app/Utils/h3/h3TileIndex.ts), [areaCalc.ts](../../Vento/src/app/Utils/report/areaCalc.ts)
 
 | Método | Para qué | Archivo donde se llama |
 |--------|----------|------------------------|
 | `polygonToCells(polygon, res, isGeoJson)` | Convertir un polígono en lista de h3 indexes a esa resolución | `Map.tsx`, `h3TileIndex.ts` |
-| `cellToLatLng(h)` | Centro del hex → `[lat, lng]` | `Map.tsx`, `HeatmapDemo.tsx` |
+| `cellToLatLng(h)` | Centro del hex → `[lat, lng]` | `Map.tsx` |
 | `cellToBoundary(h, geoJson)` | Vértices del hex → array de coordenadas | `Map.tsx` (PolygonLayer) |
 | `getResolution(h)` | Resolución (0-15) del hex | `Map.tsx` (para label sizing) |
 | `getHexagonEdgeLengthAvg(res, "m")` | Largo de arista promedio para una resolución | `Map.tsx` (label sizing) |
@@ -42,7 +42,7 @@ Inventario de las librerías externas que toca el proyecto y de los métodos con
 ### `@deck.gl/*` + `@luma.gl/*` (rendering WebGL 2)
 
 **Doc oficial:** https://deck.gl/
-**Usado en:** [Map.tsx](../../Vento/src/app/Components/Map.tsx), [HeatmapDemo.tsx](../../Vento/src/app/Components/HeatmapDemo.tsx)
+**Usado en:** [Map.tsx](../../Vento/src/app/Components/map/Map.tsx)
 
 | Clase / método | Para qué |
 |----------------|----------|
@@ -61,7 +61,7 @@ Inventario de las librerías externas que toca el proyecto y de los métodos con
 ### `maplibre-gl` + `react-map-gl/maplibre` (mapa base)
 
 **Doc oficial:** https://maplibre.org/maplibre-gl-js/docs/
-**Usado en:** [Map.tsx](../../Vento/src/app/Components/Map.tsx)
+**Usado en:** [Map.tsx](../../Vento/src/app/Components/map/Map.tsx)
 
 | Concepto | Para qué |
 |----------|----------|
@@ -78,7 +78,7 @@ Inventario de las librerías externas que toca el proyecto y de los métodos con
 
 **Doc oficial:** https://nominatim.org/release-docs/latest/api/Search/
 **Política de uso:** https://operations.osmfoundation.org/policies/nominatim/
-**Usado en:** [Vento/src/app/Utils/geocoder.ts](../../Vento/src/app/Utils/geocoder.ts) → consumido por [MapSearchBox.tsx](../../Vento/src/app/Components/MapSearchBox.tsx) en `Map.tsx`
+**Usado en:** [Vento/src/app/Utils/h3/geocoder.ts](../../Vento/src/app/Utils/h3/geocoder.ts) → consumido por [MapSearchBox.tsx](../../Vento/src/app/Components/map/MapSearchBox.tsx) en `Map.tsx`
 
 **Endpoint usado:** `GET https://nominatim.openstreetmap.org/search`
 
@@ -115,7 +115,7 @@ Inventario de las librerías externas que toca el proyecto y de los métodos con
 ### `next-auth` v5 beta (NextAuth)
 
 **Doc oficial:** https://authjs.dev/
-**Usado en:** [auth.ts](../../Vento/src/auth.ts), [middleware.ts](../../Vento/src/middleware.ts), [SessionGuard.tsx](../../Vento/src/app/Components/SessionGuard.tsx), todos los route handlers de auth
+**Usado en:** [auth.ts](../../Vento/src/auth.ts), [middleware.ts](../../Vento/src/middleware.ts), [SessionGuard.tsx](../../Vento/src/app/Components/auth/SessionGuard.tsx), todos los route handlers de auth
 
 | Método / símbolo | Para qué |
 |-------------------|----------|
@@ -188,7 +188,7 @@ Inventario de las librerías externas que toca el proyecto y de los métodos con
 ### `jspdf` + `html2canvas` (generación de PDF client-side)
 
 **Doc oficial:** https://github.com/parallax/jsPDF · https://github.com/niklasvh/html2canvas
-**Usado en:** [pdfExport.ts](../../Vento/src/app/Utils/pdfExport.ts), llamado desde [Report.tsx](../../Vento/src/app/Components/Report.tsx)
+**Usado en:** [pdfExport.ts](../../Vento/src/app/Utils/report/pdfExport.ts), llamado desde [Report.tsx](../../Vento/src/app/Components/report/Report.tsx)
 
 | Método | Para qué |
 |--------|----------|
@@ -211,7 +211,7 @@ Inventario de las librerías externas que toca el proyecto y de los métodos con
 
 | Endpoint | Método | Llamado desde | Propósito |
 |----------|--------|---------------|-----------|
-| `/api/tiles/{z}/{x}/{y}` | GET | `Map.tsx` / `HeatmapDemo.tsx` via TileLayer | Tiles H3 con scores |
+| `/api/tiles/{z}/{x}/{y}` | GET | `Map.tsx` via TileLayer | Tiles H3 con scores |
 | `/health` | GET | (futuro) monitoreo | Healthcheck |
 | `/api/variables` (US04-AC1, pendiente) | GET | `Dimensions.tsx` | Lista de variables agrupadas por dimensión |
 | `/api/reports/pdf` (US06-AC3, pendiente) | POST | `informe/page.tsx` | Genera PDF descargable |
@@ -226,7 +226,7 @@ Ver [frontend-backend-integration.md](../architecture/frontend-backend-integrati
 
 **Doc oficial:** https://www.keycloak.org/docs-api/latest/rest-api/
 
-**Wrapper en repo:** [Vento/src/app/Utils/keycloakAdmin.ts](../../Vento/src/app/Utils/keycloakAdmin.ts)
+**Wrapper en repo:** [Vento/src/app/Utils/apis/keycloakAdmin.ts](../../Vento/src/app/Utils/apis/keycloakAdmin.ts)
 
 | Función wrapper | Endpoint Keycloak | Para qué |
 |-----------------|-------------------|----------|

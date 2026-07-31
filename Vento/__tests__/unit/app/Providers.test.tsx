@@ -9,7 +9,7 @@ vi.mock("next-auth/react", () => ({
   signOut: vi.fn(),
 }));
 
-vi.mock("@/app/Utils/AccionPrincipalContext", () => ({
+vi.mock("@/app/Utils/contexts/AccionPrincipalContext", () => ({
   AprincipalProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="aprincipal-provider">{children}</div>
   ),

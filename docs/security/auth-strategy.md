@@ -1,7 +1,7 @@
 ---
 version: 1.0
 date: 2026-04-20
-author: mavalan Software
+author: Mavalan Software
 scope: protección de rutas autenticadas frontend + backend
 ---
 
@@ -20,10 +20,10 @@ Documento que responde al feedback cliente item #6: **¿qué estrategia se usa p
 | Rutas protegidas (edge) | `middleware.ts` de Next.js | [Vento/src/middleware.ts](../../Vento/src/middleware.ts) |
 | Rutas protegidas (SSR) | Server Component layout guards | [Vento/src/app/admin/layout.tsx](../../Vento/src/app/admin/layout.tsx) |
 | Rutas protegidas (API) | `requireAdmin()` helper | [Vento/src/app/api/admin/users/route.ts](../../Vento/src/app/api/admin/users/route.ts) |
-| UI condicionada por rol | `useSession()` + `session.roles` | [Vento/src/app/Components/SideBar.tsx](../../Vento/src/app/Components/SideBar.tsx) |
-| Sesión expirada | `SessionGuard` detecta `RefreshTokenError` | [Vento/src/app/Components/SessionGuard.tsx](../../Vento/src/app/Components/SessionGuard.tsx) |
+| UI condicionada por rol | `useSession()` + `session.roles` | [Vento/src/app/Components/layout/SideBar.tsx](../../Vento/src/app/Components/layout/SideBar.tsx) |
+| Sesión expirada | `SessionGuard` detecta `RefreshTokenError` | [Vento/src/app/Components/auth/SessionGuard.tsx](../../Vento/src/app/Components/auth/SessionGuard.tsx) |
 | Logout federado | Route server-side | [Vento/src/app/api/auth/kc-logout/route.ts](../../Vento/src/app/api/auth/kc-logout/route.ts) |
-| Registro + confirmación | Rutas custom + federated logout | [Vento/src/app/api/auth/register/route.ts](../../Vento/src/app/api/auth/register/route.ts) · [callback](../../Vento/src/app/api/auth/register/callback/route.ts) · [ADR-012](../spec/adr/ADR-012-post-registration-confirmation-app-side.md) |
+| Registro + confirmación | Rutas custom + federated logout | [Vento/src/app/api/auth/register/route.ts](../../Vento/src/app/api/auth/register/route.ts) · [callback](../../Vento/src/app/api/auth/register/callback/route.ts) · [ADR-012](../adr/ADR-012-post-registration-confirmation-app-side.md) |
 
 **Principio**: defensa en profundidad — cada capa verifica por su cuenta, sin asumir que la anterior ya filtró.
 
@@ -155,7 +155,7 @@ export async function GET(request: Request) {
 
 ### 3.4 UI condicionada — última línea (cosmética)
 
-Archivo: [Vento/src/app/Components/SideBar.tsx](../../Vento/src/app/Components/SideBar.tsx)
+Archivo: [Vento/src/app/Components/layout/SideBar.tsx](../../Vento/src/app/Components/layout/SideBar.tsx)
 
 ```tsx
 const isAdmin = session?.roles?.includes("admin");
@@ -199,7 +199,7 @@ Proxy route server-side en Next.js:
 
 ## 5. Manejo de sesión expirada
 
-Archivo: [Vento/src/app/Components/SessionGuard.tsx](../../Vento/src/app/Components/SessionGuard.tsx)
+Archivo: [Vento/src/app/Components/auth/SessionGuard.tsx](../../Vento/src/app/Components/auth/SessionGuard.tsx)
 
 ### Flujo
 1. Access token expira (default 5 min Keycloak).
@@ -237,7 +237,7 @@ Server Component estático con mensaje en español "¡Usuario registrado!" y bot
 ### Entrada al flujo
 Desde la landing (`/`), junto al botón "Iniciar sesión" aparece "Crear cuenta" (componente `SignUpButton`) que apunta a `/api/auth/register`.
 
-Ver [ADR-012](../spec/adr/ADR-012-post-registration-confirmation-app-side.md) para el razonamiento completo (por qué no se hizo en el theme Keycloak ni en el Registration Flow del realm).
+Ver [ADR-012](../adr/ADR-012-post-registration-confirmation-app-side.md) para el razonamiento completo (por qué no se hizo en el theme Keycloak ni en el Registration Flow del realm).
 
 ---
 
@@ -270,7 +270,7 @@ Antes del refactor, el `idToken` se enviaba al cliente para firmar el logout cri
 ### Fuente de verdad
 Realm roles en Keycloak realm `vento`. Asignación vía:
 - Keycloak admin console (directo)
-- UI de `/admin/users` (usa Keycloak Admin API internamente — ver [Vento/src/app/Utils/keycloakAdmin.ts](../../Vento/src/app/Utils/keycloakAdmin.ts))
+- UI de `/admin/users` (usa Keycloak Admin API internamente — ver [Vento/src/app/Utils/apis/keycloakAdmin.ts](../../Vento/src/app/Utils/apis/keycloakAdmin.ts))
 
 ### Propagación al frontend
 1. Usuario se loguea.
@@ -309,7 +309,7 @@ Del archivo [infra/keycloak/realm-export.json](../../infra/keycloak/realm-export
 - **Flows habilitados**: Standard Flow (Authorization Code) — no implícito, no direct grants
 - **Login theme**: `keycloakify-starter` (JAR custom montado desde `infra/keycloak/themes/`)
 - **Roles realm**: `admin`, `analista` (default al registrarse: `analista`)
-- **`verifyEmail`**: `false` (stopper SMTP — ver [ADR-009](../spec/adr/ADR-009-notificaciones-email-pendientes-smtp.md))
+- **`verifyEmail`**: `false` (stopper SMTP — ver [ADR-009](../adr/ADR-009-notificaciones-email-pendientes-smtp.md))
 - **Redirect URIs dev**: `http://localhost:3000/*`
 - **Post-logout URIs dev**: `http://localhost:3000/*`
 - **Web Origins dev**: `http://localhost:3000`
@@ -347,10 +347,10 @@ Para producción hay que actualizar `redirectUris`, `webOrigins` y `attributes.p
 
 ## 11. Referencias cruzadas
 
-- [ADR-005 Keycloak como IdP](../spec/adr/ADR-005-keycloak-identidad.md)
-- [ADR-009 Email notificaciones bloqueadas por SMTP](../spec/adr/ADR-009-notificaciones-email-pendientes-smtp.md)
+- [ADR-005 Keycloak como IdP](../adr/ADR-005-keycloak-identidad.md)
+- [ADR-009 Email notificaciones bloqueadas por SMTP](../adr/ADR-009-notificaciones-email-pendientes-smtp.md)
 - [test-strategy.md](../testing/test-strategy.md) — tests de auth/middleware/admin
-- [feedback-cliente-v1.md](../spec/stories/feedback-cliente-v1.md) — US-FB-01, US-FB-03, US-FB-05, US-FB-06
+- [feedback-cliente-v1.md](../stories/feedback-cliente-v1.md) — US-FB-01, US-FB-03, US-FB-05, US-FB-06
 
 ---
 

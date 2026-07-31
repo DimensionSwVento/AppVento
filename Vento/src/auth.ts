@@ -33,6 +33,7 @@ declare module "next-auth" {
   interface Session {
     roles?: string[];
     error?: string; // para que SessionGuard detecte RefreshTokenError/NoRefreshToken
+    sub?: string; // id del usuario (Keycloak `sub`) — lo consume el BFF del histórico
   }
 }
 
@@ -188,13 +189,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientSecret: process.env.AUTH_KEYCLOAK_SECRET!,
       // issuer HTTPS para validación de tokens (Keycloak devuelve HTTPS en el JWT)
       issuer,
-      // Endpoints reescritos a HTTP para conexión interna (AccuWeb no permite HTTPS entre contenedores)
+      // Endpoints en HTTPS: el nodo Next alcanza el HTTPS público de Keycloak
+      // (la discovery ya funciona sobre HTTPS). Reescribir a HTTP mandaba
+      // peticiones HTTP planas al puerto HTTPS → nginx devolvía HTML → el
+      // intercambio de token fallaba con "content-type must be application/json".
       authorization: {
-        url: httpsToHttp(`${issuer}/protocol/openid-connect/auth`),
+        url: `${issuer}/protocol/openid-connect/auth`,
         params: { scope: "openid email profile" },
       },
-      token: httpsToHttp(`${issuer}/protocol/openid-connect/token`),
-      userinfo: httpsToHttp(`${issuer}/protocol/openid-connect/userinfo`),
+      token: `${issuer}/protocol/openid-connect/token`,
+      userinfo: `${issuer}/protocol/openid-connect/userinfo`,
     },
   ],
   callbacks: {
@@ -227,10 +231,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // Logout federado se hace con client_id + post_logout_redirect_uri (sin id_token_hint).
       session.roles = token.roles;  // necesario para RBAC en middleware y UI
       session.error = token.error;  // SessionGuard detecta RefreshTokenError para sign-out automático
+      session.sub = token.sub;      // id de usuario para el BFF del histórico (ya está en la cookie)
       return session;
     },
   },
   pages: {
     signIn: "/",
+    // Evita la página cruda /api/auth/error?error=... (se veía mal en la app):
+    // cualquier error de auth redirige limpio al inicio.
+    error: "/",
   },
 });

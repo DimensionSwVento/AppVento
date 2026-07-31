@@ -1,14 +1,14 @@
 ---
 version: 1.0
 date: 2026-04-20
-author: mavalan Software
+author: Mavalan Software
 audience: dev team + future on-call
 scope: operación de producción Vento en AccuWeb
 ---
 
 # Runbook — Operación Vento en AccuWeb
 
-Guía operativa para despliegue, monitoreo y resolución de incidentes del frontend Vento en hosting AccuWeb. Sirve de onboarding para los devs part-time.
+Guía operativa para despliegue, monitoreo y resolución de incidentes del frontend Vento en hosting AccuWeb. Sirve de onboarding para el equipo.
 
 > **Antes de operar**: lee [auth-strategy.md](../security/auth-strategy.md) y [tech-stack-validation.md](../architecture/tech-stack-validation.md) §13 — lecciones aprendidas.
 
@@ -288,7 +288,7 @@ Deploy manual (§4.2) si CI no entrega artefactos.
 |----------|----------------|-----------|
 | App caída | §7.4 | Soporte AccuWeb vía panel |
 | Keycloak caído | Revisar contenedor Keycloak | Responsable de infra (otro dev) |
-| Backend FastAPI caído | Logs del backend | Responsable backend (mavalan Software) |
+| Backend FastAPI caído | Logs del backend | Responsable backend (equipo Mavalan Software) |
 | Certificado SSL expirado | AccuWeb debe renovar automáticamente | Ticket a AccuWeb |
 | Filtración de secreto | §9 rotación inmediata | Notificar cliente + equipo |
 
@@ -322,12 +322,12 @@ Antes de cada deploy a producción, confirmar:
 ## 13. Onboarding rápido para nuevo dev
 
 Si eres nuevo al equipo, orden de lectura:
-1. [Spec_doc.md](../spec/Spec_doc.md) — contexto del proyecto
+1. [Spec_doc.md](../Spec_doc.md) — contexto del proyecto
 2. [tech-stack-validation.md](../architecture/tech-stack-validation.md) — qué se usa y por qué
 3. [auth-strategy.md](../security/auth-strategy.md) — cómo funciona auth
 4. Este runbook — cómo operarlo
 5. [test-strategy.md](../testing/test-strategy.md) — cómo testear lo que cambies
-6. [feedback-cliente-v1.md](../spec/stories/feedback-cliente-v1.md) — qué sigue
+6. [feedback-cliente-v1.md](../stories/feedback-cliente-v1.md) — qué sigue
 
 Tras leer, levantar stack local:
 ```bash
@@ -346,5 +346,5 @@ Primer commit recomendado: pequeño bugfix o doc fix — familiarizarse con el f
 - [auth-strategy.md](../security/auth-strategy.md)
 - [tech-stack-validation.md](../architecture/tech-stack-validation.md)
 - [test-strategy.md](../testing/test-strategy.md)
-- [feedback-cliente-v1.md](../spec/stories/feedback-cliente-v1.md)
-- [ADR-009 SMTP](../spec/adr/ADR-009-notificaciones-email-pendientes-smtp.md)
+- [feedback-cliente-v1.md](../stories/feedback-cliente-v1.md)
+- [ADR-009 SMTP](../adr/ADR-009-notificaciones-email-pendientes-smtp.md)

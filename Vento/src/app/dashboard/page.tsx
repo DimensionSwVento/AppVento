@@ -1,13 +1,25 @@
 "use client";
-import SideBar from "../Components/SideBar";
-import Dimensions from "../Components/Dimensions";
-import Caracteristicas from "../Components/Caracteristicas";
-import Report from "../Components/Report";
-import MapView from "../Components/Map";
-import { useAprincipal } from "../Utils/AccionPrincipalContext";
+import { useState } from "react";
+import SideBar from "../Components/layout/SideBar";
+import Dimensions from "../Components/dimensions/Dimensions";
+import Caracteristicas from "../Components/caracteristicas/Caracteristicas";
+import Report from "../Components/report/Report";
+import HistorialList from "../Components/historial/HistorialList";
+import MapView from "../Components/map/Map";
+import OnboardingModal from "../Components/onboarding/OnboardingModal";
+import DisclaimerModal from "../Components/onboarding/DisclaimerModal";
+import { useAprincipal } from "../Utils/contexts/AccionPrincipalContext";
 
 export default function AreaSelectionPage() {
   const { accion } = useAprincipal();
+
+  // Onboarding: se muestra en CADA recarga del dashboard (petición winx).
+  // TODO US02-01 "única por usuario": inicializar en false y setear con
+  // !hasSeenOnboarding() en un efecto (Utils/onboarding.ts) para verlo 1 sola vez.
+  const [showOnboarding, setShowOnboarding] = useState(true);
+  // Disclaimer al inicio (reunión): tras cerrar el onboarding, aparece el aviso
+  // legal en un flotante. Mismo texto que el informe → visible al inicio y al final.
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
 
   const subpage = (() => {
     switch (accion) {
@@ -17,6 +29,8 @@ export default function AreaSelectionPage() {
         return <Caracteristicas />;
       case "informe":
         return <Report />;
+      case "historico":
+        return <HistorialList />;
       default:
         return null;
     }
@@ -43,6 +57,17 @@ export default function AreaSelectionPage() {
           <MapView />
         </div>
       </div>
+      <OnboardingModal
+        open={showOnboarding}
+        onClose={() => {
+          setShowOnboarding(false);
+          setShowDisclaimer(true);
+        }}
+      />
+      <DisclaimerModal
+        open={showDisclaimer}
+        onClose={() => setShowDisclaimer(false)}
+      />
     </main>
   );
 }

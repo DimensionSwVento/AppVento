@@ -18,11 +18,11 @@ vi.mock("next/navigation", () => ({
   usePathname: () => pathnameRef.current,
 }));
 
-vi.mock("@/app/Utils/AccionPrincipalContext", () => ({
+vi.mock("@/app/Utils/contexts/AccionPrincipalContext", () => ({
   useAprincipal: () => useAprincipalMock(),
 }));
 
-import SideBar from "@/app/Components/SideBar";
+import SideBar from "@/app/Components/layout/SideBar";
 
 function renderSideBar() {
   return render(

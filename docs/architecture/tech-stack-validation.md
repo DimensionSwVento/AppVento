@@ -1,7 +1,7 @@
 ---
 version: 1.0
 date: 2026-04-20
-author: mavalan Software
+author: Mavalan Software
 scope: validación técnica del stack elegido vs scope primera entrega
 ---
 
@@ -9,7 +9,7 @@ scope: validación técnica del stack elegido vs scope primera entrega
 
 Documento que responde al feedback cliente item #8: **¿el scaffold, la gestión de datos, PostGIS, Dockerización, spike H3 y micro-API estuvieron bien?** Explica qué se eligió, por qué, y cómo se validó contra el scope real.
 
-> **Complemento de** [docs/spec/architecture/tecnologias.md](../spec/architecture/tecnologias.md) (opciones comparadas) y los ADRs 001-008 (decisiones formales). Este doc consolida el **resultado práctico**.
+> **Complemento de** [docs/architecture/tecnologias.md](../architecture/tecnologias.md) (opciones comparadas) y los ADRs 001-008 (decisiones formales). Este doc consolida el **resultado práctico**.
 
 ---
 
@@ -89,7 +89,7 @@ Vento/
 ## 4. Mapa — DeckGL + MapLibre (no Leaflet como se propuso)
 
 ### Cambio de rumbo vs propuesta original
-[tecnologias.md](../spec/architecture/tecnologias.md) §2 recomendaba **Leaflet** para primera entrega. Se migró a **DeckGL + MapLibre** (ADR-008).
+[tecnologias.md](../architecture/tecnologias.md) §2 recomendaba **Leaflet** para primera entrega. Se migró a **DeckGL + MapLibre** (ADR-008).
 
 ### Por qué el cambio
 - **H3HexagonLayer nativo**: DeckGL fue construido por Uber para visualizar H3. Rendering WebGL2 → soporta decenas de miles de hexágonos sin lag.
@@ -97,7 +97,7 @@ Vento/
 - **MapLibre** (base map) es open source y no exige API key de Mapbox.
 
 ### Dato clave
-- Resolución H3 adaptativa según zoom (ver [h3TileIndex.ts](../../Vento/src/app/Utils/h3TileIndex.ts)):
+- Resolución H3 adaptativa según zoom (ver [h3TileIndex.ts](../../Vento/src/app/Utils/h3/h3TileIndex.ts)):
   - zoom < 6 → res 3
   - zoom 6 → res 4
   - zoom 7 → res 5
@@ -155,8 +155,9 @@ Ver detalle en [auth-strategy.md](../security/auth-strategy.md).
 - UI `/admin/users` usando Admin API interno
 
 ### Pendientes por stoppers externos
-- SMTP para verify email + reset password (**bloqueado** — ver [ADR-009](../spec/adr/ADR-009-notificaciones-email-pendientes-smtp.md))
-- Theme en español (US-FB-01)
+- SMTP definitivo (MailerSend) para verify email + reset password (**bloqueado** — ver [ADR-009](../adr/ADR-009-notificaciones-email-pendientes-smtp.md)). La notificación de admin ya funciona con SendGrid temporal.
+
+> El theme en español (US-FB-01) ✅ ya se entregó en FB1 — dejó de ser pendiente.
 
 **Veredicto**: ✅ acertado. Ahorro estimado: 2-3 semanas de desarrollo custom de auth.
 
@@ -188,7 +189,7 @@ Equipo investigación → .h3.parquet → FastAPI (lee con pyarrow) → tiles JS
 ```
 
 ### Pipeline inicial (frontend)
-Originalmente se intentó parsear `.parquet` en browser con `hyparquet`. **Migrado** al backend cuando la arquitectura pasó a tile-based (ADR-008). El código frontend quedó como referencia en [parseH3Parquet.ts](../../Vento/src/app/Utils/parseH3Parquet.ts) (deshabilitado).
+Originalmente se intentó parsear `.parquet` en browser con `hyparquet`. **Migrado** al backend cuando la arquitectura pasó a tile-based (ADR-008). El código frontend quedó como referencia en [parseH3Parquet.ts](../../Vento/src/app/Utils/h3/parseH3Parquet.ts) (deshabilitado).
 
 ### Frecuencia de actualización
 Cada vez que el equipo investigación entrega nueva versión del `.parquet`:
@@ -239,7 +240,7 @@ Ambos modos son válidos. El CI está inestable (actions no se disparan — ver 
 4. ¿Conversión de click → h3_index? → `latLngToCell` de h3-js, instantáneo.
 
 ### Resultados
-Todo superó los requisitos del scope. Se documentó el mapping en [h3TileIndex.ts](../../Vento/src/app/Utils/h3TileIndex.ts) + [map-rendering.md](../dev-notes/map-rendering.md).
+Todo superó los requisitos del scope. Se documentó el mapping en [h3TileIndex.ts](../../Vento/src/app/Utils/h3/h3TileIndex.ts) + [map-rendering.md](../dev-notes/map-rendering.md).
 
 **Veredicto**: ✅ spike exitoso. H3 es la indexación correcta para este problema.
 
@@ -321,16 +322,16 @@ Push / PR
 
 ## 15. Referencias cruzadas
 
-- [tecnologias.md](../spec/architecture/tecnologias.md) — opciones comparadas (pre-decisión)
-- [ADR-001](../spec/adr/ADR-001-stack-frontend.md) — stack frontend
-- [ADR-002](../spec/adr/ADR-002-resolucion-h3.md) — resolución H3
-- [ADR-005](../spec/adr/ADR-005-keycloak-identidad.md) — Keycloak
-- [ADR-006](../spec/adr/ADR-006-storage-cache-datos-geoespaciales.md) — storage + cache
-- [ADR-007](../spec/adr/ADR-007-backend-clean-architecture-ddd-monorepo.md) — backend DDD
-- [ADR-008](../spec/adr/ADR-008-arquitectura-tile-based.md) — tile-based arch
-- [ADR-009](../spec/adr/ADR-009-notificaciones-email-pendientes-smtp.md) — SMTP stopper
-- [ADR-010](../spec/adr/ADR-010-hosting-accuweb-vs-supabase-vercel.md) — AccuWeb vs Supabase/Vercel
-- [ADR-011](../spec/adr/ADR-011-parquet-procesamiento-backend-no-browser.md) — parquet en backend, no browser
+- [tecnologias.md](../architecture/tecnologias.md) — opciones comparadas (pre-decisión)
+- [ADR-001](../adr/ADR-001-stack-frontend.md) — stack frontend
+- [ADR-002](../adr/ADR-002-resolucion-h3.md) — resolución H3
+- [ADR-005](../adr/ADR-005-keycloak-identidad.md) — Keycloak
+- [ADR-006](../adr/ADR-006-storage-cache-datos-geoespaciales.md) — storage + cache
+- [ADR-007](../adr/ADR-007-backend-clean-architecture-ddd-monorepo.md) — backend DDD
+- [ADR-008](../adr/ADR-008-arquitectura-tile-based.md) — tile-based arch
+- [ADR-009](../adr/ADR-009-notificaciones-email-pendientes-smtp.md) — SMTP stopper
+- [ADR-010](../adr/ADR-010-hosting-accuweb-vs-supabase-vercel.md) — AccuWeb vs Supabase/Vercel
+- [ADR-011](../adr/ADR-011-parquet-procesamiento-backend-no-browser.md) — parquet en backend, no browser
 - [auth-strategy.md](../security/auth-strategy.md) — protección de rutas
 - [frontend-backend-integration.md](./frontend-backend-integration.md) — Next.js ↔ FastAPI via rewrites
 - [infra/keycloak.md](../infra/keycloak.md) — infraestructura Keycloak

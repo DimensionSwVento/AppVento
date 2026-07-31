@@ -16,18 +16,18 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard",
 }));
 
-vi.mock("@/app/Utils/AccionPrincipalContext", () => ({
+vi.mock("@/app/Utils/contexts/AccionPrincipalContext", () => ({
   useAprincipal: () => useAprincipalMock(),
 }));
 
-vi.mock("@/app/Utils/keycloakLogout", () => ({
+vi.mock("@/app/Utils/apis/keycloakLogout", () => ({
   keycloakLogoutUrl: vi.fn(
     (idToken: string | undefined, origin: string) =>
       `https://kc.example.com/logout?id_token_hint=${idToken}&post_logout_redirect_uri=${encodeURIComponent(origin)}`,
   ),
 }));
 
-import SideBar from "@/app/Components/SideBar";
+import SideBar from "@/app/Components/layout/SideBar";
 
 function renderSideBar() {
   return render(

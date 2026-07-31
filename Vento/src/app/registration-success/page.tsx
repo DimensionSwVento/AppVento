@@ -1,5 +1,5 @@
 import Image from "next/image";
-import SignInButton from "../Components/SignInButton";
+import SignInButton from "../Components/auth/SignInButton";
 
 export const metadata = {
   title: "Registro exitoso — Vento",

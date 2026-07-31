@@ -1,15 +1,13 @@
 ---
 version: 1.0
 date: 2026-04-20
-author: mavalan Software
+author: Mavalan Software
 scope: integración Next.js (Vento) ↔ FastAPI (repo separado) + API local standalone
 ---
 
 # Integración Frontend ↔ Backend
 
 Cómo el frontend Next.js se conecta al backend FastAPI (repo separado), cuándo usar rutas API locales de Next.js vs proxy al backend, y cómo funciona en dev y prod.
-
-> Referencia completa del backend (endpoints, modelo de datos, auth, scoring, despliegue): [backend-api.md](./backend-api.md).
 
 ---
 
@@ -148,7 +146,7 @@ const nextConfig: NextConfig = {
 ## 5. Manejo de tokens para llamadas autenticadas al backend
 
 ### Estado actual
-El backend FastAPI valida tokens OIDC como Resource Server (según [ADR-005](../spec/adr/ADR-005-keycloak-identidad.md) y [ADR-007](../spec/adr/ADR-007-backend-clean-architecture-ddd-monorepo.md)). Espera `Authorization: Bearer <access_token>`.
+El backend FastAPI valida tokens OIDC como Resource Server (según [ADR-005](../adr/ADR-005-keycloak-identidad.md) y [ADR-007](../adr/ADR-007-backend-clean-architecture-ddd-monorepo.md)). Espera `Authorization: Bearer <access_token>`.
 
 ### Problema
 Tras la [reducción de cookie](../security/auth-strategy.md), el access_token **no se envía al browser**. El rewrite actual (`/api/tiles/*`) tampoco añade Authorization header — reenvía lo que llegó del browser (que es nada).
@@ -229,16 +227,16 @@ Equipo investigación
                  └─> sirve tiles pre-indexados a Next.js vía rewrite
 ```
 
-Código histórico en [Vento/src/app/Utils/parseH3Parquet.ts](../../Vento/src/app/Utils/parseH3Parquet.ts) intentaba parsear en browser con `hyparquet` — **deshabilitado**. Ver [ADR futuro: parquet backend vs browser] (pendiente).
+Código histórico en [Vento/src/app/Utils/h3/parseH3Parquet.ts](../../Vento/src/app/Utils/h3/parseH3Parquet.ts) intentaba parsear en browser con `hyparquet` — **deshabilitado**. Ver [ADR futuro: parquet backend vs browser] (pendiente).
 
 ---
 
 ## 9. Cache y performance
 
 ### Frontend
-- **TileLayer cache DeckGL**: 64 tiles en memoria por viewport (ver [Vento/src/app/Utils/h3DataCache.ts](../../Vento/src/app/Utils/h3DataCache.ts)).
+- **TileLayer cache DeckGL**: 64 tiles en memoria por viewport (ver [Vento/src/app/Utils/h3/h3DataCache.ts](../../Vento/src/app/Utils/h3/h3DataCache.ts)).
 - **HTTP Cache-Control**: headers del backend indican `max-age` — browser reutiliza tiles entre navegaciones.
-- **Service Worker**: pendiente (US-CACHE parcial, ver [ADR-006](../spec/adr/ADR-006-storage-cache-datos-geoespaciales.md)).
+- **Service Worker**: pendiente (US-CACHE parcial, ver [ADR-006](../adr/ADR-006-storage-cache-datos-geoespaciales.md)).
 
 ### Backend
 - Cache en memoria de `.parquet` indexado. Se reconstruye al reiniciar contenedor.
@@ -268,9 +266,9 @@ Código histórico en [Vento/src/app/Utils/parseH3Parquet.ts](../../Vento/src/ap
 ## 11. Referencias
 
 - [auth-strategy.md](../security/auth-strategy.md) — cómo funciona la auth end-to-end
-- [tech-stack-validation.md](../architecture/tech-stack-validation.md) — stack completo
+- [tech-stack-validation.md](./tech-stack-validation.md) — stack completo
 - [test-strategy.md](../testing/test-strategy.md) — cómo testear rutas API
-- [ADR-005 Keycloak](../spec/adr/ADR-005-keycloak-identidad.md)
-- [ADR-007 Backend DDD](../spec/adr/ADR-007-backend-clean-architecture-ddd-monorepo.md)
-- [ADR-008 Tile-based](../spec/adr/ADR-008-arquitectura-tile-based.md)
+- [ADR-005 Keycloak](../adr/ADR-005-keycloak-identidad.md)
+- [ADR-007 Backend DDD](../adr/ADR-007-backend-clean-architecture-ddd-monorepo.md)
+- [ADR-008 Tile-based](../adr/ADR-008-arquitectura-tile-based.md)
 - [next.config.ts](../../Vento/next.config.ts) — donde vive el rewrite

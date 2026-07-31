@@ -14,7 +14,7 @@ maintainer: mavalan Software
 > del patrón **BFF**. Este documento describe endpoints, modelo de datos, autenticación,
 > scoring, ingesta, configuración y despliegue, fiel al código actual.
 
-Ver también: [Integración frontend ↔ backend](./frontend-backend-integration.md) · [Documentación maestra](../master/README.md).
+Ver también: [Integración frontend ↔ backend](./frontend-backend-integration.md) · [Documentación maestra](../README.md).
 
 ---
 

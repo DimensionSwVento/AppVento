@@ -25,6 +25,21 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/*
+ * Créditos del mapa (maplibre): mostrar el texto de atribución SIEMPRE y quitar
+ * el botón "ⓘ". Feedback: la "i" parecía un botón muerto e inducía a error de
+ * operación. Complementa `attributionControl={{ compact: false }}` en Map.tsx —
+ * garantiza que la "i" no reaparezca en ningún ancho ni estado compacto.
+ */
+.maplibregl-ctrl-attrib-button,
+.maplibregl-ctrl-attrib.maplibregl-compact::after {
+  display: none !important;
+}
+
+.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-inner {
+  display: block !important;
+}
+
 @keyframes vento-cta-in {
   from {
     opacity: 0;
