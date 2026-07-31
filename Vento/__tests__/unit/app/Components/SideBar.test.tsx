@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const signOutMock = vi.fn().mockResolvedValue(undefined);
 const useSessionMock = vi.fn();
@@ -16,18 +16,18 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard",
 }));
 
-vi.mock("@/app/Utils/AccionPrincipalContext", () => ({
+vi.mock("@/app/Utils/contexts/AccionPrincipalContext", () => ({
   useAprincipal: () => useAprincipalMock(),
 }));
 
-vi.mock("@/app/Utils/keycloakLogout", () => ({
+vi.mock("@/app/Utils/apis/keycloakLogout", () => ({
   keycloakLogoutUrl: vi.fn(
     (idToken: string | undefined, origin: string) =>
       `https://kc.example.com/logout?id_token_hint=${idToken}&post_logout_redirect_uri=${encodeURIComponent(origin)}`,
   ),
 }));
 
-import SideBar from "@/app/Components/SideBar";
+import SideBar from "@/app/Components/layout/SideBar";
 
 function renderSideBar() {
   return render(
@@ -50,9 +50,10 @@ beforeEach(() => {
     selectedHexes: new Set(),
   });
   setAccionMock.mockReset();
+  signOutMock.mockClear();
   delete (window as { location?: unknown }).location;
   (window as { location: unknown }).location = {
-    href: "",
+    href: "https://app.example.com/dashboard",
     origin: "https://app.example.com",
   };
 });
@@ -65,21 +66,28 @@ describe("SideBar — Auth", () => {
 
   it("muestra el botón de cerrar sesión", () => {
     renderSideBar();
-    const logoutBtn = screen.getByTitle("Cerrar sesión");
+    const logoutBtn = screen.getByRole("button", { name: "Cerrar sesión" });
     expect(logoutBtn).toBeInTheDocument();
+    expect(logoutBtn).toHaveAttribute("title", "Cerrar sesión");
+    expect(logoutBtn).not.toHaveTextContent("X");
   });
 
   it("fallback si la sesión no tiene email del usuario", () => {
     useSessionMock.mockReturnValue({ data: { user: {} } });
     renderSideBar();
-    expect(screen.getByTitle("Cerrar sesión")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Cerrar sesión" }),
+    ).toBeInTheDocument();
   });
 
   it("llama signOut y redirige a Keycloak logout al hacer click", async () => {
     renderSideBar();
-    const logoutBtn = screen.getByTitle("Cerrar sesión");
+    const logoutBtn = screen.getByRole("button", { name: "Cerrar sesión" });
     await fireEvent.click(logoutBtn);
     expect(signOutMock).toHaveBeenCalledWith({ redirect: false });
+    await waitFor(() => {
+      expect(window.location.href).toBe("/api/auth/kc-logout");
+    });
   });
 });
 
@@ -89,13 +97,19 @@ describe("SideBar — Navegación", () => {
     expect(screen.getByText("Selección de área")).toBeInTheDocument();
     expect(screen.getByText("Dimensiones")).toBeInTheDocument();
     expect(screen.getByText("Características del proyecto")).toBeInTheDocument();
-    expect(screen.getByText("Informe de viabilidad")).toBeInTheDocument();
+    expect(screen.getByText("Informe de prefactibilidad")).toBeInTheDocument();
+  });
+
+  it("oculta el panel de children en seleccion-area", () => {
+    renderSideBar();
+    expect(screen.queryByText("child")).not.toBeInTheDocument();
   });
 
   it("Dimensiones está deshabilitado si no hay hexágonos seleccionados", () => {
     renderSideBar();
     const dim = screen.getByText("Dimensiones").parentElement!;
-    expect(dim.className).toContain("opacity-40");
+    expect(dim).toHaveAttribute("aria-disabled", "true");
+    expect(dim.className).toContain("cursor-not-allowed");
   });
 
   it("Dimensiones se habilita cuando hay hexágonos seleccionados", () => {
@@ -106,8 +120,18 @@ describe("SideBar — Navegación", () => {
     });
     renderSideBar();
     const dim = screen.getByText("Dimensiones").parentElement!;
+    expect(dim).toHaveAttribute("aria-disabled", "false");
     expect(dim.className).toContain("cursor-pointer");
-    expect(dim.className).not.toContain("opacity-40");
+  });
+
+  it("ya no renderiza el CTA de próximo paso dentro del SideBar (vive en el mapa)", () => {
+    useAprincipalMock.mockReturnValue({
+      accion: "seleccion-area",
+      setAccion: setAccionMock,
+      selectedHexes: new Set(["8a2a1072b59ffff"]),
+    });
+    renderSideBar();
+    expect(screen.queryByTestId("next-step-cta")).not.toBeInTheDocument();
   });
 
   it("click en un paso anterior navega hacia atrás (retroceso libre)", () => {

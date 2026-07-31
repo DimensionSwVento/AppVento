@@ -18,11 +18,11 @@ vi.mock("next/navigation", () => ({
   usePathname: () => pathnameRef.current,
 }));
 
-vi.mock("@/app/Utils/AccionPrincipalContext", () => ({
+vi.mock("@/app/Utils/contexts/AccionPrincipalContext", () => ({
   useAprincipal: () => useAprincipalMock(),
 }));
 
-import SideBar from "@/app/Components/SideBar";
+import SideBar from "@/app/Components/layout/SideBar";
 
 function renderSideBar() {
   return render(
@@ -76,16 +76,16 @@ describe("SideBar — navegación desde /admin/*", () => {
     expect(setAccionMock).toHaveBeenCalledWith("dimensiones");
   });
 
-  it("en /admin/* no se marca 'Selección de área' con highlight (bg-gray-400)", () => {
+  it("en /admin/* no se marca 'Selección de área' con highlight activo", () => {
     renderSideBar();
     const item = screen.getByText("Selección de área").parentElement!;
-    expect(item.className).not.toContain("bg-gray-400");
+    expect(item.className).not.toContain("border-l-[#cce1eeff]");
   });
 
-  it("en /dashboard SÍ se marca 'Selección de área' con highlight cuando accion coincide", () => {
+  it("en /dashboard SÍ se marca 'Selección de área' con highlight activo cuando accion coincide", () => {
     pathnameRef.current = "/dashboard";
     renderSideBar();
     const item = screen.getByText("Selección de área").parentElement!;
-    expect(item.className).toContain("bg-gray-400");
+    expect(item.className).toContain("border-l-[#cce1eeff]");
   });
 });

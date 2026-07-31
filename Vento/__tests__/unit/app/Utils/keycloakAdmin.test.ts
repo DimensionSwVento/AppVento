@@ -29,19 +29,6 @@ function mockTokenThenApi(apiResponse: Response) {
   mockFetch.mockResolvedValueOnce(apiResponse);
 }
 
-function mockTokenThenApiSequence(...responses: Response[]) {
-  // First call = token endpoint (shared for the initial call)
-  for (const res of responses) {
-    mockFetch.mockResolvedValueOnce(
-      new Response(JSON.stringify({ access_token: "mock-token" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      })
-    );
-    mockFetch.mockResolvedValueOnce(res);
-  }
-}
-
 // ── Imports (after mocks) ────────────────────────────────────────────
 
 import {
@@ -55,7 +42,7 @@ import {
   removeRealmRole,
   resetUserPassword,
   KeycloakAdminError,
-} from "@/app/Utils/keycloakAdmin";
+} from "@/app/Utils/apis/keycloakAdmin";
 
 // ── Tests ────────────────────────────────────────────────────────────
 

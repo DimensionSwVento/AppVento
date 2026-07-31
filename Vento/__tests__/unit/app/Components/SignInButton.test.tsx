@@ -5,7 +5,7 @@ vi.mock("@/auth", () => ({
   signIn: vi.fn(),
 }));
 
-import SignInButton from "@/app/Components/SignInButton";
+import SignInButton from "@/app/Components/auth/SignInButton";
 
 describe("SignInButton", () => {
   it("renders a form with a submit button", () => {

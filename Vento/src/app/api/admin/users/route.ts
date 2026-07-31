@@ -6,7 +6,7 @@ import {
   assignRealmRole,
   resetUserPassword,
   KeycloakAdminError,
-} from "../../../Utils/keycloakAdmin";
+} from "../../../Utils/apis/keycloakAdmin";
 import { CreateUserPayload, User } from "../../../types/user";
 
 // Reusable function to check admin role
@@ -44,11 +44,12 @@ export async function GET(request: Request) {
     }));
 
     return NextResponse.json({ users });
-  } catch (err: any) {
-    console.error("GET Users Error:", err.message);
-    const status = err.status || 500;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("GET Users Error:", message);
+    const status = err instanceof KeycloakAdminError ? err.status : 500;
     return NextResponse.json(
-      { error: "Error fetching users from Keycloak: " + err.message },
+      { error: "Error fetching users from Keycloak: " + message },
       { status }
     );
   }
@@ -96,8 +97,8 @@ export async function POST(request: Request) {
       { message: "Usuario creado exitosamente", id: userId },
       { status: 201 }
     );
-  } catch (err: any) {
-    console.error("POST User Error:", err.message);
+  } catch (err) {
+    console.error("POST User Error:", err instanceof Error ? err.message : err);
     const status = err instanceof KeycloakAdminError ? err.status : 500;
     const errorMsg =
       err instanceof KeycloakAdminError

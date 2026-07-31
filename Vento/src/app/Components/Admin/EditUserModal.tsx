@@ -54,12 +54,10 @@ export default function EditUserModal({
       await onSubmit(user.id, { firstName, lastName, enabled, role: newrole });
 
       if (newrole.includes("admin") && role.includes("analista")) {
-        const resnotify = await fetch(`/api/admin/users/notify`, {
+        await fetch(`/api/admin/users/notify`, {
           method: "POST",
           body: JSON.stringify({ mail, name }),
         });
-        const data = await resnotify.json(); // text() en vez de json() por si falla
-
       }
       onClose();
     } catch (err: unknown) {
@@ -231,7 +229,7 @@ export default function EditUserModal({
                   ? "Cargando rol actual…"
                   : role === "admin"
                     ? "Administrador: acceso completo a gestión de usuarios, privilegios y configuración."
-                    : "Analista: acceso al flujo principal de análisis de viabilidad, sin gestión de usuarios."}
+                    : "Analista: acceso al flujo principal de análisis de idoneidad, sin gestión de usuarios."}
               </p>
             </div>
 

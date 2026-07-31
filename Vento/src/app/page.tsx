@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import Image from "next/image";
-import SignInButton from "./Components/SignInButton";
-import SignUpButton from "./Components/SignUpButton";
+import SignInButton from "./Components/auth/SignInButton";
+import SignUpButton from "./Components/auth/SignUpButton";
 
 type RegisterError =
   | "register_config"
@@ -74,7 +74,8 @@ export default async function Home({
           <SignUpButton />
         </div>
 
-        <p className="text-xs text-gray-500">
+        {/* gray-400: contraste AA (≥4.5:1) sobre el fondo #0b2a3c */}
+        <p className="text-xs text-gray-400">
           La autenticación es gestionada por un servicio de identidad externo.
         </p>
       </div>

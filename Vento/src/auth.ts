@@ -33,6 +33,7 @@ declare module "next-auth" {
   interface Session {
     roles?: string[];
     error?: string; // para que SessionGuard detecte RefreshTokenError/NoRefreshToken
+    sub?: string; // id del usuario (Keycloak `sub`) — lo consume el BFF del histórico
   }
 }
 
@@ -134,8 +135,16 @@ console.log("[AUTH] ENV CHECK:", {
 // AccuWeb: Keycloak reporta HTTPS como issuer pero internamente solo acepta HTTP.
 // AUTH_KEYCLOAK_ISSUER debe ser la URL HTTP interna (ej: http://midominio.com/identity/realms/vento)
 // Reescribimos a HTTPS para que coincida con lo que Keycloak valida en el token.
-const issuerEnv = process.env.AUTH_KEYCLOAK_ISSUER!;
-const issuer = issuerEnv.replace(/^http:\/\//, "https://");
+// Fallback "" en vez de `!`: este módulo se evalúa también durante
+// `next build` (collecting page data), donde no hay env de auth — sin el
+// fallback, `.replace` sobre undefined rompe el build.
+const issuerEnv = process.env.AUTH_KEYCLOAK_ISSUER ?? "";
+// En local (localhost/127.0.0.1) Keycloak emite el issuer HTTP tal cual —
+// reescribirlo a HTTPS rompería la validación del "iss" (dev y e2e).
+const isLocalIssuer = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(issuerEnv);
+const issuer = isLocalIssuer
+  ? issuerEnv
+  : issuerEnv.replace(/^http:\/\//, "https://");
 const wellKnownUrl = `${issuerEnv}/.well-known/openid-configuration`;
 
 console.log("[AUTH] ISSUER CONFIG:", {
@@ -149,23 +158,26 @@ function httpsToHttp(url: string): string {
   return url.replace(/^https:\/\//, "http://");
 }
 
-// Pre-fetch para diagnosticar qué devuelve Keycloak
-fetch(wellKnownUrl)
-  .then((res) => res.json())
-  .then((config) => {
-    console.log("[AUTH] DISCOVERY OK:", {
-      issuerFromKeycloak: config.issuer,
-      issuerWeExpect: issuer,
-      match: config.issuer === issuer ? "✅" : "❌ MISMATCH",
-      tokenEndpoint: config.token_endpoint,
-      tokenEndpointRewritten: httpsToHttp(config.token_endpoint),
-      authEndpoint: config.authorization_endpoint,
-      authEndpointRewritten: httpsToHttp(config.authorization_endpoint),
+// Pre-fetch para diagnosticar qué devuelve Keycloak (sólo si hay issuer —
+// en build no lo hay y el fetch sería ruido).
+if (issuerEnv) {
+  fetch(wellKnownUrl)
+    .then((res) => res.json())
+    .then((config) => {
+      console.log("[AUTH] DISCOVERY OK:", {
+        issuerFromKeycloak: config.issuer,
+        issuerWeExpect: issuer,
+        match: config.issuer === issuer ? "✅" : "❌ MISMATCH",
+        tokenEndpoint: config.token_endpoint,
+        tokenEndpointRewritten: httpsToHttp(config.token_endpoint),
+        authEndpoint: config.authorization_endpoint,
+        authEndpointRewritten: httpsToHttp(config.authorization_endpoint),
+      });
+    })
+    .catch((err) => {
+      console.error("[AUTH] DISCOVERY FETCH FAILED:", err.message);
     });
-  })
-  .catch((err) => {
-    console.error("[AUTH] DISCOVERY FETCH FAILED:", err.message);
-  });
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -177,13 +189,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientSecret: process.env.AUTH_KEYCLOAK_SECRET!,
       // issuer HTTPS para validación de tokens (Keycloak devuelve HTTPS en el JWT)
       issuer,
-      // Endpoints reescritos a HTTP para conexión interna (AccuWeb no permite HTTPS entre contenedores)
+      // Endpoints en HTTPS: el nodo Next alcanza el HTTPS público de Keycloak
+      // (la discovery ya funciona sobre HTTPS). Reescribir a HTTP mandaba
+      // peticiones HTTP planas al puerto HTTPS → nginx devolvía HTML → el
+      // intercambio de token fallaba con "content-type must be application/json".
       authorization: {
-        url: httpsToHttp(`${issuer}/protocol/openid-connect/auth`),
+        url: `${issuer}/protocol/openid-connect/auth`,
         params: { scope: "openid email profile" },
       },
-      token: httpsToHttp(`${issuer}/protocol/openid-connect/token`),
-      userinfo: httpsToHttp(`${issuer}/protocol/openid-connect/userinfo`),
+      token: `${issuer}/protocol/openid-connect/token`,
+      userinfo: `${issuer}/protocol/openid-connect/userinfo`,
     },
   ],
   callbacks: {
@@ -216,10 +231,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // Logout federado se hace con client_id + post_logout_redirect_uri (sin id_token_hint).
       session.roles = token.roles;  // necesario para RBAC en middleware y UI
       session.error = token.error;  // SessionGuard detecta RefreshTokenError para sign-out automático
+      session.sub = token.sub;      // id de usuario para el BFF del histórico (ya está en la cookie)
       return session;
     },
   },
   pages: {
     signIn: "/",
+    // Evita la página cruda /api/auth/error?error=... (se veía mal en la app):
+    // cualquier error de auth redirige limpio al inicio.
+    error: "/",
   },
 });

@@ -1,0 +1,192 @@
+# CI del frontend (Vento/). No requiere secrets del repositorio: las
+# credenciales de Keycloak para e2e son de DEV/E2E y viven en
+# infra/keycloak/realm-export.json (jamás usarlas en producción).
+#
+# NOTA: la política de Actions de la organización sólo permite actions de
+# repos propios de DimensionSwVento, así que este workflow NO usa ninguna
+# action de marketplace (ni siquiera actions/checkout): el checkout se hace
+# con git + github.token y Node sale del tool cache del runner.
+#
+# Pendiente para un admin de la organización:
+#   - (Recomendado) Permitir "actions created by GitHub" en
+#     Settings → Actions → General; eso habilita actions/checkout,
+#     actions/setup-node con cache de npm y actions/upload-artifact
+#     (artefactos de coverage y playwright-report, hoy deshabilitados).
+#   - Marcar unit / build / e2e como required status checks en main
+#   - Activar branch protection en main
+name: Frontend CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - "Vento/**"
+      - "infra/keycloak/**"
+      - ".github/workflows/frontend-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "Vento/**"
+      - "infra/keycloak/**"
+      - ".github/workflows/frontend-ci.yml"
+
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (sin actions de marketplace)
+        run: |
+          git init -q .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch -q --depth 1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Node 22 desde el tool cache del runner
+        run: |
+          NODE_DIR=$(ls -d /opt/hostedtoolcache/node/22.*/x64/bin 2>/dev/null | sort -V | tail -1)
+          if [ -n "$NODE_DIR" ]; then echo "$NODE_DIR" >> "$GITHUB_PATH"; fi
+          node --version
+      - run: npm ci
+        working-directory: Vento
+      - run: npm run lint
+        working-directory: Vento
+
+  unit:
+    name: Unit tests + coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (sin actions de marketplace)
+        run: |
+          git init -q .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch -q --depth 1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Node 22 desde el tool cache del runner
+        run: |
+          NODE_DIR=$(ls -d /opt/hostedtoolcache/node/22.*/x64/bin 2>/dev/null | sort -V | tail -1)
+          if [ -n "$NODE_DIR" ]; then echo "$NODE_DIR" >> "$GITHUB_PATH"; fi
+          node --version
+      - run: npm ci
+        working-directory: Vento
+      # El reporter "text" imprime el resumen de cobertura en el log del job.
+      # Subir coverage/ como artefacto requiere actions/upload-artifact
+      # (bloqueado por la política de la org — ver nota del encabezado).
+      - run: npm run test:coverage
+        working-directory: Vento
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (sin actions de marketplace)
+        run: |
+          git init -q .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch -q --depth 1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Node 22 desde el tool cache del runner
+        run: |
+          NODE_DIR=$(ls -d /opt/hostedtoolcache/node/22.*/x64/bin 2>/dev/null | sort -V | tail -1)
+          if [ -n "$NODE_DIR" ]; then echo "$NODE_DIR" >> "$GITHUB_PATH"; fi
+          node --version
+      - run: npm ci
+        working-directory: Vento
+      - run: npm run build
+        working-directory: Vento
+        env:
+          NEXT_PUBLIC_API_URL: ""
+          NEXT_PUBLIC_KEYCLOAK_URL: "http://localhost:8080"
+          NEXT_PUBLIC_KEYCLOAK_REALM: "vento"
+          # Valores dummy DEV-ONLY: next build evalúa módulos de auth al
+          # recolectar page data; así el build refleja el runtime real.
+          AUTH_SECRET: "ci-build-only-secret"
+          AUTH_TRUST_HOST: "true"
+          AUTH_KEYCLOAK_ID: "vento-web"
+          AUTH_KEYCLOAK_SECRET: "dev-secret-change-in-production"
+          AUTH_KEYCLOAK_ISSUER: "http://localhost:8080/realms/vento"
+
+  e2e:
+    name: E2E (Playwright, chromium)
+    runs-on: ubuntu-latest
+    needs: [unit]
+    steps:
+      - name: Checkout (sin actions de marketplace)
+        run: |
+          git init -q .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch -q --depth 1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Node 22 desde el tool cache del runner
+        run: |
+          NODE_DIR=$(ls -d /opt/hostedtoolcache/node/22.*/x64/bin 2>/dev/null | sort -V | tail -1)
+          if [ -n "$NODE_DIR" ]; then echo "$NODE_DIR" >> "$GITHUB_PATH"; fi
+          node --version
+      - run: npm ci
+        working-directory: Vento
+
+      - name: Start Keycloak (realm vento + usuarios e2e)
+        working-directory: infra/keycloak
+        run: docker compose up -d --wait
+
+      - name: Wait for realm import
+        working-directory: infra/keycloak
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/realms/vento/.well-known/openid-configuration > /dev/null; then
+              echo "Realm vento listo"; exit 0
+            fi
+            sleep 5
+          done
+          echo "Keycloak no respondió a tiempo"; docker compose logs --tail 50; exit 1
+
+      - name: Install Playwright chromium
+        working-directory: Vento
+        run: npx playwright install --with-deps chromium
+
+      # El webServer de playwright.config.ts compila y sirve el build de
+      # producción con el env e2e (credenciales dev in-repo).
+      - name: Run e2e suite
+        working-directory: Vento
+        run: npx playwright test --project=chromium
+
+      # Sin actions/upload-artifact (política de la org): ante un fallo,
+      # volcamos un resumen del reporte al log del job.
+      - name: Resumen del reporte en caso de fallo
+        if: failure()
+        working-directory: Vento
+        run: |
+          echo "== test-results =="
+          find test-results -maxdepth 2 -name "error-context.md" -print -exec sed -n '1,40p' {} \; 2>/dev/null || true
+
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (sin actions de marketplace)
+        run: |
+          git init -q .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch -q --depth 1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Instalar gitleaks
+        run: |
+          wget -qO- https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_8.24.3_linux_x64.tar.gz | tar xz -C /usr/local/bin gitleaks
+        working-directory: /tmp
+      # --no-git escanea el árbol de trabajo (checkout shallow, sin historia).
+      - name: Scan de secretos
+        run: gitleaks detect --source . --no-git --verbose
