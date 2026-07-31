@@ -1,0 +1,38 @@
+id: US05-AC2
+title: "[US05-AC2] Selección de Catálogo de Modelos"
+epic: "E5-Proyecto"
+epic_label: "epic:E5-Proyecto"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Segunda Entrega"
+depends_on: []
+unlocks: ""
+week: 2
+body: |
+  ## Historia de Usuario
+  Como analista, quiero seleccionar el modelo del catálogo para autocompletar los valores conocidos y reducir el trabajo manual del formulario.
+
+  **Épica:** E5 — Características del Proyecto
+
+  > ⚠️ Definición pendiente — la reunión con el equipo de datos establece la estructura del catálogo y su mantenedor.
+
+  ## Criterios de Aceptación (provisionales)
+  1. Selector con dropdown searchable de modelos del catálogo
+  2. Búsqueda filtra por fabricante y/o nombre del modelo
+  3. Al seleccionar un modelo, los campos relevantes del formulario se autocompletan con sus valores nominales
+  4. Opción "modelo personalizado" permite ingresar valores manualmente
+
+  ## Tareas técnicas / desarrollo
+  - 📊 **Datos**: definir formato del catálogo y su mantenedor en la reunión (cliente, investigación, equipo dev)
+  - 📦 **FE Componente**: `<TurbineCatalogSelector>` con búsqueda local
+  - 📦 **FE/BE Fuente**: decidir entre JSON estático en `public/data/turbines.json` o endpoint backend (decisión a documentar en mini-ADR o nota en la HU)
+  - 🧪 **Tests**: búsqueda filtra correctamente; selección autocompleta el formulario
+
+  ## Estado
+  ⏸ **BLOQUEADA** — espera reunión con equipo de datos.
+
+  ## Dependencias
+  Reunión equipo de datos.
+
+  ## Estimación tras desbloqueo
+  3h

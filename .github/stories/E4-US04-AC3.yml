@@ -1,0 +1,33 @@
+id: US04-AC3
+title: "[US04-AC3] Indicador de Progreso por Categoría"
+epic: "E4-Variables"
+epic_label: "epic:E4-Variables"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Segunda Entrega"
+depends_on: ["US04-AC1"]
+unlocks: ""
+week: 1
+body: |
+  ## Historia de Usuario
+  Como analista, quiero ver una barra de progreso por dimensión indicando cuántas variables he configurado para saber cuánto me falta.
+
+  **Épica:** E4 — Configuración de Dimensiones (Variables)
+
+  ## Criterios de Aceptación
+  1. Cada dimensión muestra una barra de progreso visible
+  2. Barra refleja `N de M variables configuradas` para esa dimensión
+  3. Color de la barra coincide con el color de la dimensión (US04-AC1)
+  4. Texto numérico al lado: `3 / 8` o similar
+  5. Actualización inmediata al configurar/deseleccionar una variable
+
+  ## Tareas técnicas / desarrollo
+  - 📦 **FE Componente**: `<CategoryProgress>` que recibe `{ dimension, configured, total }`
+  - 📦 **FE Estado**: definir cómo se trackea "configurada" — sugerencia: estado local en `Dimensions.tsx` o context dedicado
+  - 🧪 **Tests**: render con `(3, 8)` muestra `3 / 8`; barra a la fracción correcta
+
+  ## Dependencias
+  US04-AC1
+
+  ## Estimación
+  2h

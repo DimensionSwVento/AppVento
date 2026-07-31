@@ -1,0 +1,192 @@
+name: "Sync Stories → GitHub Project Kanban"
+
+on:
+  push:
+    paths:
+      - ".github/stories/**"
+  workflow_dispatch:
+    inputs:
+      force_recreate:
+        description: "Forzar recreación de labels y milestone (útil la primera vez)"
+        type: boolean
+        default: false
+
+permissions:
+  issues: write
+  contents: read
+  repository-projects: write
+
+env:
+  # Nombre del proyecto en GitHub (debe coincidir exactamente)
+  # Alternativa más robusta: configura PROJECT_NUMBER en Settings → Secrets and variables → Actions → Variables
+  # y el workflow lo usará directamente sin buscar por nombre.
+  PROJECT_NAME: "Vento"
+  PROJECT_NUMBER: 2
+  MILESTONE_NAME: "Primera Entrega"
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  setup-labels:
+    name: "1. Crear Labels"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Crear labels de épicas y prioridades
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          create_label() {
+            local name="$1" color="$2" desc="$3"
+            gh label create "$name" \
+              --color "$color" \
+              --description "$desc" \
+              --repo "$GH_REPO" 2>/dev/null || \
+            gh label edit "$name" \
+              --color "$color" \
+              --description "$desc" \
+              --repo "$GH_REPO" 2>/dev/null || true
+          }
+
+          # Labels por épica
+          create_label "epic:E0-Fundacion"  "e11d48" "Épica 0 — Fundación e Infraestructura"
+          create_label "epic:E1-Auth"       "7c3aed" "Épica 1 — Login y Autenticación"
+          create_label "epic:E2-Mapa-SIG"   "0284c7" "Épica 2 — Mapa SIG Interactivo"
+          create_label "epic:E3-Admin"      "059669" "Épica 3 — Admin y CRUD Usuarios"
+          create_label "epic:E4-Variables"  "ea580c" "Épica 4 — Configuración de Dimensiones (Variables)"
+          create_label "epic:E5-Proyecto"   "0891b2" "Épica 5 — Características del Proyecto"
+          create_label "epic:E6-Reportes"   "9333ea" "Épica 6 — Reportes / Informe PDF"
+
+          # Labels por prioridad
+          create_label "priority:critica"   "dc2626" "🔴 Bloqueante para otras historias"
+          create_label "priority:alta"      "f59e0b" "🟡 Necesaria, puede paralelizarse"
+          create_label "priority:media"     "22c55e" "🟢 Puede posponerse bajo presión"
+
+          # Label tipo
+          create_label "user-story"         "6366f1" "Historia de usuario"
+
+  setup-milestone:
+    name: "2. Crear Milestones"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Crear milestones (Primera + Segunda Entrega)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          create_milestone() {
+            local title="$1" desc="$2"
+            local exists
+            exists=$(gh api repos/$GH_REPO/milestones \
+              --jq ".[] | select(.title == \"$title\") | .number" 2>/dev/null || echo "")
+            if [ -z "$exists" ]; then
+              gh api repos/$GH_REPO/milestones \
+                --method POST \
+                --field title="$title" \
+                --field description="$desc" \
+                --field state="open"
+              echo "✅ Milestone '$title' creado"
+            else
+              echo "ℹ️ Milestone '$title' ya existe (#$exists)"
+            fi
+          }
+
+          create_milestone "Primera Entrega" "Scope de la primera entrega — 1 mes de desarrollo"
+          create_milestone "Segunda Entrega" "Scope de la segunda entrega — flujo completo: variables, proyecto, informe PDF"
+
+  sync-issues:
+    name: "3. Sincronizar Issues"
+    runs-on: ubuntu-latest
+    needs: [setup-labels, setup-milestone]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar yq (parser YAML)
+        run: |
+          sudo wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Procesar y sincronizar stories YAML
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          MILESTONE_NUM=$(gh api repos/$GH_REPO/milestones \
+            --jq ".[] | select(.title == \"$MILESTONE_NAME\") | .number")
+
+          CREATED=0
+          UPDATED=0
+          SKIPPED=0
+
+          for file in .github/stories/*.yml; do
+            [ -f "$file" ] || continue
+
+            TITLE=$(yq '.title' "$file")
+            EPIC_LABEL=$(yq '.epic_label' "$file")
+            PRIORITY_LABEL=$(yq '.priority_label' "$file")
+            BODY=$(yq '.body' "$file")
+            STORY_ID=$(yq '.id' "$file")
+            # Milestone por archivo (fallback al default si no está definido)
+            FILE_MILESTONE=$(yq '.milestone // "'$MILESTONE_NAME'"' "$file")
+
+            echo "──────────────────────────────────"
+            echo "📋 Procesando: $STORY_ID  →  $FILE_MILESTONE"
+
+            # Buscar si el issue ya existe por título exacto
+            EXISTING=$(gh issue list \
+              --repo "$GH_REPO" \
+              --state all \
+              --search "\"$TITLE\" in:title" \
+              --json number,title \
+              --jq ".[] | select(.title == \"$TITLE\") | .number" \
+              2>/dev/null | head -1)
+
+            if [ -z "$EXISTING" ]; then
+              # Crear nuevo issue
+              ISSUE_URL=$(gh issue create \
+                --repo "$GH_REPO" \
+                --title "$TITLE" \
+                --body "$BODY" \
+                --label "user-story,$EPIC_LABEL,$PRIORITY_LABEL" \
+                --milestone "$FILE_MILESTONE")
+
+              echo "✅ Issue creado: $ISSUE_URL"
+              CREATED=$((CREATED + 1))
+
+              # Añadir al Project Kanban
+              # Prioridad: usa PROJECT_NUMBER si está configurado, si no busca por nombre
+              if [ -n "$PROJECT_NUMBER" ]; then
+                PROJECT_ID="$PROJECT_NUMBER"
+              else
+                PROJECT_ID=$(gh project list \
+                  --owner "${GH_REPO%%/*}" \
+                  --format json \
+                  --jq ".projects[] | select(.title == \"$PROJECT_NAME\") | .number" \
+                  2>/dev/null || echo "")
+              fi
+
+              if [ -n "$PROJECT_ID" ]; then
+                gh project item-add "$PROJECT_ID" \
+                  --owner "${GH_REPO%%/*}" \
+                  --url "$ISSUE_URL" 2>/dev/null || true
+                echo "   📌 Añadido al Project #$PROJECT_ID"
+              else
+                echo "   ⚠️  Project no encontrado — configura PROJECT_NUMBER en Settings → Variables o ajusta PROJECT_NAME"
+              fi
+
+            else
+              # Issue ya existe — actualizar body si cambió
+              gh issue edit "$EXISTING" \
+                --repo "$GH_REPO" \
+                --body "$BODY" \
+                --add-label "user-story,$EPIC_LABEL,$PRIORITY_LABEL" 2>/dev/null || true
+
+              echo "🔄 Issue #$EXISTING actualizado (body sincronizado)"
+              UPDATED=$((UPDATED + 1))
+            fi
+          done
+
+          echo ""
+          echo "════════════════════════════════════"
+          echo "  Resumen de sincronización"
+          echo "  ✅ Creados:     $CREATED"
+          echo "  🔄 Actualizados: $UPDATED"
+          echo "  ⏭️  Omitidos:    $SKIPPED"
+          echo "════════════════════════════════════"

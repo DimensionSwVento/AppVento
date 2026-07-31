@@ -1,0 +1,27 @@
+id: US-ENV
+title: "[US-ENV] Variables de Entorno"
+epic: "E0-Fundacion"
+epic_label: "epic:E0-Fundacion"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Primera Entrega"
+depends_on: ["US-MONO"]
+unlocks: "docker-compose funcional, desarrollo local del equipo"
+week: 1
+body: |
+  ## Historia de Usuario
+  Como desarrollador del equipo, necesito un sistema de variables de entorno documentado para que cualquier miembro pueda levantar el proyecto localmente sin configuración manual.
+
+  **ADR relacionado:** ADR-007
+  **Épica:** E0 — Fundación e Infraestructura
+
+  ## Criterios de Aceptación
+  1. Archivo `.env.example` en la raíz del monorepo con todas las variables documentadas
+  2. Variables cubren: base de datos, Keycloak, aplicación, datos geoespaciales
+  3. `.env` incluido en `.gitignore` — nunca se sube al repositorio
+  4. Documentación de cada variable con comentarios descriptivos
+  5. Docker-compose consume variables desde `.env`
+  6. Valores de ejemplo funcionales para desarrollo local
+
+  ## Desbloquea
+  docker-compose funcional, desarrollo local del equipo

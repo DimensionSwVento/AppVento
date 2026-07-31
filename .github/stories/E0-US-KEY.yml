@@ -1,0 +1,31 @@
+id: US-KEY
+title: "[US-KEY] Integración Keycloak como Proveedor de Identidad"
+epic: "E0-Fundacion"
+epic_label: "epic:E0-Fundacion"
+priority: critica
+priority_label: "priority:critica"
+milestone: "Primera Entrega"
+depends_on: []
+unlocks: "US01, US-AUTH-GUARD, US08"
+week: 1
+body: |
+  ## Historia de Usuario
+  Como administrador del sistema, necesito Keycloak configurado como proveedor de identidad para que la autenticación sea segura y estándar sin desarrollar auth propio.
+
+  **ADR relacionado:** ADR-005
+  **Épica:** E0 — Fundación e Infraestructura (prerequisito de E1-Auth)
+
+  ## Criterios de Aceptación
+  1. Keycloak desplegado como contenedor en docker-compose
+  2. Realm "vento" configurado con roles básicos: `admin`, `analista`
+  3. Registro y login de usuarios vía Keycloak (formulario Keycloak, no propio)
+  4. Frontend integrado con keycloak-js u oidc-client-ts
+  5. Backend valida tokens OIDC emitidos por Keycloak
+  6. Validación de correo electrónico general (NO restringido a dominio institucional)
+  7. Recuperación de contraseña gestionada por Keycloak (no desarrollo propio)
+
+  ## Impacto
+  Simplifica US01, elimina historia de recuperación de contraseña propia, reduce CRUD usuarios (Keycloak admin console cubre operaciones básicas)
+
+  ## Desbloquea
+  US01, US-AUTH-GUARD, US08

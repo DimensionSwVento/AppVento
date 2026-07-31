@@ -1,0 +1,38 @@
+id: US05-AC3
+title: "[US05-AC3] Validación de Rangos Técnicos Permitidos"
+epic: "E5-Proyecto"
+epic_label: "epic:E5-Proyecto"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Segunda Entrega"
+depends_on: ["US05-AC1"]
+unlocks: ""
+week: 2
+body: |
+  ## Historia de Usuario
+  Como analista, quiero recibir feedback claro si introduzco un valor fuera del rango técnico permitido para no avanzar con datos inválidos.
+
+  **Épica:** E5 — Características del Proyecto
+
+  > ⚠️ Los rangos exactos vienen de la reunión con el equipo de datos.
+
+  ## Criterios de Aceptación (provisionales)
+  1. Cada campo numérico valida que el valor caiga dentro del rango técnico permitido (rangos definidos en la reunión)
+  2. Mensaje inline en español al usuario si el valor está fuera de rango
+  3. El botón "Siguiente paso" queda deshabilitado mientras haya errores
+  4. Errores se limpian cuando el usuario corrige el valor
+
+  ## Tareas técnicas / desarrollo
+  - 📦 **FE Validación**: usar Zod (recomendado) o validación manual; schema deriva de la definición de campos
+  - 📦 **FE Componente**: `<FieldError>` reutilizable para mensajes
+  - 📊 **Datos**: rangos del catálogo (ver US05-AC2) — vienen del mismo origen
+  - 🧪 **Tests**: valor fuera de rango bloquea submit; valor válido permite avanzar
+
+  ## Estado
+  ⏸ **BLOQUEADA** — espera reunión con equipo de datos.
+
+  ## Dependencias
+  US05-AC1, reunión equipo de datos para rangos exactos.
+
+  ## Estimación tras desbloqueo
+  2h
