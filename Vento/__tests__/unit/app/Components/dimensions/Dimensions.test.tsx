@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import Dimensions from "@/app/Components/dimensions/Dimensions";
 import { VariablesProvider } from "@/app/Utils/contexts/VariablesContext";
 import { AprincipalProvider } from "@/app/Utils/contexts/AccionPrincipalContext";
-import { DIMENSIONS, VARIABLES } from "@/app/Utils/variables/variablesCatalog";
+import { DIMENSIONS } from "@/app/Utils/variables/variablesCatalog";
 
 function renderDimensions() {
   return render(
@@ -38,41 +38,25 @@ describe("Dimensions (US04-AC1)", () => {
   it("filtra variables por el query del search bar (match en label)", () => {
     renderDimensions();
     const input = screen.getByLabelText("Buscar variables");
-    fireEvent.change(input, { target: { value: "WPD" } });
+    // El menú lista solo las variables OPCIONALES (no-cálculo). "Turbulencia"
+    // (técnica) es una de ellas; matchea por label.
+    fireEvent.change(input, { target: { value: "turbulencia" } });
 
-    // La dimensión técnica (que contiene la variable matching) sigue
-    // renderizando su card. Con búsqueda las cards se abren solas.
+    // La dimensión con la variable sigue; una sin match desaparece.
     expect(screen.getByText(/Dimensión técnica/)).toBeInTheDocument();
-    expect(screen.queryByText(/Dimensión regulatoria/)).not.toBeInTheDocument();
-    // La card ya estaba montada (query vacío) → defaultOpen no la reabre; expandir.
-    fireEvent.click(screen.getByText(/Dimensión técnica/));
-    expect(
-      screen.getByText("Densidad de potencia WPD"),
-    ).toBeInTheDocument();
-
-    // Una variable sin match no debe estar visible (ni en cards visibles).
-    const sinMatch = VARIABLES.filter(
-      (v) =>
-        !v.label.toLowerCase().includes("wpd") &&
-        !v.description.toLowerCase().includes("wpd"),
-    ).map((v) => v.label);
-    for (const lbl of sinMatch.slice(0, 3)) {
-      expect(screen.queryByText(lbl)).not.toBeInTheDocument();
-    }
+    expect(screen.queryByText(/Dimensión social/)).not.toBeInTheDocument();
+    // La variable aparece (en la card y/o el catálogo informativo).
+    expect(screen.getAllByText("Turbulencia").length).toBeGreaterThan(0);
   });
 
   it("filtra variables por el query del search bar (match en descripción)", () => {
     renderDimensions();
     const input = screen.getByLabelText("Buscar variables");
-    // 'vías' aparece en la descripción de `distancia-vial`
-    // ("Distancia lineal (m) a vías principales…") pero no en su label.
-    fireEvent.change(input, { target: { value: "vías" } });
+    // 'IEC' aparece en la descripción de la turbulencia
+    // ("Clasificación IEC según intensidad turbulenta…") pero no en su label.
+    fireEvent.change(input, { target: { value: "IEC" } });
 
-    // La card de la dimensión técnica sigue, el resto desaparece.
     expect(screen.getByText(/Dimensión técnica/)).toBeInTheDocument();
-    fireEvent.click(screen.getByText(/Dimensión técnica/));
-    expect(
-      screen.getByText("Distancia a infraestructura vial"),
-    ).toBeInTheDocument();
+    expect(screen.getAllByText("Turbulencia").length).toBeGreaterThan(0);
   });
 });

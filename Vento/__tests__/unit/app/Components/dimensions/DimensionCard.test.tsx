@@ -2,11 +2,12 @@ import { describe, it, expect } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import DimensionCard from "@/app/Components/dimensions/DimensionCard";
 import { VariablesProvider } from "@/app/Utils/contexts/VariablesContext";
-import { DIMENSIONS, variablesByDimension } from "@/app/Utils/variables/variablesCatalog";
+import { DIMENSIONS, optionalVariablesByDimension } from "@/app/Utils/variables/variablesCatalog";
 
-// Uso social porque no tiene variables obligatorias (arrancan inactivas)
+// El menú lista solo las variables OPCIONALES (no-cálculo); social tiene 3 y
+// ninguna es obligatoria (arrancan inactivas). El header cuenta esas opcionales.
 const socio = DIMENSIONS.find((d) => d.id === "social")!;
-const vars = variablesByDimension("social");
+const vars = optionalVariablesByDimension("social");
 const firstNonRequired = vars.find((v) => !v.required)!;
 
 describe("DimensionCard", () => {

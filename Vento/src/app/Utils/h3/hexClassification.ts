@@ -1,4 +1,4 @@
-import { cellToLatLng, cellToParent, getResolution } from "h3-js";
+import { cellToLatLng, cellToParent, getResolution, latLngToCell } from "h3-js";
 import { LAND_POLYGON_RINGS, SEA_BBOXES, type LngLat } from "./h3Resolution";
 import {
   BANNED_HEXES,
@@ -13,7 +13,22 @@ import {
 // que el gris sea coherente entre niveles de zoom (una zona excluida y todos
 // sus hijos quedan excluidos por igual).
 const EXCLUDED_ZONE_RES = 5;
-const EXCLUDED_MODULO = 9; // ~1 de cada 9 zonas res-5 → parches grises visibles
+
+// SOLO 6 zonas excluidas de demostración en todo el país (template) — el resto
+// NO se excluye, para no saturar el mapa. Definidas por su celda res-5. Cuando
+// llegue el dato real (`tipo_celda="excluida"`), este placeholder se ignora.
+const PLACEHOLDER_EXCLUDED_ZONES: ReadonlySet<string> = new Set(
+  (
+    [
+      [4.6, -74.1], // Cundinamarca
+      [10.9, -74.8], // Caribe (Atlántico)
+      [6.2, -75.6], // Antioquia
+      [3.4, -76.5], // Valle del Cauca
+      [11.4, -72.3], // La Guajira
+      [1.2, -70.2], // Amazonía/Orinoquía
+    ] as [number, number][]
+  ).map(([lat, lng]) => latLngToCell(lat, lng, EXCLUDED_ZONE_RES)),
+);
 
 /** Hash determinista de un índice H3 (para el placeholder de excluidas). */
 function hashCell(h: string): number {
@@ -62,11 +77,12 @@ export function isHexBanned(h: string): boolean {
       return true;
     }
   }
-  // 2) Placeholder demostrable hasta tener `tipo_celda="excluida"` real.
+  // 2) Placeholder demostrable hasta tener `tipo_celda="excluida"` real: SOLO
+  //    las 6 zonas fijas de `PLACEHOLDER_EXCLUDED_ZONES`.
   if (SHOW_PLACEHOLDER_EXCLUDED) {
     const zoneKey =
       getResolution(h) > EXCLUDED_ZONE_RES ? cellToParent(h, EXCLUDED_ZONE_RES) : h;
-    if (hashCell(zoneKey) % EXCLUDED_MODULO === 0) return true;
+    if (PLACEHOLDER_EXCLUDED_ZONES.has(zoneKey)) return true;
   }
   return false;
 }

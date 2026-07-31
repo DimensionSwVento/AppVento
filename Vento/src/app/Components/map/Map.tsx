@@ -14,7 +14,7 @@ import { Map as MapGL, type MapRef } from "react-map-gl/maplibre";
 import { DeckGL } from "@deck.gl/react";
 import { WebMercatorViewport } from "@deck.gl/core";
 import { TileLayer } from "@deck.gl/geo-layers";
-import { PolygonLayer } from "@deck.gl/layers";
+import { PolygonLayer, IconLayer, PathLayer } from "@deck.gl/layers";
 import { Crosshair, Home, Trash2 } from "lucide-react";
 import { luma } from "@luma.gl/core";
 import { webgl2Adapter } from "@luma.gl/webgl";
@@ -40,6 +40,15 @@ import PhaseHintCard from "./PhaseHintCard";
 import LoadingOverlay from "../ui/LoadingOverlay";
 import { useInformeHeatmapLayer } from "./useInformeHeatmapLayer";
 import { useAreaHexData } from "../../Utils/report/useAreaHexData";
+import {
+  MAP_SYMBOLS,
+  symbolPolygons,
+  symbolPaths,
+  type MapSymbolPoint,
+  type SymbolPolygon,
+  type SymbolPath,
+} from "../../Utils/map/mapSymbols";
+import MapSymbolsLegend from "./MapSymbolsLegend";
 import { useMapSelection } from "./useMapSelection";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -184,9 +193,14 @@ export default function MapView() {
       ...(mapCanvas ? [mapCanvas] : []),
       ...all.filter((c) => c !== mapCanvas),
     ];
+    // Cap de resolución: en pantallas retina el canvas del mapa es 2× → un PNG
+    // enorme que luego hace lentísima la captura del informe (html2canvas). Se
+    // reduce a un ancho máximo razonable manteniendo la relación de aspecto.
+    const MAX_SNAPSHOT_W = 1400;
+    const scaleDown = base.width > MAX_SNAPSHOT_W ? MAX_SNAPSHOT_W / base.width : 1;
     const composite = document.createElement("canvas");
-    composite.width = base.width;
-    composite.height = base.height;
+    composite.width = Math.round(base.width * scaleDown);
+    composite.height = Math.round(base.height * scaleDown);
     const ctx = composite.getContext("2d");
     if (!ctx) return;
     let drewOverlay = false;
@@ -366,6 +380,82 @@ export default function MapView() {
   // Datos reales por hex del backend (mismo fetch cacheado que el heatmap) para
   // que el tooltip de hover muestre scores/variables reales en modo API.
   const areaData = useAreaHexData(selectedHexes, heatmapActive);
+
+  // Símbolos informativos en el mapa (círculo + ícono) para variables con
+  // "mostrar en mapa" (nodos, infra, áreas protegidas, resguardos). La leyenda
+  // (abajo-izq) actúa como interruptor: por defecto todas apagadas. No depende
+  // del menú de dimensiones. Datos/iconos TEMPLATE — ver `Utils/map/mapSymbols.ts`.
+  // Arrancan TODAS apagadas para no saturar el mapa; el usuario enciende las
+  // capas que quiera ver desde la leyenda "Capas del mapa".
+  const [activeSymbols, setActiveSymbols] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const toggleSymbol = useCallback((id: string) => {
+    setActiveSymbols((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  const symbolLayers = useMemo(() => {
+    const active = MAP_SYMBOLS.filter((s) => activeSymbols.has(s.variableId));
+    // Polígonos (zonas/heat) al FONDO: zone → relleno plano; heat → viridis.
+    const polys = active
+      .filter((s) => s.kind !== "point")
+      .map(
+        (s) =>
+          new PolygonLayer<SymbolPolygon>({
+            id: `map-zone-${s.variableId}`,
+            data: symbolPolygons(s),
+            getPolygon: (d) => d.polygon,
+            getFillColor: (d) => d.color,
+            getLineColor: [255, 255, 255, 150],
+            getLineWidth: 1,
+            lineWidthUnits: "pixels",
+            stroked: s.kind === "zone",
+            filled: true,
+            pickable: false,
+          }),
+      );
+    // Redes de puntos: conecta los puntos de cada capa `point` con una línea.
+    const paths = active
+      .filter((s) => s.kind === "point")
+      .map(
+        (s) =>
+          new PathLayer<SymbolPath>({
+            id: `map-net-${s.variableId}`,
+            data: symbolPaths(s),
+            getPath: (d) => d.path,
+            getColor: (d) => d.color,
+            getWidth: 2,
+            widthUnits: "pixels",
+            capRounded: true,
+            jointRounded: true,
+            pickable: false,
+            parameters: { depthCompare: "always" },
+          }),
+      );
+    // Iconos SIEMPRE encima (lo más importante): un marcador por cada capa,
+    // incluidas zonas y heat (marca el/los centros de la variable).
+    const icons = active.map(
+      (s) =>
+        new IconLayer<MapSymbolPoint>({
+          id: `map-symbol-${s.variableId}`,
+          data: s.points,
+          getPosition: (d) => [d.lng, d.lat],
+          getIcon: () => ({ url: s.icon, width: 48, height: 48, anchorY: 24, mask: false }),
+          getSize: 30,
+          sizeUnits: "pixels",
+          pickable: false,
+          // Los polígonos (zonas/heat) escriben profundidad a z=0 y ocultarían el
+          // icono que cae encima. `depthCompare: "always"` (luma.gl v9) hace que
+          // el test de profundidad siempre pase → el icono SIEMPRE se dibuja.
+          parameters: { depthCompare: "always" },
+        }),
+    );
+    return [...polys, ...paths, ...icons];
+  }, [activeSymbols]);
 
   // Bordes de la selección — comportamiento condicional por fase:
   // - En "seleccion-area": cada hex tiene su borde completo (grid de selección)
@@ -559,7 +649,11 @@ export default function MapView() {
           (chips, leyenda heatmap, dropdown de dimensiones). */}
       {mapReady &&
         (accion === "seleccion-area" || accion === "caracteristicas") && (
-          <AreaDisplay />
+          <div className="absolute top-3 right-3 z-10 flex w-[210px] flex-col gap-2 max-md:top-12">
+            <AreaDisplay />
+            {/* Leyenda-interruptor de símbolos del mapa, DEBAJO del área km². */}
+            <MapSymbolsLegend active={activeSymbols} onToggle={toggleSymbol} />
+          </div>
         )}
       {mapReady && accion === "seleccion-area" && (
         <MapSearchBox onSelect={handlePlaceSelect} />
@@ -607,7 +701,7 @@ export default function MapView() {
           )}
           {/* En informe la toolbar va a la IZQUIERDA para no cruzarse con el
               panel de variables (top-3 right-3) ni la previsualización. */}
-          <div className={`absolute bottom-9 z-10 flex flex-col gap-2 ${canSelect ? "right-4 items-end" : "left-4 items-start"}`}>
+          <div className={`absolute bottom-3 z-10 flex items-center gap-2 ${canSelect ? "right-4" : "left-4"}`}>
             <button
               onClick={zoomToSelection}
               disabled={!hasSelection}
@@ -642,20 +736,20 @@ export default function MapView() {
               </>
             )}
 
-            {/* Separador visual entre la toolbar de selección y el zoom */}
-            <div className="h-px w-6 bg-white/50 my-0.5 max-md:hidden" />
+            {/* Separador vertical entre la toolbar de selección y el zoom */}
+            <div className="h-6 w-px bg-white/50 mx-0.5 max-md:hidden" />
 
-            {/* Zoom + fullscreen: solo desktop */}
-            <div className={`flex flex-col gap-2 max-md:hidden ${canSelect ? "items-end" : "items-start"}`}>
-              <button onClick={toggleFullscreen} className="flex h-6 w-6 items-center justify-center rounded text-white shadow bg-[#165170ff]" title={fullscreen ? "Salir" : "Pantalla completa"}>
+            {/* Zoom + fullscreen: solo desktop — misma fila y altura */}
+            <div className="flex items-center gap-2 max-md:hidden">
+              <button onClick={toggleFullscreen} className="flex h-8 w-8 items-center justify-center rounded text-white shadow bg-[#165170ff]" title={fullscreen ? "Salir" : "Pantalla completa"}>
                 {fullscreen ? (
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 1v4H2M10 1v4h4M6 15v-4H2M10 15v-4h4" /></svg>
                 ) : (
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" /></svg>
                 )}
               </button>
-              <button onClick={zoomIn} className="flex h-6 w-6 items-center justify-center rounded text-lg font-bold text-white shadow bg-[#165170ff]" title="Acercar">+</button>
-              <button onClick={zoomOut} className="flex h-6 w-6 items-center justify-center rounded text-lg font-bold text-white shadow bg-[#165170ff]" title="Alejar">-</button>
+              <button onClick={zoomIn} className="flex h-8 w-8 items-center justify-center rounded text-lg font-bold text-white shadow bg-[#165170ff]" title="Acercar">+</button>
+              <button onClick={zoomOut} className="flex h-8 w-8 items-center justify-center rounded text-lg font-bold text-white shadow bg-[#165170ff]" title="Alejar">-</button>
             </div>
           </div>
         </>
@@ -702,6 +796,7 @@ export default function MapView() {
         <SelectedVariablesChips />
       )}
 
+
       {accion === "informe" && (
         <>
           <div className="absolute top-3 left-3 z-10">
@@ -721,7 +816,7 @@ export default function MapView() {
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => setViewState(clampViewState(vs as typeof INITIAL_VIEW_STATE))}
         controller={true}
-        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer]}
+        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer, ...symbolLayers]}
         // US-FB3-03 (feedback item 8): nunca "not-allowed". Fuera de la fase de
         // selección el hex NO es inerte — en el informe se consulta con el
         // tooltip —, y el cursor de "prohibido" (muy marcado en Firefox/Windows)

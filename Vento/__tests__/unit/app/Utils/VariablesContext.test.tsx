@@ -5,7 +5,7 @@ import {
   VARIABLES,
   getVariableById,
   requiredVariableIds,
-  variablesByDimension,
+  optionalVariablesByDimension,
 } from "@/app/Utils/variables/variablesCatalog";
 
 function Probe({ onCtx }: { onCtx: (ctx: ReturnType<typeof useVariables>) => void }) {
@@ -82,30 +82,33 @@ describe("VariablesContext — multi-selección con obligatorias", () => {
     expect(captured.isActive(secondNonRequired.id)).toBe(true);
   });
 
-  it("activeCountByDimension refleja obligatorias activas de esa dimensión desde el inicio", () => {
+  it("activeCountByDimension cuenta las OPCIONALES activas de esa dimensión", () => {
     let captured!: ReturnType<typeof useVariables>;
     render(
       <VariablesProvider>
         <Probe onCtx={(c) => (captured = c)} />
       </VariablesProvider>,
     );
-    // wpd (obligatoria) es técnica
-    const reqInTecnica = variablesByDimension("tecnica").filter(
-      (v) => v.required,
-    ).length;
-    expect(captured.activeCountByDimension("tecnica")).toBe(reqInTecnica);
+    // El menú lista solo las variables opcionales (no-cálculo); al inicio ninguna
+    // está activa (las obligatorias ponderadas no cuentan en el menú).
+    expect(captured.activeCountByDimension("tecnica")).toBe(0);
+    const opt = optionalVariablesByDimension("tecnica")[0];
+    act(() => captured.toggleVariable(opt.id));
+    expect(captured.activeCountByDimension("tecnica")).toBe(1);
   });
 
-  it("totalByDimension devuelve el total fijo (independiente del estado)", () => {
+  it("totalByDimension devuelve el total de OPCIONALES de la dimensión", () => {
     let captured!: ReturnType<typeof useVariables>;
     render(
       <VariablesProvider>
         <Probe onCtx={(c) => (captured = c)} />
       </VariablesProvider>,
     );
-    expect(captured.totalByDimension("ambiental")).toBe(
-      variablesByDimension("ambiental").length,
+    expect(captured.totalByDimension("tecnica")).toBe(
+      optionalVariablesByDimension("tecnica").length,
     );
+    // Una dimensión sin variables opcionales (p.ej. ambiental) → 0.
+    expect(captured.totalByDimension("ambiental")).toBe(0);
   });
 
   it("getVariableById sigue funcionando con ids del catálogo", () => {
