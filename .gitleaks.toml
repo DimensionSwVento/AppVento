@@ -1,0 +1,24 @@
+title = "Vento — gitleaks"
+
+# Reglas por defecto de gitleaks (detección de secretos reales).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Rutas SIN secretos productivos: dependencias, ejemplos, dev, tests y docs."
+# Se evalúan contra la ruta del archivo. Son fuentes conocidas de FALSOS
+# POSITIVOS (claves de ejemplo, tokens de prueba, secretos de dev en docker):
+#   - node_modules / .next  → dependencias y build (no versionadas, sin secretos propios)
+#   - .env.example          → plantillas con placeholders, no secretos reales
+#   - __tests__             → fixtures con JWT/keys FALSOS para los tests
+#   - infra/keycloak/realm-export.json → client secret de DEV (docker-compose), no prod
+#   - docs / _bmad          → ejemplos, curls y snippets ilustrativos
+paths = [
+  '''(^|/)node_modules/''',
+  '''(^|/)\.next/''',
+  '''\.env\.example$''',
+  '''(^|/)__tests__/''',
+  '''(^|/)infra/keycloak/realm-export\.json$''',
+  '''(^|/)docs/''',
+  '''(^|/)_bmad(-output)?/''',
+]

@@ -130,7 +130,11 @@ jobs:
         working-directory: /tmp
 
       - name: Scan de secretos (gitleaks)
-        run: gitleaks detect --source . --verbose
+        # `--no-git`: escanea el ÁRBOL ACTUAL (no todo el historial, que multiplica
+        # los ejemplos/dev por cada commit). `--config`: allowlist de rutas sin
+        # secretos productivos. `--redact`: no imprime los valores en el log.
+        run: gitleaks detect --no-git --redact --config "$GITHUB_WORKSPACE/.gitleaks.toml" --source . --verbose
+        working-directory: ${{ github.workspace }}
 
   # ─────────────────────────────────────
   # Stage 4: Deploy — genera rama limpia para AccuWeb
