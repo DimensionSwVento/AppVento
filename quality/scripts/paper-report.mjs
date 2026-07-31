@@ -90,6 +90,11 @@ function renderRunSection(title, bundle, catalog, coverage, timings) {
     }
   }
   lines.push(`| Gates | ${passed} passed, ${failed} failed, ${skipped} skipped |`);
+  if (bundle.deployment) {
+    lines.push(
+      `| Deployment decision | **${bundle.deployment.decision.toUpperCase()}** — ${bundle.deployment.reason} |`,
+    );
+  }
   lines.push(`| Code coverage | ${bundle.coverage.lines}% lines, ${bundle.coverage.branches}% branches |`);
   lines.push(
     `| Dependency audit | ${bundle.audit.critical} critical, ${bundle.audit.high} high, ` +
@@ -138,6 +143,15 @@ function renderRunSection(title, bundle, catalog, coverage, timings) {
     );
   }
   lines.push("");
+
+  if (bundle.deployment) {
+    lines.push("### Deployment decision");
+    lines.push("");
+    lines.push("```json");
+    lines.push(JSON.stringify(bundle.deployment, null, 2));
+    lines.push("```");
+    lines.push("");
+  }
 
   if (timings) {
     lines.push("### Pipeline step durations (platform-reported)");

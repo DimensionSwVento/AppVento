@@ -1,0 +1,596 @@
+{
+  "runId": "30603791312",
+  "commit": "20ea9b7836d64364c8257576db0815d988dabe5a",
+  "timestamp": "2026-07-31T04:23:05.410Z",
+  "workflowDurationMs": 225969,
+  "catalogVersion": "1.0.0",
+  "gatesVersion": "1.0.0",
+  "assertionCountMethod": "static-expect-calls",
+  "environment": {
+    "ci": true,
+    "workflow": "Quality Attributes Pipeline",
+    "ref": "refs/heads/experiment/injected-failure-capture",
+    "node": "v22.23.1"
+  },
+  "gates": [
+    {
+      "gateId": "typescript-check",
+      "attributeId": "processing",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 1,
+      "testsPassed": 1,
+      "assertions": 0,
+      "durationMs": 6914,
+      "logExcerpt": "Command 'npx --no-install tsc --noEmit' exited 0.",
+      "artifacts": [
+        "quality/evidence/raw/30603791312/typescript-check.log"
+      ]
+    },
+    {
+      "gateId": "spatial-operations-tests",
+      "attributeId": "processing",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 28,
+      "testsPassed": 28,
+      "assertions": 47,
+      "durationMs": 27,
+      "logExcerpt": "28/28 test cases passed across 3 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/30603791312/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "h3-boundary-tests",
+      "attributeId": "data-quality",
+      "blocking": true,
+      "status": "failed",
+      "testsRun": 12,
+      "testsPassed": 9,
+      "assertions": 26,
+      "durationMs": 32303,
+      "logExcerpt": "src/app/Utils/h3Resolution.test.ts > h3Resolution - cartografia oficial IGAC (US-FB2-02) IGAC incluye San Andres y Providencia (via 12 millas náuticas del territorio marítimo)\nAssertionError: expected false to be true // Object.is equality\n    at /home/runner/work/AppVento/AppVento/Vento/src/app/Utils/h3Resolution.test.ts:38:45\n    at new Promise (<anonymous>)\n    at new Promise (<anonymous>)\n\nsrc/app/Utils/h3Resolution.test.ts > h3Resolution - cartografia oficial IGAC (US-FB2-02) MAX_BOUNDS cubre continente, costas y archipielago\nAssertionError: expected -79 to be less than or equal to -82\n    at /home/runner/work/AppVento/AppVento/Vento/src/app/Utils/h3Resolution.test.ts:44:18\n    at new Promise (<anonymous>)\n    at new Promise (<anonymous>)\n\nsrc/app/Utils/h3Resolution.test.ts > h3Resolution - cartografia oficial IGAC (US-FB2-02) isPointInColombia usa la cartografia compartida para continente, archipielago y oceanos fuera del alcance\nAssertionError: expected false to be true // Object.is equality\n    at /home/runner/work/AppVento/AppVento/Vento/src/app/Utils/h3Resolution.test.ts:54:45\n    at new Promise (<anonymous>)\n    at new Promise (<anonymous>)",
+      "artifacts": [
+        "quality/evidence/raw/30603791312/vitest-results.json"
+      ],
+      "diagnostic": {
+        "rootCause": "The spatial boundary constants and logic in src/app/Utils/h3Resolution.test.ts fail to correctly include the San Andrés and Providencia archipelago and incorrectly define the longitudinal bounds (MAX_BOUNDS) for the Colombian territory.",
+        "affectedAttributeId": "data-quality",
+        "whyItMatters": "The system fails to recognize the San Andrés and Providencia archipelago as part of the Colombian territory, leading to the exclusion of these regions from wind-energy assessments. This compromises the spatial completeness of the data, potentially resulting in biased or incomplete territorial planning decisions for offshore wind projects in the Caribbean.",
+        "remediation": "Update the boundary definitions and the isPointInColombia logic in src/app/Utils/h3Resolution.ts to correctly incorporate the 12-nautical-mile maritime territory of the San Andrés and Providencia archipelago and adjust the MAX_BOUNDS constant to accurately reflect the westernmost longitudinal limit of the national territory.",
+        "confidence": 0.95,
+        "attempts": 1,
+        "model": "google/gemini-3.1-flash-lite",
+        "usage": {
+          "prompt_tokens": 1323,
+          "completion_tokens": 220,
+          "total_tokens": 1543,
+          "cost": 0.00066075,
+          "is_byok": false,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "audio_tokens": 0,
+            "video_tokens": 0
+          },
+          "cost_details": {
+            "upstream_inference_cost": 0.00066075,
+            "upstream_inference_prompt_cost": 0.00033075,
+            "upstream_inference_completions_cost": 0.00033
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "image_tokens": 0,
+            "audio_tokens": 0
+          }
+        }
+      }
+    },
+    {
+      "gateId": "external-service-client-tests",
+      "attributeId": "interoperability",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 7,
+      "testsPassed": 7,
+      "assertions": 19,
+      "durationMs": 9,
+      "logExcerpt": "7/7 test cases passed across 1 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/30603791312/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "spatial-data-cache-tests",
+      "attributeId": "availability",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 3,
+      "testsPassed": 3,
+      "assertions": 3,
+      "durationMs": 5,
+      "logExcerpt": "3/3 test cases passed across 1 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/30603791312/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "health-route-test",
+      "attributeId": "availability",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 2,
+      "testsPassed": 2,
+      "assertions": 5,
+      "durationMs": 7,
+      "logExcerpt": "2/2 test cases passed across 1 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/30603791312/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "auth-rbac-tests",
+      "attributeId": "security",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 93,
+      "testsPassed": 93,
+      "assertions": 188,
+      "durationMs": 738,
+      "logExcerpt": "93/93 test cases passed across 12 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/30603791312/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "dependency-audit",
+      "attributeId": "security",
+      "blocking": false,
+      "status": "passed",
+      "testsRun": 1,
+      "testsPassed": 1,
+      "assertions": 0,
+      "durationMs": 1499,
+      "logExcerpt": "npm audit: 2 critical, 6 high, 5 moderate, 0 low (13 total advisories).",
+      "artifacts": [
+        "quality/evidence/raw/30603791312/npm-audit.json"
+      ]
+    },
+    {
+      "gateId": "ui-component-tests",
+      "attributeId": "usability-geospatial",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 185,
+      "testsPassed": 185,
+      "assertions": 314,
+      "durationMs": 6465,
+      "logExcerpt": "185/185 test cases passed across 39 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/30603791312/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "accessibility-tests",
+      "attributeId": "usability-geospatial",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 4,
+      "testsPassed": 4,
+      "assertions": 2,
+      "durationMs": 43407,
+      "logExcerpt": "4 Playwright test(s) passed.",
+      "artifacts": [
+        "quality/evidence/raw/30603791312/accessibility-tests.log"
+      ]
+    },
+    {
+      "gateId": "map-render-performance",
+      "attributeId": "performance",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 4,
+      "testsPassed": 4,
+      "assertions": 6,
+      "durationMs": 42823,
+      "logExcerpt": "4 Playwright test(s) passed.",
+      "artifacts": [
+        "quality/evidence/raw/30603791312/map-render-performance.log"
+      ]
+    },
+    {
+      "gateId": "production-build",
+      "attributeId": "availability",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 1,
+      "testsPassed": 1,
+      "assertions": 0,
+      "durationMs": 26938,
+      "logExcerpt": "Command 'npm run build' exited 0.",
+      "artifacts": [
+        "quality/evidence/raw/30603791312/production-build.log"
+      ]
+    }
+  ],
+  "coverage": {
+    "lines": 61.67,
+    "branches": 52.64
+  },
+  "audit": {
+    "critical": 2,
+    "high": 6,
+    "moderate": 5,
+    "low": 0
+  },
+  "attributeCoverage": {
+    "totalAttributes": 13,
+    "strongCoverageMinRatio": 0.5,
+    "covered": [
+      "processing",
+      "availability",
+      "performance",
+      "security",
+      "data-quality",
+      "interoperability",
+      "usability-geospatial"
+    ],
+    "uncovered": [
+      "data-integration",
+      "result-quality",
+      "scalability",
+      "traceability-auditability",
+      "resilience",
+      "geoethics"
+    ],
+    "stronglyCovered": [
+      "processing",
+      "security",
+      "data-quality",
+      "usability-geospatial"
+    ],
+    "weaklyCovered": [
+      "availability",
+      "performance",
+      "interoperability"
+    ],
+    "perAttribute": [
+      {
+        "attributeId": "processing",
+        "name": "Processing",
+        "status": "covered",
+        "gateIds": [
+          "typescript-check",
+          "spatial-operations-tests"
+        ],
+        "implementedTests": [
+          "geometric precision tests",
+          "spatial unit tests (vector/raster)"
+        ],
+        "missingTests": [
+          "CRS consistency tests",
+          "reproducibility tests"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0.5
+      },
+      {
+        "attributeId": "availability",
+        "name": "Availability",
+        "status": "weak",
+        "gateIds": [
+          "spatial-data-cache-tests",
+          "health-route-test",
+          "production-build"
+        ],
+        "implementedTests": [],
+        "missingTests": [
+          "connectivity tests to data sources",
+          "fault tolerance tests",
+          "GIS service recovery tests"
+        ],
+        "catalogTestCount": 3,
+        "implementedTestRatio": 0
+      },
+      {
+        "attributeId": "data-integration",
+        "name": "Data Integration",
+        "status": "uncovered",
+        "gateIds": [],
+        "implementedTests": [],
+        "missingTests": [
+          "vector-raster compatibility",
+          "multi-source integration",
+          "metadata validation",
+          "semantic consistency"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0
+      },
+      {
+        "attributeId": "performance",
+        "name": "Performance",
+        "status": "weak",
+        "gateIds": [
+          "map-render-performance"
+        ],
+        "implementedTests": [
+          "map rendering"
+        ],
+        "missingTests": [
+          "layer loading time",
+          "spatial query latency"
+        ],
+        "catalogTestCount": 3,
+        "implementedTestRatio": 0.3333
+      },
+      {
+        "attributeId": "result-quality",
+        "name": "Result Quality",
+        "status": "uncovered",
+        "gateIds": [],
+        "implementedTests": [],
+        "missingTests": [
+          "validation against reference data",
+          "topological consistency",
+          "uncertainty analysis"
+        ],
+        "catalogTestCount": 3,
+        "implementedTestRatio": 0
+      },
+      {
+        "attributeId": "security",
+        "name": "Security",
+        "status": "covered",
+        "gateIds": [
+          "auth-rbac-tests",
+          "dependency-audit"
+        ],
+        "implementedTests": [
+          "GIS API security",
+          "layer access control protection",
+          "sensitive data"
+        ],
+        "missingTests": [
+          "spatial integrity"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0.75
+      },
+      {
+        "attributeId": "data-quality",
+        "name": "Data Quality",
+        "status": "covered",
+        "gateIds": [
+          "h3-boundary-tests"
+        ],
+        "implementedTests": [
+          "metadata validation",
+          "positional accuracy tests",
+          "spatial completeness tests"
+        ],
+        "missingTests": [
+          "temporal consistency tests"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0.75
+      },
+      {
+        "attributeId": "scalability",
+        "name": "Scalability",
+        "status": "uncovered",
+        "gateIds": [],
+        "implementedTests": [],
+        "missingTests": [
+          "load tests with increasing datasets",
+          "resolution increase tests (raster)",
+          "concurrent user tests",
+          "horizontal/vertical scaling tests"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0
+      },
+      {
+        "attributeId": "interoperability",
+        "name": "Interoperability",
+        "status": "weak",
+        "gateIds": [
+          "external-service-client-tests"
+        ],
+        "implementedTests": [
+          "integration with external systems"
+        ],
+        "missingTests": [
+          "OGC services testing",
+          "import/export format testing",
+          "standards and schema validation"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0.25
+      },
+      {
+        "attributeId": "usability-geospatial",
+        "name": "Usability (Geospatial)",
+        "status": "covered",
+        "gateIds": [
+          "ui-component-tests",
+          "accessibility-tests"
+        ],
+        "implementedTests": [
+          "accessibility testing",
+          "symbology and scale evaluation"
+        ],
+        "missingTests": [
+          "cartographic comprehension tests",
+          "spatial cognitive load tests"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0.5
+      },
+      {
+        "attributeId": "traceability-auditability",
+        "name": "Traceability and Auditability",
+        "status": "uncovered",
+        "gateIds": [],
+        "implementedTests": [],
+        "missingTests": [
+          "spatial data lineage tests",
+          "data versioning tests",
+          "historical reproducibility of results",
+          "decision flow auditing"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0
+      },
+      {
+        "attributeId": "resilience",
+        "name": "Resilience",
+        "status": "uncovered",
+        "gateIds": [],
+        "implementedTests": [],
+        "missingTests": [
+          "controlled failure tests (fault injection)",
+          "recovery testing",
+          "stress recovery scenarios"
+        ],
+        "catalogTestCount": 3,
+        "implementedTestRatio": 0
+      },
+      {
+        "attributeId": "geoethics",
+        "name": "Geoethics",
+        "status": "uncovered",
+        "gateIds": [],
+        "implementedTests": [],
+        "missingTests": [
+          "data consent and usage tests",
+          "data origin validation",
+          "license validation"
+        ],
+        "catalogTestCount": 3,
+        "implementedTestRatio": 0
+      }
+    ]
+  },
+  "analysis": {
+    "level": 2,
+    "model": "google/gemini-3.1-flash-lite",
+    "usage": {
+      "prompt_tokens": 4315,
+      "completion_tokens": 673,
+      "total_tokens": 4988,
+      "cost": 0.00208825,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.00208825,
+        "upstream_inference_prompt_cost": 0.00107875,
+        "upstream_inference_completions_cost": 0.0010095
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "uncoveredAttributes": [
+      "data-integration",
+      "result-quality",
+      "scalability",
+      "traceability-auditability",
+      "resilience",
+      "geoethics"
+    ],
+    "weaklyCoveredAttributes": [
+      {
+        "attributeId": "processing",
+        "missing": "CRS consistency tests; reproducibility tests"
+      },
+      {
+        "attributeId": "availability",
+        "missing": "connectivity tests to data sources; fault tolerance tests; GIS service recovery tests"
+      },
+      {
+        "attributeId": "performance",
+        "missing": "layer loading time; spatial query latency"
+      },
+      {
+        "attributeId": "security",
+        "missing": "spatial integrity"
+      },
+      {
+        "attributeId": "data-quality",
+        "missing": "temporal consistency tests"
+      },
+      {
+        "attributeId": "interoperability",
+        "missing": "OGC services testing; import/export format testing; standards and schema validation"
+      },
+      {
+        "attributeId": "usability-geospatial",
+        "missing": "cartographic comprehension tests; spatial cognitive load tests"
+      }
+    ],
+    "recommendations": [
+      {
+        "attributeId": "result-quality",
+        "suggestedTests": [
+          "topological consistency",
+          "validation against reference data"
+        ],
+        "rationale": "Ensuring the accuracy of spatial results is critical for wind-energy investment decisions; this attribute currently has no coverage.",
+        "priority": "high"
+      },
+      {
+        "attributeId": "data-quality",
+        "suggestedTests": [
+          "temporal consistency tests"
+        ],
+        "rationale": "The existing boundary tests failed in this run, indicating that data quality is under strain and requires immediate attention to ensure temporal consistency.",
+        "priority": "high"
+      },
+      {
+        "attributeId": "processing",
+        "suggestedTests": [
+          "CRS consistency tests",
+          "reproducibility tests"
+        ],
+        "rationale": "GIS operations are central to the application; completing these tests ensures that spatial calculations are reliable and repeatable.",
+        "priority": "medium"
+      },
+      {
+        "attributeId": "performance",
+        "suggestedTests": [
+          "layer loading time",
+          "spatial query latency"
+        ],
+        "rationale": "Improving responsiveness is essential for user experience in a GIS application, building upon the existing map rendering tests.",
+        "priority": "medium"
+      },
+      {
+        "attributeId": "security",
+        "suggestedTests": [
+          "spatial integrity"
+        ],
+        "rationale": "Completing the security suite by verifying spatial integrity protects the validity of the data used in decision-making.",
+        "priority": "medium"
+      }
+    ],
+    "validation": {
+      "droppedSuggestedTests": [],
+      "droppedRecommendations": [],
+      "coverageComparison": {
+        "uncoveredClaimedButCovered": [],
+        "uncoveredMissedByModel": [],
+        "weakClaimedButNotWeak": [],
+        "weakMissedByModel": []
+      }
+    }
+  }
+}

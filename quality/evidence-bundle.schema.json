@@ -111,6 +111,19 @@
     "analysis": {
       "description": "Level 2 analyzer output. Null until the analysis stage has run.",
       "type": ["object", "null"]
+    },
+    "deployment": {
+      "description": "Deterministic deployment decision. Absent until the decision stage has run. The generative analysis is not an input to it.",
+      "type": "object",
+      "required": ["decision", "reason", "blockingFailures", "warnings"],
+      "properties": {
+        "decision": { "type": "string", "enum": ["allow", "block"] },
+        "reason": { "type": "string" },
+        "blockingFailures": { "type": "array", "items": { "type": "object" } },
+        "warnings": { "type": "array", "items": { "type": "object" } },
+        "evaluatedAt": { "type": "string" },
+        "rule": { "type": "string" }
+      }
     }
   }
 }

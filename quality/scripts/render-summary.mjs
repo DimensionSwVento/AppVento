@@ -141,6 +141,49 @@ function renderCoverageRecommendation(bundle, attributeNames) {
   return lines.join("\n");
 }
 
+function renderDeployment(bundle, attributeNames) {
+  const deployment = bundle.deployment;
+  if (!deployment) return null;
+
+  const lines = [];
+  lines.push("## Deployment decision");
+  lines.push("");
+  lines.push(
+    deployment.decision === "allow"
+      ? `**✅ ALLOW** — ${deployment.reason}`
+      : `**⛔ BLOCK** — ${deployment.reason}`,
+  );
+  lines.push("");
+
+  if (deployment.blockingFailures.length > 0) {
+    lines.push("| Blocking gate | Attribute | Reason |");
+    lines.push("| --- | --- | --- |");
+    for (const failure of deployment.blockingFailures) {
+      lines.push(
+        `| \`${failure.gateId}\` | ${attributeNames.get(failure.attributeId) ?? failure.attributeId} ` +
+          `| ${escapePipes(failure.reason)} |`,
+      );
+    }
+    lines.push("");
+  }
+
+  if (deployment.warnings.length > 0) {
+    lines.push("Warnings (do not block):");
+    lines.push("");
+    for (const warning of deployment.warnings) {
+      lines.push(`- \`${warning.gateId}\`: ${warning.reason}`);
+    }
+    lines.push("");
+  }
+
+  lines.push(
+    "_Deterministic: the decision follows from the collected evidence and the " +
+      "`blocking` flag each gate declares. The diagnostics above explain a block; " +
+      "they never cause or lift one._",
+  );
+  return lines.join("\n");
+}
+
 function main() {
   const bundlePath = process.argv[2];
   if (!bundlePath) {
@@ -192,6 +235,11 @@ function main() {
   const recommendation = renderCoverageRecommendation(bundle, attributeNames);
   if (recommendation) {
     out.push(recommendation);
+  }
+
+  const deployment = renderDeployment(bundle, attributeNames);
+  if (deployment) {
+    out.push(deployment);
   }
 
   console.log(out.join("\n"));
