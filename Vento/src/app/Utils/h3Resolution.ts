@@ -29,9 +29,13 @@ export const INITIAL_VIEW_STATE = {
   bearing: 0,
 };
 
-// Colombia + mares circundantes. Mantiene cobertura oeste/norte para
-// San Andres + Providencia y conserva el alcance offshore existente.
-export const MAX_BOUNDS: [number, number, number, number] = [-82, -4.3, -66.5, 13.5];
+// DEFECTO INYECTADO A PROPOSITO - NO FUSIONAR.
+// Esta rama existe solo para capturar el comportamiento del analizador y de la
+// compuerta de despliegue ante un fallo real. El limite oeste se estrecha de
+// -82 a -79, lo que deja fuera al archipielago de San Andres y Providencia. Es
+// el tipo de cambio de una linea que parece un ajuste de encuadre y en realidad
+// recorta territorio nacional.
+export const MAX_BOUNDS: [number, number, number, number] = [-79, -4.3, -66.5, 13.5];
 
 export const SNAPSHOT_KEY = "map-snapshot";
 
