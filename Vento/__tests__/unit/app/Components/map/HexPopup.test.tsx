@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+
+// HexPopup solo consulta el backend si USE_BACKEND=true; en test forzamos el
+// modo con API para ejercitar el fetch de detalle (en template muestra "Sin datos").
+vi.mock("@/app/Utils/projectData", async (orig) => ({
+  ...(await orig<typeof import("@/app/Utils/projectData")>()),
+  USE_BACKEND: true,
+}));
+
 import HexPopup from "@/app/Components/map/HexPopup";
 
 const HEX = "8a2a1072b59ffff";

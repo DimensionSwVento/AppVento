@@ -51,6 +51,18 @@ vi.mock("@deck.gl/layers", () => ({
 vi.mock("@luma.gl/core", () => ({ luma: { registerAdapters: vi.fn() } }));
 vi.mock("@luma.gl/webgl", () => ({ webgl2Adapter: {} }));
 
+// DashboardPage monta MapView, que usa useToast(); sin ToastProvider lanzaría.
+vi.mock("@/app/Components/ui/Toast", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/app/Components/ui/Toast")>()),
+  useToast: () => ({
+    show: vi.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+  }),
+}));
+
 import DashboardPage from "@/app/dashboard/page";
 
 describe("DashboardPage", () => {

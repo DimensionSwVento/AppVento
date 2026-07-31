@@ -195,5 +195,7 @@ jobs:
           gitleaks version
         working-directory: /tmp
       # --no-git escanea el árbol de trabajo (checkout shallow, sin historia).
+      # --config: allowlist de rutas sin secretos productivos (ver .gitleaks.toml).
+      # --redact: no imprime los valores en el log.
       - name: Scan de secretos
-        run: gitleaks detect --source . --no-git --verbose
+        run: gitleaks detect --source . --no-git --redact --config .gitleaks.toml --verbose

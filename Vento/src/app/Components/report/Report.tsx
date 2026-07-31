@@ -109,6 +109,7 @@ export default function Report() {
   }, [loadFromCache, selectedHexes]);
 
   // Al cambiar el área seleccionada es un informe distinto → permitir guardar de nuevo.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setSaved(false), [selectedHexes]);
 
   // Variables de la dimensión Regulatoria — se muestran como bloque

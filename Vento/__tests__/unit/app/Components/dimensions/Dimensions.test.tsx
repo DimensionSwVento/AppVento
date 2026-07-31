@@ -44,6 +44,8 @@ describe("Dimensions (US04-AC1)", () => {
     // renderizando su card. Con búsqueda las cards se abren solas.
     expect(screen.getByText(/Dimensión técnica/)).toBeInTheDocument();
     expect(screen.queryByText(/Dimensión regulatoria/)).not.toBeInTheDocument();
+    // La card ya estaba montada (query vacío) → defaultOpen no la reabre; expandir.
+    fireEvent.click(screen.getByText(/Dimensión técnica/));
     expect(
       screen.getByText("Densidad de potencia WPD"),
     ).toBeInTheDocument();
@@ -68,6 +70,7 @@ describe("Dimensions (US04-AC1)", () => {
 
     // La card de la dimensión técnica sigue, el resto desaparece.
     expect(screen.getByText(/Dimensión técnica/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText(/Dimensión técnica/));
     expect(
       screen.getByText("Distancia a infraestructura vial"),
     ).toBeInTheDocument();

@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+
+// VariableSelector solo pide la lista de variables si USE_BACKEND=true; en test
+// forzamos el modo con API (en template no renderiza el select).
+vi.mock("@/app/Utils/projectData", async (orig) => ({
+  ...(await orig<typeof import("@/app/Utils/projectData")>()),
+  USE_BACKEND: true,
+}));
+
 import VariableSelector from "@/app/Components/map/VariableSelector";
 
 const variablesFixture = {

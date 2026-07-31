@@ -57,6 +57,18 @@ vi.mock("@deck.gl/layers", () => ({
 vi.mock("@luma.gl/core", () => ({ luma: { registerAdapters: vi.fn() } }));
 vi.mock("@luma.gl/webgl", () => ({ webgl2Adapter: {} }));
 
+// MapView usa useToast() (vía useMapSelection); sin ToastProvider lanzaría.
+vi.mock("@/app/Components/ui/Toast", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/app/Components/ui/Toast")>()),
+  useToast: () => ({
+    show: vi.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+  }),
+}));
+
 // Forzamos la fase "informe" con una dimensión activa → heatmapActive = true.
 // Map.tsx: canSelect = accion==="seleccion-area"; heatmapActive = accion==="informe" && activeDimension!==null.
 const SELECTED_HEX = "8866e50b61fffff"; // res-8 en Colombia (sin expansión)

@@ -22,21 +22,24 @@ vi.mock("html2canvas-pro", () => ({
 }));
 
 vi.mock("jspdf", () => ({
-  default: vi.fn(() => ({
-    internal: { pageSize: { getWidth: () => 210, getHeight: () => 297 } },
-    addImage: vi.fn(),
-    addPage: vi.fn(),
-    setFillColor: vi.fn(),
-    rect: vi.fn(),
-    setFont: vi.fn(),
-    setFontSize: vi.fn(),
-    setTextColor: vi.fn(),
-    setDrawColor: vi.fn(),
-    setLineWidth: vi.fn(),
-    line: vi.fn(),
-    text: vi.fn(),
-    save: saveMock,
-  })),
+  // function (no arrow) para que `new jsPDF()` sea construible.
+  default: vi.fn(function () {
+    return {
+      internal: { pageSize: { getWidth: () => 210, getHeight: () => 297 } },
+      addImage: vi.fn(),
+      addPage: vi.fn(),
+      setFillColor: vi.fn(),
+      rect: vi.fn(),
+      setFont: vi.fn(),
+      setFontSize: vi.fn(),
+      setTextColor: vi.fn(),
+      setDrawColor: vi.fn(),
+      setLineWidth: vi.fn(),
+      line: vi.fn(),
+      text: vi.fn(),
+      save: saveMock,
+    };
+  }),
 }));
 
 // Report usa useToast() (US09) y useHistorial() (US07) → requieren sus providers.
@@ -106,11 +109,7 @@ describe("Report (US06-AC3) — pantalla de informe", () => {
     );
     expect(await screen.findByText("Regulatoria")).toBeInTheDocument();
     expect(screen.getByText("Informativa")).toBeInTheDocument();
-    // Sin variables asignadas aún → mensaje de pendiente.
-    expect(
-      screen.getByText(/pendientes de definición por el cliente/i),
-    ).toBeInTheDocument();
-    // …y deja claro que no entra al puntaje.
+    // Deja claro que no entra al puntaje (sin notas de estado interno).
     expect(
       screen.getByText(/No se incluye en el cálculo del puntaje general/i),
     ).toBeInTheDocument();
