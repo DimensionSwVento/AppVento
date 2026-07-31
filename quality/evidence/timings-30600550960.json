@@ -1,0 +1,99 @@
+{
+  "runId": "30600550960",
+  "jobs": [
+    {
+      "name": "Quality evidence",
+      "startedAt": "2026-07-31T03:02:45Z",
+      "completedAt": "2026-07-31T03:07:54Z",
+      "durationMs": 309000,
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "durationMs": 0
+        },
+        {
+          "name": "Checkout (no marketplace actions)",
+          "conclusion": "success",
+          "durationMs": 1000
+        },
+        {
+          "name": "Node 22 from the runner tool cache",
+          "conclusion": "success",
+          "durationMs": 0
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "durationMs": 21000
+        },
+        {
+          "name": "Validate quality attributes catalog",
+          "conclusion": "success",
+          "durationMs": 0
+        },
+        {
+          "name": "Validate quality gate inventory",
+          "conclusion": "success",
+          "durationMs": 0
+        },
+        {
+          "name": "Attribute coverage inventory",
+          "conclusion": "success",
+          "durationMs": 0
+        },
+        {
+          "name": "Start Keycloak (realm vento)",
+          "conclusion": "success",
+          "durationMs": 14000
+        },
+        {
+          "name": "Wait for realm import",
+          "conclusion": "success",
+          "durationMs": 25000
+        },
+        {
+          "name": "Install Playwright chromium",
+          "conclusion": "success",
+          "durationMs": 20000
+        },
+        {
+          "name": "Collect quality evidence",
+          "conclusion": "success",
+          "durationMs": 223000
+        },
+        {
+          "name": "Validate evidence bundle",
+          "conclusion": "success",
+          "durationMs": 0
+        },
+        {
+          "name": "Analyzer level 1 (diagnostic)",
+          "conclusion": "success",
+          "durationMs": 0
+        },
+        {
+          "name": "Analyzer level 2 (coverage recommendation)",
+          "conclusion": "success",
+          "durationMs": 3000
+        },
+        {
+          "name": "Render job summary",
+          "conclusion": "success",
+          "durationMs": 0
+        },
+        {
+          "name": "Publish evidence bundle",
+          "conclusion": "success",
+          "durationMs": 0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "durationMs": 1000
+        }
+      ]
+    }
+  ]
+}
