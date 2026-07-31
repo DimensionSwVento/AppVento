@@ -1,0 +1,47 @@
+name: Guardia de contenido deploy-prod
+
+# deploy-prod debe contener SOLO la app (contenido de Vento/ aplanado).
+# Si un merge intenta arrastrar carpetas meta (_bmad, docs, .claude, etc.),
+# este check FALLA y recomienda rehacer el merge trayendo solo Vento/.
+# NO borra nada y NO toca develop: solo inspecciona y bloquea.
+on:
+  pull_request:
+    branches: [deploy-prod]
+  push:
+    branches: [deploy-prod]
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detectar carpetas que no pertenecen a deploy-prod
+        run: |
+          FOLDERS="_bmad _bmad-output .claude docs infra Reportes_Entregas"
+          found=""
+          for f in $FOLDERS; do
+            [ -e "$f" ] && found="$found $f"
+          done
+
+          if [ -n "$found" ]; then
+            echo "::error::Carpetas que no pertenecen a deploy-prod:$found"
+            echo ""
+            echo "======================================================================"
+            echo " deploy-prod debe contener SOLO el contenido de Vento/ (app aplanada)."
+            echo " No mergees develop completo — arrastra las carpetas meta de arriba."
+            echo ""
+            echo " Rehaz el merge trayendo únicamente Vento/. Por ejemplo:"
+            echo ""
+            echo "   git checkout deploy-prod"
+            echo "   git checkout <rama-origen> -- Vento/     # trae solo la app"
+            echo "   git mv Vento/* Vento/.* ./ 2>/dev/null   # aplanar a la raíz"
+            echo "   git rm -r Vento"
+            echo ""
+            echo " o con subtree (aplana directo):"
+            echo "   git read-tree --prefix= -u <rama-origen>:Vento"
+            echo "======================================================================"
+            exit 1
+          fi
+
+          echo "OK: sin carpetas meta, el contenido es solo la app."
