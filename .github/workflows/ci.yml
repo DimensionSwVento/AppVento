@@ -174,6 +174,13 @@ jobs:
           # traer solo Vento/ del commit original
           git checkout "${SOURCE_SHA}" -- Vento/
 
+          # (prod) rescatar los workflows propios de deploy-prod ANTES de aplanar.
+          # deploy-front.yml dispara el deploy SSH real y guard-deploy-prod.yml
+          # protege el contenido; sin esto, cada deploy los borraba de deploy-prod.
+          if [ "$DEPLOY_BRANCH" = "deploy-prod" ]; then
+            git checkout "${SOURCE_SHA}" -- .github/deploy-prod-workflows/
+          fi
+
           # mover contenido de Vento/ a la raíz
           shopt -s dotglob
           mv Vento/* .
@@ -181,6 +188,13 @@ jobs:
 
           # limpiar carpetas que no deben ir al server
           rm -rf docs _bmad _bmad-output infra node_modules .next
+
+          # (prod) reinstalar los workflows de deploy-prod en su sitio
+          if [ "$DEPLOY_BRANCH" = "deploy-prod" ]; then
+            mkdir -p .github/workflows
+            mv .github/deploy-prod-workflows/*.yml .github/workflows/
+            rm -rf .github/deploy-prod-workflows
+          fi
 
           git add -A
           git commit -m "deploy: ${DEPLOY_BRANCH} from ${SOURCE_SHA::7}"
