@@ -86,10 +86,11 @@ export default function Caracteristicas() {
     [selectedHexes],
   );
 
-  // Inicializa el emplazamiento con el detectado SÓLO como default (cuando aún
-  // no hay valor). #11: el usuario puede cambiarlo a mano y no se sobrescribe.
+  // El emplazamiento lo DICTA la zona: área en mar → offshore; en tierra →
+  // onshore (no se puede mezclar). La opción contraria se deshabilita abajo.
+  // Sólo cuando no hay área definida (`detectado === null`) el usuario elige.
   useEffect(() => {
-    if (tipoEmplazamiento === null && detectado) {
+    if (detectado && tipoEmplazamiento !== detectado) {
       setTipoEmplazamiento(detectado);
     }
   }, [detectado, tipoEmplazamiento, setTipoEmplazamiento]);
@@ -177,7 +178,7 @@ function EmplazamientoSection({
       </h3>
       <p className="mt-0.5 text-[11px] text-gray-500">
         {detectado
-          ? "Detectado automáticamente según el área; puedes cambiarlo manualmente."
+          ? "Definido por el área seleccionada (no se puede mezclar mar y tierra)."
           : "Selecciona un área en el mapa o elige el emplazamiento manualmente."}
       </p>
       <p className="mt-1 text-[11px] leading-snug text-gray-400">
@@ -188,22 +189,18 @@ function EmplazamientoSection({
         <RadioCard
           checked={tipoEmplazamiento === "onshore"}
           onClick={() => onTipoChange("onshore")}
+          disabled={detectado === "offshore"}
           label="Onshore (tierra)"
           hint="El proyecto está en tierra firme."
         />
         <RadioCard
           checked={tipoEmplazamiento === "offshore"}
           onClick={() => onTipoChange("offshore")}
+          disabled={detectado === "onshore"}
           label="Offshore (mar)"
           hint="El proyecto está costa afuera."
         />
       </div>
-      {detectado && detectado !== tipoEmplazamiento && (
-        <p className="mt-2 text-[11px] text-amber-600">
-          El área seleccionada sugiere{" "}
-          <strong>{detectado === "onshore" ? "onshore" : "offshore"}</strong>.
-        </p>
-      )}
 
       {tipoEmplazamiento === "offshore" && (
         <div className="mt-4">
@@ -407,22 +404,25 @@ function RadioCard({
   onClick,
   label,
   hint,
+  disabled = false,
 }: {
   checked: boolean;
   onClick: () => void;
   label: string;
   hint: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       aria-pressed={checked}
       className={`flex-1 rounded-md border px-3 py-2 text-left transition-colors ${
         checked
           ? "border-[#165170ff] bg-[#cce1eeff]/40 ring-2 ring-[#165170ff]/30"
           : "border-gray-200 bg-white hover:bg-gray-50"
-      }`}
+      } ${disabled ? "cursor-not-allowed opacity-40 hover:bg-white" : ""}`}
     >
       <span className="block text-xs font-semibold text-[#383838]">{label}</span>
       <span className="mt-0.5 block text-[10px] leading-tight text-gray-500">

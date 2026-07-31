@@ -3,10 +3,10 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import {
   DimensionId,
-  VARIABLES,
+  OPTIONAL_VARIABLES,
   getVariableById,
   requiredVariableIds,
-  variablesByDimension,
+  optionalVariablesByDimension,
 } from "../variables/variablesCatalog";
 
 interface VariablesContextValue {
@@ -31,9 +31,9 @@ const noopContext: VariablesContextValue = {
   toggleVariable: () => {},
   isActive: () => false,
   activeCountByDimension: () => 0,
-  totalByDimension: (dim) => variablesByDimension(dim).length,
+  totalByDimension: (dim) => optionalVariablesByDimension(dim).length,
   totalActive: 0,
-  totalVariables: VARIABLES.length,
+  totalVariables: OPTIONAL_VARIABLES.length,
   clearNonRequired: () => {},
   replaceActiveVariables: () => {},
 };
@@ -77,7 +77,7 @@ export function VariablesProvider({ children }: { children: React.ReactNode }) {
 
   const activeCountByDimension = useCallback(
     (dim: DimensionId) =>
-      variablesByDimension(dim).reduce(
+      optionalVariablesByDimension(dim).reduce(
         (acc, v) => acc + (activeVariables.has(v.id) ? 1 : 0),
         0,
       ),
@@ -90,9 +90,9 @@ export function VariablesProvider({ children }: { children: React.ReactNode }) {
       toggleVariable,
       isActive,
       activeCountByDimension,
-      totalByDimension: (dim) => variablesByDimension(dim).length,
+      totalByDimension: (dim) => optionalVariablesByDimension(dim).length,
       totalActive: activeVariables.size,
-      totalVariables: VARIABLES.length,
+      totalVariables: OPTIONAL_VARIABLES.length,
       clearNonRequired,
       replaceActiveVariables,
     }),

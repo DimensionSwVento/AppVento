@@ -237,7 +237,7 @@ export default function SideBar({
                 !isAdminPage && accion === "dimensiones" ? "step" : undefined
               }
             >
-              <Image src="/dim.png" alt="" width={15} height={15} className={iconCls} />
+              <Image src="/dim.png" alt="" width={15} height={15} unoptimized className={iconCls} />
               <p className={`${itemLabelCls} ${labelCls}`}>
                 Dimensiones
               </p>
@@ -359,7 +359,7 @@ export default function SideBar({
               )}`}
               className={secondaryItemBase}
             >
-              <Image src="/soporte.png" alt="" width={15} height={15} className={iconCls} />
+              <Image src="/soporte.png" alt="" width={15} height={15} unoptimized className={iconCls} />
               <p className={`${itemLabelCls} ${labelCls}`}>
                 Soporte
               </p>

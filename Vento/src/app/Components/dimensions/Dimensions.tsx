@@ -8,7 +8,7 @@ import {
   DIMENSIONS,
   isScorableDimension,
   variableAppliesToNature,
-  variablesByDimension,
+  optionalVariablesByDimension,
 } from "../../Utils/variables/variablesCatalog";
 import type { Dimension, Variable } from "../../Utils/variables/variablesCatalog";
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
@@ -40,7 +40,7 @@ export default function Dimensions() {
     for (const d of DIMENSIONS) {
       map.set(
         d.id,
-        variablesByDimension(d.id).filter(
+        optionalVariablesByDimension(d.id).filter(
           (v) => matches(query, v) && variableAppliesToNature(v, nature),
         ),
       );

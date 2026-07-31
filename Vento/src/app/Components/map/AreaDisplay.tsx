@@ -15,7 +15,7 @@ export default function AreaDisplay() {
   const km2 = useMemo(() => calcAreaKm2(selectedHexes), [selectedHexes]);
 
   return (
-    <div className="absolute top-3 right-3 z-10 w-[200px] rounded-lg bg-[#165170ff] shadow-md px-3 py-2 max-md:top-12">
+    <div className="w-full rounded-lg bg-[#165170ff] shadow-md px-3 py-2">
       <p className="text-[10px] uppercase tracking-wide text-gray-300">Área seleccionada</p>
       <p className="text-base font-semibold text-white">
         {fmt.format(km2)} <span className="text-xs font-normal text-gray-300">km²</span>

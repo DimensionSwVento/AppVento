@@ -22,13 +22,14 @@ import RadarChart from "./RadarChart";
 import AreaMiniMap from "./AreaMiniMap";
 import { useCachedImage } from "../../Utils/useCachedImage";
 import { SNAPSHOT_KEY } from "../../Utils/h3/h3Resolution";
+import { selectionNature } from "../../Utils/h3/hexClassification";
 import { dimensionScore } from "../../Utils/report/heatmapPalette";
 import { useAreaScores } from "../../Utils/report/useAreaScores";
 import {
   areaVariableAverage,
   useAreaHexData,
 } from "../../Utils/report/useAreaHexData";
-import { USE_PLACEHOLDER_FALLBACK } from "../../Utils/projectData";
+import { USE_API_EMPLAZAMIENTO, USE_PLACEHOLDER_FALLBACK } from "../../Utils/projectData";
 import { useVariables } from "../../Utils/contexts/VariablesContext";
 import {
   formatVariableValue,
@@ -36,10 +37,11 @@ import {
 } from "../../Utils/variables/informativeVariables";
 import {
   DIMENSIONS,
+  VARIABLES,
   getVariableById,
+  variableAppliesToNature,
   variablesByDimension,
   variablesBySource,
-  type Variable,
 } from "../../Utils/variables/variablesCatalog";
 import {
   DISCLAIMER_BODY,
@@ -142,39 +144,41 @@ export default function Report() {
   );
 
 
-  // Variables (ponderadas) que entran al puntaje + su score sobre el área.
+  // Naturaleza mar/tierra del área: filtra las variables que NO aplican (p.ej.
+  // batimetría offshore en una selección en tierra, y viceversa).
+  const nature = useMemo(
+    () => (USE_API_EMPLAZAMIENTO ? selectionNature(selectedHexes) : "mixta"),
+    [selectedHexes],
+  );
+
+  // Variables PONDERADAS que entran al puntaje + su score sobre el área (las del
+  // modelo que APLICAN al emplazamiento mar/tierra). Se muestran SOLO en el PDF.
   const scoreVariableRows = useMemo(() => {
-    return Array.from(activeVariables)
-      .map((id) => getVariableById(id))
-      .filter((v): v is Variable => Boolean(v))
-      .map((v) => ({
-        id: v.id,
-        label: v.label,
-        dim:
-          DIMENSIONS.find((d) => d.id === v.dimension)?.label.replace(
-            /^Dimensi[oó]n\s+/i,
-            "",
-          ) ?? v.dimension,
-        score:
-          selectedHexes.size === 0
-            ? null
-            : (areaVariableAverage(areaData, selectedHexes, v.masterId) ??
-              (USE_PLACEHOLDER_FALLBACK
-                ? parseFloat(dimensionScore(v.id, selectedHexes))
-                : null)),
-      }));
-  }, [activeVariables, selectedHexes, areaData]);
+    return VARIABLES.filter((v) => variableAppliesToNature(v, nature)).map((v) => ({
+      id: v.id,
+      label: v.label,
+      dim:
+        DIMENSIONS.find((d) => d.id === v.dimension)?.label.replace(
+          /^Dimensi[oó]n\s+/i,
+          "",
+        ) ?? v.dimension,
+      score:
+        selectedHexes.size === 0
+          ? null
+          : (areaVariableAverage(areaData, selectedHexes, v.masterId) ??
+            (USE_PLACEHOLDER_FALLBACK
+              ? parseFloat(dimensionScore(v.id, selectedHexes))
+              : null)),
+    }));
+  }, [selectedHexes, areaData, nature]);
 
   // Variables que MÁS INFLUYEN en el resultado (US6): ranking por magnitud del
   // peso del modelo, con dirección (suma/resta a idoneidad). Placeholder por
   // |peso| hasta tener los pesos definitivos del modelo (mismo seam `weightFor`).
   const topInfluencers = useMemo(() => {
-    return Array.from(activeVariables)
-      .map((id) => {
-        const v = getVariableById(id);
-        return v ? { v, w: weightFor(id) } : null;
-      })
-      .filter((x): x is { v: Variable; w: number } => Boolean(x) && x!.w !== 0)
+    return VARIABLES.filter((v) => variableAppliesToNature(v, nature))
+      .map((v) => ({ v, w: weightFor(v.id) }))
+      .filter((x) => x.w !== 0)
       .sort((a, b) => Math.abs(b.w) - Math.abs(a.w))
       .slice(0, 5)
       .map(({ v, w }) => ({
@@ -183,7 +187,7 @@ export default function Report() {
         sube: w > 0,
         mag: Math.abs(w),
       }));
-  }, [activeVariables]);
+  }, [nature]);
 
   // Variables informativas activas con su valor promedio sobre el área.
   const informativeRows = useMemo(() => {
@@ -238,9 +242,17 @@ export default function Report() {
 
       const canvas = await html2canvas(node, {
         scale: 2,
-        useCORS: true,
         backgroundColor: "#ffffff",
-        ignoreElements: (el) => el.getAttribute("data-pdf-ignore") === "true",
+        imageTimeout: 5000,
+        // Ignora el contenido del <body> FUERA del informe (mapa, leyenda con
+        // iconos SVG data-URI, sidebar…): html2canvas clona el doc entero y se
+        // colgaba con esos <img> SVG. Solo se descartan <body>-descendientes
+        // ajenos al informe — NUNCA <head>/<style>/<link> (si no, sin estilos).
+        ignoreElements: (el) =>
+          el.getAttribute("data-pdf-ignore") === "true" ||
+          (document.body.contains(el) &&
+            !node.contains(el) &&
+            !el.contains(node)),
       });
 
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -512,7 +524,11 @@ export default function Report() {
                       <img
                         src={mapSnapshot}
                         alt="Captura del mapa del área seleccionada"
-                        className="w-full object-cover"
+                        // Altura ACOTADA: el snapshot puede ser vertical y con
+                        // `w-full` sin límite se estiraba a >1000px (ocupaba
+                        // páginas enteras del PDF). `h-56 object-cover` lo deja
+                        // en una franja horizontal recortada al centro (selección).
+                        className="h-56 w-full object-cover"
                       />
                     ) : (
                       <AreaMiniMap
@@ -542,41 +558,29 @@ export default function Report() {
               </p>
             </section>
 
-            {/* Variables consideradas en el puntaje — tabla con borde azul Vento
-                + el puntaje de esa área por variable (si hay datos). */}
-            {scoreVariableRows.length > 0 && (
+            {/* Variables consideradas en el puntaje — SOLO en el PDF (`capturing`):
+                en pantalla alargaría el modal. Grid de 2 columnas (label + puntaje),
+                filtradas por mar/tierra. */}
+            {capturing && scoreVariableRows.length > 0 && (
               <section>
                 <h4 className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
                   Variables consideradas en el puntaje
                 </h4>
-                <div className="mt-2 overflow-hidden rounded-lg border-2 border-[#165170ff]">
-                  <table className="w-full border-collapse text-[11px]">
-                    <thead>
-                      <tr className="bg-[#cce1eeff]/50 text-left text-[#165170ff]">
-                        <th className="px-3 py-1.5 font-semibold">Variable</th>
-                        <th className="px-3 py-1.5 font-semibold">Dimensión</th>
-                        <th className="px-3 py-1.5 text-right font-semibold">
-                          Puntaje
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {scoreVariableRows.map((r) => (
-                        <tr
-                          key={r.id}
-                          className="border-t border-[#165170ff]/25"
-                        >
-                          <td className="px-3 py-1.5 text-gray-700">
-                            {r.label}
-                          </td>
-                          <td className="px-3 py-1.5 text-gray-500">{r.dim}</td>
-                          <td className="px-3 py-1.5 text-right font-mono font-semibold text-[#165170ff]">
-                            {r.score != null ? r.score.toFixed(1) : "—"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="mt-2 grid grid-cols-2 gap-x-4 rounded-lg border-2 border-[#165170ff] p-2 text-[10px]">
+                  {scoreVariableRows.map((r) => (
+                    <div
+                      key={r.id}
+                      title={`${r.label} · ${r.dim}`}
+                      className="flex items-baseline justify-between gap-2 border-b border-[#165170ff]/15 py-0.5"
+                    >
+                      <span className="min-w-0 truncate text-gray-700">
+                        {r.label}
+                      </span>
+                      <span className="shrink-0 font-mono font-semibold text-[#165170ff]">
+                        {r.score != null ? r.score.toFixed(1) : "—"}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </section>
             )}
