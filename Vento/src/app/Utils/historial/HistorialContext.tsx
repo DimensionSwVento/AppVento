@@ -43,6 +43,8 @@ export function HistorialProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Carga inicial del histórico desde el repo (fetch → setState async).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 

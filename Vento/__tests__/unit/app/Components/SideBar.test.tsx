@@ -97,7 +97,7 @@ describe("SideBar — Navegación", () => {
     expect(screen.getByText("Selección de área")).toBeInTheDocument();
     expect(screen.getByText("Dimensiones")).toBeInTheDocument();
     expect(screen.getByText("Características del proyecto")).toBeInTheDocument();
-    expect(screen.getByText("Informe de prefactibilidad")).toBeInTheDocument();
+    expect(screen.getByText("Informe de idoneidad")).toBeInTheDocument();
   });
 
   it("oculta el panel de children en seleccion-area", () => {

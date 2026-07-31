@@ -31,3 +31,22 @@ if (typeof window !== "undefined") {
     })),
   });
 }
+
+// jsdom no implementa la Cache API (`caches`). `useCachedImage` (snapshot del
+// mapa en el informe) la usa → sin este stub lanza "caches is not defined".
+if (typeof globalThis.caches === "undefined") {
+  const store = new Map<string, Response>();
+  Object.defineProperty(globalThis, "caches", {
+    writable: true,
+    value: {
+      open: vi.fn().mockResolvedValue({
+        match: vi.fn(async (k: string) => store.get(k)),
+        put: vi.fn(async (k: string, v: Response) => {
+          store.set(k, v);
+        }),
+        delete: vi.fn(async (k: string) => store.delete(k)),
+      }),
+      delete: vi.fn().mockResolvedValue(true),
+    },
+  });
+}

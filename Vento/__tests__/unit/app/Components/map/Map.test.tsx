@@ -57,6 +57,18 @@ vi.mock("@luma.gl/webgl", () => ({
   webgl2Adapter: {},
 }));
 
+// MapView usa useToast() (vía useMapSelection); sin ToastProvider lanzaría.
+vi.mock("@/app/Components/ui/Toast", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/app/Components/ui/Toast")>()),
+  useToast: () => ({
+    show: vi.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+  }),
+}));
+
 import MapView from "@/app/Components/map/Map";
 
 // Helper: siembra hexes en el contexto al montar, para poder ejercitar los

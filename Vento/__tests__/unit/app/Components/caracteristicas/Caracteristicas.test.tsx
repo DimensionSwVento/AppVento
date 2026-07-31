@@ -77,7 +77,7 @@ describe("Caracteristicas (US05)", () => {
   it("muestra errores de validación iniciales (US05-AC3)", () => {
     renderCaracteristicas();
     expect(
-      screen.getByText(/La capacidad nominal debe ser mayor a 0 MW/),
+      screen.getByText(/La capacidad nominal debe ser de al menos/),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/Selecciona la categoría\/perfil del aerogenerador/),

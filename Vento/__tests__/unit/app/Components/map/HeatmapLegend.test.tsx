@@ -5,7 +5,7 @@ import HeatmapLegend from "@/app/Components/map/HeatmapLegend";
 describe("HeatmapLegend", () => {
   it("renderiza el título de la leyenda", () => {
     render(<HeatmapLegend />);
-    expect(screen.getByText("Prefactibilidad (%)")).toBeInTheDocument();
+    expect(screen.getByText("Idoneidad (%)")).toBeInTheDocument();
   });
 
   it("renderiza los 5 rangos con sus etiquetas", () => {
