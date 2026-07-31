@@ -144,6 +144,9 @@ export default function MapView() {
     const zLng = Math.log2(360 / Math.max(0.01, (maxLng - minLng) * pad));
     const zLat = Math.log2(170 / Math.max(0.01, (maxLat - minLat) * pad));
     const zoom = Math.min(zLng, zLat);
+    // Encuadre del mapa a la selección al salir de la fase de selección —
+    // sincroniza el viewport (sistema externo) con el estado de la selección.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setViewState((v) =>
       clampViewState({
         ...v,
@@ -237,8 +240,11 @@ export default function MapView() {
   // el popup del informe / la leyenda de exclusión se mostraban con ese hex
   // viejo hasta mover el ratón. Reset → el popup solo reaparece al hover real.
   useEffect(() => {
+    // Reset del hover al cambiar de fase (evita popup/leyenda con hex stale).
+    /* eslint-disable react-hooks/set-state-in-effect */
     setHoveredHex(null);
     setHoverPos(null);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [accion]);
 
   // capa de cuadrícula con tiles — solo renderiza lo visible, cachea por tile.

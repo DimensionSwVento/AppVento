@@ -388,7 +388,7 @@ function TamañoSection({
                 {cat.detail}
               </span>
               <span className="mt-1 block text-[9px] leading-tight text-gray-400">
-                {TIPO_AEROGENERADOR_RANGOS[cat.id]}
+                {cat.id ? TIPO_AEROGENERADOR_RANGOS[cat.id] : ""}
               </span>
             </button>
           ))}
