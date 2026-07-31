@@ -17,13 +17,13 @@ function Seeder({ ids }: { ids: string[] }) {
   return null;
 }
 
-// Variables del nuevo catálogo escogidas por propiedad útil para el test:
-// - regulatoria (no-required) → tasa-exito-proyectos, para verificar subtítulo
+// Variables del catálogo definitivo escogidas por propiedad útil para el test:
+// - subtitleVar (no-required, social) → para verificar el subtítulo de dimensión
 // - penalizing (no-required, peso < 0) → grupos-beligerantes, para popover
-// - additive ambientales no-required para Limpiar
-const regulatoriaVar = VARIABLES.find((v) => v.id === "tasa-exito-proyectos")!;
+// - ambientales no-required para Limpiar
+const subtitleVar = VARIABLES.find((v) => v.id === "desocupados")!;
 const penalizingVar = VARIABLES.find((v) => v.id === "grupos-beligerantes")!;
-const ambientalA = VARIABLES.find((v) => v.id === "densidad-aire")!;
+const ambientalA = VARIABLES.find((v) => v.id === "uso-suelo")!;
 const ambientalB = VARIABLES.find((v) => v.id === "riesgo-fisico")!;
 const pendiente = VARIABLES.find((v) => v.id === "pendiente-terreno")!;
 
@@ -43,12 +43,12 @@ describe("SelectedVariablesChips (US04-AC4) — panel default, pill al colapsar"
   it("muestra subtítulo con la dimensión por cada item", () => {
     render(
       <VariablesProvider>
-        <Seeder ids={[regulatoriaVar.id]} />
+        <Seeder ids={[subtitleVar.id]} />
         <SelectedVariablesChips />
       </VariablesProvider>,
     );
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByText(/Regulatoria/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Social/)).toBeInTheDocument();
   });
 
   it("botón 'Limpiar' deselecciona todas las no-obligatorias y deja sólo las required", () => {
@@ -64,7 +64,7 @@ describe("SelectedVariablesChips (US04-AC4) — panel default, pill al colapsar"
     expect(within(dialog).queryByText(ambientalB.label)).not.toBeInTheDocument();
     expect(within(dialog).queryByText(pendiente.label)).not.toBeInTheDocument();
     expect(
-      within(dialog).getByText("Velocidad del viento media anualizada"),
+      within(dialog).getByText("Densidad de potencia WPD"),
     ).toBeInTheDocument();
   });
 
@@ -96,7 +96,7 @@ describe("SelectedVariablesChips (US04-AC4) — panel default, pill al colapsar"
     expect(
       within(info).getByText(penalizingVar.description),
     ).toBeInTheDocument();
-    expect(within(info).getByText("Resta a prefactibilidad")).toBeInTheDocument();
+    expect(within(info).getByText("Resta a idoneidad")).toBeInTheDocument();
   });
 
   it("info popover tiene su propio botón de cerrar", () => {

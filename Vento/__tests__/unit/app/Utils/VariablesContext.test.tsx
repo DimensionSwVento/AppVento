@@ -89,7 +89,7 @@ describe("VariablesContext — multi-selección con obligatorias", () => {
         <Probe onCtx={(c) => (captured = c)} />
       </VariablesProvider>,
     );
-    // wpd y viento-velocidad (obligatorias) son técnicas
+    // wpd (obligatoria) es técnica
     const reqInTecnica = variablesByDimension("tecnica").filter(
       (v) => v.required,
     ).length;

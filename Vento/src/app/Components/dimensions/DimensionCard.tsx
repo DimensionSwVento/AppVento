@@ -4,6 +4,9 @@ import { useState } from "react";
 import VariableSwitch from "./VariableSwitch";
 import { useVariables } from "../../Utils/contexts/VariablesContext";
 import {
+  CRITERIO_DESCRIPTIONS,
+  SUBCRITERIO_DESCRIPTIONS,
+  groupByCriterio,
   isScorableDimension,
   type Dimension,
   type Variable,
@@ -67,12 +70,40 @@ export default function DimensionCard({
         </svg>
       </button>
       {open && (
-        <div
-          id={`dim-${dimension.id}-body`}
-          className="px-3 pb-2 divide-y divide-gray-100"
-        >
-          {variables.map((v) => (
-            <VariableSwitch key={v.id} variable={v} />
+        <div id={`dim-${dimension.id}-body`} className="px-3 pb-2">
+          {dimension.description && (
+            <p className="pb-1 pt-1 text-[11px] leading-snug text-gray-500">
+              {dimension.description}
+            </p>
+          )}
+          {groupByCriterio(variables).map((g) => (
+            <div key={g.criterio} className="mt-2">
+              {/* Criterio (grupo) */}
+              <h4
+                className="text-[11px] font-bold uppercase tracking-wide text-gray-600"
+                title={CRITERIO_DESCRIPTIONS[g.criterio]}
+              >
+                {g.criterio}
+              </h4>
+              {g.subgrupos.map((sg) => (
+                <div key={sg.subcriterio ?? "_none"} className="mt-1">
+                  {/* Subcriterio (subgrupo) — solo si existe */}
+                  {sg.subcriterio && (
+                    <h5
+                      className="pl-2 text-[10px] font-semibold text-gray-500"
+                      title={SUBCRITERIO_DESCRIPTIONS[sg.subcriterio]}
+                    >
+                      {sg.subcriterio}
+                    </h5>
+                  )}
+                  <div className="divide-y divide-gray-100">
+                    {sg.variables.map((v) => (
+                      <VariableSwitch key={v.id} variable={v} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           ))}
         </div>
       )}

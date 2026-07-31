@@ -2,9 +2,18 @@
 
 import { useMemo, useState } from "react";
 import DimensionCard from "./DimensionCard";
+import InformativeCatalog from "./InformativeCatalog";
 import NextStepButton from "../ui/NextStepButton";
-import { DIMENSIONS, variablesByDimension } from "../../Utils/variables/variablesCatalog";
-import type { Variable } from "../../Utils/variables/variablesCatalog";
+import {
+  DIMENSIONS,
+  isScorableDimension,
+  variableAppliesToNature,
+  variablesByDimension,
+} from "../../Utils/variables/variablesCatalog";
+import type { Dimension, Variable } from "../../Utils/variables/variablesCatalog";
+import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
+import { selectionNature } from "../../Utils/h3/hexClassification";
+import { USE_API_EMPLAZAMIENTO } from "../../Utils/projectData";
 
 function matches(query: string, v: Variable): boolean {
   const q = query.trim().toLowerCase();
@@ -17,14 +26,27 @@ function matches(query: string, v: Variable): boolean {
 
 export default function Dimensions() {
   const [query, setQuery] = useState("");
+  const { selectedHexes } = useAprincipal();
+
+  // Naturaleza mar/tierra de la selección (modo API emplazamiento): oculta las
+  // variables que no aplican al emplazamiento (p.ej. batimetría en tierra).
+  const nature = useMemo(
+    () => (USE_API_EMPLAZAMIENTO ? selectionNature(selectedHexes) : "mixta"),
+    [selectedHexes],
+  );
 
   const filteredByDimension = useMemo(() => {
     const map = new Map<string, Variable[]>();
     for (const d of DIMENSIONS) {
-      map.set(d.id, variablesByDimension(d.id).filter((v) => matches(query, v)));
+      map.set(
+        d.id,
+        variablesByDimension(d.id).filter(
+          (v) => matches(query, v) && variableAppliesToNature(v, nature),
+        ),
+      );
     }
     return map;
-  }, [query]);
+  }, [query, nature]);
 
   return (
     <div className="flex flex-col h-full">
@@ -60,10 +82,27 @@ export default function Dimensions() {
           </svg>
         </div>
 
+        {USE_API_EMPLAZAMIENTO && (nature === "mar" || nature === "tierra") && (
+          <p className="rounded-md bg-white/70 px-3 py-1.5 text-[11px] leading-snug text-gray-600">
+            Emplazamiento{" "}
+            <strong className="text-[#165170ff]">
+              {nature === "mar" ? "en el mar (offshore)" : "en tierra (onshore)"}
+            </strong>
+            : se ocultan las variables que no aplican a este emplazamiento.
+          </p>
+        )}
+
         <div className="flex flex-col gap-2">
           {DIMENSIONS.map((d) => {
             const vars = filteredByDimension.get(d.id) ?? [];
+            // Con búsqueda: una dimensión sin coincidencias desaparece.
             if (query.trim() && vars.length === 0) return null;
+            // Sin búsqueda pero sin variables (regulatoria pendiente, o dimensión
+            // vaciada por el filtro mar/tierra): se muestra igual para que las 5
+            // dimensiones estén siempre presentes en el menú (petición reunión).
+            if (vars.length === 0) {
+              return <EmptyDimensionCard key={d.id} dimension={d} nature={nature} />;
+            }
             return (
               <DimensionCard
                 key={d.id}
@@ -73,6 +112,9 @@ export default function Dimensions() {
               />
             );
           })}
+
+          {/* Catálogo de variables informativas (Tabla 3) — solo visualización */}
+          <InformativeCatalog query={query} />
         </div>
       </div>
 
@@ -80,6 +122,46 @@ export default function Dimensions() {
       <div className="shrink-0">
         <NextStepButton />
       </div>
+    </div>
+  );
+}
+
+/**
+ * Card mínima para una dimensión SIN variables visibles: regulatoria pendiente
+ * o una dimensión vaciada por el filtro de emplazamiento (mar/tierra). Mantiene
+ * las 5 dimensiones presentes en el menú.
+ */
+function EmptyDimensionCard({
+  dimension,
+  nature,
+}: {
+  dimension: Dimension;
+  nature: "mar" | "tierra" | "mixta" | "vacia";
+}) {
+  const informative = !isScorableDimension(dimension.id);
+  // Solo se muestra una nota cuando es INFORMACIÓN útil para el usuario: explicar
+  // que el emplazamiento (mar/tierra) oculta variables. Nada de estado interno.
+  const nota =
+    nature === "mar" || nature === "tierra"
+      ? `Sin variables aplicables al emplazamiento ${
+          nature === "mar" ? "en el mar" : "en tierra"
+        }.`
+      : "";
+  return (
+    <div className="rounded-md bg-white shadow-sm">
+      <div className="flex items-center gap-2 px-3 py-3">
+        <span className="text-sm font-bold text-[#383838]">{dimension.label}</span>
+        {informative && (
+          <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gray-500">
+            informativa · no puntúa
+          </span>
+        )}
+      </div>
+      {nota && (
+        <p className="px-3 pb-3 text-[11px] italic leading-snug text-gray-400">
+          {nota}
+        </p>
+      )}
     </div>
   );
 }

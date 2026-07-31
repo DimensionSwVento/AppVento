@@ -16,8 +16,8 @@ export type HeatmapDimensionId =
   | "general"
   | "ambiental"
   | "tecnica"
-  | "economica"
-  | "socioeconomica"
+  | "social"
+  | "macroeconomica"
   | "regulatoria";
 
 /**
@@ -34,8 +34,8 @@ export const HEATMAP_DIMENSIONS: {
   { id: "general", label: "General", scorable: true },
   { id: "ambiental", label: "Ambiental", scorable: true },
   { id: "tecnica", label: "Técnica", scorable: true },
-  { id: "economica", label: "Económica", scorable: true },
-  { id: "socioeconomica", label: "Social", scorable: true },
+  { id: "social", label: "Social", scorable: true },
+  { id: "macroeconomica", label: "Macroeconómica", scorable: true },
   { id: "regulatoria", label: "Regulatoria", scorable: false },
 ];
 

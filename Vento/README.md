@@ -81,12 +81,18 @@ Todos provistos por el backend FastAPI:
 | Variable | Descripcion | Default |
 |----------|-------------|---------|
 | `NEXT_PUBLIC_API_URL` | URL del backend FastAPI (requerido) | — |
+| `NEXT_PUBLIC_USE_BACKEND` | `true` conecta el backend (tiles + histórico); `false` = modo template sin API | `false` |
+
+## Modo template → datos reales
+
+La app funciona **sin datos reales** cayendo a marcadores deterministas. Los interruptores viven en **`src/app/Utils/projectData.ts`**: `USE_BACKEND` (env `NEXT_PUBLIC_USE_BACKEND`), `USE_PLACEHOLDER_FALLBACK`, `SHOW_PLACEHOLDER_EXCLUDED`, `USE_API_EMPLAZAMIENTO`. Cómo pasar a datos reales (colocar parquet + flags) → [Reportes_Entregas/entrega-3/scope-3-entregado.md](../Reportes_Entregas/entrega-3/scope-3-entregado.md) §3. Técnicas clave (compactación de hexes, PDF por captura del DOM) → [docs/README.md §3.5](../docs/README.md).
 
 ## Notas
 
 - El archivo `master_variables.h3.parquet` no se sube al repo (`.gitignore`). Lo consume el backend, no el frontend.
 - Los hexagonos se filtran a Colombia y sus mares circundantes (lat [-4.3, 13.5], lng [-82, -66.5]).
 - La autenticacion se maneja via Keycloak (realm `vento`, client `vento-web`). El backend valida los tokens JWT.
+- **Dimensiones definitivas:** Ambiental · Técnica · Social · Macroeconómica (4 puntuables) + Regulatoria (informativa). Catálogo en `src/app/Utils/variables/variablesCatalog.ts`.
 
 ## Configuración de Keycloak para Gestión de Usuarios
 

@@ -38,24 +38,21 @@ describe("Dimensions (US04-AC1)", () => {
   it("filtra variables por el query del search bar (match en label)", () => {
     renderDimensions();
     const input = screen.getByLabelText("Buscar variables");
-    fireEvent.change(input, { target: { value: "viento" } });
+    fireEvent.change(input, { target: { value: "WPD" } });
 
     // La dimensión técnica (que contiene la variable matching) sigue
-    // renderizando su card. Las dimensiones sin matches desaparecen.
+    // renderizando su card. Con búsqueda las cards se abren solas.
     expect(screen.getByText(/Dimensión técnica/)).toBeInTheDocument();
     expect(screen.queryByText(/Dimensión regulatoria/)).not.toBeInTheDocument();
-
-    // Expandir la card para ver la variable matching.
-    fireEvent.click(screen.getByText(/Dimensión técnica/));
     expect(
-      screen.getByText("Velocidad del viento media anualizada"),
+      screen.getByText("Densidad de potencia WPD"),
     ).toBeInTheDocument();
 
     // Una variable sin match no debe estar visible (ni en cards visibles).
     const sinMatch = VARIABLES.filter(
       (v) =>
-        !v.label.toLowerCase().includes("viento") &&
-        !v.description.toLowerCase().includes("viento"),
+        !v.label.toLowerCase().includes("wpd") &&
+        !v.description.toLowerCase().includes("wpd"),
     ).map((v) => v.label);
     for (const lbl of sinMatch.slice(0, 3)) {
       expect(screen.queryByText(lbl)).not.toBeInTheDocument();
@@ -65,16 +62,14 @@ describe("Dimensions (US04-AC1)", () => {
   it("filtra variables por el query del search bar (match en descripción)", () => {
     renderDimensions();
     const input = screen.getByLabelText("Buscar variables");
-    // 'subestaciones' aparece en la descripción de `nodos-conexion`
-    // ("Distancia a subestaciones y nodos eléctricos") pero no en su label.
-    fireEvent.change(input, { target: { value: "subestaciones" } });
+    // 'vías' aparece en la descripción de `distancia-vial`
+    // ("Distancia lineal (m) a vías principales…") pero no en su label.
+    fireEvent.change(input, { target: { value: "vías" } });
 
     // La card de la dimensión técnica sigue, el resto desaparece.
     expect(screen.getByText(/Dimensión técnica/)).toBeInTheDocument();
-    // Expandir y verificar el label
-    fireEvent.click(screen.getByText(/Dimensión técnica/));
     expect(
-      screen.getByText("Distancia a nodos de conexión"),
+      screen.getByText("Distancia a infraestructura vial"),
     ).toBeInTheDocument();
   });
 });

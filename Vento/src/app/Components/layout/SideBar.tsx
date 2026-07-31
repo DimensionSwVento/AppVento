@@ -6,6 +6,9 @@ import { useSession, signOut } from "next-auth/react";
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
 import { usePathname, useRouter } from "next/navigation";
 
+// TEMPLATE — correo de soporte. Reemplazar por el real cuando el cliente lo defina.
+const SUPPORT_EMAIL = "soporte@vento.com";
+
 const subscribeToHydration = () => () => {};
 const getHydratedSnapshot = () => true;
 const getServerHydrationSnapshot = () => false;
@@ -339,18 +342,6 @@ export default function SideBar({
             )}
 
             <div className={secondaryItemBase}>
-              <Image src="/config.png" alt="" width={15} height={15} className={iconCls} />
-              <p className={`${itemLabelCls} ${labelCls}`}>
-                Configuraciones
-              </p>
-            </div>
-            {mobileOpen && hasSubpage ? (
-              <hr className={dividerCls}></hr>
-            ) : (
-              <></>
-            )}
-
-            <div className={secondaryItemBase}>
               <Image src="/manual.png" alt="" width={15} height={15} className={iconCls} />
               <p className={`${itemLabelCls} ${labelCls}`}>
                 Manual de uso
@@ -362,12 +353,17 @@ export default function SideBar({
               <></>
             )}
 
-            <div className={secondaryItemBase}>
+            <a
+              href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
+                "Soporte Vento",
+              )}`}
+              className={secondaryItemBase}
+            >
               <Image src="/soporte.png" alt="" width={15} height={15} className={iconCls} />
               <p className={`${itemLabelCls} ${labelCls}`}>
                 Soporte
               </p>
-            </div>
+            </a>
 
             {mobileOpen && hasSubpage ? (
               <hr className={dividerCls}></hr>

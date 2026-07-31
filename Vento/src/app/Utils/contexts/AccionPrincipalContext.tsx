@@ -26,6 +26,11 @@ interface AprincipalContext {
   /** Índice (0..3) de la fase más avanzada alcanzada. Habilita atajos: si ya
    *  se llegó a informe, se puede saltar libremente entre fases. */
   maxFaseIdx: number;
+  /** Contador que, al incrementarse, pide al mapa reencuadrar la selección
+   *  (mismo efecto que el botón de enfoque). Útil al abrir un informe guardado. */
+  focusNonce: number;
+  /** Solicita al mapa encuadrar la selección actual. */
+  requestMapFocus: () => void;
 }
 
 const AprincipalContext = createContext<AprincipalContext>({
@@ -34,6 +39,8 @@ const AprincipalContext = createContext<AprincipalContext>({
   selectedHexes: new Set(),
   setSelectedHexes: () => {},
   maxFaseIdx: 0,
+  focusNonce: 0,
+  requestMapFocus: () => {},
 });
 
 export function useAprincipal() {
@@ -48,6 +55,7 @@ export function AprincipalProvider({
   const [accion, setAccionState] = useState<Aprincipal>("seleccion-area");
   const [selectedHexes, setSelectedHexes] = useState<Set<string>>(new Set());
   const [maxFaseIdx, setMaxFaseIdx] = useState(0);
+  const [focusNonce, setFocusNonce] = useState(0);
 
   const setAccion = useCallback((a: Aprincipal) => {
     setAccionState(a);
@@ -55,9 +63,19 @@ export function AprincipalProvider({
     if (idx > 0) setMaxFaseIdx((m) => (idx > m ? idx : m));
   }, []);
 
+  const requestMapFocus = useCallback(() => setFocusNonce((n) => n + 1), []);
+
   return (
     <AprincipalContext.Provider
-      value={{ accion, setAccion, selectedHexes, setSelectedHexes, maxFaseIdx }}
+      value={{
+        accion,
+        setAccion,
+        selectedHexes,
+        setSelectedHexes,
+        maxFaseIdx,
+        focusNonce,
+        requestMapFocus,
+      }}
     >
       {children}
     </AprincipalContext.Provider>

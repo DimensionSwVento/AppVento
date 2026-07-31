@@ -73,8 +73,13 @@ export function calcNumAerogeneradores(
 /** Distancia máxima (km) entre un hex nuevo y la selección (restricción del mapa). */
 export const MAX_SELECTION_GAP_KM = 50;
 
-/** Máximo de informes guardados en el histórico (rotación del más viejo). */
-export const MAX_HISTORIAL_ENTRIES = 50;
+/**
+ * Máximo de informes guardados en el histórico (rotación del más viejo).
+ * En backend (Postgres) el almacenamiento no es la restricción; el tope es de
+ * UX (lista agrupada + buscador). Los `hexes` se guardan compactados
+ * (`compactHexes`) → mismo formato, más liviano tanto en local como al backend.
+ */
+export const MAX_HISTORIAL_ENTRIES = 100;
 
 /**
  * Resolución H3 mínima (más fina) a la que se permite SELECCIONAR hexágonos.
@@ -108,9 +113,29 @@ export const BANNED_HEXES: ReadonlySet<string> = new Set<string>([
  * Mientras no lleguen las zonas excluidas reales (`tipo_celda="excluida"` del
  * parquet), muestra un **placeholder determinista** de zonas excluidas — gris
  * sólido, no seleccionable — para que la funcionalidad sea visible/demostrable.
- * Poner en `false` cuando se conecten los datos reales (o se pueble `BANNED_HEXES`).
+ * DERIVADO del modo: con backend (`NEXT_PUBLIC_USE_BACKEND=true`) se apaga
+ * automáticamente; en modo template (env sin setear) queda `true`. Para forzarlo
+ * manualmente, reemplazar por un booleano fijo.
  */
-export const SHOW_PLACEHOLDER_EXCLUDED = true;
+export const SHOW_PLACEHOLDER_EXCLUDED =
+  process.env.NEXT_PUBLIC_USE_BACKEND !== "true";
+
+/**
+ * Motivos de exclusión (TEMPLATE). Mientras no haya un campo "motivo" por hex
+ * en los datos reales, la leyenda de una zona excluida muestra uno de estos de
+ * forma determinista por zona (ver `bannedReason` en `hexClassification.ts`).
+ * Cuando la API entregue el motivo real, se reemplaza la fuente ahí — la UI de
+ * la leyenda no cambia.
+ */
+export const EXCLUSION_REASONS = [
+  "Área protegida",
+  "Humedal (RAMSAR)",
+  "Parque nacional natural",
+  "Zona de reserva forestal",
+  "Resguardo indígena",
+  "Territorio de comunidades negras",
+  "Zona de exclusión aeronáutica",
+] as const;
 
 /**
  * ════════════════════════════════════════════════════════════════════════
@@ -127,14 +152,25 @@ export const SHOW_PLACEHOLDER_EXCLUDED = true;
 export const USE_BACKEND = process.env.NEXT_PUBLIC_USE_BACKEND === "true";
 
 /**
+ * Modo emplazamiento por DATO (mar/tierra) — sprint 3.
+ * `true` → cada hex sabe si es offshore (mar) o onshore (tierra) por el dato
+ * `es_offshore` de la master; la selección NO permite mezclar mar+tierra y el
+ * emplazamiento se muestra según la naturaleza del área. Hoy TEMPLATE: la
+ * fuente es la geometría (`hexType`) hasta que llegue la columna real; se apaga
+ * poniendo `false` (como el modo template). Ver `isOffshoreHex`/`selectionNature`.
+ */
+export const USE_API_EMPLAZAMIENTO = true;
+
+/**
  * ════════════════════════════════════════════════════════════════════════
  *  PLACEHOLDERS — ELIMINAR AL CONECTAR DATOS REALES
  * ════════════════════════════════════════════════════════════════════════
- * Interruptor maestro de los datos placeholder. Mientras el backend/parquet no
- * entregue datos reales, la UI cae a valores placeholder deterministas para
- * seguir funcionando. Al terminar de **testear → conectar → subir a prod**:
- *   1. Poner `USE_PLACEHOLDER_FALLBACK = false` (la UI mostrará SOLO lo real;
- *      sin backend, scores en 0 y heatmap sin variación por dimensión).
+ * Interruptor maestro de los datos placeholder. **DERIVADO de `USE_BACKEND`**:
+ * con el env `NEXT_PUBLIC_USE_BACKEND=true` el fallback se apaga solo (la UI
+ * muestra SOLO lo real; lo que la API no entregue queda vacío/—). En modo
+ * template (env sin setear) el fallback queda `true` y todo usa marcadores.
+ * Así **un solo env** cambia de template → real. Al subir a prod con datos:
+ *   1. Poner `NEXT_PUBLIC_USE_BACKEND=true` (apaga template automáticamente).
  *   2. Verificar que todo viene del backend.
  *   3. ELIMINAR los placeholders del inventario de abajo (y este bloque).
  *
@@ -147,4 +183,4 @@ export const USE_BACKEND = process.env.NEXT_PUBLIC_USE_BACKEND === "true";
  *   - Fallbacks que consumen lo anterior: `useSelectionScores`, `useAreaScores`,
  *     `useInformeHeatmapLayer` (rama placeholder).
  */
-export const USE_PLACEHOLDER_FALLBACK = true;
+export const USE_PLACEHOLDER_FALLBACK = !USE_BACKEND;

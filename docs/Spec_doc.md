@@ -20,7 +20,7 @@ Herramienta web SIG multicriterio para evaluar la viabilidad de proyectos de ene
 | 2 | Selección de área en mapa interactivo (hexágonos H3) | ✅ Scope 1 |
 | 3 | Configurar variables agrupadas por dimensión (Técnica, Ambiental, Socioeconómica, Macroeconómica; Regulatoria informativa) | ✅ Scope 2 (US04) |
 | 4 | Insertar características del proyecto (capacidad MW, categoría de aerogenerador) | ✅ Scope 2 (US05) |
-| 5 | Informe de prefactibilidad del área con descarga PDF | ✅ Scope 2 (US06) |
+| 5 | Informe de idoneidad del área con descarga PDF | ✅ Scope 2 (US06) |
 | 6 | Ver historial de informes | 🔨 Sprint 3 (US07) |
 
 ### 1.1 Problema
@@ -154,6 +154,7 @@ metadata_*         | json    — Origen y vigencia de cada variable
 | Tecnologías (comparativa) | `docs/architecture/tecnologias.md` | Opciones tecnológicas evaluadas (pre-decisión) |
 | Decisiones de arquitectura | `docs/adr/` | 13 ADRs (ADR-001 … ADR-014). Estado de cada uno en el índice maestro |
 | Stories — Scope 1 | `docs/stories/scope-primera-entrega.md` | Historias de la primera entrega |
-| Stories — Scope 2 | `docs/stories/scope-dos.md` | Historias de la segunda entrega |
-| Feedback v1 / v2 | `docs/stories/feedback-cliente-v1.md` · `feedback-1-round2.md` · `feedback-cliente-v2.md` | Rondas de feedback del cliente (FB1, FB2, Sprint 3) |
-| Sprint 3 | `docs/stories/sprint-3.md` | Guía de desarrollo del Sprint 3 (feedback v2) |
+| Stories — Scope 2 | `docs/stories/scope-segunda-entrega.md` | Historias de la segunda entrega |
+| Stories — 3ª entrega | `docs/stories/scope-tercera-entrega.md` | Guía de la tercera entrega (feedback v2 + catálogo definitivo) |
+| Feedback v1 / v2 | `docs/stories/feedback-cliente-v1.md` · `feedback-1-round2.md` · `feedback-cliente-v2.md` | Rondas de feedback del cliente |
+| Reporte de entrega 3 | `Reportes_Entregas/entrega-3/scope-3-entregado.md` | Cierre de la 3ª entrega + guía de modo template → datos reales |

@@ -9,7 +9,11 @@ export type InformeEntry = {
   id: string;
   createdAt: string; // ISO
   nombre: string;
-  /** Hexes seleccionados (raw). Al migrar a backend se compactan con `compactCells`. */
+  /**
+   * Hexes seleccionados, COMPACTADOS al guardar con `compactHexes` (`hexCodec.ts`):
+   * mismo formato `string[]` pero más liviano (local + backend). Geométricamente
+   * idéntico; al restaurar se usan tal cual (la app recalcula desde la geometría).
+   */
   hexes: string[];
   variables: string[];
   caracteristicas: CaracteristicasState;

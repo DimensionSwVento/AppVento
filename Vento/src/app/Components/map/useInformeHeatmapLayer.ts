@@ -4,6 +4,7 @@ import {
   cellToBoundary,
   cellToChildren,
   cellToLatLng,
+  cellToParent,
   getResolution,
 } from "h3-js";
 import { dimensionHexScore, viridis } from "../../Utils/report/heatmapPalette";
@@ -14,8 +15,8 @@ import { USE_PLACEHOLDER_FALLBACK } from "../../Utils/projectData";
 const DIM_TO_CAT: Record<string, string> = {
   tecnica: "TEC",
   ambiental: "AMB",
-  socioeconomica: "SOE",
-  economica: "MAC",
+  social: "SOC",
+  macroeconomica: "MAC",
   regulatoria: "REG",
 };
 
@@ -48,13 +49,23 @@ export function useInformeHeatmapLayer(
     const cLat = sumLat / selectedHexes.size;
     const cLng = sumLng / selectedHexes.size;
 
-    // 2) Expansión a res-8 + distancia de cada hijo al centroide.
+    // 2) Normalización a EXACTAMENTE res 8 + distancia de cada celda al centroide.
+    // El heatmap y el popup responden siempre a res 8 (ni más fino ni más grueso),
+    // independientemente de la resolución guardada/seleccionada:
+    //   - res > 8  → celda padre res 8 (varias caen en la misma → dedup).
+    //   - res == 8 → tal cual.
+    //   - res < 8  → hijos res 8 (aquí caen las celdas compactadas res 6/7).
+    // Así la compactación al guardar (celdas más gruesas) NO cambia el render.
     const cells: { h: string; dist: number }[] = [];
+    const seen = new Set<string>();
     let maxDist = 0;
     for (const h of selectedHexes) {
       const res = getResolution(h);
-      const children = res >= 8 ? [h] : cellToChildren(h, 8);
-      for (const c of children) {
+      const cells8 =
+        res > 8 ? [cellToParent(h, 8)] : res === 8 ? [h] : cellToChildren(h, 8);
+      for (const c of cells8) {
+        if (seen.has(c)) continue;
+        seen.add(c);
         const [lat, lng] = cellToLatLng(c);
         const d = Math.hypot(lat - cLat, lng - cLng);
         if (d > maxDist) maxDist = d;
@@ -68,12 +79,17 @@ export function useInformeHeatmapLayer(
   }, [heatmapActive, selectedHexes]);
 
   return useMemo(() => {
-    if (!heatmapActive || data.length === 0) return null;
-    const dim = activeDimension as string;
+    // NUNCA devolvemos null: la capa siempre existe y solo togglea `visible`.
+    // Así deck no la finaliza al salir del informe ni intenta re-inicializar
+    // una instancia ya finalizada al volver ("finalized layer cannot be
+    // reused" → mapa despintado). Mismo patrón que `selectedLayer`.
+    const active = heatmapActive && data.length > 0;
+    const dim = (activeDimension ?? "general") as string;
     const cat = DIM_TO_CAT[dim];
     return new PolygonLayer<{ h: string; baseScore: number }>({
       id: "informe-heatmap",
       data,
+      visible: active,
       getPolygon: (d) => cellToBoundary(d.h, true),
       getFillColor: (d) => {
         const info = areaData?.get(d.h);
@@ -98,7 +114,7 @@ export function useInformeHeatmapLayer(
       // gridTileLayer/selectedLayer van con visible:!heatmapActive y deck.gl no
       // hace picking sobre capas invisibles → sin esto onHover nunca recibía
       // objeto y el tooltip por hexágono no aparecía en la fase de informe.
-      pickable: true,
+      pickable: active,
       updateTriggers: { getFillColor: [dim, areaData] },
     });
   }, [heatmapActive, activeDimension, data, areaData]);

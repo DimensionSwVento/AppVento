@@ -14,9 +14,9 @@ describe("variablesCatalog — estructura", () => {
     expect(DIMENSIONS.map((d) => d.id).sort()).toEqual(
       [
         "ambiental",
-        "economica",
+        "macroeconomica",
         "regulatoria",
-        "socioeconomica",
+        "social",
         "tecnica",
       ].sort(),
     );
@@ -39,13 +39,13 @@ describe("variablesCatalog — estructura", () => {
     expect(SCORABLE_DIMENSION_IDS).toHaveLength(4);
     expect(SCORABLE_DIMENSION_IDS).not.toContain("regulatoria");
     expect([...SCORABLE_DIMENSION_IDS].sort()).toEqual(
-      ["ambiental", "economica", "socioeconomica", "tecnica"].sort(),
+      ["ambiental", "macroeconomica", "social", "tecnica"].sort(),
     );
   });
 
   it("isScorableDimension: true para puntuables, false para regulatoria", () => {
     expect(isScorableDimension("tecnica")).toBe(true);
-    expect(isScorableDimension("economica")).toBe(true);
+    expect(isScorableDimension("macroeconomica")).toBe(true);
     expect(isScorableDimension("regulatoria")).toBe(false);
   });
 });

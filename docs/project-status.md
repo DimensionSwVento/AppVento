@@ -19,7 +19,7 @@ author: mavalan Software
 | Arquitectura | ✅ Actualizado | Frontend Next.js + Backend FastAPI (repos separados), conectados via API_BASE |
 | Identidad/Auth | ✅ Implementado | Keycloak OIDC via NextAuth — realm "vento", client "vento-frontend" (PR auth mergeado) |
 | Storage/Cache geoespacial | ✅ Parcial | TileLayer cache (64 tiles) + HTTP Cache-Control; storage definitivo pendiente (ADR-006) |
-| Scopes contractuales | ✅ Cerrados | Scope 1 (Acceso+Mapa+Admin) y Scope 2 (flujo prefactibilidad, cerrado 2026-06-01) |
+| Scopes contractuales | ✅ Cerrados | Scope 1 (Acceso+Mapa+Admin), Scope 2 (flujo de idoneidad, 2026-06-01) y 3ª entrega (feedback v2 + catálogo definitivo, en modo template, 2026-07-30) |
 | Historias de usuario (futuras) | ✅ Definido | 20 HU en backlog futuro |
 | Épicas formales | ✅ Generado | 11 épicas (5 primera entrega + 6 futuras) via workflow BMAD |
 | Viabilidad equipo/plazo | ✅ Analizado | 230h de 320h disponibles. Viable con 28% margen |
@@ -30,21 +30,21 @@ author: mavalan Software
 | Documentación técnica detallada | ✅ Hecho | auth-strategy + test-strategy + tech-stack-validation + runbook AccuWeb |
 | PRD formal | 🔴 Pendiente | Workflow PRD interrumpido en paso 2 |
 | UX Design | ✅ Hecho | Diseños Figma del discovery |
-| Sprint 3 (feedback v2) | 🔨 En curso | Onboarding, histórico, radar dinámico, ajustes mapa/UX — ver `stories/sprint-3.md` |
+| 3ª entrega (feedback v2 + catálogo definitivo) | 🟢 Entregado (modo template) | Catálogo definitivo, informe/PDF, emplazamiento mar/tierra, histórico — ver [entrega-3](../Reportes_Entregas/entrega-3/scope-3-entregado.md). Valores reales del modelo pendientes. |
 
 ### Historial de scopes, feedback y sprints
 
-Todas las fases entregadas están **cerradas**; el trabajo activo es el **Sprint 3**.
+Todas las fases están **entregadas**; la 3ª entrega quedó en **modo template** a la espera de los datos reales del modelo.
 
 | Fase | Qué incluyó | Estado | Documento |
 |------|-------------|--------|-----------|
 | **Scope 1** — Acceso + Mapa + Admin | US01 login Keycloak · US03(P1) selección H3 · US08 admin de usuarios | ✅ Cerrado (desplegado en AccuWeb) | [scope-primera-entrega.md](stories/scope-primera-entrega.md) |
 | **FB1** — Feedback ronda 1 | US-FB-01 Keycloak ES · FB-02 post-registro · FB-03 expiración de sesión · FB-04 territorio offshore/insular · FB-05 admin roles UI · FB-06 notificación email | ✅ Cerrado | [feedback-cliente-v1.md](stories/feedback-cliente-v1.md) |
 | **FB2** — Feedback ronda 2 | US-FB2-01 guía próximo paso · FB2-02 cartografía IGAC · FB2-03 polish landing · FB2-04 transición de zoom · FB2-05 icono de logout | ✅ Cerrado | [feedback-1-round2.md](stories/feedback-1-round2.md) |
-| **Scope 2** — Flujo completo de prefactibilidad | US03(P2) área km² + búsqueda · US04 variables/dimensiones · US05 características · US06 informe + PDF | ✅ Cerrado (2026-06-01) | [scope-dos.md](stories/scope-dos.md) |
-| **Sprint 3** — Feedback v2 del Scope 2 | US02 onboarding · US06-01 radar dinámico · US07 histórico · US09 toasts/alertas · US-FB3-01…06 · US03-02/03 (fix mapa) | 🔨 **En curso** | [sprint-3.md](stories/sprint-3.md) · [feedback-cliente-v2.md](stories/feedback-cliente-v2.md) |
+| **Scope 2** — Flujo completo de idoneidad | US03(P2) área km² + búsqueda · US04 variables/dimensiones · US05 características · US06 informe + PDF | ✅ Cerrado (2026-06-01) | [scope-segunda-entrega.md](stories/scope-segunda-entrega.md) |
+| **3ª entrega** — Feedback v2 + catálogo definitivo | US02 disclaimer al inicio · catálogo definitivo (61+30) · US06 informe (previsualización/captura/PDF/disclaimer/fuentes/ranking) · emplazamiento mar/tierra · US07 histórico (límite 100 + compactación) · renombre idoneidad · limpieza de menú | ✅ Entregado en modo template (2026-07-30) | [scope-tercera-entrega.md](stories/scope-tercera-entrega.md) · [entrega-3](../Reportes_Entregas/entrega-3/scope-3-entregado.md) · [feedback-cliente-v2.md](stories/feedback-cliente-v2.md) |
 
-**Bloqueos externos vigentes:** datos reales del modelo (equipo de investigación) · SMTP pago MailerSend (cliente) · negociación de alcance US05 (reunión).
+**Bloqueos externos vigentes:** datos reales del modelo (equipo de investigación) · texto oficial del disclaimer (Secretaría General) · SMTP/MailerSend (cliente) · formato del manual de usuario · ambiente de test (migración de dominios).
 
 ---
 

@@ -14,6 +14,11 @@ import {
 } from "../../Utils/capacity";
 import { dominantHexType } from "../../Utils/h3/hexClassification";
 import { calcNumAerogeneradores, AEROGENERADORES } from "../../Utils/projectData";
+import {
+  CARACTERISTICA_DEFINICIONES,
+  TIPO_AEROGENERADOR_RANGOS,
+  tamanoPorCapacidad,
+} from "../../Utils/caracteristicasInfo";
 import MWPicker from "./MWPicker";
 import NextStepButton from "../ui/NextStepButton";
 
@@ -164,11 +169,19 @@ function EmplazamientoSection({
 }) {
   return (
     <section className="mt-5 rounded-md bg-white p-4 shadow-sm">
-      <h3 className="text-sm font-bold text-[#383838]">Tipo de emplazamiento</h3>
+      <h3
+        className="text-sm font-bold text-[#383838]"
+        title={CARACTERISTICA_DEFINICIONES.emplazamiento}
+      >
+        Tipo de emplazamiento
+      </h3>
       <p className="mt-0.5 text-[11px] text-gray-500">
         {detectado
           ? "Detectado automáticamente según el área; puedes cambiarlo manualmente."
           : "Selecciona un área en el mapa o elige el emplazamiento manualmente."}
+      </p>
+      <p className="mt-1 text-[11px] leading-snug text-gray-400">
+        {CARACTERISTICA_DEFINICIONES.emplazamiento}
       </p>
 
       <div className="mt-3 flex gap-2">
@@ -196,6 +209,9 @@ function EmplazamientoSection({
         <div className="mt-4">
           <p className="text-xs font-semibold text-[#383838]">
             Tipo de tecnología offshore
+          </p>
+          <p className="mt-0.5 text-[11px] leading-snug text-gray-400">
+            {CARACTERISTICA_DEFINICIONES.tecnologiaOffshore}
           </p>
           <div className="mt-2 flex gap-2">
             <RadioCard
@@ -229,9 +245,8 @@ function CapacidadSection({
 }) {
   const errorId = "capacidad-mw-error";
   const current = capacidadMW ?? 0;
-  const sizeLabel =
-    current >= 20 ? "Grande" : current > 1 ? "Mediano" : "Pequeña";
-  const sizeRange = current >= 20 ? ">20" : current > 1 ? ">1" : "≤1";
+  // Categorización por tamaño según los umbrales del cliente (template).
+  const tamano = tamanoPorCapacidad(current);
   const sizeClasses =
     current >= 20
       ? "bg-blue-100 text-blue-800"
@@ -241,12 +256,18 @@ function CapacidadSection({
 
   return (
     <section className="mt-4 rounded-md bg-white p-4 shadow-sm">
-      <h3 className="text-sm font-bold text-[#383838]">
+      <h3
+        className="text-sm font-bold text-[#383838]"
+        title={CARACTERISTICA_DEFINICIONES.capacidadNominal}
+      >
         Capacidad nominal (MW)
       </h3>
       <p className="mt-0.5 text-[11px] text-gray-500">
         Define la capacidad instalada esperada para el proyecto. Escribe cada
         dígito o ajústalo con las flechas, la rueda del mouse o las teclas ↑ ↓.
+      </p>
+      <p className="mt-1 text-[11px] leading-snug text-gray-400">
+        Habilita o deshabilita los tipos de turbina disponibles.
       </p>
 
       <div className="mt-4 rounded-md bg-gray-50 p-3">
@@ -267,10 +288,12 @@ function CapacidadSection({
         </p>
         <span
           className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${sizeClasses}`}
+          title={tamano.detalle}
         >
-          {sizeLabel} ({sizeRange} MW)
+          {tamano.label} ({tamano.rango})
         </span>
       </div>
+      <p className="mt-1 text-[10px] italic text-gray-400">{tamano.detalle}</p>
       <FieldError id={errorId} message={error} />
     </section>
   );
@@ -364,12 +387,14 @@ function TamañoSection({
               <span className="mt-0.5 block text-[10px] leading-tight text-gray-500">
                 {cat.detail}
               </span>
+              <span className="mt-1 block text-[9px] leading-tight text-gray-400">
+                {TIPO_AEROGENERADOR_RANGOS[cat.id]}
+              </span>
             </button>
           ))}
         </div>
         <p className="mt-2 text-[10px] italic text-gray-400">
-          3 categorías por ahora — podrían subir a 5 cuando el cliente cierre el
-          catálogo.
+          El número de unidades se calcula según la categoría y el área.
         </p>
         <FieldError message={categoriaError} />
       </div>

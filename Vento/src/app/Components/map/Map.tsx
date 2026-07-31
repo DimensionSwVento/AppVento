@@ -25,7 +25,7 @@ import { useHeatmapDimension } from "../../Utils/contexts/HeatmapDimensionContex
 import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS, SNAPSHOT_KEY } from "../../Utils/h3/h3Resolution";
 import { useCachedImage } from "../../Utils/useCachedImage";
 import { zoomToH3Res, tileToBBox, isInColombia } from "../../Utils/h3/mapGeo";
-import { isHexBanned } from "../../Utils/h3/hexClassification";
+import { isHexBanned, bannedReason } from "../../Utils/h3/hexClassification";
 import { MAX_SELECTION_GAP_KM, MIN_SELECTION_H3_RES } from "../../Utils/projectData";
 import { useToast } from "../ui/Toast";
 import HexValuesTooltip from "./HexValuesTooltip";
@@ -66,9 +66,10 @@ interface HexCell { h: string; banned?: boolean; }
 
 export default function MapView() {
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
-  const { accion, selectedHexes, setSelectedHexes } = useAprincipal();
+  const { accion, selectedHexes, setSelectedHexes, focusNonce } =
+    useAprincipal();
   const { activeVariables } = useVariables();
-  const { activeDimension } = useHeatmapDimension();
+  const { activeDimension, setActiveDimension } = useHeatmapDimension();
   const toast = useToast();
   const canSelect = accion === "seleccion-area";
   // En fase de selección pero con el zoom demasiado lejano: los hexes son
@@ -158,34 +159,87 @@ export default function MapView() {
   // cachea con SNAPSHOT_KEY. El informe lo muestra como <img> (screenshot real
   // del mapa, no un dibujo aparte). Porta el patrón de la demo previa; requiere
   // preserveDrawingBuffer en ambos canvas.
-  const { saveToCache } = useCachedImage();
+  const { saveToCache, clearCache } = useCachedImage();
   const captureSnapshot = useCallback(async () => {
     const container = containerRef.current;
     if (!container) return;
-    const canvases = container.querySelectorAll("canvas");
-    if (canvases.length === 0) return;
+    // Ignora canvas de tamaño 0 (deck a veces expone uno transitorio en un
+    // frame malo → provocaba "deck.gl: assertion failed" al leerlo).
+    const all = Array.from(
+      container.querySelectorAll<HTMLCanvasElement>("canvas"),
+    ).filter((c) => c.width > 0 && c.height > 0);
+    if (all.length === 0) return;
+    // Componer en orden VISUAL, no de DOM: basemap (MapLibre) al fondo y las
+    // capas de deck (hexes) ENCIMA. querySelectorAll ignora el z-index; si el
+    // basemap opaco se dibuja al final, tapa los hexes (solo salía el fondo).
+    const mapCanvas = container.querySelector<HTMLCanvasElement>(
+      "canvas.maplibregl-canvas",
+    );
+    const base = mapCanvas ?? all[0];
+    const ordered: HTMLCanvasElement[] = [
+      ...(mapCanvas ? [mapCanvas] : []),
+      ...all.filter((c) => c !== mapCanvas),
+    ];
     const composite = document.createElement("canvas");
-    composite.width = canvases[0].width;
-    composite.height = canvases[0].height;
+    composite.width = base.width;
+    composite.height = base.height;
     const ctx = composite.getContext("2d");
     if (!ctx) return;
-    canvases.forEach((c) => ctx.drawImage(c, 0, 0));
+    let drewOverlay = false;
+    for (const c of ordered) {
+      try {
+        ctx.drawImage(c, 0, 0, composite.width, composite.height);
+        if (c !== mapCanvas) drewOverlay = true;
+      } catch {
+        /* un canvas puede fallar en un frame concreto; se omite ese canvas */
+      }
+    }
+    // Si no se pudo pintar la capa de deck (hexes), NO guardamos: evita dejar
+    // en cache una captura "solo fondo" que luego se ve como imagen vieja.
+    if (!drewOverlay) return;
     try {
       await saveToCache(composite.toDataURL("image/png"), SNAPSHOT_KEY);
     } catch {
-      /* captura best-effort — si algún canvas no preserva buffer, se omite */
+      /* best-effort */
     }
   }, [saveToCache]);
 
-  // Al entrar al informe, capturar el mapa ya reencuadrado sobre la selección
-  // (delay para que deck termine de pintar tiles + heatmap antes del toDataURL).
+  // Snapshot del informe: en fase de SELECCIÓN se limpia el cache (para que el
+  // informe no muestre una captura anterior tras borrar/rehacer la selección);
+  // al entrar al INFORME se captura el mapa ya reencuadrado (rAF + delay para
+  // que deck termine de pintar tiles/heatmap antes del toDataURL).
   useEffect(() => {
-    if (accion !== "informe") return;
+    if (accion === "seleccion-area") {
+      void clearCache(SNAPSHOT_KEY);
+      return;
+    }
+    // Solo capturar con el heatmap efectivamente activo: evita el screenshot de
+    // un mapa sin coloreo (y el "deck.gl: assertion failed" al leer un estado
+    // en transición).
+    if (accion !== "informe" || !heatmapActive) return;
     const id = setTimeout(() => {
-      void captureSnapshot();
+      requestAnimationFrame(() => void captureSnapshot());
     }, 1200);
     return () => clearTimeout(id);
-  }, [accion, selectedHexes, activeDimension, captureSnapshot]);
+  }, [accion, heatmapActive, selectedHexes, activeDimension, captureSnapshot, clearCache]);
+
+  // Al entrar al informe SIEMPRE debe haber una dimensión activa — el heatmap
+  // no debe quedar apagado. Corrige el caso de volver al informe (desde otra
+  // fase) y ver el área sin colorear.
+  useEffect(() => {
+    if (accion === "informe" && activeDimension === null) {
+      setActiveDimension("general");
+    }
+  }, [accion, activeDimension, setActiveDimension]);
+
+  // Limpiar el hover al cambiar de fase: en selección/dimensiones el grid es
+  // pickable, así que `hoveredHex` podía quedar STALE (un hex fuera del área) y
+  // el popup del informe / la leyenda de exclusión se mostraban con ese hex
+  // viejo hasta mover el ratón. Reset → el popup solo reaparece al hover real.
+  useEffect(() => {
+    setHoveredHex(null);
+    setHoverPos(null);
+  }, [accion]);
 
   // capa de cuadrícula con tiles — solo renderiza lo visible, cachea por tile.
   // Cuando el heatmap del informe está activo, oculto la malla entera para
@@ -246,7 +300,11 @@ export default function MapView() {
         lineWidthMinPixels: 1,
         filled: true,
         stroked: true,
-        pickable: true,
+        // En informe SOLO el heatmap debe ser pickable. El grid usa resolución
+        // por zoom (hexágonos grandes) y sus sublayers no heredan el
+        // visible:false del TileLayer para el picking → el hover enganchaba un
+        // hex enorme del grid en vez del hex fino pintado en el heatmap.
+        pickable: !heatmapActive,
       });
     },
   }), [heatmapActive]);
@@ -304,9 +362,6 @@ export default function MapView() {
   //   `cellsToMultiPolygon` para fusionar bordes contiguos en una sola línea
   const selectedBordersLayer = useMemo(() => {
     if (selectedArr.length === 0) return null;
-    // En heatmap del informe se oculta el contorno también — la mancha
-    // Viridis ya delimita el área visualmente.
-    if (heatmapActive) return null;
     if (canSelect) {
       return new PolygonLayer<HexCell>({
         id: "selected-hex-borders",
@@ -339,6 +394,11 @@ export default function MapView() {
       stroked: true,
       pickable: false,
     });
+    // `heatmapActive` en deps: aunque el contenido del contorno no dependa de
+    // él, forzamos una INSTANCIA de capa nueva al cambiar de fase (informe ↔
+    // otras). Sin esto, la memo reutiliza la misma instancia entre fases y
+    // deck.gl assertaba al recibir una capa ya finalizada (rompía el render →
+    // heatmap despintado al volver a informe).
   }, [selectedArr, canSelect, heatmapActive]);
 
   // capa de hover — relleno gris transparente del hex bajo el cursor.
@@ -414,6 +474,20 @@ export default function MapView() {
     }
   }, [selectedHexes, clampViewState]);
 
+  // Enfoque bajo demanda (misma acción que el botón de enfoque): al abrir un
+  // informe guardado desde el histórico, `requestMapFocus()` incrementa
+  // `focusNonce` y aquí se reencuadra la selección. Así el mapa (y la captura
+  // del informe/PDF, que ocurre después) muestran la zona correcta y no la
+  // localización anterior. Guard por ref → solo dispara cuando cambia el nonce.
+  const focusNonceRef = useRef(focusNonce);
+  useEffect(() => {
+    if (focusNonce === focusNonceRef.current) return;
+    focusNonceRef.current = focusNonce;
+    if (selectedHexes.size === 0) return;
+    const id = requestAnimationFrame(() => zoomToSelection());
+    return () => cancelAnimationFrame(id);
+  }, [focusNonce, selectedHexes, zoomToSelection]);
+
   // US-FB3-02 AC2 — Reset a Colombia: vuelve a la vista inicial (INITIAL_VIEW_STATE).
   const resetView = useCallback(() => {
     setViewState(INITIAL_VIEW_STATE);
@@ -478,6 +552,26 @@ export default function MapView() {
         )}
       {mapReady && accion === "seleccion-area" && (
         <MapSearchBox onSelect={handlePlaceSelect} />
+      )}
+      {/* Aviso viridis (sprint 3): explica que los hexágonos morados = idoneidad
+          nula (zonas no aptas), coherente con la paleta del heatmap. */}
+      {mapReady && canSelect && (
+        <div className="pointer-events-none absolute bottom-4 left-4 z-10 max-w-[230px] rounded-md bg-white/95 px-3 py-2 shadow-md ring-1 ring-black/5 max-md:hidden">
+          <div className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="h-3 w-3 shrink-0 rounded-sm"
+              style={{ backgroundColor: "rgb(68,1,84)" }}
+            />
+            <p className="text-[11px] font-semibold text-[#5b2a86]">
+              Zonas no idóneas
+            </p>
+          </div>
+          <p className="mt-0.5 text-[10px] leading-snug text-gray-600">
+            En la escala viridis, los hexágonos morados representan idoneidad 0:
+            áreas no aptas bajo ninguna circunstancia (no seleccionables).
+          </p>
+        </div>
       )}
       {mapReady && <NextStepFloatingCard />}
       {mapReady && <PhaseHintCard />}
@@ -566,6 +660,32 @@ export default function MapView() {
         />
       )}
 
+      {/* Leyenda de zona excluida (sprint 3): al pasar el cursor sobre un hex
+          vetado (fuera del heatmap del informe), muestra el motivo de exclusión.
+          Motivo por template hasta tener el campo real del dataset. */}
+      {!isMobile &&
+        !heatmapActive &&
+        hoverPos &&
+        hoveredHex &&
+        isHexBanned(hoveredHex) && (
+          <div
+            role="tooltip"
+            aria-label="Motivo de exclusión"
+            style={{ left: hoverPos.x + 12, top: hoverPos.y + 12 }}
+            className="pointer-events-none absolute z-20 max-w-[210px] rounded-md border border-[#e2d3ee] bg-white px-2.5 py-1.5 shadow-lg"
+          >
+            <p className="text-[9px] font-semibold uppercase tracking-wide text-[#5b2a86]">
+              Zona excluida
+            </p>
+            <p className="mt-0.5 text-[11px] font-medium text-gray-700">
+              {bannedReason(hoveredHex)}
+            </p>
+            <p className="mt-0.5 text-[10px] text-gray-400">
+              0% idoneidad · no seleccionable
+            </p>
+          </div>
+        )}
+
       {accion === "dimensiones" && activeVariables.size > 0 && (
         <SelectedVariablesChips />
       )}
@@ -585,9 +705,6 @@ export default function MapView() {
       )}
 
       <DeckGL
-        // preserveDrawingBuffer: permite capturar el canvas de deck para el
-        // snapshot del informe (se compone con el canvas de MapLibre).
-        glOptions={{ preserveDrawingBuffer: true }}
         style={{ position: "relative", width: "auto", height: "100%" }}
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => setViewState(clampViewState(vs as typeof INITIAL_VIEW_STATE))}

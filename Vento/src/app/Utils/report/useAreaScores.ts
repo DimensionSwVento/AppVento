@@ -8,8 +8,9 @@ import { USE_PLACEHOLDER_FALLBACK } from "../projectData";
 const CAT_TO_DIM: Record<string, string> = {
   TEC: "tecnica",
   AMB: "ambiental",
-  SOE: "socioeconomica",
-  MAC: "economica",
+  SOE: "social",
+  SOC: "social",
+  MAC: "macroeconomica",
   REG: "regulatoria",
 };
 

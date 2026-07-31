@@ -1,15 +1,17 @@
 ---
-version: 2.0
-date: 2026-07-07
-scope: sprint-3
+version: 2.1
+date: 2026-07-30
+scope: sprint-3 / tercera-entrega
 origen: lista de épicas del proyecto (US01–US09) — solo HUs no ejecutadas
 equipo: Mavalan Software
-estado: borrador de planeación — HUs con AC detallados y tareas técnicas embebidas
+estado: ENTREGADO en modo template — ver reporte de cierre en Reportes_Entregas/entrega-3
 ---
 
-# Scope Sprint 3 — Guía de Desarrollo
+# Scope Sprint 3 / Tercera Entrega — Guía de Desarrollo
 
-Sigue a [scope-dos.md](./scope-dos.md) y al cierre de Scope 2 ([scope-2-entregado.md](../../Reportes_Entregas/entrega-2/scope-2-entregado.md)).
+Sigue a [scope-segunda-entrega.md](./scope-segunda-entrega.md) y al cierre de Scope 2 ([scope-2-entregado.md](../../Reportes_Entregas/entrega-2/scope-2-entregado.md)).
+
+> **Estado (2026-07-30): ENTREGADO en modo template.** Este documento fue la guía de planeación; el **reporte de lo efectivamente entregado** (con el catálogo definitivo de variables, el emplazamiento mar/tierra, el informe/PDF por captura y la guía de modo template → datos reales) está en **[Reportes_Entregas/entrega-3/scope-3-entregado.md](../../Reportes_Entregas/entrega-3/scope-3-entregado.md)**. Nota: las dimensiones definitivas son **Ambiental · Técnica · Social · Macroeconómica** (+ Regulatoria informativa); donde abajo se lea "socioeconómica/económica", léase **Social**.
 
 > **Estructura (aclaración 2026-07-07):** En la lista maestra del proyecto, **US01–US09 son ÉPICAS / módulos**, no historias de usuario. Las **HUs reales** son los puntos que la lista llama "criterios de aceptación". Este documento contiene **solo las HUs NO ejecutadas** — todo lo ya entregado en Scope 1 y 2 (login base, mapa base, CRUD usuarios, PDF con branding, etc.) queda fuera.
 
@@ -62,7 +64,7 @@ Sigue a [scope-dos.md](./scope-dos.md) y al cierre de Scope 2 ([scope-2-entregad
 - **Bloqueo:** 🟢 Empezable (dev puro; valores reales llegan con la ingesta, se construye con placeholders)
 - **Dependencia:** `Components/Report.tsx`, `Utils/pdfExport.ts`, `Utils/heatmapPalette.ts` (ya existen)
 - **Criterios de Aceptación:**
-  1. Radar con **4 ejes puntuables**: Técnica, Ambiental, Socioeconómica, Macroeconómica (escala 0–100)
+  1. Radar con **4 ejes puntuables**: Ambiental, Técnica, Social, Macroeconómica (escala 0–100)
   2. Regulatoria **NO es eje** (coherente con WLC de 4 dimensiones, US-FB3-06) — puede ir como bloque informativo aparte
   3. Dibujado en **SVG propio** (sin librería) para integrarse con Tailwind v4/OKLCH y capturarse limpio en el PDF
   4. Refleja los scores del área seleccionada y se actualiza al cambiar la selección
@@ -70,7 +72,7 @@ Sigue a [scope-dos.md](./scope-dos.md) y al cierre de Scope 2 ([scope-2-entregad
   6. El radar aparece tanto en la **previsualización** como en el **PDF descargado**
   7. Robusto con `0 hexágonos` → sin radar ni crash, mensaje claro
 - **Tareas técnicas:**
-  - 📦 `Components/RadarChart.tsx` — SVG puro (grid poligonal + ejes + área rellena), props `{ scores: {tecnica, ambiental, socioeconomica, macroeconomica} }`
+  - 📦 `Components/RadarChart.tsx` — SVG puro (grid poligonal + ejes + área rellena), props `{ scores: {ambiental, tecnica, social, macroeconomica} }`
   - 📦 Helper que arma los 4 valores desde `heatmapPalette.ts` (score por dimensión)
   - 📦 Integrar `<RadarChart>` en `Report.tsx` y asegurar que entra en el DOM que captura `pdfExport.ts` (`html2canvas-pro`; fallback a rasterizar si el SVG no se captura)
   - 🧪 Tests: 4 ejes con valores correctos; 0 hexes no rompe; PDF ≥ 1KB con el gráfico
@@ -138,7 +140,7 @@ Sigue a [scope-dos.md](./scope-dos.md) y al cierre de Scope 2 ([scope-2-entregad
   2. **Nunca** se guarda el PDF ni la expansión res-8 — el informe se **regenera** desde los parámetros
   3. **Listado agrupado** por: Hoy / Esta semana / Este mes / Más antiguos; `ORDER BY created_at DESC` filtrado por `user_id`
   4. **Límites TEMPORALES** (constante `LIMITES_HISTORIAL`, ajustable tras reunión): máx. informes por usuario (con rotación del más viejo) y máx. área/hexes por selección. **Validados en el backend** (rechaza 413/422); el front avisa antes
-  5. Accesible desde el SideBar ("Histórico de prefactibilidad")
+  5. Accesible desde el SideBar ("Histórico de informes")
   6. Sin entradas → estado vacío con mensaje ("Aún no has generado análisis")
 - **Tareas técnicas:**
   - 📦 **BE Tabla**: `informe` (Postgres) + índice `(user_id, created_at DESC)`; migración versionada

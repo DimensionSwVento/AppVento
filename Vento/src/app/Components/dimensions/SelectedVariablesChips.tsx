@@ -2,6 +2,11 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useVariables } from "../../Utils/contexts/VariablesContext";
+import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
+import {
+  areaVariableAverage,
+  useAreaHexData,
+} from "../../Utils/report/useAreaHexData";
 import {
   DIMENSIONS,
   getVariableById,
@@ -11,6 +16,7 @@ import {
 import { colorForVariable } from "../../Utils/variables/dimensionColors";
 import { VariableIcon } from "../../Utils/variables/variableIcons";
 import { weightFor } from "../../Utils/variables/variableWeights";
+import { variableDetail } from "../../Utils/variables/variableDetails";
 
 /** Label corto de la dimensión para el subtítulo (sin el prefijo "Dimensión "). */
 function dimensionShortLabel(id: DimensionId): string {
@@ -329,6 +335,13 @@ function InfoPopover({
   const variable = getVariableById(variableId);
   const [activeTab, setActiveTab] = useState<InfoTab>("resumen");
 
+  // Valor de esta variable en el área seleccionada, desde el backend (0–100).
+  const { selectedHexes } = useAprincipal();
+  const areaData = useAreaHexData(selectedHexes, true);
+  const areaValue = variable
+    ? areaVariableAverage(areaData, selectedHexes, variable.masterId)
+    : null;
+
   const currentIndex = variables.findIndex((v) => v.id === variableId);
   const total = variables.length;
   const canNavigate = total > 1 && currentIndex >= 0;
@@ -363,6 +376,7 @@ function InfoPopover({
         : "text-gray-600 bg-gray-100";
 
   const bg = colorForVariable(variable.id);
+  const detalle = variableDetail(variable);
 
   return (
     <div
@@ -438,16 +452,28 @@ function InfoPopover({
                 </div>
               </header>
               <dl className="mt-3 grid grid-cols-[5rem_1fr] gap-x-3 gap-y-1 text-[11px] leading-snug">
-                <dt className="font-semibold text-gray-500">ID</dt>
+                <dt className="font-semibold text-gray-500">Código</dt>
                 <dd className="font-mono text-gray-700 break-all">
-                  {variable.id}
+                  {variable.masterId !== "NA" ? (
+                    variable.masterId
+                  ) : (
+                    <span className="italic text-gray-400">sin asignar</span>
+                  )}
                 </dd>
+                <dt className="font-semibold text-gray-500">Grupo</dt>
+                <dd className="text-gray-700">
+                  {variable.criterio}
+                  {variable.subcriterio ? ` › ${variable.subcriterio}` : ""}
+                </dd>
+                {variable.enMapa && (
+                  <>
+                    <dt className="font-semibold text-gray-500">Mapa</dt>
+                    <dd className="text-gray-700">Se representa en el mapa</dd>
+                  </>
+                )}
                 <dt className="font-semibold text-gray-500">En el área</dt>
-                <dd className="text-gray-500">
-                  —{" "}
-                  <span className="text-[10px] italic text-gray-400">
-                    (pendiente datos)
-                  </span>
+                <dd className="font-mono text-gray-700">
+                  {areaValue != null ? areaValue.toFixed(1) : "—"}
                 </dd>
               </dl>
               <p className="mt-3 text-xs text-gray-600 leading-snug">
@@ -459,12 +485,35 @@ function InfoPopover({
                 {polarityLabel}
               </span>
             </div>
+          ) : activeTab === "fuente" ? (
+            <div className="flex h-full min-h-[8rem] flex-col justify-center">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                Fuente de datos
+              </p>
+              <p className="mt-2 text-sm text-gray-700">
+                {variable.fuente && variable.fuente !== "(sin definir)"
+                  ? variable.fuente
+                  : "—"}
+              </p>
+              <p className="mt-3 text-[11px] text-gray-500">
+                Código de la variable:{" "}
+                <span className="font-mono text-gray-700">
+                  {variable.masterId !== "NA" ? variable.masterId : "sin asignar"}
+                </span>
+              </p>
+            </div>
           ) : (
-            <div className="flex h-full min-h-[8rem] flex-col items-center justify-center text-center text-xs text-gray-400">
-              <p className="font-semibold uppercase tracking-wide">
+            <div className="min-h-[8rem]">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
                 {INFO_TABS.find((t) => t.id === activeTab)?.label}
               </p>
-              <p className="mt-1 italic">Disponible en el sprint 3</p>
+              <p className="mt-2 text-xs leading-relaxed text-gray-700">
+                {activeTab === "calculo"
+                  ? detalle.calculo
+                  : activeTab === "relevancia"
+                    ? detalle.relevancia
+                    : detalle.rango}
+              </p>
             </div>
           )}
         </div>

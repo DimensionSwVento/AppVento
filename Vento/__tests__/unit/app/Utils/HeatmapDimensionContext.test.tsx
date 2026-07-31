@@ -33,8 +33,8 @@ describe("HeatmapDimensionContext", () => {
       "general",
       "ambiental",
       "tecnica",
-      "economica",
-      "socioeconomica",
+      "social",
+      "macroeconomica",
       "regulatoria",
     ]);
   });

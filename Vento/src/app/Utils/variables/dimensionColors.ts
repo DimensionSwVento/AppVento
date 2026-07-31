@@ -14,8 +14,8 @@ import {
 const DIMENSION_HUES: Record<DimensionId, number> = {
   ambiental: 145, // verde
   tecnica: 210, // azul
-  economica: 350, // rojo-magenta
-  socioeconomica: 30, // naranja
+  social: 30, // naranja
+  macroeconomica: 350, // rojo-magenta
   regulatoria: 280, // morado
 };
 

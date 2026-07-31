@@ -12,14 +12,14 @@ Un convenio entre la **ANH** (Agencia Nacional de Hidrocarburos) y la **Universi
 
 ## ¿Qué es Vento?
 
-Vento es una aplicación web que muestra un **mapa interactivo de Colombia** dividido en pequeños hexágonos. El usuario elige una zona, indica las características del proyecto eólico que imagina, y recibe un **informe de prefactibilidad**: qué tan buena es esa zona para generar energía eólica, con una calificación por cada aspecto (técnico, ambiental, social, económico).
+Vento es una aplicación web que muestra un **mapa interactivo de Colombia** dividido en pequeños hexágonos. El usuario elige una zona, indica las características del proyecto eólico que imagina, y recibe un **informe de idoneidad**: qué tan buena es esa zona para generar energía eólica, con una calificación por cada dimensión (ambiental, técnica, social, macroeconómica).
 
 | Pregunta | Respuesta |
 |----------|-----------|
 | **¿Qué problema resuelve?** | Decidir dónde instalar un parque eólico normalmente toma semanas y obliga a cruzar datos de muchas fuentes. Vento reúne todo en un solo mapa. |
 | **¿Para quién es?** | Analistas de energía, investigadores y tomadores de decisiones de la ANH y EAFIT. |
 | **¿Qué muestra el mapa?** | Un mapa de calor: las zonas amarillas son las más aptas, las moradas las menos aptas. |
-| **¿Qué evalúa?** | Una calificación general que combina 4 dimensiones puntuables — Técnica, Ambiental, Socioeconómica y Macroeconómica. |
+| **¿Qué evalúa?** | Una calificación general que combina 4 dimensiones puntuables — Ambiental, Técnica, Social y Macroeconómica (+ Regulatoria informativa). |
 | **¿De dónde salen los datos?** | El equipo de investigación de EAFIT/ANH genera los datos ya procesados; Vento los muestra sobre el mapa. |
 
 ---
@@ -41,7 +41,7 @@ El usuario avanza por cuatro pasos, en orden, desde el menú lateral:
 4. Indicar las características del proyecto (capacidad, tipo de aerogenerador)
         │
         ▼
-   ➜ Informe de prefactibilidad (mapa de calor + calificaciones + descarga en PDF)
+   ➜ Informe de idoneidad (mapa de calor + calificaciones + descarga en PDF)
 ```
 
 Se puede volver libremente a un paso anterior para ajustar la selección.
@@ -55,8 +55,8 @@ Se puede volver libremente a un paso anterior para ajustar la selección.
 | Etapa | Estado | En breve |
 |-------|--------|----------|
 | **Scope 1** — Acceso + Mapa + Administración | 🟢 Entregado | Login institucional, mapa de hexágonos y gestión de usuarios, funcionando en producción. |
-| **Scope 2** — Flujo completo de prefactibilidad | 🟢 Entregado | Selección de área, variables, características e informe con PDF. |
-| **Sprint 3** — Mejoras del feedback del cliente | 🔨 En curso | Onboarding, histórico de informes, radar dinámico, ajustes de mapa y UX. |
+| **Scope 2** — Flujo completo de idoneidad | 🟢 Entregado | Selección de área, variables, características e informe con PDF. |
+| **Tercera entrega** — Feedback v2 + catálogo definitivo | 🟢 Entregado (modo template) | Catálogo definitivo de variables, informe (previsualización a pantalla completa, captura del mapa, PDF, disclaimer, fuentes), emplazamiento mar/tierra, histórico. Valores reales del modelo pendientes. |
 | **Datos reales del modelo** | 🟠 Pendiente (externo) | Hoy el mapa usa datos de ejemplo; el equipo de investigación entregará los datos definitivos. |
 | **Notificaciones por correo** | 🔴 Bloqueado (externo) | A la espera de que el cliente provea el servidor de correo (SMTP). |
 
@@ -125,7 +125,7 @@ El **backend** (el servidor que procesa y sirve los datos, hecho en Python/FastA
 |---------|---------------------|
 | **SIG** | Sistema de Información Geográfica — un mapa que además guarda datos por cada zona. |
 | **Hexágono / H3** | Colombia se divide en pequeños hexágonos; cada uno es una zona con su propia calificación. |
-| **Prefactibilidad** | Un primer análisis de qué tan viable es un proyecto, antes de estudios costosos. |
+| **Idoneidad** | Qué tan apta es una zona para un proyecto eólico — un primer análisis antes de estudios costosos (antes "prefactibilidad"). |
 | **Onshore / Offshore** | En tierra firme (onshore) o en el mar (offshore). |
 | **Aerogenerador** | La turbina eólica — el "molino" que genera la energía. |
 | **Mapa de calor (Viridis)** | La escala de color del mapa: amarillo = zona muy apta, morado = poco apta. |

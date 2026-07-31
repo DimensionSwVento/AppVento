@@ -15,9 +15,10 @@ describe("variableWeights — estructura", () => {
   });
 
   // US-FB3-05 / feedback item 11: "Regulatoria" queda fuera del cálculo WLC.
+  // Hoy además está VACÍA (el cliente la dejó como "Falta"); si en el futuro
+  // se pueblan variables regulatorias, ninguna debe aportar al WLC (peso 0).
   it("las variables de 'regulatoria' NO aportan al WLC (peso 0)", () => {
     const regulatorias = variablesByDimension("regulatoria");
-    expect(regulatorias.length).toBeGreaterThan(0);
     for (const v of regulatorias) {
       expect(weightFor(v.id)).toBe(0);
     }
@@ -33,16 +34,14 @@ describe("variableWeights — estructura", () => {
     expect(weightFor("grupos-beligerantes")).toBeLessThan(0);
   });
 
-  it("'viento-velocidad' tiene peso positivo (aditivo)", () => {
-    expect(weightFor("viento-velocidad")).toBeGreaterThan(0);
+  it("'wpd' tiene peso positivo (aditivo)", () => {
+    expect(weightFor("wpd")).toBeGreaterThan(0);
   });
 });
 
 describe("variableWeights — weightFor", () => {
   it("retorna el peso asignado a una variable conocida", () => {
-    expect(weightFor("viento-velocidad")).toBe(
-      VARIABLE_WEIGHTS["viento-velocidad"],
-    );
+    expect(weightFor("wpd")).toBe(VARIABLE_WEIGHTS["wpd"]);
   });
 
   it("retorna 0 para variables que no están en el mapa", () => {

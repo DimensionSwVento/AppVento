@@ -31,39 +31,39 @@ export interface InfoVar {
 
 /** Unidades por id de variable. Lo no listado usa "índice" (escala 0–100). */
 const UNIT_OVERRIDES: Record<string, string> = {
-  "viento-velocidad": "m/s",
+  // Técnica
   wpd: "W/m²",
-  elevacion: "m",
-  "factor-capacidad": "%",
-  lcoe: "USD/MWh",
-  opex: "USD/MWh",
-  "capex-conexion": "MUSD",
-  "capex-obra-civil": "MUSD",
-  "capex-generadores": "MUSD",
   "nodos-conexion": "km",
   "distancia-vial": "km",
-  "distancia-poi": "km",
-  "distancia-viviendas": "km",
-  "distancia-sin": "km",
-  "num-aerogeneradores": "uds.",
-  "area-proyecto": "km²",
-  "densidad-aire": "kg/m³",
+  "distancia-portuaria": "km",
+  // Ambiental
+  elevacion: "m",
+  "batimetria-offshore": "m",
+  "pendiente-terreno": "°",
   "amenaza-volcanica": "índice",
   "fallas-sismicidad": "índice",
   "riesgo-fisico": "índice",
-  "pendiente-terreno": "°",
-  rugosidad: "m",
-  turbulencia: "%",
-  batimetria: "m",
+  // Social · Económico
+  "dist-atractivo-turistico": "km",
+  "pobreza-multidimensional": "%",
+  "analfabetismo-soe": "%",
+  "pobreza-energetica": "índice",
+  // Social · Vulnerabilidad social
+  desocupados: "%",
+  "densidad-poblacional": "hab/km²",
+  "distancia-viviendas": "km",
   ipm: "%",
   analfabetismo: "%",
-  "densidad-poblacional": "hab/km²",
-  "pobreza-energetica": "índice",
+  "hogares-municipio": "uds.",
+  "pobreza-monetaria": "%",
+  // Social · Brecha energética
+  "ipm-energetica": "%",
+  // Social · Seguridad / gobernanza
   "incidencia-delictiva": "índice",
-  "capacidad-gestion": "índice",
-  "estabilidad-juridica": "índice",
-  "tasa-exito-proyectos": "%",
-  "proyectos-xm": "uds.",
+  "desempeno-institucional": "índice",
+  // Macroeconómica
+  desempleo: "%",
+  ipc: "%",
 };
 
 function unitFor(id: string): string {

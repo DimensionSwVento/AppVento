@@ -2,9 +2,11 @@ import { cellToLatLng, cellToParent, getResolution } from "h3-js";
 import { LAND_POLYGON_RINGS, SEA_BBOXES, type LngLat } from "./h3Resolution";
 import {
   BANNED_HEXES,
+  EXCLUSION_REASONS,
   MAX_SELECTION_GAP_KM,
   MIN_SELECTION_H3_RES,
   SHOW_PLACEHOLDER_EXCLUDED,
+  USE_API_EMPLAZAMIENTO,
 } from "../projectData";
 
 // Placeholder de zonas excluidas: se agrupa por "zona" a esta resolución para
@@ -46,6 +48,19 @@ export function isHexBanned(h: string): boolean {
     if (hashCell(zoneKey) % EXCLUDED_MODULO === 0) return true;
   }
   return false;
+}
+
+/**
+ * Motivo de exclusión de un hex (TEMPLATE). `null` si no está excluido.
+ * Determinista por zona res-5 → toda la zona excluida muestra el mismo motivo.
+ * Cuando llegue el campo "motivo" real del dataset, se reemplaza la fuente aquí
+ * (la leyenda de la UI no cambia).
+ */
+export function bannedReason(h: string): string | null {
+  if (!isHexBanned(h)) return null;
+  const zoneKey =
+    getResolution(h) > EXCLUDED_ZONE_RES ? cellToParent(h, EXCLUDED_ZONE_RES) : h;
+  return EXCLUSION_REASONS[hashCell(zoneKey) % EXCLUSION_REASONS.length];
 }
 
 /**
@@ -117,6 +132,46 @@ export function dominantHexType(
   return hasAny ? "onshore" : null;
 }
 
+/**
+ * Emplazamiento por DATO: mar/tierra será una **columna del hexágono** que
+ * entregue la API (como una variable más). `useAreaHexData` alimenta este store
+ * con ese valor (0/1). Si un hex aún no tiene dato (p.ej. en selección antes de
+ * consultar el área, o en modo template), cae a la geometría.
+ * ⚠️ El **nombre real de la columna aún no está definido** (`es_offshore` es
+ * provisional) y hoy NO viene en el contrato de `/api/tiles/area`.
+ */
+const esOffshoreStore = new Map<string, boolean>();
+
+/** Alimenta el emplazamiento por dato (columna `es_offshore` del backend). */
+export function setEsOffshoreData(entries: Iterable<[string, boolean]>): void {
+  for (const [hex, off] of entries) esOffshoreStore.set(hex, off);
+}
+
+/**
+ * ¿El hex es OFFSHORE (mar)? Fuente: la columna `es_offshore` de la API cuando
+ * está disponible (store); si no, geometría (`hexType`) como fallback template.
+ */
+export function isOffshoreHex(hex: string): boolean {
+  const fromData = esOffshoreStore.get(hex);
+  if (fromData !== undefined) return fromData; // dato real de la API
+  return hexType(hex) === "offshore"; // fallback geometría (modo template)
+}
+
+/** Naturaleza de una selección según mar/tierra. */
+export function selectionNature(
+  hexes: Iterable<string>,
+): "mar" | "tierra" | "mixta" | "vacia" {
+  let sea = false;
+  let land = false;
+  for (const h of hexes) {
+    if (isOffshoreHex(h)) sea = true;
+    else land = true;
+    if (sea && land) return "mixta";
+  }
+  if (!sea && !land) return "vacia";
+  return sea ? "mar" : "tierra";
+}
+
 // MAX_SELECTION_GAP_KM vive en el doc maestro (Utils/projectData).
 const EARTH_R_KM = 6371;
 function haversineKm(
@@ -145,6 +200,13 @@ export function canAddHexToSelection(
   selectedHexes: Set<string>,
 ): boolean {
   if (selectedHexes.size === 0) return true;
+  // Sprint 3 (USE_API_EMPLAZAMIENTO): no mezclar mar y tierra en una misma
+  // selección. El nuevo hex debe coincidir con la naturaleza del área elegida.
+  if (USE_API_EMPLAZAMIENTO) {
+    const nature = selectionNature(selectedHexes);
+    if (nature === "mar" && !isOffshoreHex(newHex)) return false;
+    if (nature === "tierra" && isOffshoreHex(newHex)) return false;
+  }
   const [nLat, nLng] = cellToLatLng(newHex);
   for (const h of selectedHexes) {
     const [lat, lng] = cellToLatLng(h);

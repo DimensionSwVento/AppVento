@@ -7,6 +7,7 @@ import Report from "../Components/report/Report";
 import HistorialList from "../Components/historial/HistorialList";
 import MapView from "../Components/map/Map";
 import OnboardingModal from "../Components/onboarding/OnboardingModal";
+import DisclaimerModal from "../Components/onboarding/DisclaimerModal";
 import { useAprincipal } from "../Utils/contexts/AccionPrincipalContext";
 
 export default function AreaSelectionPage() {
@@ -16,6 +17,9 @@ export default function AreaSelectionPage() {
   // TODO US02-01 "única por usuario": inicializar en false y setear con
   // !hasSeenOnboarding() en un efecto (Utils/onboarding.ts) para verlo 1 sola vez.
   const [showOnboarding, setShowOnboarding] = useState(true);
+  // Disclaimer al inicio (reunión): tras cerrar el onboarding, aparece el aviso
+  // legal en un flotante. Mismo texto que el informe → visible al inicio y al final.
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
 
   const subpage = (() => {
     switch (accion) {
@@ -53,7 +57,17 @@ export default function AreaSelectionPage() {
           <MapView />
         </div>
       </div>
-      <OnboardingModal open={showOnboarding} onClose={() => setShowOnboarding(false)} />
+      <OnboardingModal
+        open={showOnboarding}
+        onClose={() => {
+          setShowOnboarding(false);
+          setShowDisclaimer(true);
+        }}
+      />
+      <DisclaimerModal
+        open={showDisclaimer}
+        onClose={() => setShowDisclaimer(false)}
+      />
     </main>
   );
 }

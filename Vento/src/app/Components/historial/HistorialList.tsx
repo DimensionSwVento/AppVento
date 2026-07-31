@@ -33,7 +33,7 @@ const VISIBLE_POR_PERIODO: Record<Periodo, string[]> = {
 
 export default function HistorialList() {
   const { entries, remove } = useHistorial();
-  const { setSelectedHexes, setAccion } = useAprincipal();
+  const { setSelectedHexes, setAccion, requestMapFocus } = useAprincipal();
   const { replaceActiveVariables } = useVariables();
   const { restore: restoreCaracteristicas } = useCaracteristicas();
   const toast = useToast();
@@ -53,6 +53,10 @@ export default function HistorialList() {
     replaceActiveVariables(e.variables);
     restoreCaracteristicas(e.caracteristicas);
     setAccion("informe");
+    // Reencuadra el mapa a la selección del informe (efecto del botón de
+    // enfoque). Sin esto el mapa —y la captura del informe/PDF— se quedaban en
+    // la localización anterior.
+    requestMapFocus();
   };
 
   const eliminar = async (e: InformeEntry) => {

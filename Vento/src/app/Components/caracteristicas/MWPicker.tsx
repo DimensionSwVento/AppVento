@@ -7,9 +7,9 @@ import {
   type KeyboardEvent,
   type RefObject,
 } from "react";
-import { MAX_CAPACITY_MW } from "../Utils/capacity";
+import { MAX_CAPACITY_MW } from "../../Utils/capacity";
 
-export { MIN_CAPACITY_MW, MAX_CAPACITY_MW } from "../Utils/capacity";
+export { MIN_CAPACITY_MW, MAX_CAPACITY_MW } from "../../Utils/capacity";
 
 export type MWPickerDecimalStep = 5 | 10;
 

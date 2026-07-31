@@ -4,9 +4,9 @@ import DimensionCard from "@/app/Components/dimensions/DimensionCard";
 import { VariablesProvider } from "@/app/Utils/contexts/VariablesContext";
 import { DIMENSIONS, variablesByDimension } from "@/app/Utils/variables/variablesCatalog";
 
-// Uso socioeconomica porque no tiene variables obligatorias (arrancan inactivas)
-const socio = DIMENSIONS.find((d) => d.id === "socioeconomica")!;
-const vars = variablesByDimension("socioeconomica");
+// Uso social porque no tiene variables obligatorias (arrancan inactivas)
+const socio = DIMENSIONS.find((d) => d.id === "social")!;
+const vars = variablesByDimension("social");
 const firstNonRequired = vars.find((v) => !v.required)!;
 
 describe("DimensionCard", () => {
@@ -16,7 +16,7 @@ describe("DimensionCard", () => {
         <DimensionCard dimension={socio} variables={vars} />
       </VariablesProvider>,
     );
-    expect(screen.getByText(/Dimensión socioeconómica/)).toBeInTheDocument();
+    expect(screen.getByText(/Dimensión social/)).toBeInTheDocument();
     expect(screen.getByText(new RegExp(`0/${vars.length}`))).toBeInTheDocument();
     expect(
       screen.queryByText(firstNonRequired.label),

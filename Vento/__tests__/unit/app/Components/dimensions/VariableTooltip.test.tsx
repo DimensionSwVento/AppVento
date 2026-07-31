@@ -4,19 +4,24 @@ import VariableTooltip from "@/app/Components/dimensions/VariableTooltip";
 import type { Variable } from "@/app/Utils/variables/variablesCatalog";
 
 const additive: Variable = {
-  id: "viento-velocidad",
+  id: "wpd",
+  masterId: "TEC-004-T",
   dimension: "tecnica",
-  label: "Velocidad del viento media anualizada",
-  description: "Promedio anual de velocidad del viento",
-  iconKey: "Wind",
+  criterio: "Recurso eólico",
+  label: "Densidad de potencia WPD",
+  description: "Wind Power Density a la altura del rotor",
+  iconKey: "tabler:windmill",
 };
 
 const penalizing: Variable = {
   id: "grupos-beligerantes",
-  dimension: "socioeconomica",
+  masterId: "SOC-011-S",
+  dimension: "social",
+  criterio: "Social",
+  subcriterio: "Riesgo en seguridad, delictividad y conflicto armado",
   label: "Presencia de grupos beligerantes",
   description: "Actividad de grupos armados ilegales",
-  iconKey: "Swords",
+  iconKey: "lucide:Swords",
 };
 
 describe("VariableTooltip (US04-AC2)", () => {
