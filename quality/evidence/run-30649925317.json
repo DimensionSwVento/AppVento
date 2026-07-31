@@ -1,0 +1,578 @@
+{
+  "runId": "30649925317",
+  "commit": "6df3fba7c347dd2738a9b1f6f54450d891b41729",
+  "timestamp": "2026-07-31T17:12:02.950Z",
+  "workflowDurationMs": 186338,
+  "catalogVersion": "1.0.0",
+  "gatesVersion": "1.0.0",
+  "assertionCountMethod": "static-expect-calls",
+  "environment": {
+    "ci": true,
+    "workflow": "Quality Attributes Pipeline",
+    "ref": "refs/heads/feature/quality-attributes-pipeline",
+    "node": "v22.23.1"
+  },
+  "gates": [
+    {
+      "gateId": "typescript-check",
+      "attributeId": "processing",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 1,
+      "testsPassed": 1,
+      "assertions": 0,
+      "durationMs": 5276,
+      "logExcerpt": "Command 'npx --no-install tsc --noEmit' exited 0.",
+      "artifacts": [
+        "quality/evidence/raw/30649925317/typescript-check.log"
+      ]
+    },
+    {
+      "gateId": "spatial-operations-tests",
+      "attributeId": "processing",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 28,
+      "testsPassed": 28,
+      "assertions": 47,
+      "durationMs": 21,
+      "logExcerpt": "28/28 test cases passed across 3 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/30649925317/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "h3-boundary-tests",
+      "attributeId": "data-quality",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 12,
+      "testsPassed": 12,
+      "assertions": 26,
+      "durationMs": 25007,
+      "logExcerpt": "12/12 test cases passed across 2 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/30649925317/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "external-service-client-tests",
+      "attributeId": "interoperability",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 7,
+      "testsPassed": 7,
+      "assertions": 19,
+      "durationMs": 7,
+      "logExcerpt": "7/7 test cases passed across 1 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/30649925317/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "spatial-data-cache-tests",
+      "attributeId": "availability",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 3,
+      "testsPassed": 3,
+      "assertions": 3,
+      "durationMs": 11,
+      "logExcerpt": "3/3 test cases passed across 1 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/30649925317/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "health-route-test",
+      "attributeId": "availability",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 2,
+      "testsPassed": 2,
+      "assertions": 5,
+      "durationMs": 6,
+      "logExcerpt": "2/2 test cases passed across 1 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/30649925317/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "auth-rbac-tests",
+      "attributeId": "security",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 93,
+      "testsPassed": 93,
+      "assertions": 188,
+      "durationMs": 558,
+      "logExcerpt": "93/93 test cases passed across 12 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/30649925317/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "dependency-audit",
+      "attributeId": "security",
+      "blocking": false,
+      "status": "passed",
+      "testsRun": 1,
+      "testsPassed": 1,
+      "assertions": 0,
+      "durationMs": 1161,
+      "logExcerpt": "npm audit: 2 critical, 6 high, 5 moderate, 0 low (13 total advisories).",
+      "artifacts": [
+        "quality/evidence/raw/30649925317/npm-audit.json"
+      ]
+    },
+    {
+      "gateId": "ui-component-tests",
+      "attributeId": "usability-geospatial",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 185,
+      "testsPassed": 185,
+      "assertions": 314,
+      "durationMs": 4936,
+      "logExcerpt": "185/185 test cases passed across 39 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/30649925317/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "accessibility-tests",
+      "attributeId": "usability-geospatial",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 3,
+      "testsPassed": 3,
+      "assertions": 2,
+      "durationMs": 42495,
+      "logExcerpt": "3 Playwright test(s) passed.",
+      "artifacts": [
+        "quality/evidence/raw/30649925317/accessibility-tests.log"
+      ]
+    },
+    {
+      "gateId": "map-render-performance",
+      "attributeId": "performance",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 4,
+      "testsPassed": 4,
+      "assertions": 6,
+      "durationMs": 34151,
+      "logExcerpt": "4 Playwright test(s) passed.",
+      "artifacts": [
+        "quality/evidence/raw/30649925317/map-render-performance.log"
+      ]
+    },
+    {
+      "gateId": "production-build",
+      "attributeId": "availability",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 1,
+      "testsPassed": 1,
+      "assertions": 0,
+      "durationMs": 22369,
+      "logExcerpt": "Command 'npm run build' exited 0.",
+      "artifacts": [
+        "quality/evidence/raw/30649925317/production-build.log"
+      ]
+    }
+  ],
+  "coverage": {
+    "lines": 61.67,
+    "branches": 52.64
+  },
+  "audit": {
+    "critical": 2,
+    "high": 6,
+    "moderate": 5,
+    "low": 0
+  },
+  "attributeCoverage": {
+    "totalAttributes": 13,
+    "strongCoverageMinRatio": 0.5,
+    "covered": [
+      "processing",
+      "availability",
+      "performance",
+      "security",
+      "data-quality",
+      "interoperability",
+      "usability-geospatial"
+    ],
+    "uncovered": [
+      "data-integration",
+      "result-quality",
+      "scalability",
+      "traceability-auditability",
+      "resilience",
+      "geoethics"
+    ],
+    "stronglyCovered": [
+      "processing",
+      "security",
+      "data-quality",
+      "usability-geospatial"
+    ],
+    "weaklyCovered": [
+      "availability",
+      "performance",
+      "interoperability"
+    ],
+    "perAttribute": [
+      {
+        "attributeId": "processing",
+        "name": "Processing",
+        "status": "covered",
+        "gateIds": [
+          "typescript-check",
+          "spatial-operations-tests"
+        ],
+        "implementedTests": [
+          "geometric precision tests",
+          "spatial unit tests (vector/raster)"
+        ],
+        "missingTests": [
+          "CRS consistency tests",
+          "reproducibility tests"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0.5
+      },
+      {
+        "attributeId": "availability",
+        "name": "Availability",
+        "status": "weak",
+        "gateIds": [
+          "spatial-data-cache-tests",
+          "health-route-test",
+          "production-build"
+        ],
+        "implementedTests": [],
+        "missingTests": [
+          "connectivity tests to data sources",
+          "fault tolerance tests",
+          "GIS service recovery tests"
+        ],
+        "catalogTestCount": 3,
+        "implementedTestRatio": 0
+      },
+      {
+        "attributeId": "data-integration",
+        "name": "Data Integration",
+        "status": "uncovered",
+        "gateIds": [],
+        "implementedTests": [],
+        "missingTests": [
+          "vector-raster compatibility",
+          "multi-source integration",
+          "metadata validation",
+          "semantic consistency"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0
+      },
+      {
+        "attributeId": "performance",
+        "name": "Performance",
+        "status": "weak",
+        "gateIds": [
+          "map-render-performance"
+        ],
+        "implementedTests": [
+          "map rendering"
+        ],
+        "missingTests": [
+          "layer loading time",
+          "spatial query latency"
+        ],
+        "catalogTestCount": 3,
+        "implementedTestRatio": 0.3333
+      },
+      {
+        "attributeId": "result-quality",
+        "name": "Result Quality",
+        "status": "uncovered",
+        "gateIds": [],
+        "implementedTests": [],
+        "missingTests": [
+          "validation against reference data",
+          "topological consistency",
+          "uncertainty analysis"
+        ],
+        "catalogTestCount": 3,
+        "implementedTestRatio": 0
+      },
+      {
+        "attributeId": "security",
+        "name": "Security",
+        "status": "covered",
+        "gateIds": [
+          "auth-rbac-tests",
+          "dependency-audit"
+        ],
+        "implementedTests": [
+          "GIS API security",
+          "layer access control protection",
+          "sensitive data"
+        ],
+        "missingTests": [
+          "spatial integrity"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0.75
+      },
+      {
+        "attributeId": "data-quality",
+        "name": "Data Quality",
+        "status": "covered",
+        "gateIds": [
+          "h3-boundary-tests"
+        ],
+        "implementedTests": [
+          "metadata validation",
+          "positional accuracy tests",
+          "spatial completeness tests"
+        ],
+        "missingTests": [
+          "temporal consistency tests"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0.75
+      },
+      {
+        "attributeId": "scalability",
+        "name": "Scalability",
+        "status": "uncovered",
+        "gateIds": [],
+        "implementedTests": [],
+        "missingTests": [
+          "load tests with increasing datasets",
+          "resolution increase tests (raster)",
+          "concurrent user tests",
+          "horizontal/vertical scaling tests"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0
+      },
+      {
+        "attributeId": "interoperability",
+        "name": "Interoperability",
+        "status": "weak",
+        "gateIds": [
+          "external-service-client-tests"
+        ],
+        "implementedTests": [
+          "integration with external systems"
+        ],
+        "missingTests": [
+          "OGC services testing",
+          "import/export format testing",
+          "standards and schema validation"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0.25
+      },
+      {
+        "attributeId": "usability-geospatial",
+        "name": "Usability (Geospatial)",
+        "status": "covered",
+        "gateIds": [
+          "ui-component-tests",
+          "accessibility-tests"
+        ],
+        "implementedTests": [
+          "accessibility testing",
+          "symbology and scale evaluation"
+        ],
+        "missingTests": [
+          "cartographic comprehension tests",
+          "spatial cognitive load tests"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0.5
+      },
+      {
+        "attributeId": "traceability-auditability",
+        "name": "Traceability and Auditability",
+        "status": "uncovered",
+        "gateIds": [],
+        "implementedTests": [],
+        "missingTests": [
+          "spatial data lineage tests",
+          "data versioning tests",
+          "historical reproducibility of results",
+          "decision flow auditing"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0
+      },
+      {
+        "attributeId": "resilience",
+        "name": "Resilience",
+        "status": "uncovered",
+        "gateIds": [],
+        "implementedTests": [],
+        "missingTests": [
+          "controlled failure tests (fault injection)",
+          "recovery testing",
+          "stress recovery scenarios"
+        ],
+        "catalogTestCount": 3,
+        "implementedTestRatio": 0
+      },
+      {
+        "attributeId": "geoethics",
+        "name": "Geoethics",
+        "status": "uncovered",
+        "gateIds": [],
+        "implementedTests": [],
+        "missingTests": [
+          "data consent and usage tests",
+          "data origin validation",
+          "license validation"
+        ],
+        "catalogTestCount": 3,
+        "implementedTestRatio": 0
+      }
+    ]
+  },
+  "analysis": {
+    "level": 2,
+    "model": "google/gemini-3.1-flash-lite",
+    "usage": {
+      "prompt_tokens": 3381,
+      "completion_tokens": 624,
+      "total_tokens": 4005,
+      "cost": 0.00178125,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.00178125,
+        "upstream_inference_prompt_cost": 0.00084525,
+        "upstream_inference_completions_cost": 0.000936
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "uncoveredAttributes": [
+      "data-integration",
+      "result-quality",
+      "scalability",
+      "traceability-auditability",
+      "resilience",
+      "geoethics"
+    ],
+    "weaklyCoveredAttributes": [
+      {
+        "attributeId": "processing",
+        "missing": "CRS consistency tests; reproducibility tests"
+      },
+      {
+        "attributeId": "availability",
+        "missing": "connectivity tests to data sources; fault tolerance tests; GIS service recovery tests"
+      },
+      {
+        "attributeId": "performance",
+        "missing": "layer loading time; spatial query latency"
+      },
+      {
+        "attributeId": "security",
+        "missing": "spatial integrity"
+      },
+      {
+        "attributeId": "data-quality",
+        "missing": "temporal consistency tests"
+      },
+      {
+        "attributeId": "interoperability",
+        "missing": "OGC services testing; import/export format testing; standards and schema validation"
+      },
+      {
+        "attributeId": "usability-geospatial",
+        "missing": "cartographic comprehension tests; spatial cognitive load tests"
+      }
+    ],
+    "recommendations": [
+      {
+        "attributeId": "result-quality",
+        "suggestedTests": [
+          "topological consistency",
+          "validation against reference data"
+        ],
+        "rationale": "Ensuring the accuracy of spatial results is critical for wind-energy investment decisions; topological consistency is essential for valid GIS analysis.",
+        "priority": "high"
+      },
+      {
+        "attributeId": "processing",
+        "suggestedTests": [
+          "CRS consistency tests",
+          "reproducibility tests"
+        ],
+        "rationale": "The application performs complex H3 spatial operations; verifying CRS consistency and result reproducibility is vital to prevent erroneous spatial calculations.",
+        "priority": "high"
+      },
+      {
+        "attributeId": "data-quality",
+        "suggestedTests": [
+          "temporal consistency tests"
+        ],
+        "rationale": "Vento relies on time-sensitive wind data; temporal consistency is required to ensure the data used for assessment is current and valid.",
+        "priority": "medium"
+      },
+      {
+        "attributeId": "performance",
+        "suggestedTests": [
+          "layer loading time",
+          "spatial query latency"
+        ],
+        "rationale": "Improving responsiveness is necessary for the usability of the dashboard during interactive territorial analysis.",
+        "priority": "medium"
+      },
+      {
+        "attributeId": "security",
+        "suggestedTests": [
+          "spatial integrity"
+        ],
+        "rationale": "While access control is implemented, verifying spatial integrity ensures that the data rendered on the map has not been tampered with.",
+        "priority": "medium"
+      }
+    ],
+    "validation": {
+      "droppedSuggestedTests": [],
+      "droppedRecommendations": [],
+      "coverageComparison": {
+        "uncoveredClaimedButCovered": [],
+        "uncoveredMissedByModel": [],
+        "weakClaimedButNotWeak": [],
+        "weakMissedByModel": []
+      }
+    }
+  },
+  "deployment": {
+    "decision": "allow",
+    "reason": "Every blocking quality gate produced evidence and passed.",
+    "blockingFailures": [],
+    "warnings": [
+      {
+        "gateId": "dependency-audit",
+        "attributeId": "security",
+        "reason": "dependency advisories present (2 critical, 6 high); the gate is declared non-blocking, so this does not stop the deployment"
+      }
+    ],
+    "evaluatedAt": "2026-07-31T17:12:06.071Z",
+    "rule": "deterministic; the generative analysis explains a block but never causes or lifts one"
+  }
+}

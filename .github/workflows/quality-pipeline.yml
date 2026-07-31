@@ -172,6 +172,24 @@ jobs:
           cat "$BUNDLE"
           echo "::endgroup::"
 
+      # The analyzer persists every prompt and raw response for reproducibility,
+      # but those files live only on the runner and disappear with it. Emitting
+      # them into the log is what makes that claim hold after the run ends.
+      - name: Publish analyzer prompts and responses
+        if: always()
+        run: |
+          DIR="quality/evidence/raw/${GITHUB_RUN_ID}/analysis"
+          if [ ! -d "$DIR" ]; then
+            echo "No analyzer exchanges were recorded for this run."
+            exit 0
+          fi
+          for f in "$DIR"/*.json; do
+            [ -e "$f" ] || continue
+            echo "::group::$(basename "$f")"
+            cat "$f"
+            echo "::endgroup::"
+          done
+
   # Job 2 of 2: the deployment gate. It enforces the decision computed above and
   # is deliberately thin — its purpose is to make the enforcement point a
   # separate, visible node of the pipeline graph rather than a step buried in the

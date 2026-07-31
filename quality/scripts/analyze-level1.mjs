@@ -124,6 +124,7 @@ export async function diagnoseGate({
   const attributeIds = catalog.attributes.map((a) => a.id);
   const schema = buildResponseSchema(attributeIds);
   const basePrompt = buildUserPrompt({ gate, gateSpec, attribute, catalog });
+  const retryReasons = [];
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     const userPrompt =
@@ -147,8 +148,13 @@ export async function diagnoseGate({
 
     if (!outcome.ok) {
       if (attempt === 2) {
-        return { error: outcome.error, attempts: attempt };
+        return { error: outcome.error, attempts: attempt, retryReasons };
       }
+      // Retrying silently would leave `attempts: 2` in the bundle with nothing
+      // explaining it, which is exactly the kind of unexplained number a reader
+      // of the paper cannot check.
+      console.warn(`[analyze-level1] ${gate.gateId}: attempt ${attempt} failed: ${outcome.error}`);
+      retryReasons.push({ attempt, reason: outcome.error });
       continue;
     }
 
@@ -157,12 +163,17 @@ export async function diagnoseGate({
         `[analyze-level1] ${gate.gateId}: attempt ${attempt} returned ` +
           `affectedAttributeId '${outcome.data.affectedAttributeId}', which is not in the catalog.`,
       );
+      retryReasons.push({
+        attempt,
+        reason: `affectedAttributeId '${outcome.data.affectedAttributeId}' is not a catalog identifier`,
+      });
       if (attempt === 2) {
         return {
           error:
             `model returned an affectedAttributeId outside the catalog ` +
             `('${outcome.data.affectedAttributeId}') on both attempts; diagnostic rejected`,
           attempts: attempt,
+          retryReasons,
         };
       }
       continue;
@@ -171,12 +182,13 @@ export async function diagnoseGate({
     return {
       ...outcome.data,
       attempts: attempt,
+      ...(retryReasons.length > 0 ? { retryReasons } : {}),
       model: outcome.model,
       usage: outcome.usage,
     };
   }
 
-  return { error: "unreachable", attempts: 2 };
+  return { error: "unreachable", attempts: 2, retryReasons };
 }
 
 async function main() {
