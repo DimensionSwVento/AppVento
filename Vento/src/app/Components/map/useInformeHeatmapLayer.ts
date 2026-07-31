@@ -8,17 +8,8 @@ import {
   getResolution,
 } from "h3-js";
 import { dimensionHexScore, viridis } from "../../Utils/report/heatmapPalette";
-import { useAreaHexData } from "../../Utils/report/useAreaHexData";
+import { useAreaHexData, backendScore } from "../../Utils/report/useAreaHexData";
 import { USE_PLACEHOLDER_FALLBACK } from "../../Utils/projectData";
-
-/** id de dimensión del frontend → categoría del backend. */
-const DIM_TO_CAT: Record<string, string> = {
-  tecnica: "TEC",
-  ambiental: "AMB",
-  social: "SOC",
-  macroeconomica: "MAC",
-  regulatoria: "REG",
-};
 
 /**
  * Heatmap del informe (US06-HEAT-AC1): malla de hijos res-8 dentro del área
@@ -85,23 +76,24 @@ export function useInformeHeatmapLayer(
     // reused" → mapa despintado). Mismo patrón que `selectedLayer`.
     const active = heatmapActive && data.length > 0;
     const dim = (activeDimension ?? "general") as string;
-    const cat = DIM_TO_CAT[dim];
     return new PolygonLayer<{ h: string; baseScore: number }>({
       id: "informe-heatmap",
       data,
       visible: active,
       getPolygon: (d) => cellToBoundary(d.h, true),
       getFillColor: (d) => {
-        const info = areaData?.get(d.h);
+        const real = backendScore(areaData?.get(d.h), dim);
         let t: number;
-        if (info && cat && typeof info.scores[cat] === "number") {
-          t = info.scores[cat]; // score real del backend (0..1)
+        if (typeof real === "number") {
+          t = real; // score real del backend (0..1): general→score_general, dim→scores[cat]
         } else if (USE_PLACEHOLDER_FALLBACK) {
-          // Placeholder: gradiente radial + ruido determinista por hex.
+          // Modo template: gradiente radial + ruido determinista por hex.
           const noise = (dimensionHexScore(dim, d.h) - 0.5) * 0.3;
           t = d.baseScore + noise;
         } else {
-          t = d.baseScore; // solo gradiente radial neutro (sin datos fake)
+          // Modo API sin dato real (p.ej. AMB/MAC aún sin master): NO pintar
+          // nada — transparente, se ve el basemap. Nada de radial fake.
+          return [0, 0, 0, 0];
         }
         const [r, g, b] = viridis(Math.max(0, Math.min(1, t)));
         // Alpha bajo (sprint 3): los hexes no deben tapar el relieve/mapa de
