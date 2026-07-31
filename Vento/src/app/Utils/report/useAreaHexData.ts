@@ -125,6 +125,9 @@ export function useAreaHexData(
   const [data, setData] = useState<AreaHexMap | null>(null);
 
   useEffect(() => {
+    // Reset de datos al cambiar la selección antes de re-consultar el backend
+    // (evita mostrar datos del área anterior mientras carga la nueva).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setData(null);
     // Modo template (sin API): no se consulta el backend → placeholder.
     if (!USE_BACKEND || !enabled || selectedHexes.size === 0) return;

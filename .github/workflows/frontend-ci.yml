@@ -185,7 +185,14 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
       - name: Instalar gitleaks
         run: |
-          wget -qO- https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_8.24.3_linux_x64.tar.gz | tar xz -C /usr/local/bin gitleaks
+          set -euo pipefail
+          # URL FIJA a la versión (NO `latest/download`, que sirve los assets del
+          # release más nuevo: si el latest ≠ 8.24.3 el asset no existe → descarga
+          # vacía → `tar: unexpected end of file`). Se baja a archivo y se valida.
+          wget -q -O gitleaks.tar.gz \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz
+          tar xzf gitleaks.tar.gz -C /usr/local/bin gitleaks
+          gitleaks version
         working-directory: /tmp
       # --no-git escanea el árbol de trabajo (checkout shallow, sin historia).
       - name: Scan de secretos

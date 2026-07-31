@@ -64,8 +64,11 @@ export default function HexPopup({ h3Index, x, y, onClose }: HexPopupProps) {
   useEffect(() => {
     // Modo template (sin API): no hay detalle desde el backend.
     if (!USE_BACKEND) {
+      // Reset al no haber backend — sincroniza el estado con la fuente externa.
+      /* eslint-disable react-hooks/set-state-in-effect */
       setDetail(null);
       setLoading(false);
+      /* eslint-enable react-hooks/set-state-in-effect */
       return;
     }
     fetch(`/api/tiles/detail/${h3Index}`)

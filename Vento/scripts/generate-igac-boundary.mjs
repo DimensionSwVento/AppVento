@@ -1,6 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { readFileSync } from "node:fs";
 import polygonClipping from "polygon-clipping";
 
 // --- Fuente A: IGAC departamentos (tierra firme, fuente oficial colombiana) ---
