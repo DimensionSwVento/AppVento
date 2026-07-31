@@ -23,15 +23,36 @@ function hashCell(h: string): number {
 }
 
 /**
+ * Store de zonas EXCLUIDAS por dato (excluida=true), alimentado por la API
+ * (`useAreaHexData` desde `tipo_celda="excluida"` / la columna "excluida" que
+ * llegará como una variable consultable más — nombre por confirmar). Es la
+ * fuente REAL; si un hex no está en el store, cae a `BANNED_HEXES` o al
+ * placeholder (modo template).
+ */
+const bannedStore = new Map<string, boolean>();
+
+/** Alimenta las zonas excluidas por dato (columna "excluida" del backend). */
+export function setBannedData(entries: Iterable<[string, boolean]>): void {
+  for (const [hex, banned] of entries) bannedStore.set(hex, banned);
+}
+
+/**
  * `true` si el hex es una zona EXCLUIDA / prohibida (inviable) → gris sólido y
- * no seleccionable. Fuente real: `BANNED_HEXES` (doc maestro, a resolución
- * `MIN_SELECTION_H3_RES`; un hex más fino hereda el veto de su ancestro). Hoy
- * vacío, así que — mientras `SHOW_PLACEHOLDER_EXCLUDED` — se usa un placeholder
- * determinista por zona res-5 para que las zonas grises sean visibles. Ver
- * `Utils/projectData.ts`.
+ * no seleccionable. Fuentes en orden: (0) dato de la API (`bannedStore`),
+ * (1) `BANNED_HEXES` del doc maestro, (2) placeholder determinista mientras
+ * `SHOW_PLACEHOLDER_EXCLUDED` (modo template). Ver `Utils/projectData.ts`.
  */
 export function isHexBanned(h: string): boolean {
-  // 1) Datos reales (cuando existan).
+  // 0) Dato real de la API (por hex o heredado del ancestro a res mínima).
+  const fromData = bannedStore.get(h);
+  if (fromData !== undefined) return fromData;
+  if (
+    getResolution(h) > MIN_SELECTION_H3_RES &&
+    bannedStore.get(cellToParent(h, MIN_SELECTION_H3_RES)) === true
+  ) {
+    return true;
+  }
+  // 1) Datos reales estáticos (cuando existan).
   if (BANNED_HEXES.size > 0) {
     if (BANNED_HEXES.has(h)) return true;
     if (

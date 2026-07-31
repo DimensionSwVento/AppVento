@@ -126,6 +126,8 @@ Técnicas usadas en la tercera entrega que conviene conocer antes de tocar el c�
 |-----|----------|
 | [tech-stack-validation.md](architecture/tech-stack-validation.md) | Qué tecnologías se usan y por qué — retrospectiva práctica del stack |
 | [frontend-backend-integration.md](architecture/frontend-backend-integration.md) | Cómo Next.js se conecta a FastAPI (rewrites, proxy, dónde van los handlers locales vs proxy) |
+| [backend-api.md](architecture/backend-api.md) | Referencia técnica del backend FastAPI: endpoints, modelo de datos, scoring, ingesta |
+| [backend-sync-checklist.md](architecture/backend-sync-checklist.md) | Peticiones del front a la API + qué debe proveer/sincronizar el backend (para pasar a datos reales) |
 | [auth-strategy.md](security/auth-strategy.md) | Cómo funciona el login y la protección de rutas (middleware + layouts + API guards) |
 | [infra/keycloak.md](infra/keycloak.md) | Cómo desplegar y configurar Keycloak para Vento (dev + prod, theme, realm) |
 | [test-strategy.md](testing/test-strategy.md) | Estrategia de testing: dónde viven los tests, qué validan, cómo añadir nuevos |
