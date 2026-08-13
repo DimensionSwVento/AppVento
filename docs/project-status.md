@@ -22,7 +22,7 @@ author: mavalan Software
 | Scopes contractuales | ✅ Cerrados | Scope 1 (Acceso+Mapa+Admin), Scope 2 (flujo de idoneidad, 2026-06-01) y 3ª entrega (feedback v2 + catálogo definitivo, en modo template, 2026-07-30) |
 | Historias de usuario (futuras) | ✅ Definido | 20 HU en backlog futuro |
 | Épicas formales | ✅ Generado | 11 épicas (5 primera entrega + 6 futuras) via workflow BMAD |
-| Viabilidad equipo/plazo | ✅ Analizado | 230h de 320h disponibles. Viable con 28% margen |
+| idoneidad equipo/plazo | ✅ Analizado | 230h de 320h disponibles. Viable con 28% margen |
 | Testing unitario | ✅ Hecho | Vitest + RTL — 17 archivos test (auth, middleware, keycloak admin, Map, SideBar, dashboard, context, routes) |
 | Responsive mobile | ✅ Hecho | SideBar colapsado + subpágina overlay + hamburguesa + fullscreen top-right |
 | Deploy AccuWeb standalone | ✅ Hecho | `output: "standalone"`, proxy SSL HTTP/HTTPS, cookie reduction |
@@ -68,7 +68,7 @@ Todas las fases están **entregadas**; la 3ª entrega quedó en **modo template*
 | 6 | ADR-001 Stack Frontend | `docs/adr/ADR-001-stack-frontend.md` | ⚠️ Propuesto |
 | 7 | ADR-002 Resolución H3 | `docs/adr/ADR-002-resolucion-h3.md` | ⚠️ Propuesto |
 | 8 | ADR-003 Sin Backend API Inicial | `docs/adr/ADR-003-sin-backend-api-inicial.md` | ⛔ Superseded por ADR-007 |
-| 9 | ADR-004 Equipo y Viabilidad | `docs/adr/ADR-004-equipo-viabilidad-1-mes.md` | ✅ Aceptado |
+| 9 | ADR-004 Equipo y idoneidad | `docs/adr/ADR-004-equipo-idoneidad-1-mes.md` | ✅ Aceptado |
 | 10 | ADR-005 Keycloak Identidad | `docs/adr/ADR-005-keycloak-identidad.md` | ✅ Aceptado |
 | 11 | ADR-006 Storage/Cache Geoespacial | `docs/adr/ADR-006-storage-cache-datos-geoespaciales.md` | ✅ Aceptado |
 | 12 | ADR-007 Backend Clean Arch + DDD + Monorepo | `docs/adr/ADR-007-backend-clean-architecture-ddd-monorepo.md` | ✅ Aceptado |
@@ -122,7 +122,7 @@ Todas las fases están **entregadas**; la 3ª entrega quedó en **modo template*
 | 7 | Definir arquitectura primera entrega | ✅ Actualizado | ADR-007 supersede ADR-003: backend desde día 1 |
 | 8 | Definir proveedor de identidad | ✅ Hecho | ADR-005: Keycloak OIDC |
 | 9 | Definir estrategia datos geoespaciales | ✅ Hecho | ADR-006: Cache frontend + storage pendiente |
-| 10 | Analizar viabilidad 1 mes | ✅ Hecho | — |
+| 10 | Analizar idoneidad 1 mes | ✅ Hecho | — |
 | 11 | Organizar documentación de proyecto | ✅ Hecho | — |
 | 12 | Documentar tecnologías aplicables | ✅ Hecho | — |
 | 13 | Generar épicas y stories (BMAD) | ✅ Hecho | 11 épicas, 5 primera entrega |

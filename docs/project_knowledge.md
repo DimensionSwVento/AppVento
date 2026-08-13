@@ -14,7 +14,7 @@ La siguiente información corresponde a contexto del proyecto y el actual plazo 
 - Selecion de area a realizar el analisis en el mapa interactivo
 - Configurar las variables a configurar agrupadas por dimencion (Tecnica,ambiental,regulatoria,socioeconomica,macroeconomica)
 - insertar las caracteristicas del proyecto configuracion de turbino o otro elemento tecnico con entradas como (selecion de capacidad en Mw, etc)
-- informe de viabilidad del area selecionada con opcion de descarga
+- informe de idoneidad del area selecionada con opcion de descarga
 - opcion de ver historial de informes
 
 ## 1.2 Contexto de Alcance y Objetivos Tempranos
@@ -23,7 +23,7 @@ el primer contexto corresponde a a lo definido para el proyecto alcanzes y las p
 
 ### 1.2.1 Resumen del Problema
 
-Actualmente, evaluar la viabilidad de un proyecto de energía eólica en Colombia es
+Actualmente, evaluar la idoneidad de un proyecto de energía eólica en Colombia es
 un proceso lento, fragmentado y costoso. Los analistas se enfrentan a tres
 barreras principales:
 ● Dispersión de Datos: La información ambiental, técnica, regulatoria y
@@ -33,7 +33,7 @@ socioeconómica reside en diferentes fuentes y formatos. No hay un "lugar
 potencial requiere herramientas SIG (Sistemas de Información Geográfica)
 complejas que no todos los tomadores de decisiones saben operar.
 ● Incertidumbre en la Toma de Decisiones: Sin una forma rápida de
-prototipar y simular variables, los informes de viabilidad tardan semanas, lo
+prototipar y simular variables, los informes de idoneidad tardan semanas, lo
 que retrasa la inversión en energías limpias.
 
 ### 1.2.2 Objetivos del Alcance Temprano
@@ -42,17 +42,17 @@ Implementar/Usar un motor geoespacial basado en H3: Lograr que la selección
 de áreas en el mapa de Colombia tenga una precisión de resolución estandarizada,
 permitiendo cálculos de área automáticos sin intervención manual del usuario.
 Automatizar la generación de reportes: Reducir el tiempo de creación de un
-informe de viabilidad profesional de 5 días hábiles a menos de 30 segundos tras la
+informe de idoneidad profesional de 5 días hábiles a menos de 30 segundos tras la
 configuración de variables.
 Garantizar la integridad de los datos: Centralizar 5 dimensiones de análisis
-(Ambiental, Técnica, Regulatoria, Socioeconómica y Macroeconómica) en una única
+(Ambiental, Técnica, Regulatoria, Socioeconómica y económica) en una única
 fuente de verdad técnica.
 
 ### 1.2.3 Solución Propuesta
 
 Nuestra solución se fundamenta en los diseños de Figma derivados del discovery. A
 partir de este insumo, garantizamos los siguientes aspectos:
-Automatización: Cálculo inmediato de viabilidad basado en 5 dimensiones
+Automatización: Cálculo inmediato de idoneidad basado en 5 dimensiones
 críticas.
 Sistema H3 Geo: Uso de hexágonos para una selección geográfica precisa y
 estandarizada.
@@ -113,7 +113,7 @@ usuario
 
 ## 1.3 Aclaraciones Técnicas del Mapa y Datos
 
-- el mapa debe ser de calor segun un score nacido del promedio de la viabilidad de todas las dimenciones
+- el mapa debe ser de calor segun un score nacido del promedio de la idoneidad de todas las dimenciones
 - el mapa debe soportar coloreo por variables criticas (aun no definidas) ademas del score promedio  permitir el filtrado en el mapa de calor renderizandolo pero esta vez con la variable selecionada en ves del score general
 - cada hexagono al dar click debe disponer popup para visualizar info y/o variables
 - aun esta por definir el proceso para el analisis de variables o dimenciones en areas maritimas dejar como historias y o tareas  finales
@@ -141,7 +141,7 @@ eólico que sean viables para su explotación en generación eléctrica, desarro
 una herramienta multicriterio basada en un Sistema de Información Geográfico
 (SIG) que permita considerar simultáneamente aspectos socioeconómicos, técnicos
 y ambientales con el fin de establecer recomendaciones que permitan evaluar la
-viabilidad de implementación de proyectos de explotación de dicha fuente.
+idoneidad de implementación de proyectos de explotación de dicha fuente.
 
 ### 2.1.2 Objetivos Específicos
 
@@ -214,7 +214,7 @@ ción sobre trabajos en los que el análisis multicriterio fuera aplicado a la s
 sitios para proyectos de energía eólica, con el propósito de comprender la evolución
 de estas metodologías e identificar herramientas comparables. Adicionalmente,
 se efectuó un sondeo de parámetros y variables reportados en la literatura para
-este tipo de análisis de viabilidad. A través de esta revisión se buscó identificar la
+este tipo de análisis de idoneidad. A través de esta revisión se buscó identificar la
 siguiente información:
 
 Limitantes y factores técnicos considerados en el desarrollo de proyectos
@@ -234,12 +234,12 @@ la planificación energética. Esta situación dificulta la toma de decisiones e
 por parte de entidades gubernamentales, inversionistas y desarrolladores, quienes
 requieren información precisa, actualizada y reproducible para priorizar zonas de
 desarrollo con menor incertidumbre.
-Adicionalmente, una parte de los estudios de viabilidad desarrollados en el
+Adicionalmente, una parte de los estudios de idoneidad desarrollados en el
 país se apoya en metodologías tradicionales que no incorporan de manera integral
 factores multicriterio ni avances recientes en sensores remotos, modelación SIG,
 inteligencia artificial o análisis predictivo. Como resultado, aumenta el riesgo de
 seleccionar sitios con baja productividad energética, conflictos de uso del suelo o
-impactos ambientales significativos, lo que afecta la sostenibilidad y la viabilidad
+impactos ambientales significativos, lo que afecta la sostenibilidad y la idoneidad
 económica de los proyectos.
 La revisión de antecedentes científico-tecnológicos realizada en el marco del
 proyecto evidencia una tendencia global hacia la adopción de plataformas basadas
@@ -253,7 +253,7 @@ producción anual de energía (AEP) en parques eólicos on-shore ubicados en Kan
 por efecto estela, las cuales pueden oscilar entre 8.7 % y 20 % según la disposición
 del parque. Adicionalmente, se introduce un coeficiente de eficiencia reducida para
 evaluar el impacto del diseño del parque.
-También se ha reportado la evaluación de viabilidad de un parque eólico on-shore
+También se ha reportado la evaluación de idoneidad de un parque eólico on-shore
 en la isla Terceira [ 338]. En dicho análisis se utilizó SIG y un análisis costo–
 beneficio, obteniendo un VPN de 3.3 millones de euros, una TIR de 26 % y un
 costo nivelado de energía cercano a 0.04 euros/kWh, las cuales son las tres métricas
@@ -347,9 +347,9 @@ en las subdimensiones descritas. Considerando etapas posteriores de evaluación
 multicriterio para determinar la factibilidad de sitios de instalación, las variables se
 organizaron bajo un esquema de Exclusión–Decisión. Las variables excluyentes
 corresponden a criterios con decisión binaria (Sí/No) que limitan directamente la
-viabilidad en una zona (por ejemplo, áreas protegidas). Por su parte, las variables
+idoneidad en una zona (por ejemplo, áreas protegidas). Por su parte, las variables
 de decisión ingresan a la evaluación multicriterio con valores graduados según
-favorezcan o perjudiquen la viabilidad de un proyecto (Inclusión/Penalización).
+favorezcan o perjudiquen la idoneidad de un proyecto (Inclusión/Penalización).
 A continuación se presenta un desglose de variables del componente técnico,
 describiendo sus características y una caracterización preliminar de rangos esperados.
 Este segmento corresponde a la actividad 3, relacionada con la búsqueda de
@@ -363,7 +363,7 @@ así como métricas determinísticas y probabilísticas que permiten cuantificar
 incertidumbre asociada. En este sentido, el modelo propuesto constituye un compo-
 nente técnico fundamental para la toma de decisiones en etapas de prefactibilidad
 y planificación, contribuyendo a una evaluación más objetiva del potencial de
-generación, la viabilidad técnica y el riesgo asociado a los proyectos eólicos en el pais
+generación, la idoneidad técnica y el riesgo asociado a los proyectos eólicos en el pais
 
 ## 2.7 Requisitos Generales del Modelo
 
@@ -384,7 +384,7 @@ la herramienta multicriterio basada en SIG, para identificar zonas offshore y on
 con potencial eólico en el territorio colombiano, ajustando los parámetros según
 las condiciones específicas del país y validando los resultados con información
 secundaria, para generar un mapa detallado de zonas viables para la explotación
-eólica y establecer recomendaciones sobre la viabilidad de implementación de
+eólica y establecer recomendaciones sobre la idoneidad de implementación de
 proyectos eólicos en dichas zonas", se presenta este capítulo.
 Un sistema de información geográfica (SIG) es una herramienta tecnológica que
 permite capturar, gestionar, analizar y visualizar información georreferenciada [34].
@@ -393,7 +393,7 @@ específico (junto con hardware, personal e instituciones asociadas), una aplica
 de software SIG es un programa con un propósito definido, diseñado para su uso en
 ámbitos como gestión ambiental, conservación, energía y monitoreo de recursos
 naturales [ 56 ]. La aplicación presentada integra datos espaciales de las dimensiones
-técnica, ambiental, socioeconómica, macroeconómica y regulatoria, junto con un
+técnica, ambiental, socioeconómica, económica y regulatoria, junto con un
 modelo multicriterio orientado a apoyar la toma de decisiones en la planificación y
 desarrollo de proyectos eólicos en Colombia
 
@@ -420,7 +420,7 @@ Django) e integración con PostgreSQL/PostGIS. Este ecosistema habilita flujos
 reproducibles y escalables, aunque evidencia una brecha: la mayoría de soluciones
 existentes priorizan dimensiones técnicas/ambientales y no integran de forma nativa
 variables sociales y territoriales.
-Se realizaron dos PoCs para evaluar integración y viabilidad técnica.
+Se realizaron dos PoCs para evaluar integración y idoneidad técnica.
 
 ## 2.9 Modelo Multicriterio SIG–MCDM
 
@@ -434,7 +434,7 @@ Sobre las áreas elegibles se calcula el índice:
 𝑖
 donde 𝑤𝑖 es el peso AHP del criterio 𝑖 y 𝑥′
 𝑖 es la variable normalizada/puntuada.
-Salida: mapa continuo de viabilidad 𝑉 (0–1 o escala equivalente), junto con
+Salida: mapa continuo de idoneidad 𝑉 (0–1 o escala equivalente), junto con
 capas intermedias de elegibilidad y de cada criterio normalizado.
 
 ### 2.9.2 Validación, Robustez y Visualización de Resultados (TOPSIS + Análisis de Sensibilidad)
@@ -449,7 +449,7 @@ por escenarios y se analiza:
 ■ estabilidad espacial de las zonas mejor clasificadas,
 ■ cambios por dimensión,
 ■ robustez de resultados frente a incertidumbre en ponderaciones.
-Salida: mapas temáticos (clases de viabilidad), ranking de alternativas, re-
+Salida: mapas temáticos (clases de idoneidad), ranking de alternativas, re-
 porte de parámetros del escenario y productos cartográficos para el capítulo de
 resultados/implementación.
 
@@ -459,7 +459,7 @@ Para garantizar coherencia metodológica, transparencia y flexibilidad entre
 escenarios, las variables se organizan según la selección de un usuario.
 
 ■ Variables excluyentes: reglas duras de no intervención: Las variables exclu-
-yentes definen restricciones absolutas: zonas donde, por normativa, inviabilidad
+yentes definen restricciones absolutas: zonas donde, por normativa, inidoneidad
 técnica evidente o prohibiciones explícitas, no se debe considerar la instalación.
 En términos SIG, estas capas operan como máscaras binarias (0 = no elegible, 1
 = elegible). Su función es reducir el espacio de búsqueda y evitar que el índice
@@ -524,7 +524,7 @@ ponderada.
 Salida: mapa de aptitud mínimo viable 𝑉MV.
 
 #### Paso 4: Inclusión de Variables Penalizantes (Refinamiento de la Aptitud)
-Propósito: refinar la aptitud incorporando fricciones que afectan la viabilidad
+Propósito: refinar la aptitud incorporando fricciones que afectan la idoneidad
 sin excluir totalmente áreas.
 Idea metodológica: las penalizaciones se pueden introducir de dos maneras:
 ■ Como criterios adicionales dentro de la suma ponderada (tras estandarización).
@@ -610,7 +610,7 @@ continente como costa afuera.
 
 ### 3.1.1 Velocidad de Viento
 Esta variable describe la rapidez con la que se desplaza el viento y constituye
-uno de los indicadores clave de viabilidad en proyectos eólicos.
+uno de los indicadores clave de idoneidad en proyectos eólicos.
 
 Wind Power Class Resource Potential Wind Power Density (𝑊/𝑚2) Wind Speed (𝑚/𝑠))
 1 Poor 0 - 200 0.0 - 5.9
@@ -668,7 +668,7 @@ Tipo: Variable informativa.
 
 ### 3.2.4 Fallas Geológicas
 Fracturas en corteza terrestre. NSR-10: <20 km de falla activa = estudios específicos, <5 km = microzonificación.
-Tipo: Variable relevante para evaluación de viabilidad y seguridad.
+Tipo: Variable relevante para evaluación de idoneidad y seguridad.
 
 ### 3.2.5 Amenaza Sísmica
 Probabilidad de sismo con PGA superior a umbral. Criterios IEC 61400-1.

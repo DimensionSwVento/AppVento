@@ -8,7 +8,7 @@ test.describe("Landing pública", () => {
   test("renderiza título, logo y acciones de acceso", async ({ page }) => {
     await page.goto("/");
     await expect(
-      page.getByRole("heading", { name: "Plataforma de Viabilidad Eólica" }),
+      page.getByRole("heading", { name: "Plataforma de idoneidad Eólica" }),
     ).toBeVisible();
     await expect(page.getByAltText("Vento")).toBeVisible();
     await expect(

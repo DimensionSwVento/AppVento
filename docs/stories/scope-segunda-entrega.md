@@ -22,7 +22,7 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
 | Reunión | Objetivo | HUs bloqueadas |
 |---------|----------|----------------|
 | **Datos — Definición de "Características del Proyecto"** | El enfoque ya no es turbina-por-turbina (eso cambió). La reunión define cómo se modela ahora. | US05 (las 3 HUs) |
-| **Modelo multicriterio — Output esperado** | Confirmar entregables del modelo para conectar datos reales al informe | US03 (parte viabilidad) y US06 datos reales (diferidos) |
+| **Modelo multicriterio — Output esperado** | Confirmar entregables del modelo para conectar datos reales al informe | US03 (parte idoneidad) y US06 datos reales (diferidos) |
 
 ---
 
@@ -30,7 +30,7 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
 
 | Prioridad | ID | Historia | Épica | Preparado_para_desarrollo? |
 |-----------|----|----------|-------|--------|
-| 🔴 Crítica | **US03-P2** | Cálculo de área y viabilidad del área (Mapa Parte 2) | E2 | ✅ Listo (viabilidad con placeholders hasta modelo) |
+| 🔴 Crítica | **US03-P2** | Cálculo de área y idoneidad del área (Mapa Parte 2) | E2 | ✅ Listo (idoneidad con placeholders hasta modelo) |
 | 🟡 Alta | **US03-AC12** | Bloqueo de selección fuera de fase Selección de Área | E2 | ✅ Listo |
 | 🟡 Alta | **US04-AC1** | Subpágina Dimensiones (cards colapsables, switches, búsqueda, contador X/Y) | E4 | ✅ Listo |
 | 🟡 Alta | **US04-AC2** | Tooltip con definición de cada variable | E4 | ✅ Listo |
@@ -48,35 +48,35 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
 
 ---
 
-# E2 — Mapa SIG (Parte 2: Calcular área y viabilidad)
+# E2 — Mapa SIG (Parte 2: Calcular área y idoneidad)
 
-> **Objetivo:** Calcular y mostrar el área (km²) y la viabilidad agregada del área seleccionada en el mapa como insumo del flujo y del informe.
+> **Objetivo:** Calcular y mostrar el área (km²) y la idoneidad agregada del área seleccionada en el mapa como insumo del flujo y del informe.
 
 **Dependencias:** US03, US03-AC6
 
 ---
 
-### US03-P2 — Cálculo de Área y Viabilidad del Área Seleccionada
+### US03-P2 — Cálculo de Área y idoneidad del Área Seleccionada
 - **Prioridad:** 🔴 Crítica
 - **Épica origen:** E2 (Mapa SIG — Parte 2)
 - **Dependencia:** US03, US03-AC6
 - **Criterios de Aceptación:**
   1. Cálculo de área usando `cellArea(h, 'km2')` de h3-js, sumado sobre `selectedHexes`
   2. Área visible en un **panel flotante pequeño a la derecha del mapa** (siempre visible, ~180-220px de ancho) con formato `1,234.56 km²` y separadores de miles
-  3. Indicador de viabilidad del área seleccionada — valor agregado a partir de los scores de los hexágonos, mostrado en el mismo panel
+  3. Indicador de idoneidad del área seleccionada — valor agregado a partir de los scores de los hexágonos, mostrado en el mismo panel
   4. Actualización reactiva al añadir/quitar hexágonos sin recargar
-  5. Comportamiento robusto con `0 hexágonos seleccionados` → `0 km²` y sin indicador de viabilidad, sin crash
+  5. Comportamiento robusto con `0 hexágonos seleccionados` → `0 km²` y sin indicador de idoneidad, sin crash
   6. Responsive: en mobile el panel se acopla en la parte inferior (no superpuesto al mapa)
 - **Tareas técnicas / desarrollo:**
   - 📦 **FE Helper**: `Vento/src/app/Utils/report/areaCalc.ts` — `calcArea(hexes: Set<string>): number` y `calcViability(hexes, scores): number`
   - 📦 **FE Contenedor flotante**: `Vento/src/app/Components/MapInfoPanel.tsx` — panel flotante a la derecha del mapa, ancho ~200px, siempre visible. Reutilizable para futuros widgets (tooltips US04-AC2, leyenda, etc.)
-  - 📦 **FE Componente**: `<AreaDisplay>` dentro del panel — renderiza el área + valor de viabilidad. Lee `selectedHexes` del context con `useAprincipal()` y usa `useMemo` para no recalcular en cada render
+  - 📦 **FE Componente**: `<AreaDisplay>` dentro del panel — renderiza el área + valor de idoneidad. Lee `selectedHexes` del context con `useAprincipal()` y usa `useMemo` para no recalcular en cada render
   - 📦 **FE Integración**: insertar `<MapInfoPanel>` en [Map.tsx](../../Vento/src/app/Components/map/Map.tsx) como hijo del contenedor del mapa (posición `absolute right-3 top-3`)
-  - 📦 **BE (opcional)**: si los scores de viabilidad por hex no están ya en los tiles, exponer `GET /api/scores?h3=...` — **verificar con backend antes de empezar si ya existe**
+  - 📦 **BE (opcional)**: si los scores de idoneidad por hex no están ya en los tiles, exponer `GET /api/scores?h3=...` — **verificar con backend antes de empezar si ya existe**
   - 🧪 **Tests**: unitario de `areaCalc.ts` (0 hex, 1 hex, N hex); integración del componente al cambiar `selectedHexes`
 - **Notas:**
   - El panel es la base UI para US04-AC2 (tooltips variables) y posibles widgets futuros — diseño escalable.
-  - La viabilidad usa scores actuales del backend (placeholders mientras el modelo multicriterio avanza). Cuando llegue versión avanzada, los valores se reemplazan sin tocar el cálculo ni el componente.
+  - La idoneidad usa scores actuales del backend (placeholders mientras el modelo multicriterio avanza). Cuando llegue versión avanzada, los valores se reemplazan sin tocar el cálculo ni el componente.
 
 ---
 
@@ -120,7 +120,7 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
   2. **Título** "Configura las variables de interés por cada dimensión" con margin-top hacia arriba para separarlo del borde del contenedor
   3. **Search bar** "Buscar variables" filtra variables por label o descripción dentro de todas las dimensiones; muestra resultados con las cards auto-expandidas
   4. **Scrollbar siempre visible** en el contenedor de cards (`overflow-y-scroll` + `scrollbar-gutter: stable`) para feedback visual de cuántas variables hay
-  5. Variables agrupadas en las **5 dimensiones** fijas (ambiental, técnica, regulatoria, socioeconómica, macroeconómica) — la taxonomía es estable mientras el cliente no la cambie
+  5. Variables agrupadas en las **5 dimensiones** fijas (ambiental, técnica, regulatoria, socioeconómica, económica) — la taxonomía es estable mientras el cliente no la cambie
   6. Cada dimensión se renderiza como **card cuadrada con bordes redondeados** (`rounded-md`) y header colapsable: nombre + contador **`X / Y`** (X = activas, Y = total) + chevron expandir/colapsar
   7. Cards colapsables individualmente — el estado es independiente por card
   8. Cuando una card está expandida, cada fila de variable contiene: **switch** (izquierda) + **label** + **descripción** (centro) + **dot de color** (derecha) — el dot representa el color asignado a la variable, mismo que aparece en los chips del mapa. Cuando lleguen íconos del cliente, reemplazan al dot
@@ -150,7 +150,7 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
 - **Dependencia:** US04-AC1
 - **Criterios de Aceptación:**
   1. Cada variable tiene un icono ℹ al lado del label dentro de la fila de `<VariableSwitch>`
-  2. Click sobre el icono abre un popover en español con: descripción de la variable + indicador **"Suma a viabilidad"** o **"Resta a viabilidad"** (derivado del signo de `variableWeights.ts`)
+  2. Click sobre el icono abre un popover en español con: descripción de la variable + indicador **"Suma a idoneidad"** o **"Resta a idoneidad"** (derivado del signo de `variableWeights.ts`)
   3. Popover se cierra: ESC, click fuera, segundo click sobre el icono
   4. Texto del popover viene del campo `description` del catálogo (o `definition` del endpoint cuando exista)
   5. Accesibilidad: el botón usa `aria-expanded`/`aria-controls` y el popover tiene `role="tooltip"`
@@ -176,7 +176,7 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
   5. Botón **"Limpiar"** sólo visible si hay al menos una variable no-obligatoria activa. Click → resetea a sólo obligatorias (vía `clearNonRequired`). Usa `e.stopPropagation()` para no colapsar el panel al click
   6. **Cada item de la lista** (con divisor `divide-gray-300` entre filas): badge cuadrado grande (`h-10 w-10 rounded-md`) con `backgroundColor` derivado de `colorForVariable(id)` + label en `text-sm font-semibold` + subtítulo con la dimensión (sin prefijo "Dimensión", capitalizado: "Ambiental", "Técnica", etc.) + ✕ a la derecha para deseleccionar (sólo en variables no-obligatorias)
   7. **Variables obligatorias**: no muestran ✕ y llevan sufijo discreto "obligatoria"
-  8. **Click sobre la fila** de una variable (todo el área salvo el ✕) → abre `InfoPopover` separado en `absolute top-3 left-3` con label + dimensión + descripción + "Suma a viabilidad" o "Resta a viabilidad"
+  8. **Click sobre la fila** de una variable (todo el área salvo el ✕) → abre `InfoPopover` separado en `absolute top-3 left-3` con label + dimensión + descripción + "Suma a idoneidad" o "Resta a idoneidad"
   9. **Panel es "fijo"**: NO se cierra por click fuera ni por ESC. Sólo el header lo colapsa
   10. **Pill compacta** (estado colapsado): contenedor azul brand `bg-[#165170ff]` con rótulo "Variables seleccionadas en el mapa" + icono ⓘ arriba + fila horizontal de chips circulares (`h-8 w-8`) abajo, hasta 3 colores + `+N` si hay más. Click en cualquier parte → vuelve al panel
   11. **Sombra del panel**: `shadow-lg shadow-[#cacacbff]` + `border border-[#eae9e9ff]`. Sombra de la pill similar (`shadow-lg shadow-[#cacacbff]`)
@@ -260,7 +260,7 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
 
 # E6 — Reportes (Parte 1: Generación y Visualización)
 
-> **Objetivo:** Mostrar los resultados del informe de viabilidad en una pantalla nativa de la app (siguiendo el diseño Figma) — scores por dimensión + valor de viabilidad agregado — con botón de descarga de PDF. La generación del PDF y el template van dentro de esta HU como tareas técnicas.
+> **Objetivo:** Mostrar los resultados del informe de idoneidad en una pantalla nativa de la app (siguiendo el diseño Figma) — scores por dimensión + valor de idoneidad agregado — con botón de descarga de PDF. La generación del PDF y el template van dentro de esta HU como tareas técnicas.
 
 **Dependencias:** US03, US04, US05; diseño Figma del informe
 
@@ -272,10 +272,10 @@ Cada HU listada aquí viene **literalmente del spec del cliente**. Las tareas t�
 - **Dependencia:** ADR-013 (decisión de tecnología de PDF), Figma del informe, US04 (variables), US05 (características — datos placeholder si la reunión no llegó)
 - **Criterios de Aceptación:**
   1. Pantalla de informe en UI nativa de la app (no iframe), siguiendo el diseño Figma del informe
-  2. Muestra los resultados por dimensión — cada una de las 5 dimensiones (técnica, ambiental, regulatoria, socioeconómica, macroeconómica) con su score
-  3. Muestra el valor de viabilidad agregado del área seleccionada
+  2. Muestra los resultados por dimensión — cada una de las 5 dimensiones (técnica, ambiental, regulatoria, socioeconómica, económica) con su score
+  3. Muestra el valor de idoneidad agregado del área seleccionada
   4. Botón "Descargar PDF" visible en la pantalla
-  5. Al hacer click en el botón, se genera y descarga un PDF con el mismo contenido (scores por dimensión + viabilidad + área + variables + características)
+  5. Al hacer click en el botón, se genera y descarga un PDF con el mismo contenido (scores por dimensión + idoneidad + área + variables + características)
   6. PDF descargado tiene branding institucional (Vento + ANH + EAFIT + mavalan)
   7. Indicador de carga mientras se genera el PDF al descargar
   8. Mensaje de error claro si la generación falla
@@ -375,7 +375,7 @@ ADR-013 + US04 + US05 (placeholder OK) ──► US06-AC3
 
 ## Empezables sin reunión (6 HUs)
 
-- US03-P2 (cálculo área + viabilidad placeholder)
+- US03-P2 (cálculo área + idoneidad placeholder)
 - US03-AC10 (heatmap clippeado a selección)
 - US03-AC11 (toggle paleta GIS inferno/viridis)
 - US03-AC12 (bloqueo de selección fuera de fase)

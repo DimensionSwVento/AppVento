@@ -143,7 +143,7 @@ Técnicas usadas en la tercera entrega que conviene conocer antes de tocar el c�
 | [ADR-001](adr/ADR-001-stack-frontend.md) | Stack frontend | ✅ Aceptado (validado en producción, Next.js 16) |
 | [ADR-002](adr/ADR-002-resolucion-h3.md) | Resolución H3 | ✅ Aceptado (refinado por ADR-008 tile-based) |
 | [ADR-003](adr/ADR-003-sin-backend-api-inicial.md) | Sin backend API inicial | ⛔ Superseded por ADR-007 |
-| [ADR-004](adr/ADR-004-equipo-viabilidad-1-mes.md) | Equipo y viabilidad 1 mes | ✅ Aceptado |
+| [ADR-004](adr/ADR-004-equipo-idoneidad-1-mes.md) | Equipo y idoneidad 1 mes | ✅ Aceptado |
 | [ADR-005](adr/ADR-005-keycloak-identidad.md) | Keycloak como proveedor de identidad | ✅ Aceptado |
 | [ADR-006](adr/ADR-006-storage-cache-datos-geoespaciales.md) | Storage y cache geoespacial | ✅ Aceptado |
 | [ADR-007](adr/ADR-007-backend-clean-architecture-ddd-monorepo.md) | Backend Clean Architecture + DDD | ✅ Aceptado (repos separados, no monorepo) |
@@ -202,9 +202,9 @@ Técnicas usadas en la tercera entrega que conviene conocer antes de tocar el c�
 | **NextAuth** | Librería que conecta Next.js con Keycloak vía OIDC. |
 | **FastAPI** | Framework Python para el backend. Sirve los tiles H3 y endpoints de datos. |
 | **`.h3.parquet`** | Archivo binario con datos geoespaciales por hexágono — entregado por el equipo de investigación. |
-| **Modelo multicriterio** | Algoritmo del equipo de investigación que calcula scores de viabilidad eólica por hex. En desarrollo. |
+| **Modelo multicriterio** | Algoritmo del equipo de investigación que calcula scores de idoneidad eólica por hex. En desarrollo. |
 | **Score general** | Promedio ponderado (WLC) de las **4 dimensiones puntuables** para un hexágono. |
-| **Dimensiones** | Ambiental, Técnica, **Social**, **Macroeconómica** (**4 puntuables**) + Regulatoria (**informativa**). |
+| **Dimensiones** | Ambiental, Técnica, **Social**, **económica*4 puntuables**) + Regulatoria (**informativa**). |
 | **Idoneidad** | Aptitud relativa de una zona para un proyecto eólico (antes "prefactibilidad"; renombrado en la 3ª entrega). |
 | **Criterio / Subcriterio** | Niveles de agrupación de variables dentro de una dimensión (Dimensión→Criterio→Subcriterio→Variable). |
 | **Modo template** | La app funciona con marcadores deterministas hasta tener datos reales; se activa lo real con interruptores en `projectData.ts`. |
@@ -243,4 +243,4 @@ Técnicas usadas en la tercera entrega que conviene conocer antes de tocar el c�
 | 2026-07-13 | v2.0 — reubicado a `docs/README.md`; estado actualizado a Sprint 3 (Scopes 1/2 y FB1/FB2 cerrados); stoppers al día |
 | 2026-07-13 | Reorg: **`spec/` aplanado** — `adr/`, `architecture/`, `stories/`, `Spec_doc.md`, `project-status.md` promovidos a `docs/`; `reunion-pendiente` eliminado (obsoleto) |
 | 2026-07-13 | `futuros-sprints.md` eliminado (fases finales); `Spec_doc.md` → v2.0 (flujo, stack y dimensiones al día); ADR-001/002 marcados aceptados |
-| 2026-07-30 | v2.1 — **3ª entrega**: renombre idoneidad; dimensiones Social/Macroeconómica; catálogo definitivo (61+30); §3.5 Procedimientos (modo template, compactación, PDF por captura); stoppers al día; `spec/stories/` eliminado; enlace a `Reportes_Entregas/entrega-3` |
+| 2026-07-30 | v2.1 — **3ª entrega**: renombre idoneidad; dimensiones Social/económicao (61+30); §3.5 Procedimientos (modo template, compactación, PDF por captura); stoppers al día; `spec/stories/` eliminado; enlace a `Reportes_Entregas/entrega-3` |

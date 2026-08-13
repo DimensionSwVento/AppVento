@@ -21,7 +21,7 @@ classification:
 
 ## Executive Summary
 
-Vento es una plataforma web de análisis geoespacial que permite evaluar la viabilidad de proyectos de energía eólica en Colombia. Integra datos de múltiples dimensiones — técnica, ambiental, regulatoria, socioeconómica y macroeconómica — sobre un mapa interactivo basado en hexágonos H3, eliminando un proceso que hoy se realiza de forma manual, fragmentada y costosa.
+Vento es una plataforma web de análisis geoespacial que permite evaluar la idoneidad de proyectos de energía eólica en Colombia. Integra datos de múltiples dimensiones — técnica, ambiental, regulatoria, socioeconómica y económica — sobre un mapa interactivo basado en hexágonos H3, eliminando un proceso que hoy se realiza de forma manual, fragmentada y costosa.
 
 La plataforma está dirigida a analistas del sector energético, tomadores de decisiones de inversión, investigadores y entidades gubernamentales que necesitan identificar zonas con potencial eólico de manera rápida y fundamentada. Vento centraliza la información dispersa en una única fuente de verdad geoespacial, reduciendo el tiempo de evaluación de semanas a segundos.
 
@@ -29,9 +29,9 @@ El proyecto es desarrollado con respaldo institucional de la Universidad EAFIT y
 
 ### What Makes This Special
 
-No existe hoy una herramienta que consolide todas las dimensiones de viabilidad eólica en Colombia en una sola plataforma con visualización geoespacial interactiva. Las alternativas actuales requieren dominio de herramientas SIG complejas (QGIS, ArcGIS), acceso a múltiples fuentes de datos dispersas, y semanas de trabajo manual para producir un informe de viabilidad.
+No existe hoy una herramienta que consolide todas las dimensiones de idoneidad eólica en Colombia en una sola plataforma con visualización geoespacial interactiva. Las alternativas actuales requieren dominio de herramientas SIG complejas (QGIS, ArcGIS), acceso a múltiples fuentes de datos dispersas, y semanas de trabajo manual para producir un informe de idoneidad.
 
-Vento democratiza el acceso al análisis multicriterio: un profesional sin experiencia en SIG puede seleccionar un área en el mapa, visualizar scores de viabilidad por dimensión, filtrar por variables críticas y obtener un análisis integrado. El motor multicriterio (MCDM) — desarrollado por el equipo científico — alimenta la plataforma con datos pre-procesados en formato H3, garantizando precisión geoespacial estandarizada y reproducibilidad.
+Vento democratiza el acceso al análisis multicriterio: un profesional sin experiencia en SIG puede seleccionar un área en el mapa, visualizar scores de idoneidad por dimensión, filtrar por variables críticas y obtener un análisis integrado. El motor multicriterio (MCDM) — desarrollado por el equipo científico — alimenta la plataforma con datos pre-procesados en formato H3, garantizando precisión geoespacial estandarizada y reproducibilidad.
 
 El momento es ahora porque Colombia tiene potencial eólico sin explotar, hay apetito de inversión en energías renovables, y los datos e investigación científica ya existen — falta la herramienta que los haga accesibles para la toma de decisiones.
 
@@ -40,7 +40,7 @@ El momento es ahora porque Colombia tiene potencial eólico sin explotar, hay ap
 | Aspecto | Clasificación |
 |---------|---------------|
 | **Tipo de proyecto** | Web App (SPA — Angular/React + Leaflet + H3) |
-| **Dominio** | Energía + Científico (análisis multicriterio geoespacial para viabilidad eólica) |
+| **Dominio** | Energía + Científico (análisis multicriterio geoespacial para idoneidad eólica) |
 | **Complejidad** | Alta — dominio regulado (energía/gobierno), datos geoespaciales complejos (H3, .parquet), múltiples stakeholders (universidad, agencia gubernamental, +50 personas en datos) |
 | **Contexto** | Greenfield — producto nuevo, sin código existente |
 
@@ -48,17 +48,17 @@ El momento es ahora porque Colombia tiene potencial eólico sin explotar, hay ap
 
 ### User Success
 
-- Un analista puede visualizar el mapa de calor de viabilidad eólica de Colombia en menos de 5 segundos tras iniciar sesión
+- Un analista puede visualizar el mapa de calor de idoneidad eólica de Colombia en menos de 5 segundos tras iniciar sesión
 - El usuario puede filtrar el mapa por cualquier variable crítica y entender la distribución territorial de esa variable sin asistencia técnica ni conocimiento de SIG
 - Al hacer click en un hexágono, el usuario obtiene información inmediata del score y variables secundarias — sin necesidad de consultar fuentes externas
 - Los hexágonos excluidos son visualmente claros, eliminando confusión sobre qué zonas son analizables
-- El momento "aha!": ver por primera vez el territorio colombiano coloreado por viabilidad eólica y poder explorar dimensión por dimensión con un click
+- El momento "aha!": ver por primera vez el territorio colombiano coloreado por idoneidad eólica y poder explorar dimensión por dimensión con un click
 
 ### Business Success
 
 - La primera entrega es aceptada por los stakeholders institucionales (Universidad EAFIT y ANH) como base funcional del proyecto
 - La plataforma demuestra que los datos del motor multicriterio pueden ser consumidos y visualizados correctamente en un entorno web accesible
-- Se valida la viabilidad técnica del stack (H3 + Leaflet + Keycloak + Clean Architecture) para soportar las entregas futuras (reportes, MCDM interactivo, análisis marítimo)
+- Se valida la idoneidad técnica del stack (H3 + Leaflet + Keycloak + Clean Architecture) para soportar las entregas futuras (reportes, MCDM interactivo, análisis marítimo)
 - El equipo de +50 personas en datos puede verificar que sus datos se representan correctamente en la plataforma
 
 ### Technical Success
@@ -95,7 +95,7 @@ El momento es ahora porque Colombia tiene potencial eólico sin explotar, hay ap
 ### Growth Features (Post-MVP)
 
 - Selección multi-hexágono para definir áreas de análisis territorial
-- Generación de informes de viabilidad del área seleccionada (<30 segundos)
+- Generación de informes de idoneidad del área seleccionada (<30 segundos)
 - Descarga de informes en PDF
 - Historial de informes con opción de ver análisis previos
 - Backend API REST completo (FastAPI) con endpoints públicos
@@ -111,15 +111,15 @@ El momento es ahora porque Colombia tiene potencial eólico sin explotar, hay ap
 
 ## User Journeys
 
-### Journey 1: Carolina — Analista de Viabilidad Eólica (Happy Path)
+### Journey 1: Carolina — Analista de idoneidad Eólica (Happy Path)
 
 **Quién es:** Carolina es ingeniera ambiental y trabaja como consultora para una empresa de energía que evalúa proyectos de inversión eólica en Colombia. Necesita identificar zonas viables rápidamente para presentar recomendaciones a inversores.
 
 **Opening Scene:** Carolina recibe una solicitud urgente: evaluar si la zona norte del Cesar tiene potencial eólico viable para un parque de 50MW. Normalmente esto le tomaría una semana cruzando datos de viento, regulación, uso de suelo y factores socioeconómicos en Excel y QGIS.
 
-**Rising Action:** Carolina accede a Vento, se autentica con su correo via Keycloak y llega al mapa interactivo. Ve Colombia coloreada por score general de viabilidad — inmediatamente nota que la zona del Cesar tiene tonos cálidos. Hace zoom, filtra por la dimensión técnica para verificar velocidad de viento. Cambia a dimensión regulatoria para confirmar que no hay restricciones. Hace click en hexágonos específicos y lee los scores detallados y variables secundarias en el popup.
+**Rising Action:** Carolina accede a Vento, se autentica con su correo via Keycloak y llega al mapa interactivo. Ve Colombia coloreada por score general de idoneidad — inmediatamente nota que la zona del Cesar tiene tonos cálidos. Hace zoom, filtra por la dimensión técnica para verificar velocidad de viento. Cambia a dimensión regulatoria para confirmar que no hay restricciones. Hace click en hexágonos específicos y lee los scores detallados y variables secundarias en el popup.
 
-**Climax:** En 10 minutos, Carolina tiene una visión clara de la viabilidad multidimensional de la zona — algo que antes le tomaba días. Puede ver exactamente qué hexágonos son viables, cuáles están excluidos y por qué.
+**Climax:** En 10 minutos, Carolina tiene una visión clara de la idoneidad multidimensional de la zona — algo que antes le tomaba días. Puede ver exactamente qué hexágonos son viables, cuáles están excluidos y por qué.
 
 **Resolution:** Carolina presenta una recomendación preliminar fundamentada a su cliente el mismo día. La información es trazable (origen y vigencia de cada variable) y respaldada institucionalmente.
 
@@ -195,7 +195,7 @@ El momento es ahora porque Colombia tiene potencial eólico sin explotar, hay ap
 - **Motor multicriterio (externo):** Desarrollado offline por el equipo científico. Entrega archivos .h3.parquet. La plataforma NO ejecuta el modelo — solo consume y visualiza resultados
 - **Pipeline de datos unidireccional:** .parquet → script Python → JSON/GeoJSON → frontend. No hay flujo de vuelta desde la plataforma hacia el motor
 - **Actualización manual:** Cuando el equipo de datos entrega nueva versión del .parquet, se re-ejecuta el script de ingesta. Proceso documentado pero no automatizado en primera entrega
-- **Dimensiones del modelo:** 5 dimensiones (Técnica, Ambiental, Regulatoria, Socioeconómica, Macroeconómica) con ~46 variables tentativas en la dimensión técnica. La plataforma debe ser flexible para incorporar nuevas variables sin rediseño
+- **Dimensiones del modelo:** 5 dimensiones (Técnica, Ambiental, Regulatoria, Socioeconómica, económica) con ~46 variables tentativas en la dimensión técnica. La plataforma debe ser flexible para incorporar nuevas variables sin rediseño
 
 ### Riesgos y Mitigaciones
 
@@ -212,12 +212,12 @@ El momento es ahora porque Colombia tiene potencial eólico sin explotar, hay ap
 ### Detected Innovation Areas
 
 - **Democratización del análisis geoespacial multicriterio:** La combinación de sistema H3 + mapa de calor multidimensional + interfaz web accesible elimina la dependencia de herramientas SIG profesionales (QGIS, ArcGIS) que requieren entrenamiento especializado
-- **Integración de 5 dimensiones en una sola visualización:** No se conoce una herramienta en Colombia que permita visualizar y filtrar viabilidad eólica cruzando dimensiones técnica, ambiental, regulatoria, socioeconómica y macroeconómica sobre un mismo mapa interactivo
+- **Integración de 5 dimensiones en una sola visualización:** No se conoce una herramienta en Colombia que permita visualizar y filtrar idoneidad eólica cruzando dimensiones técnica, ambiental, regulatoria, socioeconómica y económica sobre un mismo mapa interactivo
 - **Modelo de datos H3 como unidad estándar:** Usar hexágonos H3 como unidad territorial estandarizada permite que diferentes fuentes de datos (de diferentes equipos y formatos) se integren en una misma grilla geoespacial, habilitando comparaciones y análisis consistentes
 
 ### Market Context & Competitive Landscape
 
-- **Herramientas existentes (internacionales):** Global Wind Atlas (DTU/World Bank) ofrece visualización de recursos eólicos pero sin análisis multicriterio. WindPRO y WAsP son herramientas de diseño de parques, no de viabilidad territorial multicriterio
+- **Herramientas existentes (internacionales):** Global Wind Atlas (DTU/World Bank) ofrece visualización de recursos eólicos pero sin análisis multicriterio. WindPRO y WAsP son herramientas de diseño de parques, no de idoneidad territorial multicriterio
 - **En Colombia:** No existe una plataforma pública que combine datos de viento con restricciones regulatorias, ambientales y socioeconómicas en una interfaz web. Los estudios existentes usan metodologías ad-hoc con SIG de escritorio
 - **Brecha que Vento llena:** El espacio entre "datos científicos en archivos" y "decisión de inversión informada" — accesible sin ser experto en SIG
 
@@ -293,7 +293,7 @@ Vento es una SPA (Single Page Application) con interacción intensiva sobre un m
 
 ### MVP Strategy & Philosophy
 
-**MVP Approach:** Problem-Solving MVP — entregar la capacidad mínima que permite a un analista visualizar y explorar viabilidad eólica en Colombia sin herramientas SIG externas.
+**MVP Approach:** Problem-Solving MVP — entregar la capacidad mínima que permite a un analista visualizar y explorar idoneidad eólica en Colombia sin herramientas SIG externas.
 
 **Resource Requirements:** 1 desarrollador fulltime + 2 part-time, plazo 1 mes. Stack: Angular/React + Leaflet + Node.js (Clean Architecture) + PostgreSQL + Keycloak.
 
@@ -320,7 +320,7 @@ Vento es una SPA (Single Page Application) con interacción intensiva sobre un m
 
 **Phase 2 — Growth (Entregas futuras cercanas):**
 - Selección multi-hexágono para definir áreas de análisis territorial
-- Generación de informes de viabilidad (<30 segundos)
+- Generación de informes de idoneidad (<30 segundos)
 - Descarga de informes en PDF
 - Historial de informes
 - Backend API REST completo (FastAPI) con endpoints públicos
@@ -362,7 +362,7 @@ Vento es una SPA (Single Page Application) con interacción intensiva sobre un m
 - **FR6:** Un usuario autenticado puede visualizar un mapa interactivo de Colombia centrado con zoom apropiado
 - **FR7:** El sistema renderiza hexágonos H3 (resolución 5-6) sobre el territorio colombiano usando datos pre-procesados
 - **FR8:** Un usuario puede interactuar con el mapa: zoom (scroll/botones), paneo (drag)
-- **FR9:** El sistema colorea los hexágonos como mapa de calor según el score general de viabilidad (promedio de las 5 dimensiones)
+- **FR9:** El sistema colorea los hexágonos como mapa de calor según el score general de idoneidad (promedio de las 5 dimensiones)
 - **FR10:** El sistema muestra una leyenda con la escala de colores y valores min/max de la variable activa
 - **FR11:** Cada hexágono activo muestra un valor numérico central correspondiente al dato que determina su color
 - **FR12:** El valor numérico central se oculta en niveles de zoom alejados para evitar sobrecarga visual
@@ -574,7 +574,7 @@ Vento es una SPA (Single Page Application) con interacción intensiva sobre un m
 #### US01 — Login de Usuario (via Keycloak)
 **Como** usuario profesional del sector energético,
 **Quiero** iniciar sesión en Vento con mi correo electrónico,
-**Para que** pueda acceder al mapa de viabilidad eólica de forma segura.
+**Para que** pueda acceder al mapa de idoneidad eólica de forma segura.
 
 **Prioridad:** 🔴 Crítica | **ADR:** ADR-005 | **FRs:** FR1, FR2, FR3
 
@@ -643,13 +643,13 @@ Vento es una SPA (Single Page Application) con interacción intensiva sobre un m
 
 #### US03-AC1 — Mapa de Calor por Score General
 **Como** usuario analista,
-**Quiero** que los hexágonos se coloreen según el score general de viabilidad,
+**Quiero** que los hexágonos se coloreen según el score general de idoneidad,
 **Para que** pueda identificar visualmente las zonas con mayor y menor potencial eólico.
 
 **Prioridad:** 🔴 Crítica | **FRs:** FR9, FR10
 
 **Criterios de Aceptación:**
-1. Hexágonos coloreados según score_general (promedio viabilidad de las 5 dimensiones)
+1. Hexágonos coloreados según score_general (promedio idoneidad de las 5 dimensiones)
 2. Escala de color continua (gradiente) proporcional al score
 3. Leyenda visible con escala de colores y valores min/max
 4. Zonas de mayor score se distinguen claramente de las de menor

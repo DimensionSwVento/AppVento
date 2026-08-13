@@ -11,7 +11,7 @@ estado: ENTREGADO en modo template — ver reporte de cierre en Reportes_Entrega
 
 Sigue a [scope-segunda-entrega.md](./scope-segunda-entrega.md) y al cierre de Scope 2 ([scope-2-entregado.md](../../Reportes_Entregas/entrega-2/scope-2-entregado.md)).
 
-> **Estado (2026-07-30): ENTREGADO en modo template.** Este documento fue la guía de planeación; el **reporte de lo efectivamente entregado** (con el catálogo definitivo de variables, el emplazamiento mar/tierra, el informe/PDF por captura y la guía de modo template → datos reales) está en **[Reportes_Entregas/entrega-3/scope-3-entregado.md](../../Reportes_Entregas/entrega-3/scope-3-entregado.md)**. Nota: las dimensiones definitivas son **Ambiental · Técnica · Social · Macroeconómica** (+ Regulatoria informativa); donde abajo se lea "socioeconómica/económica", léase **Social**.
+> **Estado (2026-07-30): ENTREGADO en modo template.** Este documento fue la guía de planeación; el **reporte de lo efectivamente entregado** (con el catálogo definitivo de variables, el emplazamiento mar/tierra, el informe/PDF por captura y la guía de modo template → datos reales) está en **[Reportes_Entregas/entrega-3/scope-3-entregado.md](../../Reportes_Entregas/entrega-3/scope-3-entregado.md)**. Nota: las dimensiones definitivas son **Ambiental · Técnica · Social · económica** (+ Regulatoria informativa); donde abajo se lea "socioeconómica/económica", léase **Social**.
 
 > **Estructura (aclaración 2026-07-07):** En la lista maestra del proyecto, **US01–US09 son ÉPICAS / módulos**, no historias de usuario. Las **HUs reales** son los puntos que la lista llama "criterios de aceptación". Este documento contiene **solo las HUs NO ejecutadas** — todo lo ya entregado en Scope 1 y 2 (login base, mapa base, CRUD usuarios, PDF con branding, etc.) queda fuera.
 
@@ -64,7 +64,7 @@ Sigue a [scope-segunda-entrega.md](./scope-segunda-entrega.md) y al cierre de Sc
 - **Bloqueo:** 🟢 Empezable (dev puro; valores reales llegan con la ingesta, se construye con placeholders)
 - **Dependencia:** `Components/Report.tsx`, `Utils/pdfExport.ts`, `Utils/heatmapPalette.ts` (ya existen)
 - **Criterios de Aceptación:**
-  1. Radar con **4 ejes puntuables**: Ambiental, Técnica, Social, Macroeconómica (escala 0–100)
+  1. Radar con **4 ejes puntuables**: Ambiental, Técnica, Social, económica (escala 0–100)
   2. Regulatoria **NO es eje** (coherente con WLC de 4 dimensiones, US-FB3-06) — puede ir como bloque informativo aparte
   3. Dibujado en **SVG propio** (sin librería) para integrarse con Tailwind v4/OKLCH y capturarse limpio en el PDF
   4. Refleja los scores del área seleccionada y se actualiza al cambiar la selección

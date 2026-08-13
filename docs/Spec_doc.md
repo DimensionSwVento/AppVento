@@ -10,7 +10,7 @@ status: vigente — Scopes 1 y 2 entregados; Sprint 3 (feedback v2) en curso
 
 ## 1. Visión General
 
-Herramienta web SIG multicriterio para evaluar la viabilidad de proyectos de energía eólica (onshore y offshore) en el territorio colombiano. Integra 5 dimensiones de análisis sobre un mapa interactivo basado en hexágonos H3, con respaldo institucional de ANH y EAFIT.
+Herramienta web SIG multicriterio para evaluar la idoneidad de proyectos de energía eólica (onshore y offshore) en el territorio colombiano. Integra 5 dimensiones de análisis sobre un mapa interactivo basado en hexágonos H3, con respaldo institucional de ANH y EAFIT.
 
 ### 1.0 Flujo Esperado del Usuario (Completo)
 
@@ -18,7 +18,7 @@ Herramienta web SIG multicriterio para evaluar la viabilidad de proyectos de ene
 |------|--------|-------|
 | 1 | Login de usuario (Keycloak — correo general) | ✅ Scope 1 |
 | 2 | Selección de área en mapa interactivo (hexágonos H3) | ✅ Scope 1 |
-| 3 | Configurar variables agrupadas por dimensión (Técnica, Ambiental, Socioeconómica, Macroeconómica; Regulatoria informativa) | ✅ Scope 2 (US04) |
+| 3 | Configurar variables agrupadas por dimensión (Técnica, Ambiental, Socioeconómica, económicaativa) | ✅ Scope 2 (US04) |
 | 4 | Insertar características del proyecto (capacidad MW, categoría de aerogenerador) | ✅ Scope 2 (US05) |
 | 5 | Informe de idoneidad del área con descarga PDF | ✅ Scope 2 (US06) |
 | 6 | Ver historial de informes | 🔨 Sprint 3 (US07) |
@@ -27,12 +27,12 @@ Herramienta web SIG multicriterio para evaluar la viabilidad de proyectos de ene
 
 - **Dispersión de datos:** Información ambiental, técnica, regulatoria y socioeconómica en fuentes y formatos dispersos
 - **Complejidad geográfica:** Herramientas SIG complejas fuera del alcance de tomadores de decisiones
-- **Incertidumbre:** Informes de viabilidad tardan semanas, retrasando inversión en energías limpias
+- **Incertidumbre:** Informes de idoneidad tardan semanas, retrasando inversión en energías limpias
 
 ### 1.2 Objetivos
 
 1. Motor geoespacial H3 con resolución estandarizada para Colombia (nivel zonas/regiones, ~res 5-6)
-2. Automatizar generación de reportes de viabilidad de 5 días a <30 segundos
+2. Automatizar generación de reportes de idoneidad de 5 días a <30 segundos
 3. Centralizar 5 dimensiones de análisis en fuente de verdad única
 
 ### 1.3 Dimensiones de Análisis
@@ -43,9 +43,9 @@ Herramienta web SIG multicriterio para evaluar la viabilidad de proyectos de ene
 | 2 | Ambiental | Áreas protegidas, impacto ecosistémico, cobertura terrestre |
 | 3 | Socioeconómica | Dinámicas territoriales, conflictividad, accesibilidad |
 | 4 | Regulatoria | Normativa colombiana, zonas de exclusión legal, NSR-10 |
-| 5 | Macroeconómica | Indicadores financieros (VPN, TIR, LCOE), costos de implementación |
+| 5 | económica | Indicadores financieros (VPN, TIR, LCOE), costos de implementación |
 
-> **Actualización (US-FB3-06, Sprint 3):** la **Regulatoria pasó a informativa** — ya no puntúa en el score general. El WLC se calcula sobre **4 dimensiones puntuables** (Técnica, Ambiental, Socioeconómica, Macroeconómica).
+> **Actualización (US-FB3-06, Sprint 3):** la **Regulatoria pasó a informativa** — ya no puntúa en el score general. El WLC se calcula sobre **4 dimensiones puntuables** (Técnica, Ambiental, Socioeconómica, económica).
 
 ### 1.4 Tipos de Variables
 
@@ -90,12 +90,12 @@ El equipo NO es responsable del modelo multicriterio. Se reciben archivos `.h3.p
 
 ```
 h3_index           | string  — ID hexagonal H3
-score_general      | float   — Promedio viabilidad 5 dimensiones
+score_general      | float   — Promedio idoneidad 5 dimensiones
 dim_tecnica        | float   — Score dimensión técnica
 dim_ambiental      | float   — Score dimensión ambiental
 dim_socioeconomica | float   — Score dimensión socioeconómica
 dim_regulatoria    | float   — Score dimensión regulatoria
-dim_macroeconomica | float   — Score dimensión macroeconómica
+dim_macroeconomica | float   — Score dimensión económica
 var_*              | float   — Variables individuales (velocidad viento, pendiente, etc.)
 tipo_celda         | string  — "disponible" | "excluida"
 metadata_*         | json    — Origen y vigencia de cada variable

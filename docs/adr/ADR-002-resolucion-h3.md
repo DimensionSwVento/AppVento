@@ -16,7 +16,7 @@ El sistema usa hexágonos H3 de Uber para discretizar el territorio colombiano. 
 
 ## Opciones Evaluadas
 
-| Resolución | Tamaño hex. | Hexágonos Colombia | Viabilidad Frontend |
+| Resolución | Tamaño hex. | Hexágonos Colombia | idoneidad Frontend |
 |------------|------------|-------------------|---------------------|
 | Res 3 | ~59 km | ~20-50 | Trivial — demasiado grande |
 | Res 4 | ~22 km | ~50-100 | Trivial — granularidad insuficiente |

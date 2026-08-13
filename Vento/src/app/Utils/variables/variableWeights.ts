@@ -2,8 +2,8 @@
  * Pesos signados por variable para el modelo multicriterio (placeholder).
  *
  * Convención:
- * - **Positivo** → contribución aditiva (a mayor score de la variable, mayor viabilidad)
- * - **Negativo** → contribución penalizadora (a mayor score, menor viabilidad)
+ * - **Positivo** → contribución aditiva (a mayor score de la variable, mayor idoneidad)
+ * - **Negativo** → contribución penalizadora (a mayor score, menor idoneidad)
  * - **Magnitud** → cuánto pesa esa variable frente a las demás
  *
  * Estos valores son hardcoded mientras el cliente no entregue la tabla
@@ -86,7 +86,7 @@ export const VARIABLE_WEIGHTS: Record<string, number> = {
   "zomac": -0.4,
   "pdet": 0.4,
 
-  // ─── Macroeconómica · Proyecciones (placeholder hasta datos reales) ─
+  // ─── económica · Proyecciones (placeholder hasta datos reales) ─
   "pib": 0.3,
   "pib-per-capita": 0.3,
   "ipc": -0.2,

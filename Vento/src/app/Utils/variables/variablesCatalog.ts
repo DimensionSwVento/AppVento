@@ -13,7 +13,7 @@
  * IDENTIDAD DE COLUMNA (`masterId`):
  *   Cada variable trae el ID definitivo con el que la master entrega su columna en
  *   el `.h3.parquet` (p.ej. `AMB-005-A`, `TEC-004-T`, `SOC-011-S`). Es la VERDAD de
- *   la fuente; `"NA"` cuando el cliente aún no asignó ID (macroeconómicas, AEP…).
+ *   la fuente; `"NA"` cuando el cliente aún no asignó ID (económicas, AEP…).
  *   El `id` (slug) es la clave ESTABLE de UI: pesos (`variableWeights`), iconos
  *   (`variableIcons`) y estado (`VariablesContext`) se llavean por `id`, no por
  *   `masterId`. Así el slug sobrevive aunque el cliente renumere los códigos.
@@ -77,7 +77,7 @@ export const DIMENSIONS: Dimension[] = [
     id: "ambiental",
     label: "Dimensión ambiental",
     description:
-      "Variables del medio natural, biótico y abiótico, susceptibles de ser afectadas por infraestructura eólica o que condicionan su viabilidad.",
+      "Variables del medio natural, biótico y abiótico, susceptibles de ser afectadas por infraestructura eólica o que condicionan su idoneidad.",
   },
   {
     id: "tecnica",
@@ -93,9 +93,9 @@ export const DIMENSIONS: Dimension[] = [
   },
   {
     id: "macroeconomica",
-    label: "Dimensión macroeconómica",
+    label: "Dimensión económica",
     description:
-      "Modela la evolución en el tiempo de variables macroeconómicas de Colombia.",
+      "Modela la evolución en el tiempo de variables económicas de Colombia.",
   },
   {
     id: "regulatoria",
@@ -136,7 +136,7 @@ export const CRITERIO_DESCRIPTIONS: Record<string, string> = {
   Social:
     "Condiciones sociales, energéticas, institucionales, de seguridad y territoriales.",
   Proyecciones:
-    "Proyecciones temporales de variables macroeconómicas y del sector energético.",
+    "Proyecciones temporales de variables económicas y del sector energético.",
 };
 
 /** Descripción corta de cada SUBCRITERIO (subgrupo). Clave = nombre del subcriterio. */
@@ -148,7 +148,7 @@ export const SUBCRITERIO_DESCRIPTIONS: Record<string, string> = {
   Amenazas:
     "Exposición a riesgos naturales (deslizamientos, inundaciones, sismos, huracanes, tsunamis, vulcanismo).",
   "Condiciones geológicas y geotécnicas":
-    "Viabilidad del suelo y subsuelo para implantar parques.",
+    "idoneidad del suelo y subsuelo para implantar parques.",
   "Distancia a puntos de interés": "Cercanía a atractivos y centros poblados.",
   "Condiciones de vida": "Pobreza, educación y acceso a energía.",
   "Instituciones (estabilidad jurídica)":
@@ -255,14 +255,14 @@ export const VARIABLES: Variable[] = [
   { id: "zomac", masterId: "SOC-039-SR", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "ZOMAC", description: "Municipios definidos como Zonas Más Afectadas por el Conflicto Armado.", iconKey: "lucide:MapPinned" },
   { id: "pdet", masterId: "SOC-040-SER", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "PDET", description: "Municipios con Programas de Desarrollo con Enfoque Territorial; refleja condiciones históricas de conflicto y necesidades de articulación.", iconKey: "lucide:Flag" },
 
-  // ─── MACROECONÓMICA · Proyecciones · General (5) · sin IDs de la master ──
+  // ─── económica · Proyecciones · General (5) · sin IDs de la master ──
   { id: "pib", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "PIB", description: "Proyección del Producto Interno Bruto.", iconKey: "lucide:TrendingUp" },
   { id: "pib-per-capita", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "PIB per cápita", description: "Proyección del PIB por habitante.", iconKey: "lucide:TrendingUp" },
   { id: "ipc", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "IPC", description: "Proyección del Índice de Precios al Consumidor.", iconKey: "lucide:Percent" },
   { id: "desempleo", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "Desempleo", description: "Proyección de la tasa de desempleo.", iconKey: "lucide:UserX" },
   { id: "tasa-cambio", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "Tasa de cambio (COP-USD)", description: "Proyección de la tasa de cambio peso-dólar.", iconKey: "lucide:DollarSign" },
 
-  // ─── MACROECONÓMICA · Proyecciones · Sector energético (3) · sin IDs ─────
+  // ─── económica · Proyecciones · Sector energético (3) · sin IDs ─────
   { id: "precio-spot", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "Sector energético", label: "Precio spot (COP/kWh)", description: "Proyección del precio spot de la energía.", iconKey: "lucide:LineChart" },
   { id: "demanda-energia", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "Sector energético", label: "Demanda de energía (kWh)", description: "Proyección de la demanda de energía.", iconKey: "lucide:Zap" },
   { id: "oferta-energia", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "Sector energético", label: "Oferta de energía (kWh)", description: "Proyección de la oferta de energía.", iconKey: "lucide:Plug" },
@@ -314,7 +314,7 @@ export const INFORMATIVE_VARIABLES: InformativeVariable[] = [
   { masterId: "SOC-016-SR", dimension: "social", label: "Zonas de reserva campesina", description: "Solapamiento con zonas de reserva campesina (repetida de la Tabla 1)." },
   { masterId: "SOC-032-S", dimension: "social", label: "Territorios de comunidades negras", description: "Solapamiento con territorios de comunidades negras (repetida de la Tabla 1)." },
 
-  // ─── Macroeconómica (1) ─────────────────────────────────────────────────
+  // ─── económica (1) ─────────────────────────────────────────────────
   { masterId: "NA", dimension: "macroeconomica", label: "Proyección precio spot energía", description: "Proyección a 10 años del precio del kWh negociado en bolsa.", visualizacion: "Serie de tiempo en el informe (sin mapa)." },
 
   // ─── Ambiental (6) ──────────────────────────────────────────────────────
@@ -351,7 +351,7 @@ export const OPTIONAL_VARIABLES: Variable[] = [
   { id: "diversidad-religiosa", masterId: "SOC-024-S", dimension: "social", criterio: "Social", label: "Diversidad religiosa", description: "Resultados de la encuesta nacional de diversidad religiosa 2019.", noCalculo: true, iconKey: "lucide:Users" },
   { id: "inclinaciones-politicas", masterId: "SOC-005-S", dimension: "social", criterio: "Social", label: "Inclinaciones políticas", description: "Ideología política predominante según la consulta nacional.", noCalculo: true, iconKey: "lucide:Vote" },
   { id: "riesgo-electoral", masterId: "SOC-004-SR", dimension: "social", criterio: "Social", label: "Riesgo electoral", description: "Indicadores de riesgo de fraude electoral y de violencia.", noCalculo: true, iconKey: "lucide:TriangleAlert" },
-  // ─── Macroeconómica ────────────────────────────────────────────────────────
+  // ─── económica ────────────────────────────────────────────────────────
   { id: "proyeccion-precio-spot", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", label: "Proyección precio spot energía", description: "Proyección a 10 años del precio del kWh negociado en bolsa.", noCalculo: true, iconKey: "lucide:TrendingUp" },
 ];
 

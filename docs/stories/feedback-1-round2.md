@@ -10,7 +10,7 @@ estado: ✅ cerrado — 5 HUs entregadas
 
 Análisis de la encuesta de evaluación realizada a **terceros externos** (no al cliente contractual) tras la primera entrega. **Importante**: estas observaciones son insumo de mejora, **no son requisitos del cliente**. Se priorizan solo los items con valor agregado claro; el resto se documenta y descarta.
 
-Tres respondientes participaron en la encuesta (Socioeconómica, Macroeconómica, Otro).
+Tres respondientes participaron en la encuesta (Socioeconómica, económica, Otro).
 
 > ⚠️ **Nota sobre Evaluador 3**: varios de sus síntomas (paneles erráticos, líneas intermitentes, retícula desalineada al hacer zoom, "no trasciende la página de inicio") son **típicos de uso en mobile**. La app actualmente **no soporta mobile en scope**; es altamente probable que la evaluación se haya hecho desde un dispositivo móvil, lo que invalida parcialmente los puntos UX. En el curso de acción se le pedirá **aclaración del dispositivo + screenshot**.
 
@@ -27,7 +27,7 @@ Tres respondientes participaron en la encuesta (Socioeconómica, Macroeconómica
 
 ---
 
-## Evaluador 2 (Macroeconómica)
+## Evaluador 2 (económica)
 
 | # | Item reportado | Severidad | Causa (a comunicar) | Curso de acción (al evaluador) |
 |---|----------------|-----------|---------------------|--------------------------------|

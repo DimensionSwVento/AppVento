@@ -165,8 +165,8 @@ SideBar (flex row, bg-[#165170ff])
   │    │    │    ├─ 📍 Selección de área (area.png 20x20)
   │    │    │    ├─ 📊 Dimensiones (dim.png 20x20)
   │    │    │    ├─ ⚙️ Características del proyecto (caracteristicas.png 20x20)
-  │    │    │    └─ 📋 Informe de viabilidad (viab.png 20x20)
-  │    │    └─ 📁 Histórico de viabilidad (hist.png 20x20)
+  │    │    │    └─ 📋 Informe de idoneidad (viab.png 20x20)
+  │    │    └─ 📁 Histórico de idoneidad (hist.png 20x20)
   │    └─ Sección inferior
   │         ├─ "GESTIÓN Y AYUDA DE USUARIO"
   │         │    ├─ Configuraciones (config.png 20x20)
@@ -201,7 +201,7 @@ En la fase `seleccion-area`, el item "Dimensiones" se habilita visualmente y per
 - Crear componente de configuración (turbinas, capacidad MW, etc.).
 - Definir qué datos recibe de la fase "dimensiones".
 
-### 5.3 Histórico de Viabilidad
+### 5.3 Histórico de idoneidad
 
 **Estado actual:** Texto estático sin funcionalidad.
 

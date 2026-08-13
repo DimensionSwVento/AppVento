@@ -1,6 +1,6 @@
 # Vento Frontend
 
-Frontend del proyecto Vento — aplicacion web de analisis de viabilidad eolica para Colombia. Renderiza hexagonos H3 sobre un mapa interactivo con mapa de calor por variables de viabilidad.
+Frontend del proyecto Vento — aplicacion web de analisis de idoneidad eolica para Colombia. Renderiza hexagonos H3 sobre un mapa interactivo con mapa de calor por variables de idoneidad.
 
 Este proyecto es exclusivamente el **frontend**. Para que los hexagonos se rendericen correctamente, debe conectarse al backend en FastAPI que procesa y sirve los datos geoespaciales.
 
@@ -92,7 +92,7 @@ La app funciona **sin datos reales** cayendo a marcadores deterministas. Los int
 - El archivo `master_variables.h3.parquet` no se sube al repo (`.gitignore`). Lo consume el backend, no el frontend.
 - Los hexagonos se filtran a Colombia y sus mares circundantes (lat [-4.3, 13.5], lng [-82, -66.5]).
 - La autenticacion se maneja via Keycloak (realm `vento`, client `vento-web`). El backend valida los tokens JWT.
-- **Dimensiones definitivas:** Ambiental · Técnica · Social · Macroeconómica (4 puntuables) + Regulatoria (informativa). Catálogo en `src/app/Utils/variables/variablesCatalog.ts`.
+- **Dimensiones definitivas:** Ambiental · Técnica · Social · económica (4 puntuables) + Regulatoria (informativa). Catálogo en `src/app/Utils/variables/variablesCatalog.ts`.
 
 ## Configuración de Keycloak para Gestión de Usuarios
 

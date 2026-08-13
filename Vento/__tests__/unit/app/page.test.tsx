@@ -73,10 +73,10 @@ describe("Home page (src/app/page.tsx)", () => {
     render(jsx);
 
     expect(
-      screen.getByText("Plataforma de Viabilidad Eólica"),
+      screen.getByText("Plataforma de idoneidad Eólica"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/análisis geoespacial de viabilidad eólica/i),
+      screen.getByText(/análisis geoespacial de idoneidad eólica/i),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /iniciar sesión/i }),

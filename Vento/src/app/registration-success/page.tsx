@@ -4,7 +4,7 @@ import SignInButton from "../Components/auth/SignInButton";
 export const metadata = {
   title: "Registro exitoso — Vento",
   description:
-    "Confirmacion de registro en la plataforma Vento. Inicia sesion para acceder al mapa de viabilidad eolica.",
+    "Confirmacion de registro en la plataforma Vento. Inicia sesion para acceder al mapa de idoneidad eolica.",
 };
 
 /**

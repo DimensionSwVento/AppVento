@@ -63,7 +63,7 @@ const UNIT_OVERRIDES: Record<string, string> = {
   // Social · Seguridad / gobernanza
   "incidencia-delictiva": "índice",
   "desempeno-institucional": "índice",
-  // Macroeconómica
+  // económica
   desempleo: "%",
   ipc: "%",
 };

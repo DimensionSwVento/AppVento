@@ -24,7 +24,7 @@ En esta entrega el software queda **funcional de extremo a extremo en modo templ
 ## 2. Qué se entrega en esta tercera entrega
 
 ### 2.1 Catálogo definitivo de variables y dimensiones
-- **Dimensiones definitivas**: Ambiental, Técnica, **Social**, **Macroeconómica** (4 puntuables) + **Regulatoria** (informativa, no puntúa). Se fundieron "económica" y "socioeconómica" en **Social**; se añadió **Macroeconómica**.
+- **Dimensiones definitivas**: Ambiental, Técnica, **Social**, **económica** (4 puntuables) + **Regulatoria** (informativa, no puntúa). Se fundieron "económica" y "socioeconómica" en **Social**; se añadió **económica**.
 - **61 variables ponderadas** con jerarquía **Dimensión → Criterio → Subcriterio → Variable**, cada una con su **código** de columna (p.ej. `AMB-005-A`, `TEC-004-T`, `SOC-011-S`), **fuente de datos** y marca de **representación en mapa**.
 - **30 variables informativas** (solo visualización, no puntúan) en un **panel desplegable** dentro de Dimensiones.
 - Menú de dimensiones **agrupado por criterio/subcriterio**, con descripciones en tooltip.
@@ -146,7 +146,7 @@ Envs clave: `NEXT_PUBLIC_USE_BACKEND`, `BACKEND_URL` (server-only), `INTERNAL_AP
 
 - Informe **preconfigurable** por perfil de usuario (elegir dimensiones/nivel de detalle).
 - Detalle técnico extenso por dimensión, informativas y regulatoria dentro del informe.
-- **Cálculo económico / macroeconómica**.
+- **Cálculo económico / económica**.
 - **Límites offshore** (formato en revisión).
 - Informe extenso (según ejemplo compartido por el cliente).
 - **Manual de usuario** completo.

@@ -129,7 +129,7 @@ Consolidación del feedback recibido tras la entrega del **Scope 2** (cerrado 20
 | AC | Descripción | Archivo afectado |
 |----|-------------|------------------|
 | AC1 | Excluir "Regulatoria" del cálculo WLC | `Utils/variableWeights.ts`, `Utils/heatmapPalette.ts` |
-| AC2 | La lista de dimensiones puntuables queda en 4: Técnica, Ambiental, Socioeconómica, Macroeconómica | `Utils/variableCatalog.ts` o equivalente |
+| AC2 | La lista de dimensiones puntuables queda en 4: Técnica, Ambiental, Socioeconómica, económica | `Utils/variableCatalog.ts` o equivalente |
 | AC3 | En el informe, la sección "Regulatoria" se muestra como bloque informativo (variables, sin score) | `Components/Report.tsx` |
 | AC4 | El tooltip de puntajes muestra: general + 4 dimensiones puntuables. Regulatoria queda al lado como "informativa" | `HexValuesTooltip.tsx` |
 | AC5 | El heatmap Viridis por dimensión no ofrece "Regulatoria" como métrica puntuable (queda como capa informativa opcional) | `HeatmapDimensionSwitches.tsx` |

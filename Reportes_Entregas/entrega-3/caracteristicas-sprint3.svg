@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1893" viewBox="0 0 900 1893" font-family="DejaVu Sans, Arial, sans-serif">
+<rect width="900" height="1893" fill="#ffffff"/>
+<rect x="0" y="0" width="900" height="52" fill="#165170"/>
+<text x="18" y="33" fill="#ffffff" font-size="20" font-weight="bold">Vento · Novedades del Sprint 3 (Tercera Entrega)</text>
+<rect x="0" y="70" width="900" height="30" fill="#cce1ee"/>
+<text x="18" y="90" fill="#165170" font-size="14" font-weight="bold">Bienvenida</text>
+<rect x="0" y="100" width="900" height="56" fill="#ffffff"/>
+<line x1="0" y1="156" x2="900" y2="156" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="123" fill="#222" font-size="13" font-weight="bold">Guía de inicio</text>
+<text x="280" y="123" fill="#444" font-size="13">Carrusel de pasos que explica cómo usar Vento al entrar por primera</text>
+<text x="280" y="142" fill="#444" font-size="13">vez (reemplaza la pantalla de carga).</text>
+<rect x="0" y="156" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="193" x2="900" y2="193" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="179" fill="#222" font-size="13" font-weight="bold">Aviso legal</text>
+<text x="280" y="179" fill="#444" font-size="13">Ventana inicial que aclara el alcance de la herramienta.</text>
+<rect x="0" y="197" width="900" height="30" fill="#cce1ee"/>
+<text x="18" y="217" fill="#165170" font-size="14" font-weight="bold">Mapa</text>
+<rect x="0" y="227" width="900" height="56" fill="#ffffff"/>
+<line x1="0" y1="283" x2="900" y2="283" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="250" fill="#222" font-size="13" font-weight="bold">Selección de área confiable</text>
+<text x="280" y="250" fill="#444" font-size="13">Se corrigió el error de seleccionar hexágonos &#x27;dentro de otros&#x27; al</text>
+<text x="280" y="269" fill="#444" font-size="13">cambiar el zoom.</text>
+<rect x="0" y="283" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="320" x2="900" y2="320" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="306" fill="#222" font-size="13" font-weight="bold">Zonas no aptas</text>
+<text x="280" y="306" fill="#444" font-size="13">Áreas inviables en gris, no seleccionables.</text>
+<rect x="0" y="320" width="900" height="56" fill="#ffffff"/>
+<line x1="0" y1="376" x2="900" y2="376" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="343" fill="#222" font-size="13" font-weight="bold">Mar vs. tierra</text>
+<text x="280" y="343" fill="#444" font-size="13">No se mezclan; se ocultan las variables que no aplican al</text>
+<text x="280" y="362" fill="#444" font-size="13">emplazamiento.</text>
+<rect x="0" y="376" width="900" height="56" fill="#ffffff"/>
+<line x1="0" y1="432" x2="900" y2="432" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="399" fill="#222" font-size="13" font-weight="bold">Capas informativas</text>
+<text x="280" y="399" fill="#444" font-size="13">Nodos de conexión, vías, puertos, áreas protegidas y viento; se</text>
+<text x="280" y="418" fill="#444" font-size="13">encienden/apagan con leyenda que explica los símbolos.</text>
+<rect x="0" y="432" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="469" x2="900" y2="469" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="455" fill="#222" font-size="13" font-weight="bold">Coloreo por idoneidad</text>
+<text x="280" y="455" fill="#444" font-size="13">El mapa se colorea según qué tan apta es cada zona.</text>
+<rect x="0" y="473" width="900" height="30" fill="#cce1ee"/>
+<text x="18" y="493" fill="#165170" font-size="14" font-weight="bold">Botones del mapa (nuevos)</text>
+<rect x="0" y="503" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="540" x2="900" y2="540" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="526" fill="#222" font-size="13" font-weight="bold">Enfocar selección</text>
+<text x="280" y="526" fill="#444" font-size="13">Centra y acerca el mapa al área elegida.</text>
+<rect x="0" y="540" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="577" x2="900" y2="577" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="563" fill="#222" font-size="13" font-weight="bold">Reset a Colombia</text>
+<text x="280" y="563" fill="#444" font-size="13">Vuelve a la vista general del país.</text>
+<rect x="0" y="577" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="614" x2="900" y2="614" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="600" fill="#222" font-size="13" font-weight="bold">Borrar selección</text>
+<text x="280" y="600" fill="#444" font-size="13">Limpia el área seleccionada.</text>
+<rect x="0" y="614" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="651" x2="900" y2="651" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="637" fill="#222" font-size="13" font-weight="bold">Zoom + / −</text>
+<text x="280" y="637" fill="#444" font-size="13">Acercar y alejar el mapa.</text>
+<rect x="0" y="651" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="688" x2="900" y2="688" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="674" fill="#222" font-size="13" font-weight="bold">Pantalla completa</text>
+<text x="280" y="674" fill="#444" font-size="13">Amplía el mapa a toda la pantalla.</text>
+<rect x="0" y="692" width="900" height="30" fill="#cce1ee"/>
+<text x="18" y="712" fill="#165170" font-size="14" font-weight="bold">Variables y dimensiones</text>
+<rect x="0" y="722" width="900" height="56" fill="#ffffff"/>
+<line x1="0" y1="778" x2="900" y2="778" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="745" fill="#222" font-size="13" font-weight="bold">Catálogo definitivo</text>
+<text x="280" y="745" fill="#444" font-size="13">Todas las variables del cliente con descripción, fuente y agrupación</text>
+<text x="280" y="764" fill="#444" font-size="13">por dimensión.</text>
+<rect x="0" y="778" width="900" height="56" fill="#ffffff"/>
+<line x1="0" y1="834" x2="900" y2="834" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="801" fill="#222" font-size="13" font-weight="bold">Menú simplificado</text>
+<text x="280" y="801" fill="#444" font-size="13">El usuario solo elige las variables opcionales; el resto siempre se</text>
+<text x="280" y="820" fill="#444" font-size="13">consideran.</text>
+<rect x="0" y="834" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="871" x2="900" y2="871" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="857" fill="#222" font-size="13" font-weight="bold">Ficha de detalle</text>
+<text x="280" y="857" fill="#444" font-size="13">Qué es cada variable, cómo se calcula, su relevancia y su fuente.</text>
+<rect x="0" y="875" width="900" height="30" fill="#cce1ee"/>
+<text x="18" y="895" fill="#165170" font-size="14" font-weight="bold">Características del proyecto</text>
+<rect x="0" y="905" width="900" height="56" fill="#ffffff"/>
+<line x1="0" y1="961" x2="900" y2="961" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="928" fill="#222" font-size="13" font-weight="bold">Capacidad del parque</text>
+<text x="280" y="928" fill="#444" font-size="13">Se ingresa la capacidad (MW) y el sistema deriva tamaño, categoría y</text>
+<text x="280" y="947" fill="#444" font-size="13">número de aerogeneradores.</text>
+<rect x="0" y="961" width="900" height="56" fill="#ffffff"/>
+<line x1="0" y1="1017" x2="900" y2="1017" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="984" fill="#222" font-size="13" font-weight="bold">Tipo de emplazamiento</text>
+<text x="280" y="984" fill="#444" font-size="13">Onshore/offshore según la zona, con tecnología offshore</text>
+<text x="280" y="1003" fill="#444" font-size="13">(flotante/fija).</text>
+<rect x="0" y="1021" width="900" height="30" fill="#cce1ee"/>
+<text x="18" y="1041" fill="#165170" font-size="14" font-weight="bold">Informe (contenido)</text>
+<rect x="0" y="1051" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="1088" x2="900" y2="1088" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="1074" fill="#222" font-size="13" font-weight="bold">Encabezado</text>
+<text x="280" y="1074" fill="#444" font-size="13">Región, coordenadas, área en km² y número de variables activas.</text>
+<rect x="0" y="1088" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="1125" x2="900" y2="1125" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="1111" fill="#222" font-size="13" font-weight="bold">Mapa + escala</text>
+<text x="280" y="1111" fill="#444" font-size="13">Captura del área con la escala de colores viridis explicada.</text>
+<rect x="0" y="1125" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="1162" x2="900" y2="1162" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="1148" fill="#222" font-size="13" font-weight="bold">Resultado /100</text>
+<text x="280" y="1148" fill="#444" font-size="13">Puntaje general de idoneidad del área.</text>
+<rect x="0" y="1162" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="1199" x2="900" y2="1199" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="1185" fill="#222" font-size="13" font-weight="bold">Puntajes por dimensión</text>
+<text x="280" y="1185" fill="#444" font-size="13">Gráfico de radar + barras por cada dimensión.</text>
+<rect x="0" y="1199" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="1236" x2="900" y2="1236" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="1222" fill="#222" font-size="13" font-weight="bold">Variables que más influyen</text>
+<text x="280" y="1222" fill="#444" font-size="13">Ranking de las variables con mayor peso en el resultado.</text>
+<rect x="0" y="1236" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="1273" x2="900" y2="1273" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="1259" fill="#222" font-size="13" font-weight="bold">Variables consideradas</text>
+<text x="280" y="1259" fill="#444" font-size="13">Lista de las que entran al puntaje (solo en el PDF).</text>
+<rect x="0" y="1273" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="1310" x2="900" y2="1310" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="1296" fill="#222" font-size="13" font-weight="bold">Variables informativas</text>
+<text x="280" y="1296" fill="#444" font-size="13">Las que el usuario eligió, con su valor en el área.</text>
+<rect x="0" y="1310" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="1347" x2="900" y2="1347" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="1333" fill="#222" font-size="13" font-weight="bold">Fuentes de datos</text>
+<text x="280" y="1333" fill="#444" font-size="13">Tabla de fuente por variable + fuentes institucionales.</text>
+<rect x="0" y="1351" width="900" height="30" fill="#cce1ee"/>
+<text x="18" y="1371" fill="#165170" font-size="14" font-weight="bold">Botones del informe</text>
+<rect x="0" y="1381" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="1418" x2="900" y2="1418" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="1404" fill="#222" font-size="13" font-weight="bold">Descargar PDF</text>
+<text x="280" y="1404" fill="#444" font-size="13">Genera el informe en PDF A4 con identidad de marca.</text>
+<rect x="0" y="1418" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="1455" x2="900" y2="1455" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="1441" fill="#222" font-size="13" font-weight="bold">Guardar en histórico</text>
+<text x="280" y="1441" fill="#444" font-size="13">Almacena el informe para consultarlo luego.</text>
+<rect x="0" y="1455" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="1492" x2="900" y2="1492" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="1478" fill="#222" font-size="13" font-weight="bold">Pantalla completa</text>
+<text x="280" y="1478" fill="#444" font-size="13">Abre el informe grande, fuera de la subpágina.</text>
+<rect x="0" y="1492" width="900" height="56" fill="#ffffff"/>
+<line x1="0" y1="1548" x2="900" y2="1548" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="1515" fill="#222" font-size="13" font-weight="bold">Mostrar/ocultar</text>
+<text x="18" y="1534" fill="#222" font-size="13" font-weight="bold">previsualización</text>
+<text x="280" y="1515" fill="#444" font-size="13">Colapsa o expande la vista del informe.</text>
+<rect x="0" y="1552" width="900" height="30" fill="#cce1ee"/>
+<text x="18" y="1572" fill="#165170" font-size="14" font-weight="bold">Histórico de informes</text>
+<rect x="0" y="1582" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="1619" x2="900" y2="1619" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="1605" fill="#222" font-size="13" font-weight="bold">Listado por fecha</text>
+<text x="280" y="1605" fill="#444" font-size="13">Informes guardados agrupados en Hoy, Semana y Mes.</text>
+<rect x="0" y="1619" width="900" height="56" fill="#ffffff"/>
+<line x1="0" y1="1675" x2="900" y2="1675" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="1642" fill="#222" font-size="13" font-weight="bold">Reabrir y eliminar</text>
+<text x="280" y="1642" fill="#444" font-size="13">Ver un informe antiguo tal como se guardó, o borrarlo con</text>
+<text x="280" y="1661" fill="#444" font-size="13">confirmación.</text>
+<rect x="0" y="1679" width="900" height="30" fill="#cce1ee"/>
+<text x="18" y="1699" fill="#165170" font-size="14" font-weight="bold">Experiencia de uso</text>
+<rect x="0" y="1709" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="1746" x2="900" y2="1746" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="1732" fill="#222" font-size="13" font-weight="bold">Confirmaciones y errores</text>
+<text x="280" y="1732" fill="#444" font-size="13">Mensajes de éxito y alertas de error claras en los formularios.</text>
+<rect x="0" y="1746" width="900" height="37" fill="#ffffff"/>
+<line x1="0" y1="1783" x2="900" y2="1783" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="1769" fill="#222" font-size="13" font-weight="bold">Menú y soporte</text>
+<text x="280" y="1769" fill="#444" font-size="13">Menú lateral depurado; soporte por correo.</text>
+<rect x="0" y="1787" width="900" height="30" fill="#cce1ee"/>
+<text x="18" y="1807" fill="#165170" font-size="14" font-weight="bold">Datos / conexión</text>
+<rect x="0" y="1817" width="900" height="56" fill="#ffffff"/>
+<line x1="0" y1="1873" x2="900" y2="1873" stroke="#e6ebef" stroke-width="1"/>
+<text x="18" y="1840" fill="#222" font-size="13" font-weight="bold">Listo para datos reales</text>
+<text x="280" y="1840" fill="#444" font-size="13">Todo preparado para &#x27;encender&#x27; el backend con un interruptor; mientras</text>
+<text x="280" y="1859" fill="#444" font-size="13">tanto, modo demostración.</text>
+</svg>

@@ -8,7 +8,7 @@ import { weightFor } from "../../Utils/variables/variableWeights";
  * US04-AC2 — Tooltip accesible con la definición de la variable.
  * Click en ℹ abre un popover con:
  *  - Descripción de la variable
- *  - Indicador "Suma a viabilidad" / "Resta a viabilidad" (derivado del signo
+ *  - Indicador "Suma a idoneidad" / "Resta a idoneidad" (derivado del signo
  *    del peso en `variableWeights.ts`)
  * Cierra con ESC, click fuera o segundo click sobre el icono.
  */

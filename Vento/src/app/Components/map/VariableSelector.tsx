@@ -36,7 +36,7 @@ export default function VariableSelector({ selected, onSelect }: VariableSelecto
         onChange={(e) => onSelect(e.target.value || null)}
         className="rounded bg-white/90 px-3 py-1.5 text-sm text-gray-800 shadow backdrop-blur border border-gray-300 cursor-pointer"
       >
-        <option value="">Temp. Viabilidad</option>
+        <option value="">Temp. idoneidad</option>
         {variables.map((v) => (
           <option key={v.name} value={v.name}>
             {v.label}

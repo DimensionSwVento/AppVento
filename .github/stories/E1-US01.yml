@@ -10,7 +10,7 @@ unlocks: "Acceso autenticado a la plataforma"
 week: 2
 body: |
   ## Historia de Usuario
-  Como usuario analista o administrador, quiero iniciar sesión con mi correo electrónico para acceder a la plataforma de análisis de viabilidad eólica.
+  Como usuario analista o administrador, quiero iniciar sesión con mi correo electrónico para acceder a la plataforma de análisis de idoneidad eólica.
 
   **ADR relacionado:** ADR-005
   **Épica:** E1 — Login y Autenticación

@@ -123,7 +123,7 @@ Tests: 32 unitarios nuevos en `Vento/__tests__/unit/app/api/auth/register/**` y 
 
 **Como** analista evaluando proyectos offshore
 **Quiero** ver los límites marítimos de Colombia y poder seleccionar hexágonos en todo el territorio incluyendo San Andrés, Providencia y mares adyacentes
-**Para** no estar limitado al continente al evaluar viabilidad eólica offshore
+**Para** no estar limitado al continente al evaluar idoneidad eólica offshore
 
 ### Criterios de aceptación
 

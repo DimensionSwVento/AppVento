@@ -57,9 +57,9 @@ interface IndexedHex {
   variables: Record<string, string | number | null>;
 }
 
-// --- Score Temporal de Viabilidad (PLACEHOLDER) ---
+// --- Score Temporal de idoneidad (PLACEHOLDER) ---
 // Se reemplazará por el modelo multicriterio AHP real del equipo de análisis.
-// Pesos aproximados, NO validados. Variables insuficientes (faltan Ambiental, Regulatoria, Macroeconómica).
+// Pesos aproximados, NO validados. Variables insuficientes (faltan Ambiental, Regulatoria, económica).
 
 const ROCK_SCORES: Record<string, number> = {
   "muy superficiales": 1.0,

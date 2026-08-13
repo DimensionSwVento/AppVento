@@ -10,7 +10,7 @@ test.describe("Redirecciones de rutas protegidas (anónimo)", () => {
       await page.goto(route);
       await page.waitForURL((url) => url.pathname === "/");
       await expect(
-        page.getByRole("heading", { name: "Plataforma de Viabilidad Eólica" }),
+        page.getByRole("heading", { name: "Plataforma de idoneidad Eólica" }),
       ).toBeVisible();
     });
   }

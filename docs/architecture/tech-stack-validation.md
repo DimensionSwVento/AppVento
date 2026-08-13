@@ -132,7 +132,7 @@ backend/
 ### Endpoints implementados
 - `/api/tiles/{z}/{x}/{y}` — tiles H3 para renderizar mapa (acepta query `var` para filtrar)
 - Healthcheck `/health`
-- (Futuro) Informes de viabilidad, históricos
+- (Futuro) Informes de idoneidad, históricos
 
 ### Validación
 - Python + GeoPandas + H3-py = zero friction con el pipeline existente del equipo investigación.
@@ -172,7 +172,7 @@ Ver detalle en [auth-strategy.md](../security/auth-strategy.md).
 - **Uso productivo actual**: ninguno — Keycloak maneja usuarios en su propia DB, los datos geoespaciales se sirven desde `.h3.parquet` vía FastAPI.
 
 ### Uso futuro (v1.1+)
-- Persistir análisis de viabilidad (US-F10)
+- Persistir análisis de idoneidad (US-F10)
 - Histórico de informes (US-F11)
 - Metadata de variables (US03-AC7)
 - Audit log de autenticación
@@ -258,7 +258,7 @@ Todo superó los requisitos del scope. Se documentó el mapping en [h3TileIndex.
 | `/api/variables` | GET | Lista de variables disponibles | ✅ funcional |
 
 ### Lo que falta (roadmap)
-- Endpoint de informe de viabilidad (US-F10)
+- Endpoint de informe de idoneidad (US-F10)
 - Endpoint de histórico (US-F11)
 - Endpoint de metadata de variables (US03-AC7)
 

@@ -45,7 +45,7 @@ describe("VariableSelector", () => {
     render(<VariableSelector selected={null} onSelect={vi.fn()} />);
     expect(await screen.findByRole("combobox")).toBeInTheDocument();
     expect(globalThis.fetch).toHaveBeenCalledWith("/api/tiles/variables");
-    expect(screen.getByRole("option", { name: "Temp. Viabilidad" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Temp. idoneidad" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Velocidad de Viento" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Zona Reserva Campesina" })).toBeInTheDocument();
   });

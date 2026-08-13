@@ -10,7 +10,7 @@ unlocks: "US03-AC9, US03-AC7"
 week: 3
 body: |
   ## Historia de Usuario
-  Como analista, quiero filtrar el mapa por una variable específica (técnica, ambiental, etc.) para analizar en detalle cada dimensión de viabilidad.
+  Como analista, quiero filtrar el mapa por una variable específica (técnica, ambiental, etc.) para analizar en detalle cada dimensión de idoneidad.
 
   **Épica:** E2 — Mapa SIG Interactivo
 

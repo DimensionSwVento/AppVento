@@ -10,12 +10,12 @@ unlocks: "US03-AC2, US03-AC4, US03-AC9"
 week: 3
 body: |
   ## Historia de Usuario
-  Como analista, quiero ver el mapa coloreado según el score de viabilidad general para identificar visualmente las zonas con mayor potencial eólico.
+  Como analista, quiero ver el mapa coloreado según el score de idoneidad general para identificar visualmente las zonas con mayor potencial eólico.
 
   **Épica:** E2 — Mapa SIG Interactivo
 
   ## Criterios de Aceptación
-  1. Hexágonos coloreados según score_general (promedio viabilidad de las 5 dimensiones)
+  1. Hexágonos coloreados según score_general (promedio idoneidad de las 5 dimensiones)
   2. Escala de color continua (gradiente) proporcional al score
   3. Leyenda visible con escala de colores y valores min/max
   4. Zonas de mayor score se distinguen claramente de las de menor
