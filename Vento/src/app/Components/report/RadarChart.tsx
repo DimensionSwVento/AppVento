@@ -25,7 +25,7 @@ export default function RadarChart({
   const labelR = R + 20;
   const levels = [0.25, 0.5, 0.75, 1];
   // Padding horizontal del viewBox: da aire para etiquetas largas (ej.
-  // "Macroeconómica" / "Socioeconómica") que antes se cortaban en el borde.
+  // "económica" / "Socioeconómica") que antes se cortaban en el borde.
   const padX = 76;
 
   const angleFor = (i: number) => (-90 + (360 / n) * i) * (Math.PI / 180);

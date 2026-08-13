@@ -12,14 +12,14 @@ Un convenio entre la **ANH** (Agencia Nacional de Hidrocarburos) y la **Universi
 
 ## ¿Qué es Vento?
 
-Vento es una aplicación web que muestra un **mapa interactivo de Colombia** dividido en pequeños hexágonos. El usuario elige una zona, indica las características del proyecto eólico que imagina, y recibe un **informe de idoneidad**: qué tan buena es esa zona para generar energía eólica, con una calificación por cada dimensión (ambiental, técnica, social, macroeconómica).
+Vento es una aplicación web que muestra un **mapa interactivo de Colombia** dividido en pequeños hexágonos. El usuario elige una zona, indica las características del proyecto eólico que imagina, y recibe un **informe de idoneidad**: qué tan buena es esa zona para generar energía eólica, con una calificación por cada dimensión (ambiental, técnica, social, económica).
 
 | Pregunta | Respuesta |
 |----------|-----------|
 | **¿Qué problema resuelve?** | Decidir dónde instalar un parque eólico normalmente toma semanas y obliga a cruzar datos de muchas fuentes. Vento reúne todo en un solo mapa. |
 | **¿Para quién es?** | Analistas de energía, investigadores y tomadores de decisiones de la ANH y EAFIT. |
 | **¿Qué muestra el mapa?** | Un mapa de calor: las zonas amarillas son las más aptas, las moradas las menos aptas. |
-| **¿Qué evalúa?** | Una calificación general que combina 4 dimensiones puntuables — Ambiental, Técnica, Social y Macroeconómica (+ Regulatoria informativa). |
+| **¿Qué evalúa?** | Una calificación general que combina 4 dimensiones puntuables — Ambiental, Técnica, Social y económica (+ Regulatoria informativa). |
 | **¿De dónde salen los datos?** | El equipo de investigación de EAFIT/ANH genera los datos ya procesados; Vento los muestra sobre el mapa. |
 
 ---

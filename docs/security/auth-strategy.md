@@ -324,7 +324,7 @@ Para producción hay que actualizar `redirectUris`, `webOrigins` y `attributes.p
 |----------|-------|
 | No guardamos sesiones en DB | Keycloak es fuente de verdad. JWT stateless suficiente. Cambio a DB requeriría adapter (Prisma/Drizzle) |
 | No usamos `id_token_hint` en logout | Reduce cookie ~1.5KB. Seguridad equivalente con whitelist de redirect URIs |
-| No sincronizamos usuarios a DB propia | Keycloak maneja CRUD. Nuestra DB (futura) guardará análisis de viabilidad, no identidad |
+| No sincronizamos usuarios a DB propia | Keycloak maneja CRUD. Nuestra DB (futura) guardará análisis de idoneidad, no identidad |
 | No implementamos 2FA ahora | Keycloak soporta MFA nativo — activar post-v1.0 sin tocar nuestro código |
 | No permitimos login sin Keycloak (backdoor admin) | Aumenta superficie de ataque. Si Keycloak cae, se resuelve en infra, no en app |
 

@@ -10,16 +10,16 @@ unlocks: ""
 week: 2
 body: |
   ## Historia de Usuario
-  Como analista, quiero ver los resultados del informe de viabilidad en una pantalla nativa de la app (siguiendo el diseño Figma) — con los scores de cada una de las 5 dimensiones y el valor de viabilidad agregado — y poder descargar el informe en PDF con un click.
+  Como analista, quiero ver los resultados del informe de idoneidad en una pantalla nativa de la app (siguiendo el diseño Figma) — con los scores de cada una de las 5 dimensiones y el valor de idoneidad agregado — y poder descargar el informe en PDF con un click.
 
   **Épica:** E6 — Reportes (Parte 1: Generación y Visualización)
 
   ## Criterios de Aceptación
   1. Pantalla de informe en UI nativa de la app (no iframe), siguiendo el diseño Figma del informe
-  2. Muestra los resultados por dimensión — cada una de las 5 dimensiones (técnica, ambiental, regulatoria, socioeconómica, macroeconómica) con su score
-  3. Muestra el valor de viabilidad agregado del área seleccionada
+  2. Muestra los resultados por dimensión — cada una de las 5 dimensiones (técnica, ambiental, regulatoria, socioeconómica, económica) con su score
+  3. Muestra el valor de idoneidad agregado del área seleccionada
   4. Botón "Descargar PDF" visible en la pantalla
-  5. Al hacer click en el botón, se genera y descarga un PDF con el mismo contenido (scores por dimensión + viabilidad + área + variables + características)
+  5. Al hacer click en el botón, se genera y descarga un PDF con el mismo contenido (scores por dimensión + idoneidad + área + variables + características)
   6. PDF descargado tiene branding institucional (Vento + ANH + EAFIT + mavalan)
   7. Indicador de carga mientras se genera el PDF al descargar
   8. Mensaje de error claro si la generación falla
@@ -31,7 +31,7 @@ body: |
   - 📦 **FE Componentes**: `<DimensionResult>` (una dimensión con su score), `<ViabilityScore>` (valor agregado), `<DownloadPDFButton>`
   - 📦 **FE Llamada**: helper que llama al endpoint y descarga el `Blob` como archivo (`<a download>` o `window.URL.createObjectURL`)
   - 📦 **BE Endpoint**: `POST /api/reports/pdf` que reciba `{ hexes, variables, caracteristicas, scores }` y retorne `application/pdf` con header `Content-Disposition: attachment`
-  - 📦 **BE Template**: archivo HTML+CSS para WeasyPrint (o ReportLab DSL) con estructura: portada, mapa estático del área, tabla de variables, características, scores por dimensión, valor de viabilidad. Incluye logos institucionales
+  - 📦 **BE Template**: archivo HTML+CSS para WeasyPrint (o ReportLab DSL) con estructura: portada, mapa estático del área, tabla de variables, características, scores por dimensión, valor de idoneidad. Incluye logos institucionales
   - 📦 **FE UI**: spinner durante generación + componente `<ErrorBanner>` si falla
   - 🧪 **Tests**: endpoint retorna PDF válido (`application/pdf` ≥ 1KB); componente FE renderiza N dimensiones con scores correctos; botón descarga dispara fetch + descarga del blob; manejo robusto de `0 hexágonos seleccionados`
 

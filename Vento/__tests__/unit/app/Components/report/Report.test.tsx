@@ -88,7 +88,7 @@ describe("Report (US06-AC3) — pantalla de informe", () => {
     expect(screen.getAllByText("Técnica").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Social").length).toBeGreaterThanOrEqual(1);
     expect(
-      screen.getAllByText("Macroeconómica").length,
+      screen.getAllByText("económica").length,
     ).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Resultado preliminar")).toBeInTheDocument();
   });

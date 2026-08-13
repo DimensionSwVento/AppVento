@@ -24,7 +24,7 @@ Todo pasa por el **BFF**: el navegador llama same-origin `/api/tiles/*` y `/api/
   {"h3_index","lat","lng","score_general","scores":{...},"tipo_celda","variables":{...}}
   ```
 - **El backend debe proveer:**
-  - `score_general` (0–1) y `scores` **por dimensión** con claves de categoría: `TEC, AMB, SOE, SOC, MAC, REG` (normalizados 0–1). El front agrega **SOE + SOC → "social"**, `MAC → macroeconómica`, `TEC → técnica`, `AMB → ambiental`, `REG` informativa.
+  - `score_general` (0–1) y `scores` **por dimensión** con claves de categoría: `TEC, AMB, SOE, SOC, MAC, REG` (normalizados 0–1). El front agrega **SOE + SOC → "social"**, `MAC → económica`, `TEC → técnica`, `AMB → ambiental`, `REG` informativa.
   - `variables`: valor **por variable individual**. El front las llavea por **`masterId`** = **el código de la master** (`TEC-004-T`, `AMB-005-A`, `SOC-011-S`) → **es el mismo código** que usa el backend, así que casan directo. ⚠️ Solo **confirmar el FORMATO exacto de la clave** (si el parquet la trae como `TEC_001`/`TEC_001_sv001` con guion bajo, normalizar guion↔guion_bajo) y **si el valor viene 0–1 o crudo** (0–1 para el "puntaje 0–100"; crudo para informativas con unidad).
   - `tipo_celda` (`"disponible"` / `"excluida"`).
   - **Columna mar/tierra** (bool 0/1) — ⚠️ **hoy no está en el contrato**; definir su **nombre** e incluirla.

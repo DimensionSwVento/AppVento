@@ -96,7 +96,7 @@ Exportado en `realm-export.json`. Campos clave:
 | Rol | Descripción | Uso |
 |-----|-------------|-----|
 | `admin` | Administrador del sistema Vento | Acceso a `/admin/*` en la app |
-| `analista` | Analista de viabilidad eólica | Usuario estándar, acceso al flujo principal |
+| `analista` | Analista de idoneidad eólica | Usuario estándar, acceso al flujo principal |
 
 **Default role en registro**: `analista` — todo usuario nuevo entra sin privilegios admin.
 

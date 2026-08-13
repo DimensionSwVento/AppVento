@@ -189,7 +189,7 @@ Ver documentos ADR detallados en `docs/adr/`:
 - **ADR-001:** Stack Frontend — Next.js + React + DeckGL (confirmado, Leaflet descartado)
 - **ADR-002:** Resolución H3 — Res 3-7 según zoom (~59km a ~1.2km). Datos fuente en res 8
 - **ADR-003:** ~~Sin Backend API inicial~~ — **Supersedido por ADR-007**
-- **ADR-004:** Viabilidad equipo 1 mes — 230h estimadas de 320h disponibles
+- **ADR-004:** idoneidad equipo 1 mes — 230h estimadas de 320h disponibles
 - **ADR-005:** Keycloak como proveedor de identidad — implementado con NextAuth
 - **ADR-006:** Cache: TileLayer (64 tiles) + HTTP Cache-Control. Storage definitivo pendiente
 - **ADR-007:** Backend FastAPI con Clean Architecture (repos separados, monorepo descartado)

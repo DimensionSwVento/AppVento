@@ -2,7 +2,7 @@
 
 /**
  * Leyenda del heatmap — barra de gradiente Viridis vertical (delgada)
- * con 5 etiquetas alineadas a los rangos de viabilidad.
+ * con 5 etiquetas alineadas a los rangos de idoneidad.
  *
  * Top = 100 (amarillo Viridis), bottom = 0 (púrpura). Las etiquetas viven
  * a la derecha del gradiente, distribuidas con `justify-between` para

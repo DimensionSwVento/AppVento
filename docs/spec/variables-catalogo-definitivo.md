@@ -13,7 +13,7 @@ maintainer: mavalan Software
 > cuando se conecte la master. Estructura: `Dimensión → Criterio → Subcriterio → Variable`.
 
 ## Resumen
-- **Tabla 1 — `Variables_conPesoModelo`**: 61 variables ponderadas (puntúan) en 4 dimensiones (Ambiental, Técnica, Social, Macroeconómica).
+- **Tabla 1 — `Variables_conPesoModelo`**: 61 variables ponderadas (puntúan) en 4 dimensiones (Ambiental, Técnica, Social, económica).
 - **Tabla 2 — `Características`**: 4 parámetros de configuración (no puntúan): tipo tecnología offshore, capacidad nominal, tamaño (derivado), tipo de aerogeneradores (sugerido).
 - **Tabla 3 — `Informativas`**: 30 variables solo-visualización (no pesan) en 4 dimensiones + Regulatoria pendiente.
 
@@ -41,7 +41,7 @@ Medio natural, biótico y abiótico afectable por infraestructura eólica.
   - *Gobernanza/riesgo político (2)*: desempeño institucional (SOC-023-SER) · tipología territorial (SOC-036-SE).
   - *Étnico/territorial (5)*: resguardos indígenas (SOC-013-SR, **en mapa**) · reserva campesina (SOC-016-SR) · comunidades negras (SOC-032-S) · ZOMAC (SOC-039-SR) · PDET (SOC-040-SER).
 
-### MACROECONÓMICA (sin IDs)
+### económica (sin IDs)
 - **Proyecciones → General**: PIB · PIB per cápita · IPC · Desempleo · Tasa de cambio COP-USD.
 - **Proyecciones → Sector energético**: Precio spot (COP/kWh) · Demanda energía (kWh) · Oferta energía (kWh).
 
@@ -58,7 +58,7 @@ Medio natural, biótico y abiótico afectable por infraestructura eólica.
 ## TABLA 3 — Informativas (30, solo visualización)
 - **Técnica (4)**: Velocidad viento media anual (TEC-001-T, alturas 10/50/100/150/200 m, **mapa**) · Densidad de viento (TEC-002-T, **mapa**) · Turbulencia (TEC-005-TE, clases IEC) · AEP (NA, calculado por Weibull+densidad+perfiles).
 - **Social (19)**: propias → Diversidad religiosa (SOC-024-S) · Inclinaciones políticas (SOC-005-S) · Riesgo electoral (SOC-004-SR). + 16 repetidas de Tabla 1 (SOC-001/002/007/008/035/010/038/009/011/015/018/041/023/013/016/032).
-- **Macroeconómica (1)**: Proyección precio spot (NA, serie de tiempo 10 años, sin mapa).
+- **económica (1)**: Proyección precio spot (NA, serie de tiempo 10 años, sin mapa).
 - **Ambiental (6)**: Uso/cobertura suelo (AMB-006) · Congregación aves playeras (AMB-038-A) · Zonas reproducción aves (AMB-034-A) · Amenazas volcánicas (s/ID) · Elevación (AMB-008-A) · Batimetría (AMB-030-A).
 - **Regulatoria**: declarada pero **sin variables** ("Falta"). ⚠️ pendiente.
 
@@ -68,7 +68,7 @@ Medio natural, biótico y abiótico afectable por infraestructura eólica.
 
 ## Vacíos y cruces a resolver (del cliente)
 1. **Regulatoria sin contenido** (ni modelo ni informativas).
-2. **IDs faltantes**: 8 macroeconómicas, "Amenazas volcánicas", y sin fuente: "Áreas clave biodiversidad" / "Humedales RAMSAR".
+2. **IDs faltantes**: 8 económicas, "Amenazas volcánicas", y sin fuente: "Áreas clave biodiversidad" / "Humedales RAMSAR".
 3. **Analfabetismo duplicado**: SOE-004 y SOC-012-S.
 4. **Tipología territorial (SOC-036-SE)** en 2 subcriterios → posible doble peso.
 5. **16 variables sociales** están como ponderadas Y como informativas → definir si se muestran dos veces o el mismo dato cumple ambos roles.
@@ -78,6 +78,6 @@ Medio natural, biótico y abiótico afectable por infraestructura eólica.
 ---
 
 ## Mapeo a lo que hay hoy en el código (para la migración)
-- El front hoy usa dimensiones: `ambiental · tecnica · economica · socioeconomica(→"Social") · regulatoria`. La master define **Ambiental · Técnica · Social · Macroeconómica** (+ Regulatoria pendiente). Hay que **reconciliar** las dimensiones (aparece Macroeconómica; "económica" y "socioeconómica" del front se funden en "Social" con subcriterios Económico/Social).
+- El front hoy usa dimensiones: `ambiental · tecnica · economica · socioeconomica(→"Social") · regulatoria`. La master define **Ambiental · Técnica · Social · económica** (+ Regulatoria pendiente). Hay que **reconciliar** las dimensiones (aparece económica; "económica" y "socioeconómica" del front se funden en "Social" con subcriterios Económico/Social).
 - Variables informativas del mapa (nodos, viento, distancias) ya pedidas en Sprint 3 → salen de TEC-001/002/023/031/032.
 - `dimensionHexScore` (placeholder) y `variablesCatalog.ts` se reemplazan por esta estructura cuando llegue la master (`.h3.parquet` + columnas por ID).

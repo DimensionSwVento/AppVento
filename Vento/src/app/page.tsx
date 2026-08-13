@@ -47,10 +47,10 @@ export default async function Home({
 
         <div className="text-center">
           <h1 className="text-2xl font-semibold tracking-tight text-white">
-            Plataforma de Viabilidad Eólica
+            Plataforma de idoneidad Eólica
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-gray-300">
-            Accede al análisis geoespacial de viabilidad eólica en Colombia.
+            Accede al análisis geoespacial de idoneidad eólica en Colombia.
           </p>
         </div>
 

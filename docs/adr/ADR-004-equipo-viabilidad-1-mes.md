@@ -1,11 +1,11 @@
 ---
 id: ADR-004
-title: Viabilidad y Distribución de Equipo — 1 Mes
+title: idoneidad y Distribución de Equipo — 1 Mes
 status: aceptado
 date: 2026-03-24
 ---
 
-# ADR-004: Viabilidad y Distribución de Equipo — 1 Mes
+# ADR-004: idoneidad y Distribución de Equipo — 1 Mes
 
 ## Contexto
 

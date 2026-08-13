@@ -113,8 +113,6 @@ export default function Dimensions() {
             );
           })}
 
-          {/* Catálogo de variables informativas (Tabla 3) — solo visualización */}
-          <InformativeCatalog query={query} />
         </div>
       </div>
 

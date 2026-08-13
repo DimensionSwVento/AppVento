@@ -8,7 +8,7 @@
 
 ## Introducción
 
-**Vento** es una plataforma web para evaluar la viabilidad de proyectos de energía eólica en Colombia. Permite seleccionar áreas geográficas con precisión hexagonal, configurar dimensiones de análisis y generar informes de viabilidad.
+**Vento** es una plataforma web para evaluar la idoneidad de proyectos de energía eólica en Colombia. Permite seleccionar áreas geográficas con precisión hexagonal, configurar dimensiones de análisis y generar informes de idoneidad.
 
 Este manual cubre las funciones disponibles en la versión actual desplegada.
 
@@ -21,7 +21,7 @@ Este manual cubre las funciones disponibles en la versión actual desplegada.
 3. [Selección de área en el mapa](#3-selección-de-área-en-el-mapa)
 4. [Flujo de análisis paso a paso](#4-flujo-de-análisis-paso-a-paso)
 5. [Panel de dimensiones](#5-panel-de-dimensiones)
-6. [Informe de viabilidad](#6-informe-de-viabilidad)
+6. [Informe de idoneidad](#6-informe-de-idoneidad)
 7. [Panel de administración](#7-panel-de-administración)
 8. [Gestión de sesión](#8-gestión-de-sesión)
 9. [Preguntas frecuentes](#9-preguntas-frecuentes)
@@ -129,7 +129,7 @@ Una vez tengas al menos un hexágono seleccionado, el botón **"Dimensiones"** e
 El análisis sigue un flujo lineal de cuatro etapas visibles en el menú lateral:
 
 ```
-Selección de área  →  Dimensiones  →  Características  →  Informe de viabilidad
+Selección de área  →  Dimensiones  →  Características  →  Informe de idoneidad
 ```
 
 **Reglas de navegación:**
@@ -152,10 +152,10 @@ Al avanzar a "Dimensiones", el mapa se congela como imagen de referencia y apare
 | Dimensión | Qué evalúa |
 |-----------|-----------|
 | Ambiental | Condiciones del entorno natural del área seleccionada |
-| Técnica | Viabilidad técnica para instalación de infraestructura eólica |
+| Técnica | idoneidad técnica para instalación de infraestructura eólica |
 | Regulatoria | Marco legal y normativo aplicable al territorio |
 | Socioeconómica | Impacto y contexto social y económico de la zona |
-| Macroeconómica | Variables económicas de contexto nacional y regional |
+| económica | Variables económicas de contexto nacional y regional |
 
 > El mapa congelado sigue mostrando tu selección de área como referencia visual mientras configuras las dimensiones.
 
@@ -163,14 +163,14 @@ Haz clic en **"Siguiente paso"** al final del panel para continuar a "Caracterí
 
 ---
 
-## 6. Informe de Viabilidad
+## 6. Informe de idoneidad
 
-Al completar el flujo, accedes al panel de **Informe de viabilidad** con el resumen del análisis.
+Al completar el flujo, accedes al panel de **Informe de idoneidad** con el resumen del análisis.
 
 El informe presenta:
 - Resumen del área seleccionada
 - Evaluación por dimensión
-- Indicadores de viabilidad
+- Indicadores de idoneidad
 - Recomendaciones
 
 > Para volver a editar la selección o las dimensiones, usa el menú lateral para retroceder. El mapa se reactivará al volver a "Selección de área".

@@ -264,7 +264,7 @@ DEPENDENCIAS:
 - **Épica origen:** E3 (Mapa SIG)
 - **Dependencia:** US03, US03-AC6
 - **Criterios de Aceptación:**
-  1. Hexágonos coloreados según score_general (promedio viabilidad de las 5 dimensiones)
+  1. Hexágonos coloreados según score_general (promedio idoneidad de las 5 dimensiones)
   2. Escala de color continua (gradiente) proporcional al score
   3. Leyenda visible con escala de colores y valores min/max
   4. Zonas de mayor score se distinguen claramente de las de menor

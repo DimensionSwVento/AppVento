@@ -15,7 +15,7 @@ body: |
   **Épica:** E4 — Configuración de Dimensiones (Variables)
 
   ## Criterios de Aceptación
-  1. Variables agrupadas en las 5 dimensiones (técnica, ambiental, regulatoria, socioeconómica, macroeconómica)
+  1. Variables agrupadas en las 5 dimensiones (técnica, ambiental, regulatoria, socioeconómica, económica)
   2. Cada dimensión tiene un color de **paleta GIS estándar empezando en morado** y bajando por la escala térmica/espectral (mismo principio que los heat-maps de generación energética)
   3. Header de cada sección muestra: nombre de dimensión + color asignado
   4. Las secciones se pueden expandir/colapsar individualmente

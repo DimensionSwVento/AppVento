@@ -134,7 +134,7 @@ FR02: El sistema debe validar correo electrónico (NO restringido a dominio  —
 FR03: El sistema debe ofrecer enlace y flujo de recuperación de contraseña
 FR04: El sistema debe cargar y mostrar mapa base de Colombia con Leaflet
 FR05: El sistema debe renderizar hexágonos H3 (res 5-6, ~4,500-31,000) sobre el mapa
-FR06: El sistema debe colorear hexágonos como mapa de calor según score_general (promedio viabilidad de todas las dimensiones)
+FR06: El sistema debe colorear hexágonos como mapa de calor según score_general (promedio idoneidad de todas las dimensiones)
 FR07: El sistema debe permitir filtrar el mapa de calor por variable crítica específica, re-renderizando con la variable seleccionada en vez del score general
 FR08: Al hacer click en un hexágono, debe mostrar popup con: score usado en mapa de calor + 2-3 variables secundarias importantes
 FR09: Los hexágonos excluidos/no disponibles deben renderizarse como decorativos (visibles pero no interactuables ni calculables)
@@ -142,12 +142,12 @@ FR10: Cada hexágono debe mostrar un dato central que determina el color del map
 FR11: El sistema debe permitir CRUD completo de usuarios (Crear, Leer, Actualizar, Borrar) — US08
 FR12: Debe existir un script de pre-procesamiento que convierta .h3.parquet → JSON/GeoJSON estático para consumo del frontend
 FR13: [FUTURO] El sistema debe exponer API REST (FastAPI) con endpoints: /hexagons, /reports, /users, /auth, /variables, /filters, /metadata
-FR14: [FUTURO] El sistema debe generar informes de viabilidad del área seleccionada en menos de 30 segundos
+FR14: [FUTURO] El sistema debe generar informes de idoneidad del área seleccionada en menos de 30 segundos
 FR15: [FUTURO] El sistema debe mantener historial de informes con opción de ver análisis previos
-FR16: [FUTURO] El sistema debe integrar el modelo multicriterio MCDM con configuración de variables por dimensión (Técnica, Ambiental, Regulatoria, Socioeconómica, Macroeconómica)
+FR16: [FUTURO] El sistema debe integrar el modelo multicriterio MCDM con configuración de variables por dimensión (Técnica, Ambiental, Regulatoria, Socioeconómica, económica)
 FR17: [FUTURO] El sistema debe soportar análisis de variables en áreas marítimas (offshore)
 FR18: [FUTURO] El sistema debe implementar sistema de roles avanzado para usuarios
-FR19: [FUTURO] El sistema debe permitir descarga de informes de viabilidad
+FR19: [FUTURO] El sistema debe permitir descarga de informes de idoneidad
 FR20: El sistema debe tener esquema de base de datos PostgreSQL+PostGIS para usuarios, sesiones y recuperación de contraseña
 FR21: El sistema debe permitir seleccionar múltiples hexágonos como área de análisis (selección territorial)
 FR22: El sistema debe contar con un backend (Clean Architecture + DDD) para validar tokens Keycloak, servir datos geoespaciales y exponer endpoints protegidos (ADR-007)
@@ -205,7 +205,7 @@ ARQ15: Storage definitivo de datos geoespaciales pendiente decisión: archivos (
 | E4 | Administración de Usuarios | Primera | Media | E1, E2 |
 | E5 | Integración, QA y Despliegue | Primera | Alta | E2, E3, E4 |
 | E6 | Backend API REST (FastAPI) | Futura | Alta | E1.6, E5 |
-| E7 | Reportes e Informes de Viabilidad | Futura | Alta | E6 |
+| E7 | Reportes e Informes de idoneidad | Futura | Alta | E6 |
 | E8 | Integración Modelo Multicriterio (MCDM) | Futura | Alta | E6 |
 | E9 | Análisis Marítimo (Offshore) | Futura | Media | E8 |
 | E10 | Sistema de Roles y Permisos Avanzado | Futura | Media | E6 |
@@ -309,7 +309,7 @@ Para que el proyecto se despliegue de forma consistente en cualquier entorno.
 
 Como **desarrollador del equipo**,
 Quiero validar que el plugin H3 para Leaflet puede renderizar ~30K hexágonos con datos reales del .parquet,
-Para que confirmemos la viabilidad técnica del stack antes de construir todo el módulo de mapa.
+Para que confirmemos la idoneidad técnica del stack antes de construir todo el módulo de mapa.
 
 **Criterios de Aceptación:**
 
@@ -491,7 +491,7 @@ Para que pueda visualizar las unidades de análisis territorial.
 ### Historia 3.3: Mapa de Calor por Score General
 
 Como **usuario analista**,
-Quiero que los hexágonos se coloreen según el score general de viabilidad,
+Quiero que los hexágonos se coloreen según el score general de idoneidad,
 Para que pueda identificar visualmente las zonas con mayor y menor potencial eólico.
 
 **Criterios de Aceptación:**
@@ -499,7 +499,7 @@ Para que pueda identificar visualmente las zonas con mayor y menor potencial eó
 **Dado** que los hexágonos están renderizados en el mapa
 **Cuando** se aplica el modo por defecto (score_general)
 **Entonces** cada hexágono se colorea con una escala de colores (gradiente) proporcional a su score_general
-**Y** el score_general representa el promedio de viabilidad de todas las dimensiones
+**Y** el score_general representa el promedio de idoneidad de todas las dimensiones
 **Y** se muestra una leyenda con la escala de colores y sus valores asociados
 **Y** las zonas de mayor score se distinguen claramente de las de menor score
 
@@ -825,25 +825,25 @@ Para que los datos del mapa se actualicen sin re-desplegar la aplicación.
 
 ---
 
-## Épica 7: Reportes e Informes de Viabilidad
+## Épica 7: Reportes e Informes de idoneidad
 
-**Objetivo:** Implementar la generación de informes de viabilidad del área seleccionada con opción de descarga y gestión de historial.
+**Objetivo:** Implementar la generación de informes de idoneidad del área seleccionada con opción de descarga y gestión de historial.
 
 **Requisitos cubiertos:** FR14, FR15, FR19
 
 ---
 
-### Historia 7.1: Generación de Informe de Viabilidad
+### Historia 7.1: Generación de Informe de idoneidad
 
 Como **usuario analista**,
-Quiero generar un informe de viabilidad para el área que seleccione en el mapa,
+Quiero generar un informe de idoneidad para el área que seleccione en el mapa,
 Para que pueda evaluar rápidamente el potencial eólico de una zona.
 
 **Criterios de Aceptación:**
 
 **Dado** que el usuario ha seleccionado un área en el mapa (uno o más hexágonos)
 **Cuando** solicita generar informe
-**Entonces** el sistema calcula y muestra un resumen con: score general del área, desglose por dimensión (técnica, ambiental, regulatoria, socioeconómica, macroeconómica), variables clave del área, mapa miniatura del área seleccionada
+**Entonces** el sistema calcula y muestra un resumen con: score general del área, desglose por dimensión (técnica, ambiental, regulatoria, socioeconómica, económica), variables clave del área, mapa miniatura del área seleccionada
 **Y** la generación completa en <30 segundos (FR14)
 
 ---
@@ -851,12 +851,12 @@ Para que pueda evaluar rápidamente el potencial eólico de una zona.
 ### Historia 7.2: Descarga de Informe en PDF
 
 Como **usuario analista**,
-Quiero descargar el informe de viabilidad como PDF profesional,
+Quiero descargar el informe de idoneidad como PDF profesional,
 Para que pueda compartirlo con tomadores de decisiones y stakeholders.
 
 **Criterios de Aceptación:**
 
-**Dado** que se ha generado un informe de viabilidad
+**Dado** que se ha generado un informe de idoneidad
 **Cuando** el usuario hace click en "Descargar PDF"
 **Entonces** se genera un PDF con branding institucional (ANH/EAFIT), datos del informe, gráficos y mapa
 **Y** el PDF incluye fecha, autor y metadatos del análisis
@@ -881,7 +881,7 @@ Para que pueda comparar análisis y hacer seguimiento de evolución.
 
 ## Épica 8: Integración Modelo Multicriterio (MCDM)
 
-**Objetivo:** Integrar el motor de análisis multicriterio que permite al usuario configurar variables por dimensión y características técnicas del proyecto para obtener análisis personalizados de viabilidad.
+**Objetivo:** Integrar el motor de análisis multicriterio que permite al usuario configurar variables por dimensión y características técnicas del proyecto para obtener análisis personalizados de idoneidad.
 
 **Requisitos cubiertos:** FR16, ARQ07, ARQ09
 
@@ -912,7 +912,7 @@ Para que el análisis se adapte a los criterios específicos de mi evaluación.
 **Criterios de Aceptación:**
 
 **Dado** que el usuario accede a la configuración de análisis
-**Cuando** selecciona variables dentro de cada dimensión (Técnica, Ambiental, Regulatoria, Socioeconómica, Macroeconómica)
+**Cuando** selecciona variables dentro de cada dimensión (Técnica, Ambiental, Regulatoria, Socioeconómica, económica)
 **Entonces** el sistema recalcula los scores según la selección
 **Y** el mapa se actualiza con los nuevos resultados
 **Y** se muestran las variables como: excluyentes, de decisión, penalizantes e informativas
@@ -1160,7 +1160,7 @@ Flujo Esperado                        │ Épica/Historia              │ Estad
 2. Selección de área en mapa          │ E3.1→E3.8 (multi-hex)      │ ✅ Primera
 3. Configurar variables por dimensión │ E8.2 (Config variables)     │ 📅 Futura
 4. Insertar config. técnica proyecto  │ E8.3 (Config turbina/MW)    │ 📅 Futura
-5. Informe viabilidad + descarga      │ E7.1, E7.2                  │ 📅 Futura
+5. Informe idoneidad + descarga      │ E7.1, E7.2                  │ 📅 Futura
 6. Historial de informes              │ E7.3                        │ 📅 Futura
 ──────────────────────────────────────┼─────────────────────────────┼──────────
 Infraestructura (no visible usuario)  │ E1.1-E1.6, E5.1-E5.3       │ ✅ Primera

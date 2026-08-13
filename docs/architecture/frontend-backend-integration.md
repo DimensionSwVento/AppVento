@@ -73,7 +73,7 @@ Endpoints actuales:
 - `GET /health` — healthcheck
 
 Endpoints futuros:
-- Informe de viabilidad, histórico, metadata de variables
+- Informe de idoneidad, histórico, metadata de variables
 
 ### 2.3 Keycloak
 

@@ -21,7 +21,7 @@ Los datos geoespaciales de Vento se originan en un archivo `.h3.parquet` de 126 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
 | `h3_index` (o `hex_id`) | string | Índice H3 a resolución 8 (prefijo `88`, ~460m de lado) |
-| `score_general` (o `score`) | float [0-1] | Score de viabilidad general (promedio de 5 dimensiones) |
+| `score_general` (o `score`) | float [0-1] | Score de idoneidad general (promedio de 5 dimensiones) |
 | `tipo_celda` (o `cell_type`) | string | Clasificación de la celda (default: `"activa"`) |
 | *columnas numéricas adicionales* | float | Variables individuales por dimensión (no cargadas actualmente) |
 

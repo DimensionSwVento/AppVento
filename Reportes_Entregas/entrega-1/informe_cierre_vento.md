@@ -9,7 +9,7 @@
 
 ## 1. Resumen Ejecutivo
 
-Este documento certifica la entrega y cierre de la primera fase del proyecto **Vento**, una plataforma web de análisis geoespacial para evaluación de viabilidad de proyectos de energía eólica en Colombia. El desarrollo fue ejecutado por **Mavalan Software** con base en la propuesta técnica firmada el 19 de febrero de 2026.
+Este documento certifica la entrega y cierre de la primera fase del proyecto **Vento**, una plataforma web de análisis geoespacial para evaluación de idoneidad de proyectos de energía eólica en Colombia. El desarrollo fue ejecutado por **Mavalan Software** con base en la propuesta técnica firmada el 19 de febrero de 2026.
 
 La entrega fue desplegada exitosamente en el ambiente de producción **AccuWeb** y validada por el cliente. Como resultado del proceso de revisión post-deploy, se ejecutó un sprint de estabilización con **7 historias de usuario** (36h de trabajo), de las cuales **6 están completadas** y 1 está en ejecución final.
 
