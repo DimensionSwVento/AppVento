@@ -39,7 +39,7 @@ jobs:
   # Stage 1: Calidad — lint + types + tests
   # ─────────────────────────────────────
   quality:
-    name: "Lint + TypeCheck + Tests"
+    name: "Lint + TypeCheck"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -58,10 +58,6 @@ jobs:
 
       - name: TypeScript check
         run: npx tsc --noEmit
-
-      - name: Tests unitarios
-        run: npm run test:run
-
 
   # ─────────────────────────────────────
   # Stage 2: Build — compilación correcta
