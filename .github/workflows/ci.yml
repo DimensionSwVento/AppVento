@@ -59,6 +59,7 @@ jobs:
       - name: TypeScript check
         run: npx tsc --noEmit
 
+
   # ─────────────────────────────────────
   # Stage 2: Build — compilación correcta
   # ─────────────────────────────────────
