@@ -334,28 +334,67 @@ export function variablesByDimension(dim: DimensionId): Variable[] {
 
 /**
  * ════════════════════════════════════════════════════════════════════════
- *  VARIABLES OPCIONALES (las ÚNICAS seleccionables por el usuario en el menú)
+ *  VARIABLES OPCIONALES (seleccionables por el usuario en el menú)
  * ════════════════════════════════════════════════════════════════════════
- * Son las 8 que NO entran al cálculo del modelo (`noCalculo: true`) — el resto
- * de la hoja Informativas está duplicado de las 61 ponderadas (mismo ID → sí
- * pesan), así que no son "opcionales". Estas 8 solo se visualizan/reportan.
- * `masterId` `"NA"` = se calcula dentro del software / sin columna asignada.
+ * Reflejan la Tabla 3 "Informativas" COMPLETA (30) convertidas a `Variable`
+ * para que el usuario pueda activarlas/verlas desde el menú. TODAS llevan
+ * `noCalculo: true`: 22 de ellas comparten `masterId` con una de las 61
+ * ponderadas (y por tanto SÍ pesan en el modelo a través de su versión en
+ * `VARIABLES`) — aquí solo se agrega la tarjeta informativa, no vuelve a
+ * sumar peso. Las otras 8 no tienen contraparte ponderada (dato exclusivo
+ * de la hoja Informativas). `masterId` `"NA"` = se calcula en el software o
+ * sin columna asignada por el cliente.
  */
 export const OPTIONAL_VARIABLES: Variable[] = [
-  // ─── Técnica · Recurso eólico ───────────────────────────────────────────
+  // ─── Técnica · Recurso eólico (4) — sin contraparte ponderada ───────────
   { id: "velocidad-viento", masterId: "TEC-001-T", dimension: "tecnica", criterio: "Recurso eólico", label: "Velocidad del viento media anualizada", description: "Velocidad media del viento a distintas alturas (10, 50, 100, 150, 200 m).", enMapa: true, noCalculo: true, iconKey: "lucide:Wind" },
   { id: "densidad-viento", masterId: "TEC-002-T", dimension: "tecnica", criterio: "Recurso eólico", label: "Densidad de viento", description: "Densidad del aire/viento a las mismas alturas que la velocidad.", enMapa: true, noCalculo: true, iconKey: "lucide:Gauge" },
   { id: "turbulencia", masterId: "TEC-005-TE", dimension: "tecnica", criterio: "Recurso eólico", label: "Turbulencia", description: "Clasificación IEC según intensidad turbulenta (12%, 14%, 16%).", noCalculo: true, iconKey: "lucide:Tornado" },
   { id: "aep", masterId: "NA", dimension: "tecnica", criterio: "Recurso eólico", label: "AEP (energía anual generada)", description: "Energía anual estimada por el software a partir de Weibull, densidad y perfiles de aerogenerador.", noCalculo: true, iconKey: "lucide:Zap" },
-  // ─── Social ───────────────────────────────────────────────────────────────
+
+  // ─── Social (3) — sin contraparte ponderada ─────────────────────────────
   { id: "diversidad-religiosa", masterId: "SOC-024-S", dimension: "social", criterio: "Social", label: "Diversidad religiosa", description: "Resultados de la encuesta nacional de diversidad religiosa 2019.", noCalculo: true, iconKey: "lucide:Users" },
   { id: "inclinaciones-politicas", masterId: "SOC-005-S", dimension: "social", criterio: "Social", label: "Inclinaciones políticas", description: "Ideología política predominante según la consulta nacional.", noCalculo: true, iconKey: "lucide:Vote" },
   { id: "riesgo-electoral", masterId: "SOC-004-SR", dimension: "social", criterio: "Social", label: "Riesgo electoral", description: "Indicadores de riesgo de fraude electoral y de violencia.", noCalculo: true, iconKey: "lucide:TriangleAlert" },
-  // ─── económica ────────────────────────────────────────────────────────
-  { id: "proyeccion-precio-spot", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", label: "Proyección precio spot energía", description: "Proyección a 10 años del precio del kWh negociado en bolsa.", noCalculo: true, iconKey: "lucide:TrendingUp" },
-];
 
-/** Variables opcionales (no-cálculo) de una dimensión — universo del menú. */
+  // ─── Económica (1) — sin contraparte ponderada ──────────────────────────
+  { id: "proyeccion-precio-spot", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", label: "Proyección precio spot energía", description: "Proyección a 10 años del precio del kWh negociado en bolsa.", noCalculo: true, iconKey: "lucide:TrendingUp" },
+
+  // ═══ A partir de aquí: duplican masterId con VARIABLES (ya pesan; esto es solo la tarjeta informativa) ═══
+
+  // ─── Social · Vulnerabilidad social (5) ──────────────────────────────────
+  { id: "desocupados-info", masterId: "SOC-001-SE", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Tasa de desocupados", description: "Tasa de desocupación de la población.", noCalculo: true, iconKey: "lucide:UserX" },
+  { id: "densidad-poblacional-info", masterId: "SOC-002-S", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Proyección de densidad poblacional", description: "Habitantes por km² proyectado.", noCalculo: true, iconKey: "lucide:Users" },
+  { id: "distancia-viviendas-info", masterId: "SOC-007-S", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Distancia de viviendas a centros urbanos", description: "Distancia lineal de viviendas a centros urbanos.", noCalculo: true, iconKey: "lucide:House" },
+  { id: "ipm-info", masterId: "SOC-008-SE", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Índice de pobreza multidimensional (IPM)", description: "IPM municipal o departamental.", noCalculo: true, iconKey: "lucide:Boxes" },
+  { id: "pobreza-monetaria-info", masterId: "SOC-035-SE", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Índice de pobreza monetaria", description: "Índice de pobreza monetaria.", noCalculo: true, iconKey: "lucide:CircleDollarSign" },
+
+  // ─── Social · Brecha energética y asequibilidad (3) ──────────────────────
+  { id: "tarifa-energia-info", masterId: "SOC-010-TSE", dimension: "social", criterio: "Social", subcriterio: "Brecha energética y asequibilidad", label: "Tarifa de energía por comercializador", description: "Tarifa de energía según comercializador.", noCalculo: true, iconKey: "lucide:Zap" },
+  { id: "ipm-energetica-info", masterId: "SOC-038-TSE", dimension: "social", criterio: "Social", subcriterio: "Brecha energética y asequibilidad", label: "IPM energética", description: "IPM energética.", noCalculo: true, iconKey: "lucide:ZapOff" },
+  { id: "zni-info", masterId: "SOC-009-TS", dimension: "social", criterio: "Social", subcriterio: "Brecha energética y asequibilidad", label: "Zona no interconectada", description: "Pertenencia a ZNI.", noCalculo: true, iconKey: "lucide:PlugZap" },
+
+  // ─── Social · Riesgo en seguridad, delictividad y conflicto armado (4) ───
+  { id: "grupos-beligerantes-info", masterId: "SOC-011-S", dimension: "social", criterio: "Social", subcriterio: "Riesgo en seguridad, delictividad y conflicto armado", label: "Presencia de grupos beligerantes", description: "Actividad de grupos armados ilegales.", noCalculo: true, iconKey: "lucide:Swords" },
+  { id: "cultivos-coca-info", masterId: "SOC-015-SR", dimension: "social", criterio: "Social", subcriterio: "Riesgo en seguridad, delictividad y conflicto armado", label: "Densidad de cultivos de coca", description: "Concentración de cultivos ilícitos de coca.", noCalculo: true, iconKey: "lucide:Sprout" },
+  { id: "mineria-ilegal-info", masterId: "SOC-018-AE", dimension: "social", criterio: "Social", subcriterio: "Riesgo en seguridad, delictividad y conflicto armado", label: "Minería ilegal", description: "Presencia de minería ilegal.", noCalculo: true, iconKey: "lucide:Pickaxe" },
+  { id: "incidencia-delictiva-info", masterId: "SOC-041-S", dimension: "social", criterio: "Social", subcriterio: "Riesgo en seguridad, delictividad y conflicto armado", label: "Índice de incidencia delictiva", description: "Incidencia delictiva municipal.", noCalculo: true, iconKey: "lucide:ShieldAlert" },
+
+  // ─── Social · Falta de gobernanza, institucionalidad y riesgo político (1) ─
+  { id: "desempeno-institucional-info", masterId: "SOC-023-SER", dimension: "social", criterio: "Social", subcriterio: "Falta de gobernanza, institucionalidad y riesgo político", label: "Índice de desempeño institucional", description: "Desempeño de las instituciones locales.", noCalculo: true, iconKey: "lucide:Landmark" },
+
+  // ─── Social · Sensibilidad sociocultural, étnica y territorial (3) ───────
+  { id: "resguardos-indigenas-info", masterId: "SOC-013-SR", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "Resguardos indígenas", description: "Solapamiento con resguardos indígenas.", enMapa: true, noCalculo: true, iconKey: "tabler:tent" },
+  { id: "reservas-campesinas-info", masterId: "SOC-016-SR", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "Zonas de reserva campesina", description: "Solapamiento con zonas de reserva campesina.", noCalculo: true, iconKey: "lucide:Wheat" },
+  { id: "comunidades-negras-info", masterId: "SOC-032-S", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "Territorios de comunidades negras", description: "Solapamiento con territorios de comunidades negras.", noCalculo: true, iconKey: "lucide:UsersRound" },
+
+  // ─── Ambiental (6) ─────────────────────────────────────────────────────
+  // ⚠️ AMB-006 sin sufijo "-A": así aparece en la hoja Informativas del cliente
+  //    (la ponderada equivalente "uso-suelo" usa AMB-006-A). Se conserva tal cual.
+  { id: "uso-suelo-info", masterId: "AMB-006", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Uso y cobertura del suelo", description: "Clasificación de cobertura y uso del suelo.", aplicaEn: "tierra", noCalculo: true, iconKey: "lucide:Grid2x2" }, { id: "aves-playeras-info", masterId: "AMB-038-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Especies bióticas", label: "Congregación de aves playeras", description: "Zonas de concentración estacional de aves playeras.", noCalculo: true, iconKey: "svg:birds3" },
+  { id: "reproduccion-aves-info", masterId: "AMB-034-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Áreas protegidas", label: "Zonas de reproducción de aves", description: "Sitios identificados para reproducción de aves.", noCalculo: true, iconKey: "svg:nestBird" },
+  // ⚠️ masterId "NA" aquí (la ponderada equivalente "amenaza-volcanica" usa TEC-016).
+  { id: "amenaza-volcanica-info", masterId: "NA", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Amenazas", label: "Amenazas volcánicas", description: "Presencia de volcanes (sin ID asignado por el cliente).", aplicaEn: "tierra", noCalculo: true, iconKey: "tabler:volcano" }, { id: "elevacion-info", masterId: "AMB-008-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Elevación", description: "Altitud media sobre el nivel del mar.", aplicaEn: "tierra", noCalculo: true, iconKey: "lucide:MountainSnow" }, { id: "batimetria-info", masterId: "AMB-030-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Batimetría", description: "Profundidad del lecho marino.", aplicaEn: "mar", noCalculo: true, iconKey: "lucide:Radar" }];/** Variables opcionales (no-cálculo) de una dimensión — universo del menú. */
 export function optionalVariablesByDimension(dim: DimensionId): Variable[] {
   return OPTIONAL_VARIABLES.filter((v) => v.dimension === dim);
 }
