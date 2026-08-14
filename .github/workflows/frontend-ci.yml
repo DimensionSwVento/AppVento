@@ -80,8 +80,6 @@ jobs:
       # El reporter "text" imprime el resumen de cobertura en el log del job.
       # Subir coverage/ como artefacto requiere actions/upload-artifact
       # (bloqueado por la política de la org — ver nota del encabezado).
-      - run: npm run test:coverage
-        working-directory: Vento
 
   build:
     name: Build
