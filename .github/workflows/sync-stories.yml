@@ -137,7 +137,9 @@ jobs:
             # su color. Evita "could not add label: '...' not found".
             for lbl in "user-story" "$EPIC_LABEL" "$PRIORITY_LABEL"; do
               if [ -n "$lbl" ] && [ "$lbl" != "null" ]; then
-                gh label create "$lbl" --repo "$GH_REPO" --color "ededed" 2>/dev/null || true
+                # Sin 2>/dev/null: si falla por permisos se verá el motivo en el log.
+                # "already exists" es esperado e inofensivo.
+                gh label create "$lbl" --repo "$GH_REPO" --color "ededed" || true
               fi
             done
 
@@ -151,16 +153,22 @@ jobs:
               2>/dev/null | head -1)
 
             if [ -z "$EXISTING" ]; then
-              # Crear nuevo issue
+              # Crear el issue SIN labels: una label faltante nunca debe impedir
+              # crear el issue. Las labels se añaden aparte (best-effort).
               ISSUE_URL=$(gh issue create \
                 --repo "$GH_REPO" \
                 --title "$TITLE" \
                 --body "$BODY" \
-                --label "user-story,$EPIC_LABEL,$PRIORITY_LABEL" \
                 --milestone "$FILE_MILESTONE")
 
               echo "✅ Issue creado: $ISSUE_URL"
               CREATED=$((CREATED + 1))
+
+              # Labels best-effort (no bloquea si alguna no existe / no se pudo crear).
+              gh issue edit "$ISSUE_URL" \
+                --repo "$GH_REPO" \
+                --add-label "user-story,$EPIC_LABEL,$PRIORITY_LABEL" \
+                || echo "   ⚠️  labels parciales para $STORY_ID (revisa permisos / creación de labels)"
 
               # Añadir al Project Kanban
               # Prioridad: usa PROJECT_NUMBER si está configurado, si no busca por nombre
