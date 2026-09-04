@@ -126,7 +126,9 @@ jobs:
             BODY=$(yq '.body' "$file")
             STORY_ID=$(yq '.id' "$file")
             # Milestone por archivo (fallback al default si no está definido)
-            FILE_MILESTONE=$(yq '.milestone // "'$MILESTONE_NAME'"' "$file")
+            # `strenv` + variable de entorno: evita que el espacio de "Cuarta
+            # Entrega" parta la expresión de yq (bug del lexer).
+            FILE_MILESTONE=$(DEFAULT_MS="$MILESTONE_NAME" yq '.milestone // strenv(DEFAULT_MS)' "$file")
 
             echo "──────────────────────────────────"
             echo "📋 Procesando: $STORY_ID  →  $FILE_MILESTONE"
