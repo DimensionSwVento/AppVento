@@ -35,14 +35,13 @@ jobs:
         run: |
           create_label() {
             local name="$1" color="$2" desc="$3"
+            # --force = upsert (crea o actualiza). Más fiable que create-o-edit,
+            # que enmascaraba fallos y dejaba labels nuevas (E4/E7/QA) sin crear.
             gh label create "$name" \
               --color "$color" \
               --description "$desc" \
-              --repo "$GH_REPO" 2>/dev/null || \
-            gh label edit "$name" \
-              --color "$color" \
-              --description "$desc" \
-              --repo "$GH_REPO" 2>/dev/null || true
+              --repo "$GH_REPO" \
+              --force || true
           }
 
           # Labels por épica
@@ -132,6 +131,15 @@ jobs:
 
             echo "──────────────────────────────────"
             echo "📋 Procesando: $STORY_ID  →  $FILE_MILESTONE"
+
+            # Garantiza que las labels del issue existen (por si setup-labels no
+            # las creó — E4/E7/QA son nuevas). Idempotente: si ya existe, no toca
+            # su color. Evita "could not add label: '...' not found".
+            for lbl in "user-story" "$EPIC_LABEL" "$PRIORITY_LABEL"; do
+              if [ -n "$lbl" ] && [ "$lbl" != "null" ]; then
+                gh label create "$lbl" --repo "$GH_REPO" --color "ededed" 2>/dev/null || true
+              fi
+            done
 
             # Buscar si el issue ya existe por título exacto
             EXISTING=$(gh issue list \
