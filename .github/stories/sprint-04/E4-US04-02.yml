@@ -1,0 +1,31 @@
+id: US04-02
+title: "feature: [US04-02] Incluir variables económicas (panel informativo)"
+epic: "E4-Variables"
+epic_label: "epic:E4-Variables"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Cuarta Entrega"
+depends_on: ["US08-03"]
+unlocks: []
+week: 2
+body: |
+  ## Historia de Usuario
+  Como analista, quiero un panel de la dimensión económica (escenarios de mercado)
+  al activar variables económicas, para apoyar la decisión sin que puntúe el modelo.
+
+  **Épica:** E4 — Variables (configuración de dimensiones)
+
+  ## Criterios de Aceptación
+  1. Al seleccionar ≥1 variable económica se activa un panel "Dimensión económica – Escenarios de mercado".
+  2. En el panel: capacidad nominal, escenario y años de proyección, agregar/desagregar variables a la gráfica.
+  3. Gráfica de proyección (serie de tiempo) de las variables elegidas.
+  4. Opción "Agregar al informe" (incluye la sección económica en el PDF).
+  5. Nota aclaratoria: esta dimensión ayuda en la decisión pero NO se puntúa en el modelo.
+
+  ## Tareas técnicas
+  - 📦 `EconomicModal.tsx` (capacidad/escenario/años/chips/comparar/incluir en informe) + `EconomicContext`.
+  - 📦 `LineChart.tsx` (serie de tiempo SVG); datos desde escenarios admin / `catalogApi`.
+  - 🧪 Tests: panel aparece con ≥1 económica; nota "no puntúa"; agregar al informe togglea la sección.
+
+  ## Estimación
+  2–2.5 días.

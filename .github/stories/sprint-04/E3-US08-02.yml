@@ -1,0 +1,29 @@
+id: US08-02
+title: "feature: [US08-02] Admin: CRUD de normas regulatorias + detalle"
+epic: "E3-Admin"
+epic_label: "epic:E3-Admin"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+depends_on: []
+unlocks: ["US04-05"]
+week: 1
+body: |
+  ## Historia de Usuario
+  Como admin, quiero crear y actualizar las normas regulatorias y su detalle, para
+  alimentar la dimensión regulatoria informativa del informe.
+
+  **Épica:** E3 — Admin (catálogo)
+
+  ## Criterios de Aceptación
+  1. Sección admin "Normativa regulatoria": listar, crear, actualizar normas y su detalle (nombre, descripción, estado).
+  2. Cada norma tiene una etiqueta rápida: Aplica / Requiere trámite / Requiere verificación / No aplica.
+  3. Las normas alimentan la dimensión regulatoria del informe (US04-05).
+
+  ## Tareas técnicas
+  - 📦 `admin/normativa/page.tsx` (CRUD + estado) sobre `catalogApi`.
+  - 📦 BE (FastAPI): `GET/POST/PATCH/DELETE /normas`.
+  - 🧪 Tests: crear/editar norma; etiqueta de estado; aparece en el catálogo regulatorio.
+
+  ## Estimación
+  1.5–2.5 días.

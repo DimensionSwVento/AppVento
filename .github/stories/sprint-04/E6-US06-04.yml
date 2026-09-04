@@ -1,0 +1,33 @@
+id: US06-04
+title: "feature: [US06-04] Informe PDF multipágina (resumen + por dimensión)"
+epic: "E6-Reportes"
+epic_label: "epic:E6-Reportes"
+priority: critica
+priority_label: "priority:critica"
+milestone: "Cuarta Entrega"
+depends_on: ["US06-03"]
+unlocks: ""
+week: 1
+body: |
+  ## Historia de Usuario
+  Como analista, quiero que el informe PDF tenga varias páginas (índice, resumen
+  ejecutivo y una página por dimensión) para leerlo de forma clara y profesional.
+
+  **Épica:** E6 — Reportes (PDF multipágina)
+
+  ## Criterios de Aceptación
+  1. Índice del informe al inicio, según lo incluido.
+  2. Página 1 — Resumen ejecutivo: captura del mapa con color de idoneidad + gráfico del score general + scores de las dimensiones seleccionadas.
+  3. Una sección/página por dimensión puntuable (Técnica, Ambiental, Social) con variables seleccionadas, detalle, tipos, pesos y cálculo.
+  4. Económica y Regulatoria aparecen después, según la opción del menú (informativas).
+  5. Al final: fuentes de datos (por dimensión) + disclaimer.
+  6. Paginado A4 con branding; el PDF descargado = la previsualización configurada.
+
+  ## Tareas técnicas
+  - 📦 `ReportSheet.tsx` (hoja A4) + reestructura del informe en hojas.
+  - 📦 Previsualización en malla + `ReportBuilder.tsx` (pantalla completa 65/35).
+  - 📦 `handleDownloadPdf`: captura por hoja → una hoja = una página.
+  - 🧪 Tests: nº de hojas/secciones según config; resumen en pág. 1.
+
+  ## Estimación
+  Incluida en US06-03.

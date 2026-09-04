@@ -1,0 +1,27 @@
+id: US03-04
+title: "feature: [US03-04] Selección de área: revisar/añadir opciones"
+epic: "E2-Mapa-SIG"
+epic_label: "epic:E2-Mapa-SIG"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+depends_on: []
+unlocks: []
+week: 3
+body: |
+  ## Historia de Usuario
+  Como analista, quiero más opciones para seleccionar el área objetivo, para
+  ajustar la selección a mi caso.
+
+  **Épica:** E2 — Mapa SIG
+
+  ## Criterios de Aceptación
+  1. Revisar las opciones actuales de selección (clic hex / buscador).
+  2. Evaluar y, si es viable, agregar otras (p.ej. dibujar polígono, radio, importar).
+
+  ## Tareas técnicas
+  - 📦 Spike + propuesta; implementar la(s) opción(es) acordada(s) sobre `useMapSelection`.
+  - Nota: el buscador ya no auto-selecciona zonas excluidas (`isHexBanned`).
+
+  ## Estimación
+  1–1.5 días.

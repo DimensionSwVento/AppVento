@@ -1,0 +1,28 @@
+id: US08-03
+title: "feature: [US08-03] Admin: CRUD de escenarios económicos"
+epic: "E3-Admin"
+epic_label: "epic:E3-Admin"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+depends_on: []
+unlocks: ["US04-02"]
+week: 1
+body: |
+  ## Historia de Usuario
+  Como admin, quiero crear y actualizar los escenarios de la dimensión económica,
+  para alimentar el panel económico del usuario y el informe.
+
+  **Épica:** E3 — Admin (catálogo)
+
+  ## Criterios de Aceptación
+  1. Sección admin para crear/actualizar escenarios (nombre, descripción, horizonte).
+  2. Los escenarios alimentan el panel económico del usuario (US04-02).
+
+  ## Tareas técnicas
+  - 📦 `admin/escenarios/page.tsx` (CRUD) sobre `catalogApi`.
+  - 📦 BE (FastAPI): `GET/POST/PATCH/DELETE /escenarios`.
+  - 🧪 Tests: crear/editar escenario; disponible en el panel económico.
+
+  ## Estimación
+  1–2 días.

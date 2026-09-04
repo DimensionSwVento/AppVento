@@ -1,0 +1,30 @@
+id: US04-04
+title: "feature: [US04-04] Alerta de área vs capacidad nominal"
+epic: "E4-Variables"
+epic_label: "epic:E4-Variables"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+depends_on: []
+unlocks: []
+week: 3
+body: |
+  ## Historia de Usuario
+  Como analista, quiero una alerta cuando el área seleccionada no corresponda a la
+  capacidad nominal elegida, para dimensionar bien el proyecto.
+
+  **Épica:** E4 — Variables (características del proyecto)
+
+  ## Criterios de Aceptación
+  1. Al seleccionar la capacidad nominal, si el área está fuera del rango [min, max] esperado para esa capacidad → alerta clara (inline).
+  2. Rangos configurables (se definen con D. Técnica); template hasta tener valores oficiales.
+
+  ## Tareas técnicas
+  - 📦 Tabla `AREA_POR_CAPACIDAD` (template) + validación en `Caracteristicas.tsx` con `FieldError`.
+  - 🧪 Tests: área < min o > max dispara alerta; dentro de rango no.
+
+  ## Dependencias
+  Rangos min/max por capacidad — D. Técnica.
+
+  ## Estimación
+  0.5–1 día.

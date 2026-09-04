@@ -1,0 +1,32 @@
+id: US08-01
+title: "feature: [US08-01] Admin: ingresar/actualizar variables y datasets + edición en menú"
+epic: "E3-Admin"
+epic_label: "epic:E3-Admin"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Cuarta Entrega"
+depends_on: []
+unlocks: []
+week: 1
+body: |
+  ## Historia de Usuario
+  Como admin (Vento/ANH/Minciencias), quiero administrar las variables y sus
+  datasets, y editar su detalle, para mantener el catálogo del modelo al día.
+
+  **Épica:** E3 — Admin (catálogo)
+
+  ## Criterios de Aceptación
+  1. Sección admin "Variables y datasets" con dos pestañas: Variables del modelo / Variables informativas.
+  2. Variables del modelo: NO se pueden deshabilitar; se permite actualizar el dataset y editar el detalle.
+  3. Variables informativas: habilitar/deshabilitar, crear nueva, ver en mapa y/o menú, editar detalle.
+  4. Panel de detalle: nombre, dimensión, tipo, dataset, fuente, cálculo, rango; acciones Editar/Actualizar dataset/Deshabilitar (según tipo).
+  5. Todo viene de la API (`/api/admin/catalog/variables|datasets`).
+
+  ## Tareas técnicas
+  - 📦 `admin/variables/page.tsx` (tabs, tabla, panel de detalle, modales).
+  - 📦 BFF `/api/admin/catalog/[...path]` + cliente `Utils/admin/catalogApi.ts` (con fallback template).
+  - 📦 BE (FastAPI): `GET/POST/PATCH /variables`, `PATCH /datasets/:id` (ver docs/api/admin-catalog.md).
+  - 🧪 Tests: modelo no deshabilitable; informativa crear/toggle mapa-menú; editar detalle persiste.
+
+  ## Estimación
+  2.25–3 días (frontend + seam; backend en Proyecto 2).
