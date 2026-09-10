@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import VariableSwitch from "./VariableSwitch";
 import { useVariables } from "../../Utils/contexts/VariablesContext";
+import { dimensionBaseColor } from "../../Utils/variables/dimensionColors";
 import {
   CRITERIO_DESCRIPTIONS,
   SUBCRITERIO_DESCRIPTIONS,
@@ -24,12 +25,22 @@ export default function DimensionCard({
   defaultOpen = false,
 }: DimensionCardProps) {
   const [open, setOpen] = useState(defaultOpen);
-  const { activeCountByDimension, totalByDimension } = useVariables();
-  const active = activeCountByDimension(dimension.id);
-  const total = totalByDimension(dimension.id);
+  // Sincroniza con `defaultOpen`: al escribir en el buscador (defaultOpen→true)
+  // la card se ABRE para mostrar las variables que matchean; al limpiar, colapsa.
+  // Sin esto, la card montada colapsada no se reabría al filtrar.
+  useEffect(() => setOpen(defaultOpen), [defaultOpen]);
+  // El contador se deriva de la lista DINÁMICA que realmente se renderiza
+  // (prop `variables`, que viene de fetchMenuVariables), no del catálogo
+  // estático — si no, el "activas/total" no coincide con lo mostrado.
+  const { isActive } = useVariables();
+  const total = variables.length;
+  const active = variables.filter((v) => isActive(v.id)).length;
   // Regulatoria pasó a ser informativa (US-FB3-05 / feedback item 11): sus
   // variables se pueden seleccionar como contexto pero no puntúan en el score.
   const informative = !isScorableDimension(dimension.id);
+  // US04-AC1/AC3: color de la dimensión (swatch + barra) y % de progreso.
+  const dimColor = dimensionBaseColor(dimension.id);
+  const pct = total > 0 ? (active / total) * 100 : 0;
 
   if (variables.length === 0) return null;
 
@@ -43,6 +54,12 @@ export default function DimensionCard({
         className="flex w-full items-center justify-between px-3 py-3"
       >
         <span className="flex items-center gap-2 text-sm font-bold text-[#383838]">
+          {/* Swatch de color de la dimensión (US04-AC1) */}
+          <span
+            aria-hidden="true"
+            className="h-3 w-3 shrink-0 rounded-full ring-1 ring-black/5"
+            style={{ backgroundColor: dimColor }}
+          />
           <span>
             {dimension.label} -{" "}
             <span className="text-gray-500 font-normal">
@@ -69,6 +86,20 @@ export default function DimensionCard({
           />
         </svg>
       </button>
+      {/* Barra de progreso por categoría (US04-AC3): variables activas/total. */}
+      <div
+        className="mx-3 mb-1 h-1 overflow-hidden rounded-full bg-gray-100"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={total}
+        aria-valuenow={active}
+        aria-label={`${active} de ${total} variables activas en ${dimension.label}`}
+      >
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${pct}%`, backgroundColor: dimColor }}
+        />
+      </div>
       {open && (
         <div id={`dim-${dimension.id}-body`} className="px-3 pb-2">
           {dimension.description && (

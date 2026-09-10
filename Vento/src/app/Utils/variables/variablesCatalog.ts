@@ -63,6 +63,39 @@ export interface Variable {
    * (ver `OPTIONAL_VARIABLES`). Las 61 ponderadas siempre pesan y NO se listan.
    */
   noCalculo?: boolean;
+  /**
+   * `true` si la variable es EXCLUYENTE: actúa como restricción dura (áreas
+   * protegidas, amenazas, territorios de consulta previa) que puede excluir el
+   * emplazamiento. Se muestra como tal en el informe (US06-03). Campo servido
+   * por la API de variables; el catálogo template lo deriva con `isExcluyente`.
+   */
+  excluyente?: boolean;
+}
+
+/**
+ * IDs de variables EXCLUYENTES (template — hasta que la API entregue el flag).
+ * Restricciones duras: áreas protegidas, amenazas y territorios de consulta
+ * previa. El cliente/administrador ajusta este conjunto.
+ */
+export const EXCLUYENTE_IDS = new Set<string>([
+  // Ambiental · Áreas protegidas
+  "reproduccion-aves",
+  "biodiversidad",
+  "humedales-ramsar",
+  "mares-coralinos",
+  "playas-tortugas",
+  // Ambiental · Amenazas
+  "riesgo-fisico",
+  "amenaza-volcanica",
+  // Social · Sensibilidad sociocultural, étnica y territorial (consulta previa)
+  "resguardos-indigenas",
+  "comunidades-negras",
+  "reservas-campesinas",
+]);
+
+/** ¿La variable es excluyente? Usa el flag de la API si viene; si no, el template. */
+export function isExcluyente(v: Variable): boolean {
+  return v.excluyente ?? EXCLUYENTE_IDS.has(v.id);
 }
 
 export interface Dimension {
