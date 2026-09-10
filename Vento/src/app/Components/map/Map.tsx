@@ -142,7 +142,6 @@ export default function MapView() {
     setViewState,
     clampViewState,
     setSelectedHexes,
-    setIsTilesLoading,
     onRejectFar: () =>
       toast.info(
         `Solo puedes seleccionar hexágonos cercanos entre sí (máx ${MAX_SELECTION_GAP_KM} km). Acércate al área que ya elegiste.`,
@@ -399,7 +398,7 @@ export default function MapView() {
         pickable: !heatmapActive,
       });
     },
-  }), [heatmapActive, windHeatId]);
+  }), [heatmapActive, windHeatId, isFlyingRef]);
 
   // Capa de borde del territorio colombiano (continente + archipiélago).
   // Pasa los polígonos sin relleno, solo contorno, para que el usuario vea hasta
@@ -678,6 +677,7 @@ export default function MapView() {
     // otras). Sin esto, la memo reutiliza la misma instancia entre fases y
     // deck.gl assertaba al recibir una capa ya finalizada (rompía el render →
     // heatmap despintado al volver a informe).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- dep intencional
   }, [selectedArr, canSelect, heatmapActive]);
 
   // capa de hover — relleno gris transparente del hex bajo el cursor.

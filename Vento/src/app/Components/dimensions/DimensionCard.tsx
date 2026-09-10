@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import VariableSwitch from "./VariableSwitch";
 import { useVariables } from "../../Utils/contexts/VariablesContext";
 import { dimensionBaseColor } from "../../Utils/variables/dimensionColors";
@@ -25,10 +25,15 @@ export default function DimensionCard({
   defaultOpen = false,
 }: DimensionCardProps) {
   const [open, setOpen] = useState(defaultOpen);
-  // Sincroniza con `defaultOpen`: al escribir en el buscador (defaultOpen→true)
-  // la card se ABRE para mostrar las variables que matchean; al limpiar, colapsa.
-  // Sin esto, la card montada colapsada no se reabría al filtrar.
-  useEffect(() => setOpen(defaultOpen), [defaultOpen]);
+  // Sincroniza con `defaultOpen` SIN effect (patrón "ajustar estado en render"
+  // de React): al escribir en el buscador (defaultOpen→true) la card se ABRE
+  // para mostrar las variables que matchean; al limpiar, colapsa. Sin esto, la
+  // card montada colapsada no se reabría al filtrar.
+  const [prevDefaultOpen, setPrevDefaultOpen] = useState(defaultOpen);
+  if (defaultOpen !== prevDefaultOpen) {
+    setPrevDefaultOpen(defaultOpen);
+    setOpen(defaultOpen);
+  }
   // El contador se deriva de la lista DINÁMICA que realmente se renderiza
   // (prop `variables`, que viene de fetchMenuVariables), no del catálogo
   // estático — si no, el "activas/total" no coincide con lo mostrado.

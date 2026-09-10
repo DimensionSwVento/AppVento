@@ -224,12 +224,13 @@ export default function Report() {
   const patchConfig = (patch: Partial<ReportConfig>) =>
     setConfig((c) => ({ ...c, ...patch }));
   // Rehidrata la config al abrir un informe del histórico (emitida por
-  // HistorialList → AccionPrincipalContext). El nonce re-dispara aunque la
-  // config sea equivalente a la actual.
-  useEffect(() => {
+  // HistorialList → AccionPrincipalContext). Patrón "ajustar estado en render"
+  // (sin effect): el nonce re-dispara aunque la config sea equivalente.
+  const [prevConfigNonce, setPrevConfigNonce] = useState(reportConfigNonce);
+  if (reportConfigNonce !== prevConfigNonce) {
+    setPrevConfigNonce(reportConfigNonce);
     if (restoredReportConfig) setConfig(restoredReportConfig);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- disparo por nonce
-  }, [reportConfigNonce]);
+  }
   const toggleDim = (id: string) =>
     setConfig((c) => ({ ...c, dims: { ...c.dims, [id]: !c.dims[id] } }));
 

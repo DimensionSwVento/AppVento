@@ -31,7 +31,6 @@ type Opts = {
   setViewState: Dispatch<SetStateAction<ViewState>>;
   clampViewState: (vs: ViewState) => ViewState;
   setSelectedHexes: Dispatch<SetStateAction<Set<string>>>;
-  setIsTilesLoading: Dispatch<SetStateAction<boolean>>;
   /** Se llama cuando un hex se rechaza por estar demasiado lejos de la selección. */
   onRejectFar?: () => void;
 };
@@ -51,7 +50,6 @@ export function useMapSelection({
   setViewState,
   clampViewState,
   setSelectedHexes,
-  setIsTilesLoading,
   onRejectFar,
 }: Opts) {
   // Hexes que vinieron de la última búsqueda (y aún no tocados a mano). Si el

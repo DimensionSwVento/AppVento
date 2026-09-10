@@ -21,9 +21,14 @@ export default function AreaSelectionPage() {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
 
   useEffect(() => {
+    // Lectura de sessionStorage SOLO en cliente al montar (evita hydration
+    // mismatch: en SSR no existe). Uso legítimo de effect para sincronizar con
+    // una API del navegador.
     try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (!sessionStorage.getItem("vento_onboarding_seen")) setShowOnboarding(true);
     } catch {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowOnboarding(true);
     }
   }, []);
