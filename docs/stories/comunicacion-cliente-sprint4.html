@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vento — Cuarta Entrega · Plan y datos requeridos</title>
+<style>
+  :root { --brand:#165170; --brand2:#1e6a8c; --sky:#cce1ee; --ink:#1f2937; --muted:#6b7280; --amber:#b45309; --amberbg:#fef3c7; --red:#b91c1c; --redbg:#fee2e2; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; color:var(--ink); background:#eef2f5; }
+  .page { max-width:900px; margin:24px auto; background:#fff; border-radius:16px; box-shadow:0 6px 30px rgba(0,0,0,.08); overflow:hidden; }
+  header { background:var(--brand); color:#fff; padding:26px 34px; }
+  header .k { font-size:11px; letter-spacing:.22em; text-transform:uppercase; opacity:.8; }
+  header h1 { margin:4px 0 2px; font-size:24px; }
+  header p { margin:0; font-size:13px; opacity:.9; }
+  .body { padding:26px 34px 34px; }
+  h2 { font-size:15px; color:var(--brand); margin:26px 0 10px; padding-bottom:6px; border-bottom:2px solid var(--sky); }
+  h2:first-child { margin-top:0; }
+  p, li { font-size:13.5px; line-height:1.55; }
+  /* Timeline */
+  .tl { list-style:none; margin:0; padding:0; }
+  .tl li { position:relative; padding:0 0 16px 96px; }
+  .tl li:before { content:""; position:absolute; left:78px; top:6px; bottom:-6px; width:2px; background:var(--sky); }
+  .tl li:last-child:before { display:none; }
+  .tl .date { position:absolute; left:0; top:2px; width:70px; text-align:right; font-weight:700; color:var(--brand); font-size:12px; }
+  .tl .dot { position:absolute; left:72px; top:4px; width:14px; height:14px; border-radius:50%; background:var(--brand); border:3px solid #fff; box-shadow:0 0 0 2px var(--sky); }
+  .tl .t { font-weight:700; font-size:13.5px; }
+  .tl .d { color:var(--muted); font-size:12.5px; }
+  .callout { border-radius:12px; padding:14px 16px; margin:14px 0; }
+  .urgent { background:var(--redbg); border:1px solid #fca5a5; }
+  .urgent .tag { color:var(--red); font-weight:800; font-size:12px; letter-spacing:.05em; }
+  .note { background:var(--amberbg); border:1px solid #fcd34d; }
+  .note .tag { color:var(--amber); font-weight:800; font-size:12px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .card { border:1px solid #e5e7eb; border-radius:10px; padding:12px 14px; }
+  .card b { color:var(--brand); }
+  ul { margin:6px 0; padding-left:20px; }
+  .foot { color:var(--muted); font-size:11px; text-align:center; padding:14px; border-top:1px solid #eef2f5; }
+  @media print { body{background:#fff;} .page{box-shadow:none; margin:0; border-radius:0;} }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="k">Vento · Plataforma de análisis de idoneidad eólica</div>
+    <h1>Cuarta Entrega — Plan de trabajo y datos requeridos</h1>
+    <p>Sprint: 2 de septiembre → 1 de octubre de 2026 · ANH · EAFIT · Mavalan Software</p>
+  </header>
+  <div class="body">
+
+    <h2>1 · Cronograma</h2>
+    <ul class="tl">
+      <li><span class="date">2–10 sep</span><span class="dot"></span>
+        <div class="t">Desarrollo del front + despliegue a PRUEBA</div>
+        <div class="d">La aplicación funcional queda disponible en un ambiente de prueba para que la revisen.</div></li>
+      <li><span class="date">10–17 sep</span><span class="dot"></span>
+        <div class="t">Desarrollo del backend</div>
+        <div class="d">Servicios y administración de datos, en paralelo con las reuniones de datos.</div></li>
+      <li><span class="date">17–23 sep</span><span class="dot"></span>
+        <div class="t">Recolección de feedback (a cargo del cliente)</div>
+        <div class="d">Ustedes prueban la app en el ambiente de prueba y recolectan el feedback. Nosotros asistimos a las reuniones y aplicamos ajustes puntuales (hotfixes).</div></li>
+      <li><span class="date">23–30 sep</span><span class="dot"></span>
+        <div class="t">Aplicación del feedback</div>
+        <div class="d">Incorporamos el feedback recolectado (alcance acotado a lo que quepa en la ventana).</div></li>
+      <li><span class="date">1 oct</span><span class="dot"></span>
+        <div class="t">Revisión y entrega</div></li>
+    </ul>
+
+    <h2>2 · Qué recibirán el 1 de octubre</h2>
+    <p>La aplicación <b>completa y funcional</b>: mapa interactivo, configuración de variables por dimensión, características del proyecto, <b>informe de idoneidad en PDF</b> y el <b>módulo de administración</b> (variables, normas, escenarios, usuarios), ya con el feedback aplicado.</p>
+    <div class="callout note">
+      <span class="tag">IMPORTANTE</span>
+      <p style="margin:6px 0 0">Los <b>resultados numéricos</b> (puntajes, mapa de calor, valores por variable) se mostrarán con <b>datos de demostración</b> hasta que se entreguen los <b>datos reales</b> (la tabla maestra por hexágono, los pesos del modelo y la geometría de las capas del mapa). La app <b>está lista para conectarse</b> a esos datos apenas se provean.</p>
+    </div>
+
+    <h2>3 · 🔴 Lo que necesitamos de ustedes — URGENTE</h2>
+    <div class="callout urgent">
+      <span class="tag">URGENTE · LA CALIDAD DE LA APP FINAL DEPENDE DE ESTO</span>
+      <p style="margin:6px 0 0">La calidad del producto final depende <b>directamente</b> de la calidad del <b>feedback</b> y de los <b>datos</b> que nos entreguen ahora. Pedimos convocar una <b>reunión con TODAS las áreas de investigación</b> para dos cosas:</p>
+      <ul>
+        <li><b>Datos:</b> definir <b>qué datos debe recibir la app</b> y <b>de dónde salen</b> (les entregamos el documento con la lista exacta: la maestra por hexágono, la lista definitiva de variables con su id, fórmula, fuente, relevancia y rango, los pesos del modelo, los escenarios económicos, los rangos de capacidad y las normas).</li>
+        <li><b>Feedback:</b> recolectar <b>desde el ambiente de prueba</b> todo el <b>feedback nuevo y definitivo</b>, probando la app real.</li>
+      </ul>
+    </div>
+
+    <h2>4 · Sobre los datos — necesitamos una definición</h2>
+    <p>Para los datos del modelo, elijan una de las dos vías (podemos conversarlo):</p>
+    <div class="grid2">
+      <div class="card"><b>Opción A — Ustedes los entregan</b><br>Se comprometen a <b>entregar los datos a tiempo</b>, según el documento de datos requeridos que les compartimos.</div>
+      <div class="card"><b>Opción B — Ustedes los cargan</b><br>Les entregamos una <b>guía/herramienta</b> para que ustedes mismos <b>carguen y editen</b> los datos desde el módulo de administración de la app.</div>
+    </div>
+
+    <h2>5 · Por qué ahora</h2>
+    <p>A diferencia de la entrega anterior —donde los requisitos llegaron tarde y hubo que negociar fuera del sprint—, esta vez el feedback y la definición de datos se <b>recolectan y aplican dentro del sprint</b>. La ventana de feedback es del <b>17 al 23 de septiembre</b>: entre más temprano y completo, mejor será la app final.</p>
+
+  </div>
+  <div class="foot">Documento de trabajo — Cuarta Entrega Vento · Cronograma sujeto a ajuste por días laborales/festivos.</div>
+</div>
+</body>
+</html>
