@@ -31,9 +31,10 @@ export async function GET(request: Request) {
   try {
     const keycloakUsers = await getUsers(search, page, limit);
 
-    // Roles are NOT fetched here to avoid N+1 Keycloak requests per page.
-    // Use GET /api/admin/users/[id]/roles to load roles on demand (e.g. when
-    // opening the edit modal).
+    // `roles` se propaga si Keycloak ya lo trae en el listado (realmRoles).
+    // Cuando el backend lo incluya en lote, el filtro por rol del front se
+    // activa solo (US08-04.5). Sin él, `roles` queda vacío y el filtro "Todos"
+    // sigue funcionando. Se evita el N+1 por-usuario a propósito.
     const users: User[] = keycloakUsers.map((u) => ({
       id: u.id,
       firstName: u.firstName || "",
@@ -41,6 +42,7 @@ export async function GET(request: Request) {
       email: u.email || "",
       enabled: u.enabled,
       createdTimestamp: u.createdTimestamp,
+      roles: u.realmRoles ?? [],
     }));
 
     return NextResponse.json({ users });

@@ -308,7 +308,7 @@ export default function UsersTable({
                       {/* Delete icon — always visible */}
                       <button
                         onClick={() => onDelete(user)}
-                        title="Eliminar usuario"
+                        title="Desactivar usuario"
                         className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 hover:border-[#165170] transition-colors"
                         style={{ color: "#165170" }}
                       >

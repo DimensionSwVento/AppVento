@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { User, UpdateUserPayload } from "../../types/user";
+import ConfirmDialog from "../ui/ConfirmDialog";
 
 interface EditUserModalProps {
   user: User;
@@ -23,8 +24,17 @@ export default function EditUserModal({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Confirmación IN-APP para cambios de rol admin (H16). El correo al usuario
+  // afectado se sigue enviando aparte (notify); esto es para quien OTORGA/QUITA.
+  const [confirmKind, setConfirmKind] = useState<null | "grant" | "downgrade">(
+    null,
+  );
   const mail = user.email;
   const name = user.firstName;
+
+  const roleChanged = newrole !== role;
+  const isGrant = roleChanged && newrole === "admin";
+  const isDowngrade = roleChanged && role === "admin" && newrole === "analista";
 
   useEffect(() => {
     const fetchRoles = async () => {
@@ -45,15 +55,15 @@ export default function EditUserModal({
     fetchRoles();
   }, [user.id]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Aplica realmente los cambios (tras la confirmación si aplica).
+  const applyChanges = async () => {
     setLoading(true);
     setError(null);
-
     try {
       await onSubmit(user.id, { firstName, lastName, enabled, role: newrole });
 
-      if (newrole.includes("admin") && role.includes("analista")) {
+      if (isGrant) {
+        // Notifica por correo al usuario que RECIBE el rol admin.
         await fetch(`/api/admin/users/notify`, {
           method: "POST",
           body: JSON.stringify({ mail, name }),
@@ -64,13 +74,29 @@ export default function EditUserModal({
       const errorMessage =
         err instanceof Error ? err.message : "Error desconocido";
       setError(errorMessage || "Error al actualizar el usuario");
+      setConfirmKind(null); // cierra el diálogo para revelar el error
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // H16: cambiar rol admin (otorgar o quitar) exige confirmación in-app.
+    if (isGrant) {
+      setConfirmKind("grant");
+      return;
+    }
+    if (isDowngrade) {
+      setConfirmKind("downgrade");
+      return;
+    }
+    void applyChanges();
+  };
+
   return (
-    /* Backdrop */
+    <>
+    {/* Backdrop */}
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
       style={{
@@ -265,5 +291,43 @@ export default function EditUserModal({
         </div>
       </div>
     </div>
+
+    {confirmKind && (
+      <ConfirmDialog
+        variant="danger"
+        loading={loading}
+        title={
+          confirmKind === "grant"
+            ? "Otorgar rol de Administrador"
+            : "Quitar rol de Administrador"
+        }
+        confirmLabel={
+          confirmKind === "grant" ? "Otorgar admin" : "Quitar admin"
+        }
+        message={
+          confirmKind === "grant" ? (
+            <>
+              ¿Otorgar rol de <b>Administrador</b> a{" "}
+              <b>
+                {firstName} {lastName}
+              </b>
+              ? Tendrá acceso completo a la gestión de usuarios, privilegios y
+              configuración. Se le notificará por correo.
+            </>
+          ) : (
+            <>
+              ¿Quitar el rol de <b>Administrador</b> a{" "}
+              <b>
+                {firstName} {lastName}
+              </b>
+              ? Perderá el acceso a la gestión de usuarios.
+            </>
+          )
+        }
+        onConfirm={applyChanges}
+        onCancel={() => setConfirmKind(null)}
+      />
+    )}
+    </>
   );
 }
