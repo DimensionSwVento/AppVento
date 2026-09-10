@@ -65,7 +65,9 @@ describe("NextStepFloatingCard", () => {
   it("muestra el CTA cuando hay selección activa en seleccion-area", () => {
     renderCard({ accion: "seleccion-area", hexes: ["8a2a1072b59ffff"] });
     const cta = screen.getByTestId("next-step-cta");
-    expect(cta).toHaveTextContent("Continuar a Dimensiones");
+    // US09-03: patrón unificado "Siguiente paso: {fase destino}".
+    expect(cta).toHaveTextContent("Siguiente paso");
+    expect(cta).toHaveTextContent("Dimensiones");
     expect(cta).toHaveTextContent("1 hexágono seleccionado");
   });
 
