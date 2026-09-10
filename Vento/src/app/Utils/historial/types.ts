@@ -1,5 +1,6 @@
 import type { CaracteristicasState } from "../contexts/CaracteristicasContext";
 import type { SelectionScores } from "../report/useSelectionScores";
+import type { ReportConfig } from "../report/reportConfig";
 
 /**
  * Una entrada del histórico = los PARÁMETROS para regenerar un informe.
@@ -20,4 +21,9 @@ export type InformeEntry = {
   scores: SelectionScores;
   region: string | null;
   areaKm2: number;
+  /**
+   * Configuración del informe elegida por el usuario (US06-03). Opcional: las
+   * entradas antiguas no la tienen → al restaurar se cae al default.
+   */
+  reportConfig?: ReportConfig;
 };

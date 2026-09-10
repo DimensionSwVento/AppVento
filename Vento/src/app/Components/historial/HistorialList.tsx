@@ -33,7 +33,8 @@ const VISIBLE_POR_PERIODO: Record<Periodo, string[]> = {
 
 export default function HistorialList() {
   const { entries, remove } = useHistorial();
-  const { setSelectedHexes, setAccion, requestMapFocus } = useAprincipal();
+  const { setSelectedHexes, setAccion, requestMapFocus, restoreReportConfig } =
+    useAprincipal();
   const { replaceActiveVariables } = useVariables();
   const { restore: restoreCaracteristicas } = useCaracteristicas();
   const toast = useToast();
@@ -52,6 +53,10 @@ export default function HistorialList() {
     setSelectedHexes(new Set(e.hexes));
     replaceActiveVariables(e.variables);
     restoreCaracteristicas(e.caracteristicas);
+    // Rehidrata la config del informe guardada (US audit: antes se guardaba
+    // en el histórico pero nunca se releía → el informe restaurado ignoraba
+    // las secciones/gráfico elegidos y volvía a los defaults).
+    if (e.reportConfig) restoreReportConfig(e.reportConfig);
     setAccion("informe");
     // Reencuadra el mapa a la selección del informe (efecto del botón de
     // enfoque). Sin esto el mapa —y la captura del informe/PDF— se quedaban en
