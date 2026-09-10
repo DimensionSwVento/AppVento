@@ -99,8 +99,8 @@ describe("UsersTable", () => {
       />
     );
 
-    // Find the delete buttons by title
-    const deleteButtons = screen.getAllByTitle("Eliminar usuario");
+    // Find the deactivate buttons by title (US08-04: "Eliminar" → "Desactivar")
+    const deleteButtons = screen.getAllByTitle("Desactivar usuario");
     fireEvent.click(deleteButtons[0]);
     expect(handleDelete).toHaveBeenCalledWith(mockUsers[0]);
   });

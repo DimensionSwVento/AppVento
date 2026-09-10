@@ -11,7 +11,14 @@ import {
 /** Tipo de emplazamiento del proyecto eólico. Auto-detectado desde `selectedHexes`. */
 export type TipoEmplazamiento = "onshore" | "offshore" | null;
 
-/** Sub-tipo aplicable cuando emplazamiento === "offshore". */
+/**
+ * Sub-tipo aplicable cuando emplazamiento === "offshore".
+ * MARCA (audit Sprint 4): hoy se CAPTURA y se muestra en el informe, pero NO
+ * modula el análisis/score — la modulación (flotante vs fija cambia costo,
+ * profundidad viable, etc.) depende de parámetros del modelo que llegan con la
+ * master/backend (ver datos-requeridos.md §4/§7). Queda cableado el dato, no el
+ * efecto: conectar cuando existan esos parámetros.
+ */
 export type TipoTecnologiaOffshore = "flotante" | "fija" | null;
 
 /**

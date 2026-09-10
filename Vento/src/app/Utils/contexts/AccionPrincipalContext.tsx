@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useState } from "react";
+import type { ReportConfig } from "../report/reportConfig";
 
 export type Aprincipal =
   | "seleccion-area"
@@ -31,6 +32,14 @@ interface AprincipalContext {
   focusNonce: number;
   /** Solicita al mapa encuadrar la selección actual. */
   requestMapFocus: () => void;
+  /** Config de informe a rehidratar al restaurar un histórico (null = ninguna
+   *  pendiente). El informe la aplica y reacciona vía `reportConfigNonce`. */
+  restoredReportConfig: ReportConfig | null;
+  /** Nonce que se incrementa en cada rehidratación (re-dispara aunque la
+   *  config sea equivalente a la anterior). */
+  reportConfigNonce: number;
+  /** Pide rehidratar la config del informe (al abrir un histórico guardado). */
+  restoreReportConfig: (config: ReportConfig) => void;
 }
 
 const AprincipalContext = createContext<AprincipalContext>({
@@ -41,6 +50,9 @@ const AprincipalContext = createContext<AprincipalContext>({
   maxFaseIdx: 0,
   focusNonce: 0,
   requestMapFocus: () => {},
+  restoredReportConfig: null,
+  reportConfigNonce: 0,
+  restoreReportConfig: () => {},
 });
 
 export function useAprincipal() {
@@ -56,6 +68,9 @@ export function AprincipalProvider({
   const [selectedHexes, setSelectedHexes] = useState<Set<string>>(new Set());
   const [maxFaseIdx, setMaxFaseIdx] = useState(0);
   const [focusNonce, setFocusNonce] = useState(0);
+  const [restoredReportConfig, setRestoredReportConfig] =
+    useState<ReportConfig | null>(null);
+  const [reportConfigNonce, setReportConfigNonce] = useState(0);
 
   const setAccion = useCallback((a: Aprincipal) => {
     setAccionState(a);
@@ -64,6 +79,11 @@ export function AprincipalProvider({
   }, []);
 
   const requestMapFocus = useCallback(() => setFocusNonce((n) => n + 1), []);
+
+  const restoreReportConfig = useCallback((config: ReportConfig) => {
+    setRestoredReportConfig(config);
+    setReportConfigNonce((n) => n + 1);
+  }, []);
 
   return (
     <AprincipalContext.Provider
@@ -75,6 +95,9 @@ export function AprincipalProvider({
         maxFaseIdx,
         focusNonce,
         requestMapFocus,
+        restoredReportConfig,
+        reportConfigNonce,
+        restoreReportConfig,
       }}
     >
       {children}

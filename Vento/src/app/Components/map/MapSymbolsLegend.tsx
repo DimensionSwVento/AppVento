@@ -11,13 +11,18 @@ import { MAP_SYMBOLS } from "../../Utils/map/mapSymbols";
 export default function MapSymbolsLegend({
   active,
   onToggle,
+  disabled,
 }: {
   active: Set<string>;
   onToggle: (variableId: string) => void;
+  /** Variables con "ver en mapa" desactivado en admin: se ocultan de la leyenda. */
+  disabled?: Set<string>;
 }) {
   const [open, setOpen] = useState(true);
-  if (MAP_SYMBOLS.length === 0) return null;
-  const activeCount = MAP_SYMBOLS.filter((s) => active.has(s.variableId)).length;
+  // Solo símbolos habilitados para mapa (respeta el toggle de admin, US08-01).
+  const symbols = MAP_SYMBOLS.filter((s) => !disabled?.has(s.variableId));
+  if (symbols.length === 0) return null;
+  const activeCount = symbols.filter((s) => active.has(s.variableId)).length;
 
   return (
     <div className="rounded-md border border-[#eae9e9ff] bg-white/95 shadow-lg shadow-[#cacacbff]">
@@ -44,7 +49,7 @@ export default function MapSymbolsLegend({
       </button>
       {open && (
         <ul className="flex max-h-[46vh] flex-col gap-0.5 overflow-y-auto px-1.5 pb-1.5">
-          {MAP_SYMBOLS.map((s) => {
+          {symbols.map((s) => {
             const on = active.has(s.variableId);
             return (
               <li key={s.variableId}>

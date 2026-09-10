@@ -13,7 +13,11 @@ import {
   MIN_CAPACITY_MW,
 } from "../../Utils/capacity";
 import { dominantHexType } from "../../Utils/h3/hexClassification";
-import { calcNumAerogeneradores, AEROGENERADORES } from "../../Utils/projectData";
+import {
+  calcNumAerogeneradores,
+  AEROGENERADORES,
+  areaRangeForCapacity,
+} from "../../Utils/projectData";
 import {
   CARACTERISTICA_DEFINICIONES,
   TIPO_AEROGENERADOR_RANGOS,
@@ -81,6 +85,23 @@ export default function Caracteristicas() {
 
   const hasErrors = Object.keys(errors).length > 0;
 
+  // US04-04 — Alerta (NO bloqueante) de área vs capacidad nominal: si el área
+  // seleccionada queda fuera del rango esperado para la capacidad elegida.
+  // Se mantiene FUERA de `errors` para no gatear el botón "Siguiente paso".
+  const areaWarning = useMemo<string | null>(() => {
+    if (areaKm2 <= 0 || !isCapacityWithinRange(capacidadMW)) return null;
+    const range = areaRangeForCapacity(capacidadMW, categoriaAerogenerador);
+    if (!range) return null;
+    const fmt = (n: number) =>
+      n.toLocaleString("es-CO", { maximumFractionDigits: 1 });
+    const banda = `~${fmt(range.min)}–${fmt(range.max)} km²`;
+    if (areaKm2 < range.min)
+      return `El área seleccionada (${fmt(areaKm2)} km²) es MENOR que la esperada para ${capacidadMW} MW (${banda}). Amplía el área o reduce la capacidad.`;
+    if (areaKm2 > range.max)
+      return `El área seleccionada (${fmt(areaKm2)} km²) es MAYOR que la esperada para ${capacidadMW} MW (${banda}). Reduce el área o aumenta la capacidad.`;
+    return null;
+  }, [areaKm2, capacidadMW, categoriaAerogenerador]);
+
   const detectado = useMemo(
     () => dominantHexType(selectedHexes),
     [selectedHexes],
@@ -126,6 +147,7 @@ export default function Caracteristicas() {
           capacidadMW={capacidadMW}
           onChange={setCapacidadMW}
           error={errors.capacidadMW}
+          areaWarning={areaWarning}
         />
 
         <TamañoSection
@@ -235,10 +257,12 @@ function CapacidadSection({
   capacidadMW,
   onChange,
   error,
+  areaWarning,
 }: {
   capacidadMW: number | null;
   onChange: (n: number | null) => void;
   error?: string;
+  areaWarning?: string | null;
 }) {
   const errorId = "capacidad-mw-error";
   const current = capacidadMW ?? 0;
@@ -292,6 +316,30 @@ function CapacidadSection({
       </div>
       <p className="mt-1 text-[10px] italic text-gray-400">{tamano.detalle}</p>
       <FieldError id={errorId} message={error} />
+
+      {/* US04-04 — alerta área vs capacidad (aviso, no bloquea el flujo). */}
+      {areaWarning && (
+        <div
+          role="status"
+          className="mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-snug text-amber-800"
+        >
+          <svg
+            className="mt-[1px] h-3.5 w-3.5 shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+            />
+          </svg>
+          <span>{areaWarning}</span>
+        </div>
+      )}
     </section>
   );
 }

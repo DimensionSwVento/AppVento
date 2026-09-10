@@ -3,6 +3,7 @@
 import { useVariables } from "../../Utils/contexts/VariablesContext";
 import { colorForVariable } from "../../Utils/variables/dimensionColors";
 import { VariableIcon } from "../../Utils/variables/variableIcons";
+import VariableTooltip from "./VariableTooltip";
 import type { Variable } from "../../Utils/variables/variablesCatalog";
 
 /**
@@ -40,14 +41,18 @@ export default function VariableSwitch({ variable }: { variable: Variable }) {
         />
       </button>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-[#393939ff] leading-tight">
-          {variable.label}
-          {required && (
-            <span className="ml-1 text-[10px] font-normal text-gray-400 uppercase tracking-wide">
-              obligatoria
-            </span>
-          )}
-        </p>
+        <div className="flex items-start justify-between gap-1">
+          <p className="text-sm font-semibold text-[#393939ff] leading-tight">
+            {variable.label}
+            {required && (
+              <span className="ml-1 text-[10px] font-normal text-gray-400 uppercase tracking-wide">
+                obligatoria
+              </span>
+            )}
+          </p>
+          {/* US04-AC2 — ℹ con definición + polaridad (suma/resta idoneidad). */}
+          <VariableTooltip variable={variable} />
+        </div>
         <p className="text-[11px] text-gray-500 mt-0.5 leading-tight">
           {variable.description}
         </p>

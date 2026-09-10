@@ -1,14 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DimensionCard from "./DimensionCard";
 import InformativeCatalog from "./InformativeCatalog";
+import EconomicModal from "./EconomicModal";
+import RegulatoryModal from "./RegulatoryModal";
+import { useActiveEconomicVariables } from "../../Utils/contexts/EconomicContext";
+import { fetchMenuVariables } from "../../Utils/admin/catalogApi";
 import NextStepButton from "../ui/NextStepButton";
 import {
   DIMENSIONS,
+  OPTIONAL_VARIABLES,
   isScorableDimension,
   variableAppliesToNature,
-  optionalVariablesByDimension,
 } from "../../Utils/variables/variablesCatalog";
 import type { Dimension, Variable } from "../../Utils/variables/variablesCatalog";
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
@@ -26,6 +30,9 @@ function matches(query: string, v: Variable): boolean {
 
 export default function Dimensions() {
   const [query, setQuery] = useState("");
+  const [econOpen, setEconOpen] = useState(false);
+  const [regOpen, setRegOpen] = useState(false);
+  const econVars = useActiveEconomicVariables();
   const { selectedHexes } = useAprincipal();
 
   // Naturaleza mar/tierra de la selección (modo API emplazamiento): oculta las
@@ -35,18 +42,35 @@ export default function Dimensions() {
     [selectedHexes],
   );
 
+  // Variables informativas del menú desde el catálogo de admin (catalogApi):
+  // así lo que se crea/edita en /admin/variables (habilitar, ver en menú) se
+  // refleja aquí. Semilla = las de hoy (OPTIONAL_VARIABLES) → sin parpadeo.
+  const [menuVars, setMenuVars] = useState<Variable[]>(OPTIONAL_VARIABLES);
+  useEffect(() => {
+    let alive = true;
+    fetchMenuVariables()
+      .then((v) => alive && setMenuVars(v))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const filteredByDimension = useMemo(() => {
     const map = new Map<string, Variable[]>();
     for (const d of DIMENSIONS) {
       map.set(
         d.id,
-        optionalVariablesByDimension(d.id).filter(
-          (v) => matches(query, v) && variableAppliesToNature(v, nature),
+        menuVars.filter(
+          (v) =>
+            v.dimension === d.id &&
+            matches(query, v) &&
+            variableAppliesToNature(v, nature),
         ),
       );
     }
     return map;
-  }, [query, nature]);
+  }, [menuVars, query, nature]);
 
   return (
     <div className="flex flex-col h-full">
@@ -113,8 +137,48 @@ export default function Dimensions() {
             );
           })}
 
+          {/* Análisis prospectivo económico (US04-02): disparador del modal;
+              aparece si hay ≥1 variable económica activa. */}
+          {!query.trim() && econVars.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setEconOpen(true)}
+              className="flex items-center justify-between rounded-md bg-white px-3 py-3 text-left shadow-sm transition-colors hover:bg-gray-50"
+            >
+              <span className="flex items-center gap-2 text-sm font-bold text-[#165170ff]">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 19V5m0 14h16M8 15l3-3 2 2 4-5" />
+                </svg>
+                Económica — Análisis prospectivo
+              </span>
+              <span className="text-[11px] text-gray-400">
+                {econVars.length} var. · abrir →
+              </span>
+            </button>
+          )}
+
+          {/* Marco normativo (US04-05): regulatoria es informativa (no puntúa);
+              el disparador está siempre disponible. */}
+          {!query.trim() && (
+            <button
+              type="button"
+              onClick={() => setRegOpen(true)}
+              className="flex items-center justify-between rounded-md bg-white px-3 py-3 text-left shadow-sm transition-colors hover:bg-gray-50"
+            >
+              <span className="flex items-center gap-2 text-sm font-bold text-[#165170ff]">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M6 21V9l6-4 6 4v12M9 21v-6h6v6" />
+                </svg>
+                Regulatoria — Marco normativo
+              </span>
+              <span className="text-[11px] text-gray-400">informativa · abrir →</span>
+            </button>
+          )}
         </div>
       </div>
+
+      {econOpen && <EconomicModal onClose={() => setEconOpen(false)} />}
+      {regOpen && <RegulatoryModal onClose={() => setRegOpen(false)} />}
 
       {/* Botón Siguiente paso fijo al fondo, sin bordes redondeados, sin padding/margen */}
       <div className="shrink-0">
