@@ -76,29 +76,32 @@ export function useInformeHeatmapLayer(
     // reused" → mapa despintado). Mismo patrón que `selectedLayer`.
     const active = heatmapActive && data.length > 0;
     const dim = (activeDimension ?? "general") as string;
+    // Color viridis del hex (o null = transparente). Relleno translúcido (20%),
+    // SIN borde (el informe usa solo relleno; el borde se veía como una malla
+    // azul sobre el heatmap).
+    const colorFor = (d: { h: string; baseScore: number }): [number, number, number] | null => {
+      const real = backendScore(areaData?.get(d.h), dim);
+      let t: number;
+      if (typeof real === "number") {
+        t = real; // score real del backend (0..1): general→score_general, dim→scores[cat]
+      } else if (USE_PLACEHOLDER_FALLBACK) {
+        // Modo template: gradiente radial + ruido determinista por hex.
+        const noise = (dimensionHexScore(dim, d.h) - 0.5) * 0.3;
+        t = d.baseScore + noise;
+      } else {
+        // Modo API sin dato real (p.ej. AMB/MAC aún sin master): transparente.
+        return null;
+      }
+      return viridis(Math.max(0, Math.min(1, t)));
+    };
     return new PolygonLayer<{ h: string; baseScore: number }>({
       id: "informe-heatmap",
       data,
       visible: active,
       getPolygon: (d) => cellToBoundary(d.h, true),
       getFillColor: (d) => {
-        const real = backendScore(areaData?.get(d.h), dim);
-        let t: number;
-        if (typeof real === "number") {
-          t = real; // score real del backend (0..1): general→score_general, dim→scores[cat]
-        } else if (USE_PLACEHOLDER_FALLBACK) {
-          // Modo template: gradiente radial + ruido determinista por hex.
-          const noise = (dimensionHexScore(dim, d.h) - 0.5) * 0.3;
-          t = d.baseScore + noise;
-        } else {
-          // Modo API sin dato real (p.ej. AMB/MAC aún sin master): NO pintar
-          // nada — transparente, se ve el basemap. Nada de radial fake.
-          return [0, 0, 0, 0];
-        }
-        const [r, g, b] = viridis(Math.max(0, Math.min(1, t)));
-        // Alpha bajo (sprint 3): los hexes no deben tapar el relieve/mapa de
-        // abajo — se busca ver el basemap a través del heatmap.
-        return [r, g, b, 110];
+        const c = colorFor(d);
+        return c ? [c[0], c[1], c[2], 51] : [0, 0, 0, 0];
       },
       filled: true,
       stroked: false,
