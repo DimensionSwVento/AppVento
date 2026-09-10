@@ -341,8 +341,8 @@ export default function Report() {
         unit: meta.unit,
         valueText: formatVariableValue(seedScore / 100, meta.unit),
         // Detalle (P1): la descripción "qué es / cómo opera", igual que en la
-        // pestaña Dimensiones.
-        description: getVariableById(id)?.description ?? meta.description ?? "",
+        // pestaña Dimensiones (la `Variable` del catálogo la trae; `InfoVar` no).
+        description: getVariableById(id)?.description ?? "",
       });
     }
     return rows;
