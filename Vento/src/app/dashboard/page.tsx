@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SideBar from "../Components/layout/SideBar";
 import Dimensions from "../Components/dimensions/Dimensions";
 import Caracteristicas from "../Components/caracteristicas/Caracteristicas";
@@ -13,13 +13,20 @@ import { useAprincipal } from "../Utils/contexts/AccionPrincipalContext";
 export default function AreaSelectionPage() {
   const { accion } = useAprincipal();
 
-  // Onboarding: se muestra en CADA recarga del dashboard (petición winx).
-  // TODO US02-01 "única por usuario": inicializar en false y setear con
-  // !hasSeenOnboarding() en un efecto (Utils/onboarding.ts) para verlo 1 sola vez.
-  const [showOnboarding, setShowOnboarding] = useState(true);
+  // Onboarding: UNA VEZ POR SESIÓN activa (sessionStorage). No se repite en cada
+  // recarga de la misma sesión; vuelve a salir en una sesión nueva.
+  const [showOnboarding, setShowOnboarding] = useState(false);
   // Disclaimer al inicio (reunión): tras cerrar el onboarding, aparece el aviso
   // legal en un flotante. Mismo texto que el informe → visible al inicio y al final.
   const [showDisclaimer, setShowDisclaimer] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (!sessionStorage.getItem("vento_onboarding_seen")) setShowOnboarding(true);
+    } catch {
+      setShowOnboarding(true);
+    }
+  }, []);
 
   const subpage = (() => {
     switch (accion) {
@@ -61,6 +68,9 @@ export default function AreaSelectionPage() {
         open={showOnboarding}
         onClose={() => {
           setShowOnboarding(false);
+          try {
+            sessionStorage.setItem("vento_onboarding_seen", "1");
+          } catch {}
           setShowDisclaimer(true);
         }}
       />
