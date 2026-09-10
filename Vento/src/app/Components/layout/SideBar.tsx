@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { useSession, signOut } from "next-auth/react";
+import { useIsAdmin } from "../../Utils/useIsAdmin";
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -23,7 +24,7 @@ export default function SideBar({
   const { accion, setAccion, selectedHexes, maxFaseIdx } = useAprincipal();
   const pathname = usePathname();
   const router = useRouter();
-  const isAdmin = session?.roles?.includes("admin");
+  const isAdmin = useIsAdmin();
   const isAdminPage = pathname?.startsWith("/admin");
   const [mobileOpen, setMobileOpen] = useState(false);
   const isHydrated = useSyncExternalStore(
@@ -82,10 +83,13 @@ export default function SideBar({
     isHydrated && habilitado("caracteristicas");
   const informeHabilitado = isHydrated && habilitado("informe");
 
-  const fullMail = session?.user?.email ?? "test@gmail.com";
-  // truncar a 26 caracteres para dar espacio a los botones
+  // Identidad REAL de la sesión. Sin fallback fabricado: si no hay sesión se
+  // muestra un placeholder neutro (nunca un usuario falso tipo "test@gmail.com",
+  // que daba la falsa impresión de estar logueado como otra cuenta).
+  const fullMail = session?.user?.email ?? "—";
+  // truncar a 18 caracteres para dar espacio a los botones
   const mail = fullMail.length > 18 ? fullMail.slice(0, 18) + "…" : fullMail;
-  const name = session?.user?.name ?? "test";
+  const name = session?.user?.name ?? "Sin sesión";
 
   // hay subpagina visible (no seleccion-area y no admin)
   const hasSubpage =

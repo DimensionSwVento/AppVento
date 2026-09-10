@@ -53,12 +53,15 @@ export default function DeleteUserDialog({ user, onClose, onConfirm }: DeleteUse
 
         {/* Title */}
         <h3 className="text-base font-semibold text-gray-800 mb-2 pr-6">
-          ¿Deseas eliminar este usuario?
+          ¿Desactivar este usuario?
         </h3>
 
-        {/* Description */}
+        {/* Description — copy HONESTO (US08-04.3): la acción NO borra, solo
+            desactiva; el usuario queda inactivo y se puede reactivar. */}
         <p className="text-xs text-gray-500 leading-relaxed mb-6">
-          Una vez eliminado no podrás recuperar la información generada, ni los diferentes informes asociados a esta cuenta.
+          El usuario quedará <b>inactivo</b> y perderá el acceso a la plataforma.
+          Sus informes e información se conservan; puedes <b>reactivarlo</b> cuando
+          quieras.
         </p>
 
         {error && (
@@ -78,7 +81,7 @@ export default function DeleteUserDialog({ user, onClose, onConfirm }: DeleteUse
             onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#113d56"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#165170"; }}
           >
-            {loading ? "Eliminando..." : "Eliminar"}
+            {loading ? "Desactivando..." : "Desactivar"}
           </button>
           <button
             onClick={onClose}

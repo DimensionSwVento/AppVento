@@ -1,9 +1,13 @@
 "use client";
 
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
+import { usePhaseNav } from "../../Utils/usePhaseNav";
 
 export default function NextStepFloatingCard() {
-  const { accion, setAccion, selectedHexes } = useAprincipal();
+  const { accion, selectedHexes } = useAprincipal();
+  // Misma lógica/redacción que el botón "Siguiente paso" del panel (US09-03):
+  // la fase destino y su etiqueta salen del mismo hook, no hardcodeadas.
+  const { nextLabel, goNext } = usePhaseNav();
 
   if (accion !== "seleccion-area" || selectedHexes.size === 0) return null;
 
@@ -19,20 +23,20 @@ export default function NextStepFloatingCard() {
     >
       <button
         type="button"
-        onClick={() => setAccion("dimensiones")}
+        onClick={goNext}
         className="group relative h-[6rem] w-[30rem] overflow-hidden rounded-lg border-2 border-[#165170ff] bg-white px-3 py-3 text-left text-[#165170ff] shadow-xl shadow-black/20 transition-all duration-200 motion-safe:hover:-translate-y-[1px] hover:shadow-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#165170ff] motion-safe:animate-[vento-cta-in_220ms_ease-out]"
-        aria-label={`Continuar a Dimensiones con ${label}`}
+        aria-label={`Siguiente paso: ${nextLabel} con ${label}`}
         data-testid="next-step-cta"
       >
         <span
           className="absolute inset-x-0 top-0 h-1 bg-[#cce1eeff]"
           aria-hidden="true"
         />
-        <span className="block text-[10px] font-semibold leading-tight opacity-80">
-          Área lista
+        <span className="block text-[10px] font-semibold uppercase tracking-wide leading-tight text-gray-500">
+          Siguiente paso
         </span>
         <span className="mt-1 flex items-center justify-between gap-2 text-[13px] font-bold leading-tight">
-          <span>Continuar a Dimensiones</span>
+          <span>{nextLabel}</span>
           <span
             className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#165170ff] text-[13px] text-white transition-transform duration-200 group-hover:translate-x-0.5"
             aria-hidden="true"

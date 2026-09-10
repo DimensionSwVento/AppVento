@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Maximize2 } from "lucide-react";
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
 import { calcAreaKm2 } from "../../Utils/report/areaCalc";
@@ -13,12 +12,33 @@ import {
 } from "../../Utils/report/reportData";
 import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
+import { useIsAdmin } from "../../Utils/useIsAdmin";
 import {
   HEATMAP_DIMENSIONS,
-  useHeatmapDimension,
   type HeatmapDimensionId,
 } from "../../Utils/contexts/HeatmapDimensionContext";
 import RadarChart from "./RadarChart";
+import PieChart from "./PieChart";
+import BarChart from "./BarChart";
+import LineChart from "./LineChart";
+import Gauge from "./Gauge";
+import DivergingBars from "./DivergingBars";
+import ReportSheet from "./ReportSheet";
+import ReportBuilder from "./ReportBuilder";
+import {
+  useEconomic,
+  useActiveEconomicVariables,
+} from "../../Utils/contexts/EconomicContext";
+import { useRegulatory } from "../../Utils/contexts/RegulatoryContext";
+import {
+  ECONOMIC_SCENARIOS,
+  ECONOMIC_SERIES_COLORS,
+  economicSeries,
+} from "../../Utils/economic/economicScenarios";
+import {
+  defaultReportConfig,
+  type ReportConfig,
+} from "../../Utils/report/reportConfig";
 import AreaMiniMap from "./AreaMiniMap";
 import { useCachedImage } from "../../Utils/useCachedImage";
 import { SNAPSHOT_KEY } from "../../Utils/h3/h3Resolution";
@@ -29,27 +49,36 @@ import {
   areaVariableAverage,
   useAreaHexData,
 } from "../../Utils/report/useAreaHexData";
-import { USE_API_EMPLAZAMIENTO, USE_PLACEHOLDER_FALLBACK } from "../../Utils/projectData";
+import {
+  USE_API_EMPLAZAMIENTO,
+  USE_PLACEHOLDER_FALLBACK,
+} from "../../Utils/projectData";
 import { useVariables } from "../../Utils/contexts/VariablesContext";
 import {
   formatVariableValue,
   getInfoVarById,
 } from "../../Utils/variables/informativeVariables";
 import {
-  DIMENSIONS,
   VARIABLES,
   getVariableById,
+  isExcluyente,
   variableAppliesToNature,
   variablesByDimension,
-  variablesBySource,
+  type DimensionId,
 } from "../../Utils/variables/variablesCatalog";
 import {
   DISCLAIMER_BODY,
   DISCLAIMER_TITLE,
-  REPORT_SOURCES,
   WEIGHT_BALANCING_NOTE,
 } from "../../Utils/report/reportTemplates";
 import { weightFor } from "../../Utils/variables/variableWeights";
+import {
+  NORMA_ESTADO_META,
+  REGULATORY_AUTHORITIES,
+  REGULATORY_NORMS,
+  normasSemaforo,
+} from "../../Utils/report/regulatoryNorms";
+import { REPORT_SOURCE_LINKS } from "../../Utils/report/reportSources";
 import { compactHexes } from "../../Utils/historial/hexCodec";
 import { useToast } from "../ui/Toast";
 import {
@@ -60,8 +89,7 @@ import { useHistorial } from "../../Utils/historial/HistorialContext";
 
 const fmtKm2 = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 });
 
-// Ejes puntuables del radar (US06-01): 4 dimensiones. Regulatoria y "general"
-// quedan fuera (Regulatoria es informativa — US-FB3-06).
+// Dimensiones puntuables del gráfico (radar/circular/barras).
 const RADAR_DIMS: HeatmapDimensionId[] = [
   "tecnica",
   "ambiental",
@@ -69,27 +97,143 @@ const RADAR_DIMS: HeatmapDimensionId[] = [
   "macroeconomica",
 ];
 
+// Cuántas filas de tabla caben cómodamente en una hoja (mini-tablas).
+const ROWS_PER_SHEET = 16;
+
+// Impuestos / incentivos clave de la dimensión económica (template — Ley 1715
+// y régimen tributario aplicable a proyectos de energía renovable).
+const IMPUESTOS_CLAVE: { label: string; value: string }[] = [
+  { label: "Deducción de renta (Ley 1715)", value: "50% inversión" },
+  { label: "Exclusión de IVA (equipos)", value: "Aplica" },
+  { label: "Exención arancelaria", value: "Aplica" },
+  { label: "Depreciación acelerada", value: "hasta 33%/año" },
+];
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+/**
+ * Vigencia/versión del dato de una variable, derivada de su fuente (para la
+ * columna "Fecha" de las tablas verificables). Coincidencia laxa con
+ * REPORT_SOURCE_LINKS. Si no hay match NO se inventa un año: se marca "s/v"
+ * (sin versión confirmada) para no mostrar una fecha demo como si fuera real
+ * — la vigencia real llega con las fuentes del backend (datos-requeridos §9).
+ */
+function sourceVersion(fuente?: string): string {
+  if (!fuente || fuente === "(sin definir)" || fuente === "—") return "s/f";
+  const f = fuente.toLowerCase();
+  const hit = REPORT_SOURCE_LINKS.find((s) => {
+    const key = s.fuente.toLowerCase().split(/[ /]/)[0];
+    return f.includes(key) || s.fuente.toLowerCase().includes(f.split(/[ /]/)[0]);
+  });
+  return hit?.version ?? "s/v";
+}
+
+/** Tabla compacta reutilizable para las hojas del informe. */
+function MiniTable({
+  columns,
+  rows,
+}: {
+  columns: string[];
+  rows: (string | number)[][];
+}) {
+  return (
+    <div className="mt-2 overflow-hidden rounded-lg border border-gray-200">
+      <table className="w-full border-collapse text-[9px]">
+        <thead>
+          <tr className="bg-[#165170ff] text-left text-white">
+            {columns.map((c) => (
+              <th key={c} className="px-2 py-1 font-semibold">
+                {c}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr
+              key={i}
+              className="border-t border-gray-100 align-top even:bg-gray-50/60"
+            >
+              {r.map((c, j) => (
+                <td key={j} className="px-2 py-1 text-gray-700">
+                  {c}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Franja de leyenda viridis para el mapa de calor. */
+function ViridisLegend() {
+  return (
+    <div className="mt-1">
+      <div
+        className="h-2.5 w-full rounded"
+        style={{
+          background:
+            "linear-gradient(90deg,#440154,#3b528b,#21918c,#5ec962,#fde725)",
+        }}
+      />
+      <div className="mt-0.5 flex justify-between text-[8px] text-gray-500">
+        <span>0 · menor idoneidad</span>
+        <span>100 · mayor idoneidad</span>
+      </div>
+    </div>
+  );
+}
+
 export default function Report() {
-  const { selectedHexes } = useAprincipal();
-  const { activeDimension } = useHeatmapDimension();
+  const { selectedHexes, restoredReportConfig, reportConfigNonce } =
+    useAprincipal();
   const { activeVariables } = useVariables();
   const toast = useToast();
   const caracteristicas = useCaracteristicas();
   const { save: saveInforme } = useHistorial();
+  // Rol admin: habilita la exportación de datos crudos por hexágono.
+  const isAdmin = useIsAdmin();
   const reportRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(true);
-  // Previsualización a pantalla completa antes de descargar (sprint 3).
-  const [fullscreen, setFullscreen] = useState(false);
-  // Captura para el PDF: fuerza el render del informe COMPLETO (todas las
-  // secciones) aunque el preview compacto muestre solo lo central.
+  // Ventana de configuración/previsualización a pantalla completa (ReportBuilder).
+  const [builderOpen, setBuilderOpen] = useState(false);
+  // Al capturar el PDF las hojas se renderizan a escala 1 (tamaño real).
   const [capturing, setCapturing] = useState(false);
-  // Informe completo (todas las secciones) = a pantalla completa o al capturar
-  // el PDF. El preview compacto solo muestra lo central (resumen, score, radar).
-  const showFull = fullscreen || capturing;
+
+  // Configuración del informe (US06-03): qué dimensiones/secciones/gráfico
+  // incluir. Gobierna la previsualización, el PDF (US06-04) y lo guardado.
+  const scorableDims = useMemo(
+    () =>
+      HEATMAP_DIMENSIONS.filter((d) => d.scorable && d.id !== "general").map(
+        (d) => ({ id: d.id as string, label: d.label }),
+      ),
+    [],
+  );
+  const [config, setConfig] = useState<ReportConfig>(() =>
+    defaultReportConfig(scorableDims.map((d) => d.id)),
+  );
+  const patchConfig = (patch: Partial<ReportConfig>) =>
+    setConfig((c) => ({ ...c, ...patch }));
+  // Rehidrata la config al abrir un informe del histórico (emitida por
+  // HistorialList → AccionPrincipalContext). Patrón "ajustar estado en render"
+  // (sin effect): el nonce re-dispara aunque la config sea equivalente.
+  const [prevConfigNonce, setPrevConfigNonce] = useState(reportConfigNonce);
+  if (reportConfigNonce !== prevConfigNonce) {
+    setPrevConfigNonce(reportConfigNonce);
+    if (restoredReportConfig) setConfig(restoredReportConfig);
+  }
+  const toggleDim = (id: string) =>
+    setConfig((c) => ({ ...c, dims: { ...c.dims, [id]: !c.dims[id] } }));
+
   // Screenshot del mapa (capturado en la fase informe por Map.tsx vía SNAPSHOT_KEY).
   const { loadFromCache } = useCachedImage();
   const [mapSnapshot, setMapSnapshot] = useState<string | null>(null);
@@ -100,9 +244,6 @@ export default function Report() {
         if (alive) setMapSnapshot(url);
       });
     load();
-    // La captura en Map ocurre ~1.2 s tras entrar al informe; este reintento
-    // trae la imagen fresca sin depender del orden de montaje ni mostrar una
-    // captura vieja. Si no hay captura válida, queda el fallback SVG.
     const id = setTimeout(load, 1600);
     return () => {
       alive = false;
@@ -110,99 +251,82 @@ export default function Report() {
     };
   }, [loadFromCache, selectedHexes]);
 
-  // Al cambiar el área seleccionada es un informe distinto → permitir guardar de nuevo.
+  // Al cambiar el área es un informe distinto → permitir guardar de nuevo.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setSaved(false), [selectedHexes]);
-
-  // Variables de la dimensión Regulatoria — se muestran como bloque
-  // informativo (US-FB3-05 / feedback item 11): contexto, sin score.
-  const regulatoriaVars = useMemo(() => variablesByDimension("regulatoria"), []);
-  const sources = useMemo(() => variablesBySource(), []);
 
   const area = useMemo(() => calcAreaKm2(selectedHexes), [selectedHexes]);
   const centroid = useMemo(() => getCentroid(selectedHexes), [selectedHexes]);
   const region = useMemo(() => getRegion(selectedHexes), [selectedHexes]);
   const timestamp = useMemo(() => formatReportTimestamp(), []);
 
-  // Puntajes agregados (general + por dimensión) — del backend (POST /tiles/area)
-  // con fallback al placeholder local. Fuente única para barras, radar y snapshot.
+  // Puntajes agregados (general + por dimensión).
   const scores = useAreaScores(selectedHexes);
-
-  // Datos por hexágono del backend (fetch compartido/deduped). De aquí sale el
-  // valor POR VARIABLE del área (columna `var_*`); si el backend no lo entrega,
-  // se cae al placeholder cuando `USE_PLACEHOLDER_FALLBACK`.
+  // Datos por hexágono (valor por variable del área).
   const areaData = useAreaHexData(selectedHexes, true);
 
-  // Ejes del radar a partir de los puntajes por dimensión.
-  const radarAxes = useMemo(
-    () =>
-      RADAR_DIMS.map((id) => ({
-        label: HEATMAP_DIMENSIONS.find((d) => d.id === id)?.label ?? id,
-        value: scores.byDim[id] ?? 0,
-      })),
-    [scores],
-  );
-
-
-  // Naturaleza mar/tierra del área: filtra las variables que NO aplican (p.ej.
-  // batimetría offshore en una selección en tierra, y viceversa).
+  // Naturaleza mar/tierra del área (filtra variables que no aplican).
   const nature = useMemo(
     () => (USE_API_EMPLAZAMIENTO ? selectionNature(selectedHexes) : "mixta"),
     [selectedHexes],
   );
 
-  // Variables PONDERADAS que entran al puntaje + su score sobre el área (las del
-  // modelo que APLICAN al emplazamiento mar/tierra). Se muestran SOLO en el PDF.
-  const scoreVariableRows = useMemo(() => {
-    return VARIABLES.filter((v) => variableAppliesToNature(v, nature)).map((v) => ({
-      id: v.id,
-      label: v.label,
-      dim:
-        DIMENSIONS.find((d) => d.id === v.dimension)?.label.replace(
-          /^Dimensi[oó]n\s+/i,
-          "",
-        ) ?? v.dimension,
-      score:
-        selectedHexes.size === 0
-          ? null
-          : (areaVariableAverage(areaData, selectedHexes, v.masterId) ??
-            (USE_PLACEHOLDER_FALLBACK
-              ? parseFloat(dimensionScore(v.id, selectedHexes))
-              : null)),
-    }));
-  }, [selectedHexes, areaData, nature]);
+  // Ejes del gráfico por dimensión, filtrados por la config.
+  const chartAxes = useMemo(
+    () =>
+      RADAR_DIMS.filter((id) => config.dims[id]).map((id) => ({
+        label: HEATMAP_DIMENSIONS.find((d) => d.id === id)?.label ?? id,
+        value: scores.byDim[id] ?? 0,
+      })),
+    [scores, config.dims],
+  );
 
-  // Variables que MÁS INFLUYEN en el resultado (US6): ranking por magnitud del
-  // peso del modelo, con dirección (suma/resta a idoneidad). Placeholder por
-  // |peso| hasta tener los pesos definitivos del modelo (mismo seam `weightFor`).
+  // Variables que MÁS INFLUYEN (ranking por |peso|, con dirección + magnitud).
   const topInfluencers = useMemo(() => {
-    return VARIABLES.filter((v) => variableAppliesToNature(v, nature))
+    const scored = VARIABLES.filter((v) => variableAppliesToNature(v, nature))
       .map((v) => ({ v, w: weightFor(v.id) }))
       .filter((x) => x.w !== 0)
       .sort((a, b) => Math.abs(b.w) - Math.abs(a.w))
-      .slice(0, 5)
-      .map(({ v, w }) => ({
-        id: v.id,
-        label: v.label,
-        sube: w > 0,
-        mag: Math.abs(w),
-      }));
+      .slice(0, 5);
+    const maxW = Math.max(...scored.map((x) => Math.abs(x.w)), 1);
+    return scored.map(({ v, w }) => ({
+      id: v.id,
+      label: v.label,
+      sube: w > 0,
+      mag: Math.abs(w) / maxW,
+    }));
   }, [nature]);
 
-  // Variables informativas activas con su valor promedio sobre el área.
+  // Variables que más influyen POR DIMENSIÓN (para las hojas de dimensión).
+  const dimInfluencers = (dimId: string) => {
+    const scored = VARIABLES.filter(
+      (v) =>
+        v.dimension === dimId && !v.noCalculo && variableAppliesToNature(v, nature),
+    )
+      .map((v) => ({ v, w: weightFor(v.id) }))
+      .filter((x) => x.w !== 0)
+      .sort((a, b) => Math.abs(b.w) - Math.abs(a.w))
+      .slice(0, 6);
+    const maxW = Math.max(...scored.map((x) => Math.abs(x.w)), 1);
+    return scored.map(({ v, w }) => ({
+      label: v.label,
+      sube: w > 0,
+      mag: Math.abs(w) / maxW,
+    }));
+  };
+
+  // Variables informativas activas con su valor sobre el área.
   const informativeRows = useMemo(() => {
     const rows: {
       id: string;
       label: string;
       unit: string;
-      color: string;
       valueText: string;
+      description: string;
     }[] = [];
     for (const id of activeVariables) {
       const meta = getInfoVarById(id);
       if (!meta) continue;
-      // Valor por variable del área: del backend (columna `var_*`) si existe;
-      // si no, placeholder determinista (mismo hash que el mapa) cuando aplica.
       const masterId = getVariableById(id)?.masterId ?? "NA";
       const apiVal = areaVariableAverage(areaData, selectedHexes, masterId);
       const seedScore =
@@ -215,104 +339,853 @@ export default function Report() {
         id: meta.id,
         label: meta.label,
         unit: meta.unit,
-        color: meta.color,
         valueText: formatVariableValue(seedScore / 100, meta.unit),
+        // Detalle (P1): la descripción "qué es / cómo opera", igual que en la
+        // pestaña Dimensiones (la `Variable` del catálogo la trae; `InfoVar` no).
+        description: getVariableById(id)?.description ?? "",
       });
     }
     return rows;
   }, [activeVariables, selectedHexes, areaData]);
 
-  // Descarga del PDF: se CAPTURA el DOM del informe (mismo layout que la
-  // previsualización extendida) con html2canvas-pro (soporta oklch de Tailwind
-  // v4) y se pagina en A4 vertical. Así el PDF descargado ES la previsualización.
+  // Fuentes discriminadas por dimensión (solo las incluidas).
+  const sourcesByDim = useMemo(() => {
+    const norm = (f?: string) =>
+      f && f !== "(sin definir)" ? f : "Fuente por definir";
+    const dims: { id: string; label: string }[] = [
+      ...scorableDims.filter((d) => config.dims[d.id]),
+    ];
+    if (config.showRegulatoria)
+      dims.push({ id: "regulatoria", label: "Regulatoria" });
+    return dims
+      .map((d) => {
+        const vars = variablesByDimension(d.id as DimensionId).filter((v) =>
+          variableAppliesToNature(v, nature),
+        );
+        const fuentes = [
+          ...new Set(vars.filter((v) => v.fuente).map((v) => norm(v.fuente))),
+        ].sort((a, b) => a.localeCompare(b, "es"));
+        return { label: d.label, fuentes };
+      })
+      .filter((x) => x.fuentes.length > 0);
+  }, [config.dims, config.showRegulatoria, nature, scorableDims]);
+
+  // Dimensión económica (US04-02): serie(s) de proyección. Refleja el escenario,
+  // la capacidad nominal y el modo "comparar escenarios" del panel (llega al PDF).
+  const econ = useEconomic();
+  const econVars = useActiveEconomicVariables();
+  const econSeries = useMemo(() => {
+    const shown = econVars.filter((v) => !econ.chartHidden.has(v.id));
+    if (econ.compareMode && shown.length > 0) {
+      return ECONOMIC_SCENARIOS.map((sc, i) => ({
+        label: `${shown[0].label} · ${sc.label}`,
+        color: ECONOMIC_SERIES_COLORS[i % ECONOMIC_SERIES_COLORS.length],
+        points: economicSeries(sc.id, shown[0].id, econ.horizonYears, econ.capacidadNominal),
+      }));
+    }
+    return shown.map((v, i) => ({
+      label: v.label,
+      color: ECONOMIC_SERIES_COLORS[i % ECONOMIC_SERIES_COLORS.length],
+      points: economicSeries(econ.escenarioId, v.id, econ.horizonYears, econ.capacidadNominal),
+    }));
+  }, [
+    econVars,
+    econ.chartHidden,
+    econ.escenarioId,
+    econ.horizonYears,
+    econ.compareMode,
+    econ.capacidadNominal,
+  ]);
+  const showEconomica =
+    config.showEconomica && econ.addToReport && econVars.length > 0;
+
+  // Dimensión regulatoria (US04-05): se incluye si el usuario lo eligió en el
+  // panel regulatorio (informativa — no puntúa).
+  const regulatory = useRegulatory();
+
+  // Filas de la tabla por dimensión (variables ponderadas del modelo).
+  const dimTable = (dimId: string) =>
+    VARIABLES.filter(
+      (v) => v.dimension === dimId && variableAppliesToNature(v, nature),
+    ).map((v) => {
+      const puntaje =
+        selectedHexes.size === 0
+          ? null
+          : (areaVariableAverage(areaData, selectedHexes, v.masterId) ??
+            (USE_PLACEHOLDER_FALLBACK
+              ? parseFloat(dimensionScore(v.id, selectedHexes))
+              : null));
+      return {
+        label: v.label,
+        criterio: v.subcriterio
+          ? `${v.criterio} › ${v.subcriterio}`
+          : v.criterio,
+        tipo: isExcluyente(v)
+          ? "Excluyente"
+          : v.noCalculo
+            ? "Informativa"
+            : "Puntúa",
+        peso: weightFor(v.id),
+        puntaje,
+        fuente: v.fuente && v.fuente !== "(sin definir)" ? v.fuente : "—",
+        fecha: sourceVersion(v.fuente),
+      };
+    });
+
+  // Variables EXCLUYENTES por dimensión (restricciones duras) con su detalle.
+  const dimExcluyentes = (dimId: string) =>
+    VARIABLES.filter(
+      (v) =>
+        v.dimension === dimId &&
+        isExcluyente(v) &&
+        variableAppliesToNature(v, nature),
+    ).map((v) => ({ label: v.label, description: v.description }));
+
+  // Conmutador de gráfico según la config (radar/circular/barras).
+  const renderChart = (axes: { label: string; value: number }[]) => {
+    if (axes.length === 0) return null;
+    if (config.chartType === "pie")
+      return <PieChart data={axes} className="w-full max-w-[300px]" />;
+    if (config.chartType === "bar")
+      return <BarChart data={axes} className="w-full max-w-[320px]" />;
+    if (axes.length >= 3)
+      return <RadarChart axes={axes} className="w-full max-w-[280px]" />;
+    return <BarChart data={axes} className="w-full max-w-[320px]" />;
+  };
+
+  // ── Construcción de las HOJAS del informe ──────────────────────────────
+  const indexEntries: { n: number; title: string; page: number }[] = [
+    { n: 1, title: "Resumen ejecutivo", page: 1 },
+  ];
+  const bodyContents: ReactNode[] = [];
+  const addSection = (title: string, build: (n: number) => ReactNode[]) => {
+    const n = indexEntries.length + 1;
+    const page = bodyContents.length + 2; // la hoja 1 es el resumen
+    indexEntries.push({ n, title, page });
+    build(n).forEach((c) => bodyContents.push(c));
+  };
+
+  // Hojas por dimensión puntuable: score + peso en esquinas, variables que
+  // influyen, tabla y resumen del cálculo.
+  const activeDimCount = scorableDims.filter((d) => config.dims[d.id]).length;
+  const pesoDim = activeDimCount > 0 ? 100 / activeDimCount : 0;
+  scorableDims
+    .filter((d) => config.dims[d.id])
+    .forEach((d) => {
+      const rows = dimTable(d.id);
+      if (rows.length === 0) return;
+      const dl = d.label.replace(/^Dimensi[oó]n\s+/i, "");
+      const dimScore = scores.byDim[d.id] ?? 0;
+      const influ = dimInfluencers(d.id);
+      const excl = dimExcluyentes(d.id);
+      addSection(`Dimensión ${dl}`, (n) => {
+        const pages = chunk(rows, ROWS_PER_SHEET);
+        return pages.map((pr, pi) => (
+          <div key={pi} className="flex h-full flex-col text-[10px]">
+            <div className="flex items-baseline justify-between">
+              <h3 className="text-base font-bold text-[#165170ff]">
+                {n}. Dimensión {dl}
+                {pages.length > 1 ? ` (${pi + 1}/${pages.length})` : ""}
+              </h3>
+              <span className="rounded bg-[#cce1eeff] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#165170ff]">
+                Puntúa
+              </span>
+            </div>
+
+            {pi === 0 && (
+              <>
+                {/* Esquinas: score de la dimensión + peso sobre el índice general */}
+                <div className="mt-2 grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border-2 border-[#165170ff] p-3 text-center">
+                    <p className="text-[8px] font-semibold uppercase tracking-wide text-gray-500">
+                      Score de la dimensión
+                    </p>
+                    <p className="text-4xl font-extrabold leading-none text-[#165170ff]">
+                      {dimScore.toFixed(0)}
+                    </p>
+                    <p className="text-[8px] text-gray-400">de 100</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 p-3 text-center">
+                    <p className="text-[8px] font-semibold uppercase tracking-wide text-gray-500">
+                      Peso en el índice general
+                    </p>
+                    <p className="text-4xl font-extrabold leading-none text-gray-700">
+                      {pesoDim.toFixed(0)}%
+                    </p>
+                    <p className="text-[8px] text-gray-400">
+                      aporta {((dimScore * pesoDim) / 100).toFixed(1)} pts
+                    </p>
+                  </div>
+                </div>
+
+                {/* Variables que más influyen (barras suma/resta) */}
+                {config.showInfluencers && influ.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-[9px] font-bold uppercase tracking-wide text-gray-500">
+                      Variables que más influyen
+                    </p>
+                    <div className="mt-1 flex justify-center">
+                      <DivergingBars bars={influ} width={660} className="w-full max-w-[660px]" />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {config.showScoreDetail && (
+              <>
+                <h4 className="mt-3 text-[9px] font-bold uppercase tracking-wide text-gray-500">
+                  Variables consideradas
+                </h4>
+                <MiniTable
+                  columns={[
+                    "Variable",
+                    ...(config.showModelDetail ? ["Criterio"] : []),
+                    "Tipo",
+                    "Peso",
+                    "Valor",
+                    "Fecha",
+                    "Fuente",
+                  ]}
+                  rows={pr.map((r) => [
+                    r.label,
+                    ...(config.showModelDetail ? [r.criterio] : []),
+                    r.tipo,
+                    r.peso.toFixed(2),
+                    r.puntaje != null ? r.puntaje.toFixed(1) : "—",
+                    r.fecha,
+                    r.fuente,
+                  ])}
+                />
+              </>
+            )}
+
+            {/* Detalle de variables EXCLUYENTES de la dimensión (US06-03) */}
+            {pi === pages.length - 1 && config.showExcluyentes && excl.length > 0 && (
+              <div className="mt-3 rounded-lg border border-red-100 bg-red-50/50 p-2.5">
+                <p className="text-[10px] font-bold text-red-700">
+                  Variables excluyentes
+                </p>
+                <p className="text-[9px] text-red-500/90">
+                  Restricciones duras: su presencia puede excluir el emplazamiento.
+                </p>
+                <ul className="mt-1 flex flex-col gap-0.5">
+                  {excl.map((e) => (
+                    <li key={e.label} className="text-[9px] text-gray-700">
+                      <b>{e.label}:</b> {e.description}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {pi === pages.length - 1 && (
+              <div className="mt-auto rounded-lg bg-gray-50 p-2.5">
+                <p className="text-[10px] font-bold text-[#165170ff]">
+                  Resumen del cálculo
+                </p>
+                <p className="mt-0.5 font-mono text-[9px] text-gray-700">
+                  Score dimensión = Σ(pesoᵢ × valorᵢ) / Σ pesoᵢ ={" "}
+                  <b>{dimScore.toFixed(1)} / 100</b>
+                </p>
+                <p className="mt-0.5 font-mono text-[9px] text-gray-700">
+                  Índice general = Σ(peso_dim × score_dim) ={" "}
+                  {scorableDims
+                    .filter((x) => config.dims[x.id])
+                    .map(
+                      (x) =>
+                        `${pesoDim.toFixed(0)}%·${(scores.byDim[x.id] ?? 0).toFixed(0)}`,
+                    )
+                    .join(" + ")}{" "}
+                  = <b>{scores.general.toFixed(1)} / 100</b>
+                </p>
+                <p className="mt-1 text-[8px] italic leading-snug text-gray-500">
+                  {WEIGHT_BALANCING_NOTE}
+                </p>
+              </div>
+            )}
+          </div>
+        ));
+      });
+    });
+
+  // Hoja económica (informativa).
+  if (showEconomica) {
+    addSection("Dimensión económica (Inf.)", (n) => [
+      <div key="eco" className="text-[10px]">
+        <div className="flex items-center gap-2">
+          <h3 className="text-base font-bold text-[#165170ff]">
+            {n}. Dimensión económica
+          </h3>
+          <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gray-600">
+            Informativa · no puntúa
+          </span>
+        </div>
+        <p className="mt-1 text-[11px] text-gray-600">
+          {econ.compareMode ? (
+            <>
+              <b>Comparación de escenarios</b> (base · optimista · conservador)
+            </>
+          ) : (
+            <>
+              Escenario{" "}
+              <b>
+                {ECONOMIC_SCENARIOS.find((s) => s.id === econ.escenarioId)?.label}
+              </b>
+            </>
+          )}{" "}
+          · capacidad nominal <b>{econ.capacidadNominal} MW</b> · proyección a{" "}
+          {econ.horizonYears} años.
+        </p>
+        {econSeries.length > 0 && (
+          <div className="mt-3 flex justify-center">
+            <LineChart
+              series={econSeries}
+              width={640}
+              height={300}
+              className="w-full max-w-[640px]"
+            />
+          </div>
+        )}
+        {/* Cómo interpretar (US04-02) */}
+        <p className="mt-1 text-[9px] leading-snug text-gray-500">
+          {econ.compareMode ? (
+            <>
+              <b>Cómo interpretar:</b> cada línea es el mismo indicador bajo un
+              escenario distinto para la capacidad seleccionada. Un escenario por
+              encima de otro proyecta mayor valor; la brecha entre líneas indica la
+              sensibilidad del proyecto al escenario de mercado.
+            </>
+          ) : (
+            <>
+              <b>Cómo interpretar:</b> cada línea es la proyección de un indicador
+              a lo largo de los años bajo el escenario y la capacidad elegidos. La
+              magnitud escala con la capacidad nominal del proyecto.
+            </>
+          )}
+        </p>
+        <p className="mt-2 rounded bg-amber-50 px-2 py-1.5 text-[10px] leading-snug text-amber-800">
+          Esta dimensión ayuda en la toma de decisiones pero <b>no se puntúa</b>{" "}
+          en el modelo de idoneidad.
+        </p>
+        {/* Impuestos / incentivos clave del proyecto */}
+        <h4 className="mt-3 text-[9px] font-bold uppercase tracking-wide text-gray-500">
+          Impuestos e incentivos clave
+        </h4>
+        <div className="mt-1 grid grid-cols-2 gap-2">
+          {IMPUESTOS_CLAVE.map((it) => (
+            <div
+              key={it.label}
+              className="flex items-baseline justify-between rounded-md border border-gray-200 px-2 py-1.5"
+            >
+              <span className="text-[10px] text-gray-700">{it.label}</span>
+              <span className="text-[10px] font-semibold text-[#165170ff]">
+                {it.value}
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 text-[9px] italic text-gray-400">
+          Proyección e incentivos ilustrativos (datos template hasta integrar la
+          fuente oficial).
+        </p>
+      </div>,
+    ]);
+  }
+
+  // Hoja regulatoria (informativa) — semáforo + normas + autoridades.
+  if (config.showRegulatoria && regulatory.addToReport) {
+    const sem = normasSemaforo();
+    addSection("Dimensión regulatoria (Inf.)", (n) => [
+      <div key="reg" className="text-[10px]">
+        <div className="flex items-center gap-2">
+          <h3 className="text-base font-bold text-[#165170ff]">
+            {n}. Dimensión regulatoria
+          </h3>
+          <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gray-600">
+            Informativa · no puntúa
+          </span>
+        </div>
+        <p className="mt-1 text-[11px] text-gray-600">
+          Marco normativo nacional aplicable al proyecto eólico.
+        </p>
+        <p className="mt-1 text-[9px] italic text-amber-600">
+          Listado normativo ilustrativo: el estado de cada norma no es una
+          evaluación jurídica del proyecto. La verificación normativa vinculante
+          la realiza la autoridad competente (pendiente de la fuente oficial).
+        </p>
+        <div className="mt-3 grid grid-cols-4 gap-2">
+          {(["aplica", "tramite", "verificacion", "no-aplica"] as const).map(
+            (k) => {
+              const m = NORMA_ESTADO_META[k];
+              return (
+                <div
+                  key={k}
+                  className="rounded-lg border border-gray-100 p-2 text-center"
+                  style={{ backgroundColor: m.bg }}
+                >
+                  <p className="text-lg font-bold" style={{ color: m.color }}>
+                    {sem[k]}
+                  </p>
+                  <p
+                    className="text-[8px] font-semibold"
+                    style={{ color: m.color }}
+                  >
+                    {m.label}
+                  </p>
+                </div>
+              );
+            },
+          )}
+        </div>
+        <h4 className="mt-4 text-[9px] font-bold uppercase tracking-wide text-gray-500">
+          Normas aplicables al proyecto
+        </h4>
+        <ul className="mt-1 flex flex-col gap-1">
+          {REGULATORY_NORMS.map((no) => {
+            const m = NORMA_ESTADO_META[no.estado];
+            return (
+              <li
+                key={no.id}
+                className="flex items-start justify-between gap-2 border-b border-gray-100 pb-1"
+              >
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-700">{no.nombre}</p>
+                  <p className="text-[9px] leading-snug text-gray-500">
+                    {no.descripcion}
+                  </p>
+                </div>
+                <span
+                  className="shrink-0 rounded px-1.5 py-0.5 text-[8px] font-semibold"
+                  style={{ backgroundColor: m.bg, color: m.color }}
+                >
+                  {m.label}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        <h4 className="mt-3 text-[9px] font-bold uppercase tracking-wide text-gray-500">
+          Autoridades competentes
+        </h4>
+        <ul className="mt-1 grid grid-cols-2 gap-1">
+          {REGULATORY_AUTHORITIES.map((a) => (
+            <li key={a.sigla} className="text-[9px] text-gray-600">
+              <b>{a.sigla}</b> — {a.nombre}
+            </li>
+          ))}
+        </ul>
+      </div>,
+    ]);
+  }
+
+  // Hoja(s) de variables informativas seleccionadas.
+  if (config.showInformative && informativeRows.length > 0) {
+    addSection("Variables informativas", (n) => {
+      // Con detalle (P1): menos por hoja porque cada una lleva su descripción.
+      const pages = chunk(informativeRows, 12);
+      return pages.map((pr, pi) => (
+        <div key={pi} className="text-[10px]">
+          <h3 className="text-base font-bold text-[#165170ff]">
+            {n}. Variables informativas
+            {pages.length > 1 ? ` (${pi + 1}/${pages.length})` : ""}
+          </h3>
+          <p className="mt-0.5 text-[9px] text-gray-500">
+            No puntúan en el modelo; aportan contexto. Se muestra su valor sobre
+            el área y qué representa cada una.
+          </p>
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {pr.map((r) => (
+              <li key={r.id} className="border-b border-gray-100 pb-1.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-semibold text-gray-700">{r.label}</span>
+                  <span className="shrink-0 font-mono text-[#165170ff]">
+                    {r.valueText}
+                    {r.unit ? ` ${r.unit}` : ""}
+                  </span>
+                </div>
+                {r.description && (
+                  <p className="text-[9px] leading-snug text-gray-500">
+                    {r.description}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ));
+    });
+  }
+
+  // Hoja de fuentes de datos: tabla con versión + enlace, y el detalle por
+  // dimensión (como antes).
+  if (config.showSources) {
+    addSection("Fuentes de datos", (n) => [
+      <div key="src" className="text-[10px]">
+        <h3 className="text-base font-bold text-[#165170ff]">
+          {n}. Fuentes de datos
+        </h3>
+        <div className="mt-2 overflow-hidden rounded-lg border border-gray-200">
+          <table className="w-full border-collapse text-[9px]">
+            <thead>
+              <tr className="bg-[#165170ff] text-left text-white">
+                <th className="px-2 py-1 font-semibold">Fuente</th>
+                <th className="px-2 py-1 font-semibold">Versión</th>
+                <th className="px-2 py-1 font-semibold">Enlace</th>
+              </tr>
+            </thead>
+            <tbody>
+              {REPORT_SOURCE_LINKS.map((s) => (
+                <tr
+                  key={s.fuente}
+                  className="border-t border-gray-100 align-top even:bg-gray-50/60"
+                >
+                  <td className="px-2 py-1 font-medium text-gray-700">
+                    {s.fuente}
+                  </td>
+                  <td className="px-2 py-1 text-gray-600">{s.version}</td>
+                  <td className="px-2 py-1">
+                    <a
+                      href={s.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="break-all text-[#165170ff] underline"
+                    >
+                      {s.url}
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {sourcesByDim.length > 0 && (
+          <>
+            <h4 className="mt-3 text-[9px] font-bold uppercase tracking-wide text-gray-500">
+              Fuentes por dimensión
+            </h4>
+            <MiniTable
+              columns={["Dimensión", "Fuentes consultadas"]}
+              rows={sourcesByDim.map((s) => [s.label, s.fuentes.join(", ")])}
+            />
+          </>
+        )}
+
+        <p className="mt-2 text-[9px] italic leading-snug text-gray-500">
+          {WEIGHT_BALANCING_NOTE}
+        </p>
+
+        {/* Trazabilidad: cómo verificar el informe de lo agregado a lo crudo. */}
+        <div className="mt-3 rounded-lg border border-[#165170ff]/30 bg-[#cce1eeff]/25 p-2.5">
+          <p className="text-[10px] font-bold text-[#165170ff]">
+            Trazabilidad y verificación
+          </p>
+          <p className="mt-0.5 text-[9px] leading-snug text-gray-600">
+            Este informe es verificable de arriba hacia abajo; cada nivel se
+            calcula del siguiente:
+          </p>
+          <ol className="mt-1 flex flex-col gap-0.5 text-[9px] leading-snug text-gray-700">
+            <li>
+              <b>1. Índice general</b> = Σ(peso_dim × score_dim) — resumen
+              ejecutivo.
+            </li>
+            <li>
+              <b>2. Score por dimensión</b> = Σ(peso_var × valor_var) / Σ pesos —
+              página de cada dimensión.
+            </li>
+            <li>
+              <b>3. Tabla por área/variable</b> (columna «Puntaje») = promedio del
+              valor de cada variable sobre los hexágonos del área, con su fuente.
+            </li>
+            <li>
+              <b>4. Datos crudos por hexágono</b> (exportables por admin) — con
+              fuente por variable, verificables en SIG/QGIS hex por hexágono.
+            </li>
+          </ol>
+          <p className="mt-1 text-[8px] italic leading-snug text-gray-500">
+            Así el análisis es transparente y reproducible: reemplaza la consulta
+            manual de múltiples fuentes por una evaluación auditable.
+          </p>
+        </div>
+      </div>,
+    ]);
+  }
+
+  // Hoja de disclaimer.
+  addSection("Disclaimer", (n) => [
+    <div key="dis" className="text-[10px]">
+      <h3 className="text-base font-bold text-[#165170ff]">
+        {n}. {DISCLAIMER_TITLE}
+      </h3>
+      <p className="mt-2 leading-relaxed text-gray-600">{DISCLAIMER_BODY}</p>
+      <footer className="mt-6 border-t border-gray-200 pt-3 text-[9px] text-gray-400">
+        Vento · ANH · EAFIT · Mavalan Software · {timestamp}
+      </footer>
+    </div>,
+  ]);
+
+  // Hoja 1: índice (izq) + resumen ejecutivo (der).
+  const summaryContent = (
+    <div className="flex h-full gap-6 text-[11px]">
+      <aside className="w-[36%] shrink-0 border-r border-gray-200 pr-4">
+        <h4 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-gray-500">
+          Índice del informe
+        </h4>
+        <ol className="flex flex-col gap-2">
+          {indexEntries.map((e) => (
+            <li
+              key={e.n}
+              className="flex items-baseline justify-between gap-2 border-b border-gray-100 pb-1.5"
+            >
+              <span className="text-gray-700">
+                {e.n}. {e.title}
+              </span>
+              <span className="font-mono text-gray-400">{e.page}</span>
+            </li>
+          ))}
+        </ol>
+      </aside>
+
+      <div className="min-w-0 flex-1">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-gray-400">
+          Informe de viabilidad
+        </p>
+        <h3 className="text-lg font-bold text-[#165170ff]">Proyecto eólico</h3>
+        <p className="text-[11px] text-gray-600">
+          {region ?? "Área seleccionada"} · {fmtKm2.format(area)} km²
+        </p>
+        {centroid && (
+          <p className="font-mono text-[10px] text-gray-400">
+            {formatCoordenadas(centroid)}
+          </p>
+        )}
+        <p className="text-[10px] text-gray-400">{timestamp}</p>
+
+        <h4 className="mt-4 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+          Resumen ejecutivo
+        </h4>
+        {config.showMap && (
+          <>
+            <div className="mt-2 overflow-hidden rounded-lg border border-gray-200">
+              {mapSnapshot ? (
+                // eslint-disable-next-line @next/next/no-img-element -- blob URL en cache
+                <img
+                  src={mapSnapshot}
+                  alt="Mapa de calor del área seleccionada"
+                  className="max-h-72 w-full object-contain bg-white"
+                />
+              ) : (
+                <AreaMiniMap selectedHexes={selectedHexes} className="w-full" />
+              )}
+            </div>
+            <ViridisLegend />
+          </>
+        )}
+
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="flex flex-col items-center rounded-lg border border-gray-200 p-2">
+            <p className="text-[9px] font-bold uppercase tracking-wide text-gray-500">
+              Índice de viabilidad
+            </p>
+            <Gauge value={scores.general} size={150} className="w-full max-w-[180px]" />
+          </div>
+          <div className="flex flex-col items-center justify-center rounded-lg border border-gray-200 p-2">
+            <p className="text-[9px] font-bold uppercase tracking-wide text-gray-500">
+              Desempeño por dimensión
+            </p>
+            {selectedHexes.size > 0 ? (
+              renderChart(chartAxes)
+            ) : (
+              <p className="py-6 text-[10px] text-gray-400">Sin área</p>
+            )}
+          </div>
+        </div>
+
+        <ul className="mt-3 flex flex-col gap-1">
+          {chartAxes.map((a) => (
+            <li key={a.label} className="flex items-center gap-2 text-[10px]">
+              <span className="flex-1 text-gray-700">{a.label}</span>
+              <div className="relative h-1.5 w-24 overflow-hidden rounded-full bg-gray-200">
+                <span
+                  className="absolute inset-y-0 left-0 rounded-full bg-[#165170ff]"
+                  style={{ width: `${Math.max(0, Math.min(100, a.value))}%` }}
+                />
+              </div>
+              <span className="w-10 text-right font-mono font-semibold text-[#165170ff]">
+                {a.value.toFixed(1)}
+              </span>
+            </li>
+          ))}
+        </ul>
+
+        {config.showInfluencers && topInfluencers.length > 0 && (
+          <div className="mt-3">
+            <p className="text-[9px] font-bold uppercase tracking-wide text-gray-500">
+              Variables que más influyen
+            </p>
+            <div className="mt-1 flex justify-center">
+              <DivergingBars
+                bars={topInfluencers}
+                width={420}
+                className="w-full max-w-[420px]"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const allContents: ReactNode[] = [summaryContent, ...bodyContents];
+  const totalSheets = allContents.length;
+  const sheets = allContents.map((c, i) => (
+    <ReportSheet key={i} region={region} index={i} total={totalSheets}>
+      {c}
+    </ReportSheet>
+  ));
+
+  // Escala de las hojas en la malla del builder: tamaño real al capturar el PDF,
+  // miniatura para la vista.
+  const previewScale = capturing ? 1 : 0.42;
+
+  // ── PDF: una HOJA = una PÁGINA A4 (captura por hoja) ───────────────────
+  // Exportación ADMIN: imagen (PNG) de una tabla con una fila por hexId y los
+  // datos de cada variable del modelo (columna = masterId). Requiere datos por
+  // hex del backend (`areaData`). Aparece solo para admin en el informe final.
+  const handleDownloadHexTable = async () => {
+    if (!areaData || selectedHexes.size === 0) {
+      toast.error("No hay datos por hexágono para exportar (requiere backend).");
+      return;
+    }
+    const hexVal = (
+      vars: Record<string, number> | undefined,
+      masterId: string,
+    ): number | null => {
+      if (!vars || masterId === "NA") return null;
+      if (masterId in vars) return vars[masterId];
+      const norm = masterId.replace(/-/g, "_").replace(/_[A-Z]+$/, "");
+      return norm in vars ? vars[norm] : null;
+    };
+    const esc = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    const hexes = Array.from(selectedHexes).sort();
+    const cols = VARIABLES.filter((v) => v.masterId !== "NA");
+    const thS =
+      "padding:4px 6px;border:1px solid #cbd5e1;background:#165170;color:#fff;font-weight:600;white-space:nowrap;";
+    const tdS =
+      "padding:3px 6px;border:1px solid #e2e8f0;color:#334155;text-align:right;white-space:nowrap;";
+    const idS =
+      "padding:3px 6px;border:1px solid #e2e8f0;color:#0f172a;font-weight:700;white-space:nowrap;";
+
+    let html = `<table style="border-collapse:collapse;font:11px/1.3 ui-monospace,monospace;">`;
+    html += `<thead><tr><th style="${thS}text-align:left;">Hex ID</th>`;
+    for (const v of cols)
+      html += `<th style="${thS}" title="${esc(v.label)}">${esc(v.masterId)}</th>`;
+    html += `</tr></thead><tbody>`;
+    for (const hex of hexes) {
+      const info = areaData.get(hex);
+      html += `<tr><td style="${idS}">${esc(hex)}</td>`;
+      for (const v of cols) {
+        const val = hexVal(info?.variables, v.masterId);
+        html += `<td style="${tdS}">${val != null ? Math.round(val * 1000) / 1000 : "—"}</td>`;
+      }
+      html += `</tr>`;
+    }
+    html += `</tbody></table>`;
+
+    // Leyenda de FUENTES por variable (trazabilidad): cada columna (código) →
+    // variable → fuente, para que el experto verifique cada valor en su SIG.
+    const cellS = "padding:3px 6px;border:1px solid #e2e8f0;color:#334155;";
+    let srcHtml = `<table style="border-collapse:collapse;font:10px/1.3 sans-serif;">`;
+    srcHtml += `<thead><tr><th style="${thS}text-align:left;">Código</th><th style="${thS}text-align:left;">Variable</th><th style="${thS}text-align:left;">Fecha</th><th style="${thS}text-align:left;">Fuente</th></tr></thead><tbody>`;
+    for (const v of cols) {
+      const fuente =
+        v.fuente && v.fuente !== "(sin definir)" ? v.fuente : "Por definir";
+      srcHtml += `<tr><td style="${idS}">${esc(v.masterId)}</td><td style="${cellS}">${esc(v.label)}</td><td style="${cellS}">${esc(sourceVersion(v.fuente))}</td><td style="${cellS}">${esc(fuente)}</td></tr>`;
+    }
+    srcHtml += `</tbody></table>`;
+
+    const wrap = document.createElement("div");
+    wrap.setAttribute("data-pdf-ignore", "true");
+    wrap.style.cssText =
+      "position:fixed;left:-99999px;top:0;background:#fff;padding:16px;";
+    wrap.innerHTML =
+      `<div style="font:700 13px sans-serif;color:#165170;margin-bottom:8px;">` +
+      `Datos crudos por hexágono — ${hexes.length} hex × ${cols.length} variables` +
+      `${region ? ` · ${esc(region)}` : ""}</div>` +
+      html +
+      `<div style="font:700 12px sans-serif;color:#165170;margin:14px 0 6px;">Fuentes por variable</div>` +
+      srcHtml +
+      `<div style="font:italic 9px sans-serif;color:#64748b;margin-top:8px;max-width:900px;">` +
+      `Cada valor es el dato crudo de la variable en ese hexágono (clave H3). ` +
+      `Verificable en SIG/QGIS hexágono por hexágono contra la fuente indicada. ` +
+      `La "tabla general por área" del informe es el promedio de estos valores; ` +
+      `el score de cada dimensión resulta de aplicarles los pesos del modelo.</div>`;
+    document.body.appendChild(wrap);
+    setIsExporting(true);
+    try {
+      const canvas = await html2canvas(wrap, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+      });
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/png");
+      a.download = `datos-hex-${Date.now()}.png`;
+      a.click();
+      toast.success("Tabla de datos por hexágono descargada");
+    } catch (e) {
+      console.error("[hexTableExport]", e);
+      toast.error("No se pudo generar la imagen de la tabla");
+    } finally {
+      document.body.removeChild(wrap);
+      setIsExporting(false);
+    }
+  };
+
   const handleDownloadPdf = async () => {
-    const node = reportRef.current;
-    if (!node) return;
+    const root = reportRef.current;
+    if (!root) return;
     setIsExporting(true);
     setError(null);
-    const prevPreview = previewOpen;
-    setPreviewOpen(true);
-    setCapturing(true); // fuerza el informe completo en el DOM
+    setCapturing(true); // hojas a tamaño real para capturar nítido
     try {
-      // Espera a que el DOM pinte todas las secciones + la imagen del mapa.
       await new Promise((r) =>
         requestAnimationFrame(() => requestAnimationFrame(() => r(null))),
       );
       await new Promise((r) => setTimeout(r, 80));
 
-      const canvas = await html2canvas(node, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        imageTimeout: 5000,
-        // Ignora el contenido del <body> FUERA del informe (mapa, leyenda con
-        // iconos SVG data-URI, sidebar…): html2canvas clona el doc entero y se
-        // colgaba con esos <img> SVG. Solo se descartan <body>-descendientes
-        // ajenos al informe — NUNCA <head>/<style>/<link> (si no, sin estilos).
-        ignoreElements: (el) =>
-          el.getAttribute("data-pdf-ignore") === "true" ||
-          (document.body.contains(el) &&
-            !node.contains(el) &&
-            !el.contains(node)),
-      });
+      const sheetEls = Array.from(
+        root.querySelectorAll<HTMLElement>("[data-report-sheet]"),
+      );
+      if (sheetEls.length === 0) throw new Error("No hay hojas para exportar");
 
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
-      const brand: [number, number, number] = [22, 81, 112]; // #165170
-      const margin = 10;
-      const headerH = 12; // banda superior (cabecera)
-      const footerH = 12; // banda inferior (pie)
-      const contentTop = headerH;
-      const contentBottom = pageH - footerH;
-      const pageContentH = contentBottom - contentTop;
-      const imgW = pageW - margin * 2;
-      const imgH = (canvas.height * imgW) / canvas.width;
-      const imgData = canvas.toDataURL("image/jpeg", 0.95);
-      const totalPages = Math.max(1, Math.ceil(imgH / pageContentH));
-      const headerRight = region
-        ? `Idoneidad eólica — ${region}`
-        : "Idoneidad eólica";
 
-      for (let p = 0; p < totalPages; p++) {
-        if (p > 0) pdf.addPage();
-        // Porción de esta página: la imagen se desplaza hacia arriba.
-        pdf.addImage(
-          imgData,
-          "JPEG",
-          margin,
-          contentTop - p * pageContentH,
-          imgW,
-          imgH,
-        );
-        // Máscaras blancas: la imagen no invade la cabecera ni el pie.
-        pdf.setFillColor(255, 255, 255);
-        pdf.rect(0, 0, pageW, contentTop, "F");
-        pdf.rect(0, contentBottom, pageW, pageH - contentBottom, "F");
-        // Cabecera: barra de marca + título + separador.
-        pdf.setFillColor(brand[0], brand[1], brand[2]);
-        pdf.rect(0, 0, pageW, 3.5, "F");
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(8);
-        pdf.setTextColor(brand[0], brand[1], brand[2]);
-        pdf.text("INFORME VENTO", margin, 9);
-        pdf.setFont("helvetica", "normal");
-        pdf.setTextColor(150);
-        pdf.text(headerRight, pageW - margin, 9, { align: "right" });
-        pdf.setDrawColor(brand[0], brand[1], brand[2]);
-        pdf.setLineWidth(0.4);
-        pdf.line(margin, contentTop - 1.5, pageW - margin, contentTop - 1.5);
-        // Pie: separador + número de página.
-        pdf.setDrawColor(220);
-        pdf.setLineWidth(0.2);
-        pdf.line(margin, contentBottom + 2, pageW - margin, contentBottom + 2);
-        pdf.setFontSize(7.5);
-        pdf.setTextColor(150);
-        pdf.text(`Página ${p + 1} de ${totalPages}`, pageW - margin, pageH - 5, {
-          align: "right",
+      for (let i = 0; i < sheetEls.length; i++) {
+        const canvas = await html2canvas(sheetEls[i], {
+          scale: 2,
+          backgroundColor: "#ffffff",
+          imageTimeout: 5000,
+          ignoreElements: (el) =>
+            el.getAttribute("data-pdf-ignore") === "true",
         });
-        pdf.setFont("helvetica", "bold");
-        pdf.setTextColor(brand[0], brand[1], brand[2]);
-        pdf.text("Vento", margin, pageH - 5);
+        const imgData = canvas.toDataURL("image/jpeg", 0.95);
+        // Ajuste "contain" a A4 preservando el aspecto de la hoja.
+        const ratio = Math.min(pageW / canvas.width, pageH / canvas.height);
+        const w = canvas.width * ratio;
+        const h = canvas.height * ratio;
+        const x = (pageW - w) / 2;
+        const y = (pageH - h) / 2;
+        if (i > 0) pdf.addPage();
+        pdf.addImage(imgData, "JPEG", x, y, w, h);
       }
 
       pdf.save(`informe-vento-${Date.now()}.pdf`);
@@ -324,7 +1197,6 @@ export default function Report() {
       toast.error(`No se pudo generar el PDF: ${msg}`);
     } finally {
       setCapturing(false);
-      setPreviewOpen(prevPreview);
       setIsExporting(false);
     }
   };
@@ -347,13 +1219,13 @@ export default function Report() {
         id: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
         nombre: region ? `Informe — ${region}` : "Informe de idoneidad",
-        // Compactados al guardar → mismo formato, payload más liviano (local + backend).
         hexes: compactHexes(Array.from(selectedHexes)),
         variables: Array.from(activeVariables),
         caracteristicas: caracteristicasState,
         scores,
         region: region ?? null,
         areaKm2: area,
+        reportConfig: config,
       });
       setSaved(true);
       toast.success("Informe guardado en el histórico");
@@ -364,520 +1236,113 @@ export default function Report() {
     }
   };
 
-  const content = (
-    <div
-      className={
-        fullscreen
-          ? "fixed inset-0 z-[100] flex flex-col items-center gap-4 overflow-y-auto bg-gray-100 p-4 md:p-8"
-          : "flex flex-col gap-4 p-4"
-      }
-    >
-      {fullscreen && (
-        <div className="flex w-full max-w-[800px] items-center justify-between border-b border-gray-200 pb-3">
-          <p className="text-sm font-semibold text-[#165170ff]">
-            Previsualización del informe
-          </p>
-          <button
-            type="button"
-            onClick={() => setFullscreen(false)}
-            className="rounded-full border border-gray-300 px-4 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
-          >
-            Salir de pantalla completa
-          </button>
+  // Vista inline de la fase informe (SIN editor): resumen + acciones. El editor
+  // + la malla viven en la ventana de pantalla completa (ReportBuilder), que se
+  // abre al Previsualizar o Descargar.
+  const inline = (
+    <div className="flex flex-col gap-4 p-4">
+      <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <p className="text-[10px] uppercase tracking-widest text-gray-400">
+          Informe de viabilidad
+        </p>
+        <h2 className="text-lg font-bold text-[#165170ff]">
+          Idoneidad eólica{region ? ` — ${region}` : ""}
+        </h2>
+        <p className="text-sm text-gray-600">
+          {fmtKm2.format(area)} km² · {totalSheets}{" "}
+          {totalSheets === 1 ? "hoja" : "hojas"}
+        </p>
+        <div className="mt-3 flex justify-center">
+          <Gauge value={scores.general} size={170} className="max-w-[210px]" />
         </div>
-      )}
-      <div
-        ref={reportRef}
-        style={capturing ? { width: 800, maxWidth: "none" } : undefined}
-        className="relative flex w-full max-w-[800px] flex-col gap-4 rounded-xl bg-white shadow-md ring-1 ring-black/5"
-      >
-        {/* Expandir a pantalla completa — icono llamativo en la esquina del
-            preview (sprint 3). Al abrir, el informe se renderiza en un PORTAL
-            a document.body para escapar de la subpágina que lo confinaba. */}
-        {!fullscreen && (
-          <button
-            type="button"
-            data-pdf-ignore="true"
-            onClick={() => {
-              setFullscreen(true);
-              setPreviewOpen(true);
-            }}
-            aria-label="Ver informe a pantalla completa"
-            title="Pantalla completa"
-            className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white ring-1 ring-white/50 backdrop-blur transition hover:bg-white/35"
-          >
-            <Maximize2 size={16} />
-          </button>
-        )}
-        {/* Cabecera con identidad de marca — visible en PDF. */}
-        <header className="rounded-t-2xl bg-[#165170ff] px-5 py-4 text-white">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-white/70">
-            Informe Vento
-          </p>
-          <h3 className="mt-1 text-xl font-bold">
-            Análisis preliminar de idoneidad eólica
-            {region ? ` — ${region}` : ""}
-          </h3>
-          {/* Contexto del informe: dónde, qué tan grande, cuántas variables */}
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-white/85">
-            {centroid && (
-              <span className="font-mono">{formatCoordenadas(centroid)}</span>
-            )}
-            <span>·</span>
-            <span>{fmtKm2.format(area)} km² de área</span>
-            <span>·</span>
-            <span>{activeVariables.size} variables activas</span>
-          </div>
-          <p className="mt-1 text-[10px] text-white/60">{timestamp}</p>
-        </header>
+        <ul className="mt-2 flex flex-col gap-1">
+          {chartAxes.map((a) => (
+            <li key={a.label} className="flex items-center gap-2 text-[11px]">
+              <span className="flex-1 text-gray-700">{a.label}</span>
+              <div className="relative h-1.5 w-24 overflow-hidden rounded-full bg-gray-200">
+                <span
+                  className="absolute inset-y-0 left-0 rounded-full bg-[#165170ff]"
+                  style={{ width: `${Math.max(0, Math.min(100, a.value))}%` }}
+                />
+              </div>
+              <span className="w-10 text-right font-mono font-semibold text-[#165170ff]">
+                {a.value.toFixed(1)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
 
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          data-pdf-ignore="true"
-          onClick={() => setPreviewOpen((v) => !v)}
-          aria-expanded={previewOpen}
-          aria-controls="report-preview-body"
-          className="-mt-3 mx-5 flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 text-left text-xs text-gray-600 hover:bg-gray-50"
+          onClick={() => setBuilderOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-[#165170ff] px-4 py-1.5 text-xs font-semibold text-[#165170ff] hover:bg-[#cce1eeff]/40"
         >
-          <span>{previewOpen ? "Ocultar" : "Mostrar"} previsualización</span>
-          <svg
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            aria-hidden="true"
-            className={`h-4 w-4 text-gray-500 transition-transform ${
-              previewOpen ? "rotate-180" : ""
-            }`}
-          >
-            <path
-              fillRule="evenodd"
-              d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
-              clipRule="evenodd"
-            />
-          </svg>
+          <Maximize2 size={14} /> Previsualizar
         </button>
-
-        {previewOpen && (
-          <div id="report-preview-body" className="flex flex-col gap-5 px-5 pb-5">
-            {/* Resumen del área */}
-            <section>
-              <h4 className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                Resumen del área
-              </h4>
-              <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                <Stat label="Región" value={region ?? "—"} />
-                <Stat
-                  label="Coordenadas"
-                  value={centroid ? formatCoordenadas(centroid) : "—"}
-                  mono
-                />
-                <Stat
-                  label="Área total"
-                  value={`${fmtKm2.format(area)} km²`}
-                  mono
-                />
-                <Stat
-                  label="Variables activas"
-                  value={String(activeVariables.size)}
-                  mono
-                />
-              </dl>
-            </section>
-
-            {/* Mapa del área + panel de lectura (leyenda viridis). Va ENCIMA del
-                resultado. La captura es vectorial (no rasteriza el canvas WebGL
-                de deck.gl); color placeholder por hex hasta tener la API. */}
-            {showFull && (
-              <section>
-                <h4 className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                  Área seleccionada · idoneidad general
-                </h4>
-                <div className="mt-2 grid grid-cols-1 items-start gap-3 sm:grid-cols-[1fr_1.4fr]">
-                  {/* Info + leyenda de la escala de calor viridis */}
-                  <div className="flex flex-col justify-center gap-2 rounded-lg border border-gray-200 bg-gray-50/60 p-3">
-                    <p className="text-[11px] font-semibold text-[#165170ff]">
-                      Cómo leer el mapa
-                    </p>
-                    <p className="text-[11px] leading-snug text-gray-600">
-                      El área se colorea según su idoneidad general con la escala
-                      viridis: tonos morados indican menor idoneidad y amarillos,
-                      mayor. Los hexágonos morados intensos marcan zonas excluidas
-                      (no aptas).
-                    </p>
-                    <div className="mt-1">
-                      <div
-                        className="h-3 w-full rounded"
-                        style={{
-                          background:
-                            "linear-gradient(90deg,#440154,#3b528b,#21918c,#5ec962,#fde725)",
-                        }}
-                      />
-                      <div className="mt-1 flex justify-between text-[9px] text-gray-500">
-                        <span>0 · menor idoneidad</span>
-                        <span>100 · mayor idoneidad</span>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Captura del mapa (algo más pequeña para dejar sitio al panel) */}
-                  <div className="overflow-hidden rounded-lg border border-gray-200">
-                    {mapSnapshot ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- blob URL en cache, no un asset estático
-                      <img
-                        src={mapSnapshot}
-                        alt="Captura del mapa del área seleccionada"
-                        // Altura ACOTADA: el snapshot puede ser vertical y con
-                        // `w-full` sin límite se estiraba a >1000px (ocupaba
-                        // páginas enteras del PDF). `h-56 object-cover` lo deja
-                        // en una franja horizontal recortada al centro (selección).
-                        className="h-56 w-full object-cover"
-                      />
-                    ) : (
-                      <AreaMiniMap
-                        selectedHexes={selectedHexes}
-                        className="w-full"
-                      />
-                    )}
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* Resultado preliminar — número grande */}
-            <section className="rounded-lg bg-[#cce1eeff]/40 px-4 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                Resultado preliminar
-              </p>
-              <p className="mt-1 flex items-baseline gap-2">
-                <span className="text-4xl font-bold text-[#165170ff]">
-                  {scores.general.toFixed(1)}
-                </span>
-                <span className="text-sm font-semibold text-gray-500">/ 100</span>
-              </p>
-              <p className="mt-1 text-[11px] leading-snug text-gray-600">
-                Promedio agregado de la evaluación de idoneidad para el
-                área seleccionada, según las dimensiones y variables analizadas.
-              </p>
-            </section>
-
-            {/* Variables consideradas en el puntaje — SOLO en el PDF (`capturing`):
-                en pantalla alargaría el modal. Grid de 2 columnas (label + puntaje),
-                filtradas por mar/tierra. */}
-            {capturing && scoreVariableRows.length > 0 && (
-              <section>
-                <h4 className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                  Variables consideradas en el puntaje
-                </h4>
-                <div className="mt-2 grid grid-cols-2 gap-x-4 rounded-lg border-2 border-[#165170ff] p-2 text-[10px]">
-                  {scoreVariableRows.map((r) => (
-                    <div
-                      key={r.id}
-                      title={`${r.label} · ${r.dim}`}
-                      className="flex items-baseline justify-between gap-2 border-b border-[#165170ff]/15 py-0.5"
-                    >
-                      <span className="min-w-0 truncate text-gray-700">
-                        {r.label}
-                      </span>
-                      <span className="shrink-0 font-mono font-semibold text-[#165170ff]">
-                        {r.score != null ? r.score.toFixed(1) : "—"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Puntajes por dimensión — sólo las dimensiones PUNTUABLES.
-                "Regulatoria" queda fuera del score y se muestra como bloque
-                informativo aparte (US-FB3-05 / feedback item 11). */}
-            <section>
-              <h4 className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                Puntajes de idoneidad por dimensión
-              </h4>
-              {selectedHexes.size > 0 && (
-                <div className="mt-1 flex justify-center">
-                  <RadarChart axes={radarAxes} className="w-full max-w-[300px]" />
-                </div>
-              )}
-              <ul className="mt-2 flex flex-col gap-1.5">
-                {HEATMAP_DIMENSIONS.filter(
-                  (d) => d.scorable && d.id !== "general",
-                ).map((d) => {
-                  const val = scores.byDim[d.id] ?? 0;
-                  const isActive = activeDimension === d.id;
-                  return (
-                    <li
-                      key={d.id}
-                      className={`flex items-center gap-2 rounded-md px-2 py-1.5 ${
-                        isActive ? "bg-[#cce1eeff]/40" : ""
-                      }`}
-                    >
-                      <span className="flex-1 text-xs font-medium text-gray-700">
-                        {d.label}
-                      </span>
-                      <div className="relative h-1.5 w-24 overflow-hidden rounded-full bg-gray-200">
-                        <span
-                          className="absolute inset-y-0 left-0 rounded-full bg-[#165170ff]"
-                          style={{ width: `${Math.max(0, Math.min(100, val))}%` }}
-                        />
-                      </div>
-                      <span className="w-12 text-right font-mono text-xs font-semibold text-[#165170ff]">
-                        {val.toFixed(1)}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-
-            {showFull && (
-            <>
-            {/* Variables que más influyen en el resultado (US6) — ranking por
-                peso del modelo, con dirección (suma/resta a idoneidad). */}
-            {topInfluencers.length > 0 && (
-              <section>
-                <h4 className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                  Variables que más influyen en el resultado
-                </h4>
-                <ul className="mt-2 flex flex-col gap-1.5">
-                  {topInfluencers.map((r, i) => (
-                    <li
-                      key={r.id}
-                      className="flex items-center gap-2 text-[11px]"
-                    >
-                      <span className="w-4 shrink-0 text-right font-mono font-semibold text-gray-400">
-                        {i + 1}
-                      </span>
-                      <span className="flex-1 min-w-0 truncate text-gray-700">
-                        {r.label}
-                      </span>
-                      <div className="relative h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-gray-200">
-                        <span
-                          className={`absolute inset-y-0 left-0 rounded-full ${
-                            r.sube ? "bg-emerald-500" : "bg-red-500"
-                          }`}
-                          style={{ width: `${Math.min(100, r.mag * 100)}%` }}
-                        />
-                      </div>
-                      <span
-                        className={`w-14 shrink-0 text-right text-[10px] font-semibold ${
-                          r.sube ? "text-emerald-700" : "text-red-700"
-                        }`}
-                      >
-                        {r.sube ? "↑ suma" : "↓ resta"}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-1 text-[10px] italic leading-snug text-gray-400">
-                  Influencia según el peso de cada variable en el modelo.
-                </p>
-              </section>
-            )}
-
-            {/* Regulatoria — bloque informativo (US-FB3-05 / feedback item 11).
-                No puntúa: se listan sus variables como contexto, sin score. */}
-            <section className="rounded-lg border border-gray-200 bg-gray-50/60 px-3 py-2.5">
-              <div className="flex items-center gap-2">
-                <h4 className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                  Regulatoria
-                </h4>
-                <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gray-600">
-                  Informativa
-                </span>
-              </div>
-              <p className="mt-1 text-[11px] leading-snug text-gray-600">
-                Contexto regulatorio del área. No se incluye en el cálculo del
-                puntaje general.
-              </p>
-              {regulatoriaVars.length > 0 && (
-                <ul className="mt-2 flex flex-col gap-1">
-                  {regulatoriaVars.map((v) => (
-                    <li
-                      key={v.id}
-                      className="flex items-center gap-2 text-[11px] text-gray-700"
-                    >
-                      <span
-                        aria-hidden="true"
-                        className="h-1.5 w-1.5 shrink-0 rounded-full bg-gray-400"
-                      />
-                      <span className="min-w-0 truncate" title={v.description}>
-                        {v.label}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            {/* Variables informativas seleccionadas */}
-            {informativeRows.length > 0 && (
-              <section>
-                <h4 className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                  Variables informativas seleccionadas ({informativeRows.length})
-                </h4>
-                <ul className="mt-2 grid grid-cols-2 gap-2">
-                  {informativeRows.map((v) => (
-                    <li
-                      key={v.id}
-                      className="flex items-center gap-2 rounded-md border border-gray-100 px-2 py-1.5"
-                    >
-                      <span
-                        aria-hidden="true"
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ backgroundColor: v.color }}
-                      />
-                      <span className="flex-1 min-w-0 truncate text-[11px] text-gray-700">
-                        {v.label}
-                      </span>
-                      <span className="font-mono text-[11px] font-semibold text-[#165170ff]">
-                        {v.valueText}
-                        <span className="ml-0.5 text-[9px] font-normal text-gray-500">
-                          {v.unit}
-                        </span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {/* Fuentes de datos — tabla fuente → variables */}
-            <section>
-              <h4 className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                Fuentes de datos
-              </h4>
-              <div className="mt-2 overflow-hidden rounded-lg border border-gray-200">
-                <table className="w-full border-collapse text-[11px]">
-                  <thead>
-                    <tr className="bg-gray-50 text-left text-gray-500">
-                      <th className="w-40 px-3 py-1.5 font-semibold">Fuente</th>
-                      <th className="px-3 py-1.5 font-semibold">
-                        Variables obtenidas
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sources.map((s) => (
-                      <tr
-                        key={s.fuente}
-                        className="border-t border-gray-100 align-top"
-                      >
-                        <td className="px-3 py-1.5 font-medium text-gray-700">
-                          {s.fuente}
-                        </td>
-                        <td className="px-3 py-1.5 text-gray-600">
-                          {s.variables.join(", ")}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p className="mt-2 text-[10px] italic leading-snug text-gray-500">
-                {WEIGHT_BALANCING_NOTE}
-              </p>
-              <p className="mt-1 text-[10px] leading-snug text-gray-400">
-                Fuentes institucionales de referencia:{" "}
-                {REPORT_SOURCES.join(" · ")}
-              </p>
-            </section>
-
-            {/* Aviso legal / disclaimer — texto template (reportTemplates.ts) */}
-            <section className="rounded-lg border border-gray-200 bg-gray-50/60 px-4 py-3">
-              <h4 className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                {DISCLAIMER_TITLE}
-              </h4>
-              <p className="mt-1 text-[10px] leading-relaxed text-gray-600">
-                {DISCLAIMER_BODY}
-              </p>
-            </section>
-
-            {/* Pie de informe — logo de Vento en la esquina inferior */}
-            <footer className="flex items-end justify-between gap-3 border-t border-gray-200 pt-3 text-[10px] text-gray-400">
-              <div className="min-w-0">
-                <p>Vento · ANH · EAFIT · Mavalan Software · {timestamp}</p>
-              </div>
-              {/* eslint-disable-next-line @next/next/no-img-element -- asset estático de marca */}
-              <img
-                src="/vento_logo.svg"
-                alt="Vento"
-                className="h-5 w-auto shrink-0 opacity-80"
-              />
-            </footer>
-            </>
-            )}
-          </div>
+        <button
+          type="button"
+          onClick={handleGuardarHistorial}
+          disabled={isSaving || saved}
+          className={`rounded-full border px-4 py-1.5 text-xs font-semibold disabled:opacity-70 ${
+            saved
+              ? "cursor-default border-emerald-500 text-emerald-600"
+              : "border-gray-300 text-gray-600 hover:bg-gray-50"
+          }`}
+        >
+          {saved ? "✓ Guardado" : isSaving ? "Guardando…" : "Guardar en histórico"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setBuilderOpen(true)}
+          className="rounded-full bg-[#165170ff] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[#1e6a8c]"
+        >
+          Descargar PDF
+        </button>
+        {/* Exportación de datos crudos por hexágono — SOLO admin. */}
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={handleDownloadHexTable}
+            disabled={isExporting}
+            title="Descargar imagen de la tabla de datos por hexágono (todas las variables)"
+            className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 px-4 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 5h16v14H4zM4 10h16M10 5v14" />
+            </svg>
+            Datos por hex (admin)
+          </button>
         )}
       </div>
-
-      <div className="w-full max-w-[800px]">
-        <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-2">
-          Descarga del informe
+      {error && (
+        <p role="alert" className="text-xs text-red-600">
+          {error}
         </p>
-        <div className="flex flex-col gap-2 rounded-2xl bg-white p-3 shadow-sm">
-          <span className="truncate text-sm text-[#393939ff]">
-            Informe Vento — {timestamp}
-          </span>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handleGuardarHistorial}
-              disabled={isSaving || saved}
-              className={`rounded-full border px-4 py-1.5 text-xs font-semibold disabled:opacity-70 ${
-                saved
-                  ? "border-emerald-500 text-emerald-600 cursor-default"
-                  : "border-[#165170ff] text-[#165170ff] hover:bg-[#cce1eeff]/40"
-              }`}
-            >
-              {saved ? "✓ Guardado" : isSaving ? "Guardando…" : "Guardar en histórico"}
-            </button>
-            <button
-              type="button"
-              onClick={handleDownloadPdf}
-              disabled={isExporting}
-              className="rounded-full bg-[#165170ff] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[#1e6a8c] disabled:opacity-50"
-            >
-              {isExporting ? "Generando…" : "Descargar PDF"}
-            </button>
-          </div>
-        </div>
-        {error && (
-          <p role="alert" className="text-xs text-red-600 mt-2">
-            {error}
-          </p>
-        )}
-      </div>
-
+      )}
     </div>
   );
 
-  // En pantalla completa: portal a document.body para NO quedar atrapado en la
-  // subpágina del informe (que está confinada a <40% del ancho con overflow).
-  return fullscreen && typeof document !== "undefined"
-    ? createPortal(content, document.body)
-    : content;
-}
-
-function Stat({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
   return (
     <>
-      <dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-        {label}
-      </dt>
-      <dd
-        className={`text-xs font-semibold text-[#393939ff] ${
-          mono ? "font-mono" : ""
-        }`}
-      >
-        {value}
-      </dd>
+      {inline}
+      {builderOpen && (
+        <ReportBuilder
+          region={region}
+          totalSheets={totalSheets}
+          sheets={sheets}
+          scale={previewScale}
+          mallaRef={reportRef}
+          config={config}
+          scorableDims={scorableDims}
+          onPatch={patchConfig}
+          onToggleDim={toggleDim}
+          onCancel={() => setBuilderOpen(false)}
+          onDownload={handleDownloadPdf}
+          isExporting={isExporting}
+        />
+      )}
     </>
   );
 }

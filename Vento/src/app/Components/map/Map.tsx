@@ -13,8 +13,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Map as MapGL, type MapRef } from "react-map-gl/maplibre";
 import { DeckGL } from "@deck.gl/react";
 import { WebMercatorViewport } from "@deck.gl/core";
-import { TileLayer } from "@deck.gl/geo-layers";
-import { PolygonLayer, IconLayer, PathLayer } from "@deck.gl/layers";
+import { TileLayer, H3HexagonLayer } from "@deck.gl/geo-layers";
+import { PolygonLayer, IconLayer, PathLayer, ScatterplotLayer } from "@deck.gl/layers";
 import { Crosshair, Home, Trash2 } from "lucide-react";
 import { luma } from "@luma.gl/core";
 import { webgl2Adapter } from "@luma.gl/webgl";
@@ -42,14 +42,20 @@ import { useInformeHeatmapLayer } from "./useInformeHeatmapLayer";
 import { useAreaHexData } from "../../Utils/report/useAreaHexData";
 import {
   MAP_SYMBOLS,
-  symbolPolygons,
   symbolPaths,
   type MapSymbolPoint,
-  type SymbolPolygon,
   type SymbolPath,
 } from "../../Utils/map/mapSymbols";
 import MapSymbolsLegend from "./MapSymbolsLegend";
 import { useMapSelection } from "./useMapSelection";
+import { fetchMapDisabledIds } from "../../Utils/admin/catalogApi";
+import {
+  fetchMapLayerCells,
+  windValueForHex,
+  WIND_THRESHOLD,
+  type MapLayerCell,
+} from "../../Utils/map/mapLayerData";
+import { viridis } from "../../Utils/report/heatmapPalette";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 try { luma.registerAdapters([webgl2Adapter]); } catch { /* ok */ }
@@ -67,12 +73,19 @@ const TERRITORY_BORDER: [number, number, number, number] = [22, 81, 112, 160];
 // hover — misma familia que selected pero más tenue (alpha bajo) para distinguirse
 const HOVER_FILL: [number, number, number, number] = [224, 215, 221, 60];
 const HOVER_BORDER: [number, number, number, number] = [70, 90, 120, 120];
+
+/** "#165170" → [22,81,112] (para relleno suave de las capas de variable `area`). */
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  const n = parseInt(h.length === 3 ? h.replace(/(.)/g, "$1$1") : h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
 // Zonas prohibidas / inviables — gris sólido, no seleccionables (BANNED_HEXES).
 // Zonas excluidas = 0% idoneidad → color viridis(0) (morado oscuro), no gris,
 // para que sean coherentes con la paleta de idoneidad (sprint 3).
 const BANNED_FILL: [number, number, number, number] = [68, 1, 84, 205];
 const BANNED_BORDER: [number, number, number, number] = [59, 1, 74, 230];
-interface HexCell { h: string; banned?: boolean; }
+interface HexCell { h: string; banned?: boolean; owned?: boolean; }
 
 export default function MapView() {
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
@@ -88,6 +101,10 @@ export default function MapView() {
   const selectionZoomTooFar =
     canSelect && zoomToH3Res(viewState.zoom) < MIN_SELECTION_H3_RES;
   const heatmapActive = accion === "informe" && activeDimension !== null;
+  // Mapa de calor de VIENTO: UNA sola variable `heat` a la vez (densidad ↔
+  // velocidad no coexisten → exclusión mutua automática con un id único). Se
+  // colorea sobre los hex del grid (no es capa aparte). null = sin viento.
+  const [windHeatId, setWindHeatId] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [hoveredHex, setHoveredHex] = useState<string | null>(null);
@@ -118,19 +135,50 @@ export default function MapView() {
   }, []);
 
   // Selección de hexágonos + fly-to del buscador (comparten searchHexesRef).
-  const { toggleHex, handlePlaceSelect, isFlyingRef, resetSearch } = useMapSelection({
+  const { toggleHex, selectPolygon, handlePlaceSelect, isFlyingRef, resetSearch } = useMapSelection({
     canSelect,
     viewState,
     selectedHexes,
     setViewState,
     clampViewState,
     setSelectedHexes,
-    setIsTilesLoading,
     onRejectFar: () =>
       toast.info(
         `Solo puedes seleccionar hexágonos cercanos entre sí (máx ${MAX_SELECTION_GAP_KM} km). Acércate al área que ya elegiste.`,
       ),
   });
+
+  // Selección por POLÍGONO (US03-04): el usuario pone puntos en el mapa (clic,
+  // estilo Google Maps) o por coordenadas desde el buscador → al aplicar, los
+  // hexágonos dentro del polígono quedan seleccionados.
+  const [polygonMode, setPolygonMode] = useState(false);
+  const [polygonPoints, setPolygonPoints] = useState<[number, number][]>([]);
+  const polygonActive = polygonMode && canSelect;
+  const togglePolygonMode = useCallback(() => {
+    setPolygonMode((m) => {
+      const next = !m;
+      if (!next) setPolygonPoints([]); // apagar → limpiar puntos
+      return next;
+    });
+  }, []);
+  const applyPolygon = useCallback(() => {
+    if (polygonPoints.length < 3) return;
+    const n = selectPolygon(polygonPoints);
+    setPolygonPoints([]);
+    setPolygonMode(false);
+    if (n > 0) toast.success(`${n} hexágonos seleccionados`);
+    else toast.error("El polígono no cubrió hexágonos seleccionables");
+  }, [polygonPoints, selectPolygon, toast]);
+  // Añade un vértice por COORDENADA (desde el buscador) y vuela ahí. Activa el
+  // modo polígono para que se dibuje y se pueda aplicar.
+  const addPolygonCoordinate = useCallback(
+    (lng: number, lat: number) => {
+      setPolygonMode(true);
+      setPolygonPoints((pts) => [...pts, [lng, lat]]);
+      setViewState((v) => clampViewState({ ...v, longitude: lng, latitude: lat }));
+    },
+    [clampViewState],
+  );
 
   // Al SALIR de la fase de selección hacia una fase "congelada" (dimensiones,
   // características, informe), encuadrar la selección: centrar + zoom a una
@@ -303,7 +351,13 @@ export default function MapView() {
       const result: HexCell[] = [];
       for (const h of tileCells) {
         const [lat, lng] = cellToLatLng(h);
-        if (isInColombia(lat, lng)) result.push({ h, banned: isHexBanned(h) });
+        if (!isInColombia(lat, lng)) continue;
+        // `owned`: el hex pertenece a ESTE tile si su centro cae en el bbox
+        // EXACTO (sin el margen del 10%). El margen hace que los tiles vecinos
+        // repitan los hex del borde → con relleno translúcido eso duplicaba el
+        // alpha en las costuras ("pilares" oscuros). Rellenamos solo los owned.
+        const owned = lat >= south && lat < north && lng >= west && lng < east;
+        result.push({ h, banned: isHexBanned(h), owned });
       }
       return result as unknown as HexCell;
     },
@@ -314,13 +368,29 @@ export default function MapView() {
         id: `${props.id}-grid`,
         data,
         getPolygon: (d) => cellToBoundary(d.h, true),
-        // Prohibidos → gris sólido; resto → sin relleno (solo malla).
-        getFillColor: (d) => (d.banned ? BANNED_FILL : [0, 0, 0, 0]),
+        // Relleno: prohibidos → gris sólido. Si hay VIENTO activo → mapa de
+        // calor viridis (relleno 20%) sobre ESTOS mismos hex del grid (su res
+        // cambia con el zoom). Sin viento → sin relleno. El BORDE es la malla
+        // normal del grid (individual por hex), independiente del heatmap.
+        getFillColor: (d) => {
+          if (d.banned) return BANNED_FILL;
+          // Solo el tile "dueño" del hex lo rellena → sin doble alpha en las
+          // costuras entre tiles (evita los pilares oscuros).
+          if (windHeatId && d.owned) {
+            const v = windValueForHex(windHeatId, d.h);
+            if (v >= WIND_THRESHOLD) {
+              const [r, g, b] = viridis(v);
+              return [r, g, b, 51];
+            }
+          }
+          return [0, 0, 0, 0];
+        },
         getLineColor: (d) => (d.banned ? BANNED_BORDER : GRID_BORDER),
         getLineWidth: 1,
         lineWidthMinPixels: 1,
         filled: true,
         stroked: true,
+        updateTriggers: { getFillColor: [windHeatId] },
         // En informe SOLO el heatmap debe ser pickable. El grid usa resolución
         // por zoom (hexágonos grandes) y sus sublayers no heredan el
         // visible:false del TileLayer para el picking → el hover enganchaba un
@@ -328,7 +398,7 @@ export default function MapView() {
         pickable: !heatmapActive,
       });
     },
-  }), [heatmapActive]);
+  }), [heatmapActive, windHeatId, isFlyingRef]);
 
   // Capa de borde del territorio colombiano (continente + archipiélago).
   // Pasa los polígonos sin relleno, solo contorno, para que el usuario vea hasta
@@ -398,26 +468,91 @@ export default function MapView() {
       return next;
     });
   }, []);
+  // Toggle desde la leyenda "Capas del mapa". Las variables de VIENTO (`heat`)
+  // usan el heatmap global y son MUTUAMENTE EXCLUSIVAS: encender una apaga la
+  // otra (un solo `windHeatId`). El resto (área/puntos) son multi-selección.
+  const handleSymbolToggle = useCallback(
+    (id: string) => {
+      const sym = MAP_SYMBOLS.find((s) => s.variableId === id);
+      if (sym?.kind === "heat") {
+        setWindHeatId((prev) => (prev === id ? null : id));
+      } else {
+        toggleSymbol(id);
+      }
+    },
+    [toggleSymbol],
+  );
+  // Variables con "ver en mapa" desactivado en admin (US08-01): sus símbolos se
+  // ocultan de la leyenda y del mapa. Semilla vacía → nada oculto por defecto.
+  const [mapDisabledIds, setMapDisabledIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    let alive = true;
+    fetchMapDisabledIds()
+      .then((s) => alive && setMapDisabledIds(s))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Celdas res8 por capa de variable activa (V0 "verse en el mapa"): se cargan
+  // desde el seam `mapLayerData` (placeholder hoy → `/api/tiles/variable` con la
+  // máster). Se pintan como hexágonos res8: `area` relleno suave, `heat` viridis
+  // + umbral. Ver contrato en memoria `map-res8-contract`.
+  const [symbolCells, setSymbolCells] = useState<Record<string, MapLayerCell[]>>(
+    {},
+  );
+  useEffect(() => {
+    let alive = true;
+    // Solo las variables de ÁREA cargan hex de cobertura; el viento (`heat`) es
+    // un mapa de calor que colorea los hex del grid (no un set propio).
+    const wanted = MAP_SYMBOLS.filter(
+      (s) =>
+        s.kind !== "heat" &&
+        activeSymbols.has(s.variableId) &&
+        !mapDisabledIds.has(s.variableId),
+    );
+    Promise.all(
+      wanted.map(async (s) => [s.variableId, await fetchMapLayerCells(s)] as const),
+    )
+      .then((pairs) => {
+        if (alive) setSymbolCells(Object.fromEntries(pairs));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [activeSymbols, mapDisabledIds]);
+
   const symbolLayers = useMemo(() => {
-    const active = MAP_SYMBOLS.filter((s) => activeSymbols.has(s.variableId));
-    // Polígonos (zonas/heat) al FONDO: zone → relleno plano; heat → viridis.
+    const active = MAP_SYMBOLS.filter(
+      (s) => activeSymbols.has(s.variableId) && !mapDisabledIds.has(s.variableId),
+    );
+    // Capas de ÁREA (protegidas, resguardos, nodos…): hex de cobertura con
+    // relleno SUAVE del color de la variable. (El viento NO va aquí: es un mapa
+    // de calor que colorea los hex del grid — ver `getFillColor` de gridTileLayer.)
     const polys = active
-      .filter((s) => s.kind !== "point")
-      .map(
-        (s) =>
-          new PolygonLayer<SymbolPolygon>({
-            id: `map-zone-${s.variableId}`,
-            data: symbolPolygons(s),
-            getPolygon: (d) => d.polygon,
-            getFillColor: (d) => d.color,
-            getLineColor: [255, 255, 255, 150],
-            getLineWidth: 1,
-            lineWidthUnits: "pixels",
-            stroked: s.kind === "zone",
-            filled: true,
-            pickable: false,
-          }),
-      );
+      .filter((s) => s.kind === "zone")
+      .map((s) => {
+        const cells = symbolCells[s.variableId] ?? [];
+        const [br, bg, bb] = hexToRgb(s.color);
+        return new H3HexagonLayer<MapLayerCell>({
+          id: `map-hexlayer-${s.variableId}`,
+          data: cells,
+          getHexagon: (d) => d.h,
+          extruded: false,
+          stroked: true,
+          filled: true,
+          // Superpuestas: relleno 20% (alpha 51) + borde 100% del color.
+          getFillColor: () => [br, bg, bb, 51],
+          getLineColor: () => [br, bg, bb, 255],
+          getLineWidth: 1,
+          lineWidthUnits: "pixels",
+          lineWidthMinPixels: 1,
+          pickable: false,
+          updateTriggers: { getFillColor: [s.color], getLineColor: [s.color] },
+        });
+      });
     // Redes de puntos: conecta los puntos de cada capa `point` con una línea.
     const paths = active
       .filter((s) => s.kind === "point")
@@ -455,7 +590,49 @@ export default function MapView() {
         }),
     );
     return [...polys, ...paths, ...icons];
-  }, [activeSymbols]);
+  }, [activeSymbols, mapDisabledIds, symbolCells]);
+
+  // Dibujo del POLÍGONO en curso (US03-04): vértices (puntos) + contorno. Se
+  // materializa en hexágonos al "Aplicar" (ver `applyPolygon`).
+  const polygonDrawLayers = useMemo(() => {
+    if (polygonPoints.length === 0) return [];
+    const out: (PathLayer | ScatterplotLayer)[] = [];
+    if (polygonPoints.length >= 2) {
+      const path =
+        polygonPoints.length >= 3
+          ? [...polygonPoints, polygonPoints[0]]
+          : polygonPoints;
+      out.push(
+        new PathLayer<{ path: [number, number][] }>({
+          id: "polygon-draw-path",
+          data: [{ path }],
+          getPath: (d) => d.path,
+          getColor: [22, 81, 112, 220],
+          getWidth: 2,
+          widthUnits: "pixels",
+          pickable: false,
+          parameters: { depthCompare: "always" },
+        }),
+      );
+    }
+    out.push(
+      new ScatterplotLayer<[number, number]>({
+        id: "polygon-draw-points",
+        data: polygonPoints,
+        getPosition: (d) => d,
+        getRadius: 5,
+        radiusUnits: "pixels",
+        getFillColor: [22, 81, 112, 255],
+        getLineColor: [255, 255, 255, 255],
+        lineWidthUnits: "pixels",
+        getLineWidth: 1.5,
+        stroked: true,
+        pickable: false,
+        parameters: { depthCompare: "always" },
+      }),
+    );
+    return out;
+  }, [polygonPoints]);
 
   // Bordes de la selección — comportamiento condicional por fase:
   // - En "seleccion-area": cada hex tiene su borde completo (grid de selección)
@@ -500,6 +677,7 @@ export default function MapView() {
     // otras). Sin esto, la memo reutiliza la misma instancia entre fases y
     // deck.gl assertaba al recibir una capa ya finalizada (rompía el render →
     // heatmap despintado al volver a informe).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- dep intencional
   }, [selectedArr, canSelect, heatmapActive]);
 
   // capa de hover — relleno gris transparente del hex bajo el cursor.
@@ -652,11 +830,23 @@ export default function MapView() {
           <div className="absolute top-3 right-3 z-10 flex w-[210px] flex-col gap-2 max-md:top-12">
             <AreaDisplay />
             {/* Leyenda-interruptor de símbolos del mapa, DEBAJO del área km². */}
-            <MapSymbolsLegend active={activeSymbols} onToggle={toggleSymbol} />
+            <MapSymbolsLegend
+              active={windHeatId ? new Set([...activeSymbols, windHeatId]) : activeSymbols}
+              onToggle={handleSymbolToggle}
+              disabled={mapDisabledIds}
+            />
           </div>
         )}
       {mapReady && accion === "seleccion-area" && (
-        <MapSearchBox onSelect={handlePlaceSelect} />
+        <MapSearchBox
+          onSelect={handlePlaceSelect}
+          polygonPoints={polygonPoints}
+          onAddCoordinate={addPolygonCoordinate}
+          onRemovePoint={(i) =>
+            setPolygonPoints((p) => p.filter((_, j) => j !== i))
+          }
+          onApplyPolygon={applyPolygon}
+        />
       )}
       {/* Aviso viridis (sprint 3): explica que los hexágonos morados = idoneidad
           nula (zonas no aptas), coherente con la paleta del heatmap. */}
@@ -701,7 +891,10 @@ export default function MapView() {
           )}
           {/* En informe la toolbar va a la IZQUIERDA para no cruzarse con el
               panel de variables (top-3 right-3) ni la previsualización. */}
-          <div className={`absolute bottom-3 z-10 flex items-center gap-2 ${canSelect ? "right-4" : "left-4"}`}>
+          {/* En selección la toolbar sube (bottom-32) para no superponerse con
+              el cartel "Continuar a Dimensiones"/hint (centrado, ~6rem). En
+              informe no hay cartel → queda abajo-izquierda. */}
+          <div className={`absolute z-10 flex items-center gap-2 ${canSelect ? "bottom-32 right-4" : "bottom-3 left-4"}`}>
             <button
               onClick={zoomToSelection}
               disabled={!hasSelection}
@@ -733,6 +926,52 @@ export default function MapView() {
                 >
                   <Trash2 size={16} />
                 </button>
+                {/* Polígono (US03-04): pon puntos en el mapa → selecciona los
+                    hexágonos dentro (estilo Google Maps). */}
+                <button
+                  onClick={togglePolygonMode}
+                  aria-pressed={polygonMode}
+                  aria-label="Selección por polígono"
+                  title={
+                    polygonMode
+                      ? "Polígono activo — toca el mapa para poner puntos"
+                      : "Polígono: pon puntos y selecciona el área"
+                  }
+                  className={`flex h-8 w-8 items-center justify-center rounded shadow ${
+                    polygonMode
+                      ? "bg-white text-[#165170ff] ring-2 ring-[#165170ff]"
+                      : "bg-[#165170ff] text-white"
+                  }`}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l8 5-3 9H7L4 8z" />
+                    <circle cx="12" cy="3" r="1.6" fill="currentColor" /><circle cx="20" cy="8" r="1.6" fill="currentColor" /><circle cx="4" cy="8" r="1.6" fill="currentColor" /><circle cx="7" cy="17" r="1.6" fill="currentColor" /><circle cx="17" cy="17" r="1.6" fill="currentColor" />
+                  </svg>
+                </button>
+                {polygonMode && (
+                  <>
+                    <button
+                      onClick={() => setPolygonPoints((p) => p.slice(0, -1))}
+                      disabled={polygonPoints.length === 0}
+                      title="Deshacer último punto"
+                      className="flex h-8 items-center rounded px-2.5 text-[11px] font-semibold text-white shadow bg-gray-500 disabled:opacity-40"
+                    >
+                      Deshacer
+                    </button>
+                    <button
+                      onClick={applyPolygon}
+                      disabled={polygonPoints.length < 3}
+                      title={
+                        polygonPoints.length < 3
+                          ? "Pon al menos 3 puntos"
+                          : "Seleccionar hexágonos dentro del polígono"
+                      }
+                      className="flex h-8 items-center rounded px-2.5 text-[11px] font-semibold text-white shadow bg-emerald-600 disabled:opacity-40"
+                    >
+                      Aplicar ({polygonPoints.length})
+                    </button>
+                  </>
+                )}
               </>
             )}
 
@@ -815,8 +1054,10 @@ export default function MapView() {
         style={{ position: "relative", width: "auto", height: "100%" }}
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => setViewState(clampViewState(vs as typeof INITIAL_VIEW_STATE))}
+        // Pincel: al pintar se desactiva el paneo por arrastre (dragPan) para que
+        // el arrastre pinte hexes en vez de mover el mapa. El resto (zoom, etc.) sigue.
         controller={true}
-        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer, ...symbolLayers]}
+        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer, ...symbolLayers, ...polygonDrawLayers]}
         // US-FB3-03 (feedback item 8): nunca "not-allowed". Fuera de la fase de
         // selección el hex NO es inerte — en el informe se consulta con el
         // tooltip —, y el cursor de "prohibido" (muy marcado en Firefox/Windows)
@@ -824,6 +1065,7 @@ export default function MapView() {
         // puede hacer sobre la capa pickable: "pointer" si el hex responde
         // (selección o tooltip del informe), "default" si sólo es decorativo.
         getCursor={({ isHovering }) => {
+          if (polygonActive) return "crosshair";
           if (!isHovering) return "grab";
           // Zoom lejano: invita a acercarse en vez de sugerir que es clicable.
           if (selectionZoomTooFar) return "zoom-in";
@@ -843,6 +1085,13 @@ export default function MapView() {
           );
         }}
         onClick={(info) => {
+          // Modo POLÍGONO: cada clic añade un vértice (estilo Google Maps). El
+          // área se materializa en hexágonos al "Aplicar".
+          if (polygonActive) {
+            const c = info.coordinate as [number, number] | undefined;
+            if (c) setPolygonPoints((pts) => [...pts, [c[0], c[1]]]);
+            return;
+          }
           // Zoom demasiado lejano para seleccionar: el click ACERCA el mapa
           // hacia el punto (como el botón +) en vez de no hacer nada / confundir
           // con la lupa. Al llegar a la resolución seleccionable ya se selecciona.

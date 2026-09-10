@@ -70,6 +70,24 @@ export function calcNumAerogeneradores(
   );
 }
 
+/**
+ * Rango de ÁREA (km²) esperado para una capacidad nominal (US04-04) — TEMPLATE
+ * hasta que D. Técnica entregue las áreas mínimas/máximas oficiales por
+ * capacidad. Se deriva de la densidad de la categoría: nº de turbinas necesarias
+ * para la potencia (ceil(MW / potenciaMW)) × área por turbina, con una banda de
+ * tolerancia [0.6×, 1.6×]. Si no hay categoría, usa "M" como referencia.
+ */
+export function areaRangeForCapacity(
+  capacidadMW: number,
+  categoria: CategoriaAeroId | null,
+): { min: number; max: number; esperada: number } | null {
+  if (!Number.isFinite(capacidadMW) || capacidadMW <= 0) return null;
+  const spec = AEROGENERADORES[categoria ?? "M"];
+  const turbinas = Math.max(1, Math.ceil(capacidadMW / spec.potenciaMW));
+  const esperada = turbinas * spec.areaPorAeroKm2;
+  return { min: esperada * 0.6, max: esperada * 1.6, esperada };
+}
+
 /** Distancia máxima (km) entre un hex nuevo y la selección (restricción del mapa). */
 export const MAX_SELECTION_GAP_KM = 50;
 

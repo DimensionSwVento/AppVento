@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vento — Datos que necesitamos (equipo de datos/modelo)</title>
+<style>
+  :root { --brand:#165170; --sky:#cce1ee; --ink:#1f2937; --muted:#6b7280; --amber:#b45309; --amberbg:#fef3c7; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; color:var(--ink); background:#eef2f5; }
+  .page { max-width:920px; margin:24px auto; background:#fff; border-radius:16px; box-shadow:0 6px 30px rgba(0,0,0,.08); overflow:hidden; }
+  header { background:var(--brand); color:#fff; padding:24px 34px; }
+  header .k { font-size:11px; letter-spacing:.22em; text-transform:uppercase; opacity:.8; }
+  header h1 { margin:4px 0 2px; font-size:23px; }
+  header p { margin:0; font-size:13px; opacity:.9; }
+  .body { padding:24px 34px 30px; }
+  .item { display:flex; gap:14px; padding:14px 0; border-bottom:1px solid #eef2f5; }
+  .item:last-child { border-bottom:0; }
+  .num { flex:0 0 34px; height:34px; border-radius:9px; background:var(--sky); color:var(--brand); font-weight:800; display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .item h3 { margin:2px 0 6px; font-size:14.5px; color:var(--brand); }
+  .item p, .item li { font-size:13px; line-height:1.5; margin:3px 0; }
+  ul { margin:4px 0; padding-left:18px; }
+  code { background:#f1f5f9; border-radius:4px; padding:0 4px; font-size:12px; color:#0f172a; }
+  .callout { background:var(--amberbg); border:1px solid #fcd34d; border-radius:10px; padding:12px 14px; margin:14px 0 0; }
+  .callout .tag { color:var(--amber); font-weight:800; font-size:11px; letter-spacing:.05em; }
+  .foot { color:var(--muted); font-size:11px; text-align:center; padding:14px; border-top:1px solid #eef2f5; }
+  @media print { body{background:#fff;} .page{box-shadow:none; margin:0; border-radius:0;} }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="k">Vento · Cuarta Entrega</div>
+    <h1>Datos que necesitamos — equipo de datos / modelo</h1>
+    <p>Lista concreta de lo que se debe entregar para que la app deje de usar datos de demostración.</p>
+  </header>
+  <div class="body">
+
+    <div class="item"><div class="num">1</div><div>
+      <h3>La tabla maestra — por hexágono (<code>.h3.parquet</code>)</h3>
+      <p>Una fila por <code>h3_index</code> con <b>todas sus variables</b> (informativas, ponderadas y excluyentes):</p>
+      <ul>
+        <li><b>Una columna por variable</b>, con clave = el <b>id de la maestra</b> (ej. <code>TEC-004-T</code>) y su valor. Indicar si es <b>crudo (con unidad)</b> o <b>normalizado 0–1</b> (idealmente ambos).</li>
+        <li><b>Bool off/onshore</b> (mar/tierra) — confirmar el nombre real de la columna.</li>
+        <li><b>Columnas de "se ve en el mapa" por variable</b> — qué hexágonos pertenecen a cada capa (humedales RAMSAR, resguardos, áreas coralinas, nodos, viento…).</li>
+        <li><code>score_general</code> (0–1) + <b>score por dimensión</b> (TEC, AMB, SOE/social, MAC, REG).</li>
+        <li><code>tipo_celda</code>: disponible / excluida (no apta).</li>
+        <li>Indicar la <b>resolución H3</b> y el <b>formato exacto</b> de la clave de columna.</li>
+      </ul>
+    </div></div>
+
+    <div class="item"><div class="num">2</div><div>
+      <h3>Lista definitiva de TODAS las variables (+ económica)</h3>
+      <p>Una fila por variable con: <b>id de la maestra</b> (ej. <code>TEC-004-T</code>), <b>descripción</b>, <b>cómo se calcula</b>, <b>fuente</b>, <b>relevancia</b> y <b>rango e interpretación</b> (ej. "0–200 W/m² = Poor … &gt;800 = Superb"). Útil también: dimensión, tipo (excluyente/informativa), unidad, en-mapa, mar/tierra, polaridad.</p>
+      <p><b>+ Datos y fórmulas para la modal "Escenarios de mercado" (económica):</b></p>
+      <ul>
+        <li>Escenarios: <code>{ id, label, descripción, horizonte(años) }</code>.</li>
+        <li>Serie por (escenario, variable, año) para: PIB, PIB per cápita, IPC, desempleo, tasa de cambio, precio spot (COP/kWh), demanda (kWh), oferta (kWh).</li>
+        <li>Cómo escala con la capacidad nominal (y qué variables NO escalan).</li>
+        <li>Impuestos/incentivos clave <code>{ label, valor }</code> (Ley 1715, IVA, aranceles, depreciación…).</li>
+      </ul>
+    </div></div>
+
+    <div class="item"><div class="num">3</div><div>
+      <h3>Intervalos de la alerta de área vs capacidad</h3>
+      <p>Por capacidad nominal <code>{ capacidadMW, areaMinKm2, areaMaxKm2 }</code> (10/20/50/100 MW) — o una fórmula min/máx en función de los MW. (Definir con D. Técnica.)</p>
+    </div></div>
+
+    <div class="item"><div class="num">4</div><div>
+      <h3>Fórmula del número de aerogeneradores</h3>
+      <p>La fórmula (hoy: <code>floor(área / área_por_aerogenerador)</code>, mín 1) — confirmar. Parámetros por categoría <b>S / M / L</b>: <code>{ potenciaMW, areaPorAeroKm2, espaciamientoM }</code>.</p>
+    </div></div>
+
+    <div class="item"><div class="num">5</div><div>
+      <h3>Tabla de variables consideradas (informe) — valores</h3>
+      <p>Por variable: <b>pesos</b> (AHP) · <b>valor = promedio general del área</b> (agregado de la columna de la variable en la maestra, §1) · <b>fecha/vigencia</b>. <i>(Las fuentes se piden en §2.)</i></p>
+    </div></div>
+
+    <div class="item"><div class="num">6</div><div>
+      <h3>Fórmula del score de dimensión</h3>
+      <ul>
+        <li><code>score_dim = Σ(peso_i · valor_i) / Σ peso_i</code> — con los <b>pesos AHP reales</b>.</li>
+        <li><code>índice general = Σ(peso_dim · score_dim)</code> — con los <b>pesos por dimensión</b>.</li>
+        <li>Reglas de <b>normalización</b> de cada variable a 0–1, y cómo los excluyentes marcan la celda como excluida.</li>
+      </ul>
+    </div></div>
+
+    <div class="item"><div class="num">7</div><div>
+      <h3>Regulatoria + avisos</h3>
+      <ul>
+        <li><b>Normas</b> <code>{ nombre, descripción, estado }</code> (Aplica / Requiere trámite / Requiere verificación / No aplica) + <b>autoridades competentes</b> + <b>información normativa</b>.</li>
+        <li><b>Disclaimer</b>: texto legal aprobado por EAFIT (se muestra al inicio y al final del informe).</li>
+      </ul>
+    </div></div>
+
+    <div class="callout">
+      <span class="tag">NOTA</span>
+      <p style="margin:6px 0 0">Mientras no lleguen §1, §2 y §6 (maestra + variables + pesos), los <b>resultados numéricos</b> de la app (puntajes, mapa de calor, valores) se muestran con <b>datos de demostración</b>. La app está lista para conectarse en cuanto se entreguen.</p>
+    </div>
+
+  </div>
+  <div class="foot">Vento · Cuarta Entrega — documento de datos requeridos (equipo de datos/modelo).</div>
+</div>
+</body>
+</html>

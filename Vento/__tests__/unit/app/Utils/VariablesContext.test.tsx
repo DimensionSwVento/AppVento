@@ -107,8 +107,10 @@ describe("VariablesContext — multi-selección con obligatorias", () => {
     expect(captured.totalByDimension("tecnica")).toBe(
       optionalVariablesByDimension("tecnica").length,
     );
-    // Una dimensión sin variables opcionales (p.ej. ambiental) → 0.
-    expect(captured.totalByDimension("ambiental")).toBe(0);
+    // Coincide con el catálogo real de opcionales de cada dimensión.
+    expect(captured.totalByDimension("ambiental")).toBe(
+      optionalVariablesByDimension("ambiental").length,
+    );
   });
 
   it("getVariableById sigue funcionando con ids del catálogo", () => {
