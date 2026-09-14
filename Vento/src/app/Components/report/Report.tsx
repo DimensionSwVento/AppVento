@@ -13,6 +13,8 @@ import {
 import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
 import { useIsAdmin } from "../../Utils/useIsAdmin";
+import { fetchMasterStatus, fetchEscenarios, type AdminEscenario } from "../../Utils/admin/catalogApi";
+import { dbField, AuditDataLabel } from "../../Utils/audit";
 import {
   HEATMAP_DIMENSIONS,
   type HeatmapDimensionId,
@@ -237,6 +239,29 @@ export default function Report() {
   // Screenshot del mapa (capturado en la fase informe por Map.tsx vía SNAPSHOT_KEY).
   const { loadFromCache } = useCachedImage();
   const [mapSnapshot, setMapSnapshot] = useState<string | null>(null);
+  // Versión de la master con la que se generan estos datos (trazabilidad).
+  const [masterVersion, setMasterVersion] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetchMasterStatus()
+      .then((s) => alive && setMasterVersion(s.current?.version ?? null))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  // Escenarios económicos (con `mult`/`impacto` de BD; fallback template). Deben
+  // coincidir con el panel para que el PDF refleje la misma curva/proyección.
+  const [escenarios, setEscenarios] = useState<AdminEscenario[]>([]);
+  useEffect(() => {
+    let alive = true;
+    fetchEscenarios()
+      .then((e) => alive && setEscenarios(e))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
   useEffect(() => {
     let alive = true;
     const load = () =>
@@ -374,19 +399,21 @@ export default function Report() {
   // la capacidad nominal y el modo "comparar escenarios" del panel (llega al PDF).
   const econ = useEconomic();
   const econVars = useActiveEconomicVariables();
+  const escList = escenarios.length ? escenarios : ECONOMIC_SCENARIOS;
+  const escActivo = escList.find((e) => e.id === econ.escenarioId);
   const econSeries = useMemo(() => {
     const shown = econVars.filter((v) => !econ.chartHidden.has(v.id));
     if (econ.compareMode && shown.length > 0) {
-      return ECONOMIC_SCENARIOS.map((sc, i) => ({
+      return escList.map((sc, i) => ({
         label: `${shown[0].label} · ${sc.label}`,
         color: ECONOMIC_SERIES_COLORS[i % ECONOMIC_SERIES_COLORS.length],
-        points: economicSeries(sc.id, shown[0].id, econ.horizonYears, econ.capacidadNominal),
+        points: economicSeries(sc.id, shown[0].id, econ.horizonYears, econ.capacidadNominal, sc.mult),
       }));
     }
     return shown.map((v, i) => ({
       label: v.label,
       color: ECONOMIC_SERIES_COLORS[i % ECONOMIC_SERIES_COLORS.length],
-      points: economicSeries(econ.escenarioId, v.id, econ.horizonYears, econ.capacidadNominal),
+      points: economicSeries(econ.escenarioId, v.id, econ.horizonYears, econ.capacidadNominal, escActivo?.mult),
     }));
   }, [
     econVars,
@@ -395,6 +422,8 @@ export default function Report() {
     econ.horizonYears,
     econ.compareMode,
     econ.capacidadNominal,
+    escList,
+    escActivo,
   ]);
   const showEconomica =
     config.showEconomica && econ.addToReport && econVars.length > 0;
@@ -548,14 +577,22 @@ export default function Report() {
                     "Fuente",
                   ]}
                   rows={pr.map((r) => [
-                    r.label,
-                    ...(config.showModelDetail ? [r.criterio] : []),
-                    r.tipo,
-                    r.peso.toFixed(2),
-                    r.puntaje != null ? r.puntaje.toFixed(1) : "—",
-                    r.fecha,
-                    r.fuente,
+                    dbField(r.label),
+                    ...(config.showModelDetail ? [dbField(r.criterio)] : []),
+                    dbField(r.tipo),
+                    dbField(r.peso.toFixed(2)),
+                    dbField(r.puntaje != null ? r.puntaje.toFixed(1) : "—"),
+                    dbField(r.fecha),
+                    dbField(r.fuente),
                   ])}
+                />
+                <AuditDataLabel
+                  uses={[
+                    "catálogo variable (label/criterio/tipo/fuente)",
+                    "peso AHP (model_weight)",
+                    "valor = promedio master del área",
+                    "fecha = versión de fuente (data_source)",
+                  ]}
                 />
               </>
             )}
@@ -572,7 +609,7 @@ export default function Report() {
                 <ul className="mt-1 flex flex-col gap-0.5">
                   {excl.map((e) => (
                     <li key={e.label} className="text-[9px] text-gray-700">
-                      <b>{e.label}:</b> {e.description}
+                      <b>{dbField(e.label)}:</b> {dbField(e.description)}
                     </li>
                   ))}
                 </ul>
@@ -602,6 +639,13 @@ export default function Report() {
                 <p className="mt-1 text-[8px] italic leading-snug text-gray-500">
                   {WEIGHT_BALANCING_NOTE}
                 </p>
+                <AuditDataLabel
+                  uses={[
+                    "score por dimensión (criterios/*.parquet o master + pesos)",
+                    "índice general (global.parquet o Σ peso_dim·score_dim)",
+                    "pesos AHP (model_weight)",
+                  ]}
+                />
               </div>
             )}
           </div>
@@ -628,10 +672,7 @@ export default function Report() {
             </>
           ) : (
             <>
-              Escenario{" "}
-              <b>
-                {ECONOMIC_SCENARIOS.find((s) => s.id === econ.escenarioId)?.label}
-              </b>
+              Escenario <b>{escActivo?.label}</b>
             </>
           )}{" "}
           · capacidad nominal <b>{econ.capacidadNominal} MW</b> · proyección a{" "}
@@ -647,6 +688,12 @@ export default function Report() {
             />
           </div>
         )}
+        {!econ.compareMode && escActivo?.impacto && (
+          <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] leading-snug text-amber-800">
+            {escActivo.impacto}
+          </p>
+        )}
+        <AuditDataLabel uses={["serie económica por escenario/variable/año (economic_series)"]} />
         {/* Cómo interpretar (US04-02) */}
         <p className="mt-1 text-[9px] leading-snug text-gray-500">
           {econ.compareMode ? (
@@ -678,9 +725,9 @@ export default function Report() {
               key={it.label}
               className="flex items-baseline justify-between rounded-md border border-gray-200 px-2 py-1.5"
             >
-              <span className="text-[10px] text-gray-700">{it.label}</span>
+              <span className="text-[10px] text-gray-700">{dbField(it.label)}</span>
               <span className="text-[10px] font-semibold text-[#165170ff]">
-                {it.value}
+                {dbField(it.value)}
               </span>
             </div>
           ))}
@@ -750,9 +797,9 @@ export default function Report() {
                 className="flex items-start justify-between gap-2 border-b border-gray-100 pb-1"
               >
                 <div className="min-w-0">
-                  <p className="font-semibold text-gray-700">{no.nombre}</p>
+                  <p className="font-semibold text-gray-700">{dbField(no.nombre)}</p>
                   <p className="text-[9px] leading-snug text-gray-500">
-                    {no.descripcion}
+                    {dbField(no.descripcion)}
                   </p>
                 </div>
                 <span
@@ -771,7 +818,7 @@ export default function Report() {
         <ul className="mt-1 grid grid-cols-2 gap-1">
           {REGULATORY_AUTHORITIES.map((a) => (
             <li key={a.sigla} className="text-[9px] text-gray-600">
-              <b>{a.sigla}</b> — {a.nombre}
+              <b>{dbField(a.sigla)}</b> — {dbField(a.nombre)}
             </li>
           ))}
         </ul>
@@ -798,17 +845,14 @@ export default function Report() {
             {pr.map((r) => (
               <li key={r.id} className="border-b border-gray-100 pb-1.5">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-semibold text-gray-700">{r.label}</span>
+                  <span className="font-semibold text-gray-700">{dbField(r.label)}</span>
                   <span className="shrink-0 font-mono text-[#165170ff]">
-                    {r.valueText}
-                    {r.unit ? ` ${r.unit}` : ""}
+                    {dbField(`${r.valueText}${r.unit ? ` ${r.unit}` : ""}`)}
                   </span>
                 </div>
-                {r.description && (
-                  <p className="text-[9px] leading-snug text-gray-500">
-                    {r.description}
-                  </p>
-                )}
+                <p className="text-[9px] leading-snug text-gray-500">
+                  {dbField(r.description)}
+                </p>
               </li>
             ))}
           </ul>
@@ -841,9 +885,9 @@ export default function Report() {
                   className="border-t border-gray-100 align-top even:bg-gray-50/60"
                 >
                   <td className="px-2 py-1 font-medium text-gray-700">
-                    {s.fuente}
+                    {dbField(s.fuente)}
                   </td>
-                  <td className="px-2 py-1 text-gray-600">{s.version}</td>
+                  <td className="px-2 py-1 text-gray-600">{dbField(s.version)}</td>
                   <td className="px-2 py-1">
                     <a
                       href={s.url}
@@ -851,7 +895,7 @@ export default function Report() {
                       rel="noreferrer"
                       className="break-all text-[#165170ff] underline"
                     >
-                      {s.url}
+                      {dbField(s.url)}
                     </a>
                   </td>
                 </tr>
@@ -918,9 +962,10 @@ export default function Report() {
       <h3 className="text-base font-bold text-[#165170ff]">
         {n}. {DISCLAIMER_TITLE}
       </h3>
-      <p className="mt-2 leading-relaxed text-gray-600">{DISCLAIMER_BODY}</p>
+      <p className="mt-2 leading-relaxed text-gray-600">{dbField(DISCLAIMER_BODY)}</p>
       <footer className="mt-6 border-t border-gray-200 pt-3 text-[9px] text-gray-400">
         Vento · ANH · EAFIT · Mavalan Software · {timestamp}
+        {masterVersion ? ` · Datos: master ${masterVersion}` : ""}
       </footer>
     </div>,
   ]);
@@ -980,9 +1025,16 @@ export default function Report() {
               )}
             </div>
             <ViridisLegend />
+            <AuditDataLabel uses={["mapa de calor: score_general por hex (master/global.parquet)"]} />
           </>
         )}
 
+        <AuditDataLabel
+          uses={[
+            "gauge = índice general (global.parquet)",
+            "gráfico = score por dimensión (criterios/*)",
+          ]}
+        />
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div className="flex flex-col items-center rounded-lg border border-gray-200 p-2">
             <p className="text-[9px] font-bold uppercase tracking-wide text-gray-500">

@@ -10,6 +10,12 @@ export interface EconomicScenario {
   id: string;
   label: string;
   description: string;
+  /** Factor que modela la curva de la proyección. TEMPLATE; en backend viene de
+   *  `catalog_escenario.mult` (mismo shape). */
+  mult: number;
+  /** Proyección ILUSTRATIVA (no definitiva) del impacto del escenario. TEMPLATE;
+   *  en backend viene de `catalog_escenario.impacto`. */
+  impacto: string;
 }
 
 export const ECONOMIC_SCENARIOS: EconomicScenario[] = [
@@ -17,16 +23,28 @@ export const ECONOMIC_SCENARIOS: EconomicScenario[] = [
     id: "base",
     label: "Base",
     description: "Evolución tendencial del mercado según supuestos centrales.",
+    mult: 1.03,
+    impacto:
+      "Ilustrativo: considerando todas las variables, el proyecto se podría " +
+      "mantener con retornos estables en el horizonte central.",
   },
   {
     id: "optimista",
     label: "Optimista",
     description: "Mayor demanda y precios al alza (transición energética acelerada).",
+    mult: 1.06,
+    impacto:
+      "Ilustrativo: con demanda y precios al alza, todas las variables juntas " +
+      "proyectan un margen creciente y mayor resiliencia del proyecto.",
   },
   {
     id: "conservador",
     label: "Conservador",
     description: "Crecimiento moderado con precios contenidos.",
+    mult: 0.99,
+    impacto:
+      "Ilustrativo: con precios contenidos, el proyecto se podría mantener en el " +
+      "punto de equilibrio si se optimizan las variables de mayor peso.",
   },
 ];
 
@@ -62,15 +80,16 @@ export function economicSeries(
   varId: string,
   years: number,
   capacidadMW: number = CAPACIDAD_REFERENCIA_MW,
+  /** Override del factor de curva (viene de `catalog_escenario.mult` en backend).
+   *  Si no se pasa, usa el `mult` del escenario template. */
+  multOverride?: number,
 ): SeriesPoint[] {
   const s = seed(`${scenarioId}|${varId}`);
   const start = 40 + (s % 40); // 40..79
   const mult =
-    scenarioId === "optimista"
-      ? 1.06
-      : scenarioId === "conservador"
-        ? 0.99
-        : 1.03;
+    multOverride ??
+    ECONOMIC_SCENARIOS.find((e) => e.id === scenarioId)?.mult ??
+    1.03;
   const amp = 2 + ((s >> 5) % 5); // 2..6
   // Factor por capacidad nominal (tamaño del proyecto): 20 MW = 1× (referencia).
   // Así el selector de capacidad SÍ altera la proyección (template).

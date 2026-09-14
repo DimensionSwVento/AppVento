@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cellArea } from "h3-js";
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
 import {
@@ -18,6 +18,7 @@ import {
   AEROGENERADORES,
   areaRangeForCapacity,
 } from "../../Utils/projectData";
+import { fetchTurbines } from "../../Utils/admin/catalogApi";
 import {
   CARACTERISTICA_DEFINICIONES,
   TIPO_AEROGENERADOR_RANGOS,
@@ -85,12 +86,42 @@ export default function Caracteristicas() {
 
   const hasErrors = Object.keys(errors).length > 0;
 
+  // Specs de aerogenerador (potencia/área/espaciamiento). Template por defecto;
+  // con backend vienen de `catalog_turbine` (editable en admin). Si el backend
+  // cae, el seam ya degrada al template.
+  const [turbineSpecs, setTurbineSpecs] = useState(AEROGENERADORES);
+  useEffect(() => {
+    let alive = true;
+    fetchTurbines()
+      .then((list) => {
+        if (!alive || list.length === 0) return;
+        const next = { ...AEROGENERADORES };
+        for (const t of list) {
+          if (t.id === "S" || t.id === "M" || t.id === "L") {
+            next[t.id] = {
+              label: t.label,
+              detail: t.detail,
+              potenciaMinMW: t.potenciaMinMW,
+              potenciaMaxMW: t.potenciaMaxMW,
+              areaPorAeroKm2: t.areaPorAeroKm2,
+              espaciamientoM: t.espaciamientoM,
+            };
+          }
+        }
+        setTurbineSpecs(next);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   // US04-04 — Alerta (NO bloqueante) de área vs capacidad nominal: si el área
   // seleccionada queda fuera del rango esperado para la capacidad elegida.
   // Se mantiene FUERA de `errors` para no gatear el botón "Siguiente paso".
   const areaWarning = useMemo<string | null>(() => {
     if (areaKm2 <= 0 || !isCapacityWithinRange(capacidadMW)) return null;
-    const range = areaRangeForCapacity(capacidadMW, categoriaAerogenerador);
+    const range = areaRangeForCapacity(capacidadMW, categoriaAerogenerador, turbineSpecs);
     if (!range) return null;
     const fmt = (n: number) =>
       n.toLocaleString("es-CO", { maximumFractionDigits: 1 });
@@ -100,7 +131,7 @@ export default function Caracteristicas() {
     if (areaKm2 > range.max)
       return `El área seleccionada (${fmt(areaKm2)} km²) es MAYOR que la esperada para ${capacidadMW} MW (${banda}). Reduce el área o aumenta la capacidad.`;
     return null;
-  }, [areaKm2, capacidadMW, categoriaAerogenerador]);
+  }, [areaKm2, capacidadMW, categoriaAerogenerador, turbineSpecs]);
 
   const detectado = useMemo(
     () => dominantHexType(selectedHexes),
@@ -119,9 +150,9 @@ export default function Caracteristicas() {
   // #12: Nº de aerogeneradores se DERIVA de categoría + área (ya no manual).
   useEffect(() => {
     setNumAerogeneradores(
-      calcNumAerogeneradores(areaKm2, categoriaAerogenerador),
+      calcNumAerogeneradores(areaKm2, categoriaAerogenerador, turbineSpecs),
     );
-  }, [areaKm2, categoriaAerogenerador, setNumAerogeneradores]);
+  }, [areaKm2, categoriaAerogenerador, setNumAerogeneradores, turbineSpecs]);
 
   return (
     <div className="flex h-full flex-col">
@@ -156,6 +187,11 @@ export default function Caracteristicas() {
           categoria={categoriaAerogenerador}
           onCategoriaChange={setCategoriaAerogenerador}
           categoriaError={errors.categoriaAerogenerador}
+          categorias={(["S", "M", "L"] as const).map((id) => ({
+            id,
+            label: turbineSpecs[id].label,
+            detail: turbineSpecs[id].detail,
+          }))}
         />
       </div>
 
@@ -358,12 +394,14 @@ function TamañoSection({
   categoria,
   onCategoriaChange,
   categoriaError,
+  categorias = CATEGORIAS,
 }: {
   areaKm2: number;
   numAerogeneradores: number | null;
   categoria: CategoriaAerogenerador;
   onCategoriaChange: (c: CategoriaAerogenerador) => void;
   categoriaError?: string;
+  categorias?: { id: CategoriaAerogenerador; label: string; detail: string }[];
 }) {
   return (
     <section className="mt-4 rounded-md bg-white p-4 shadow-sm">
@@ -414,7 +452,7 @@ function TamañoSection({
           Categoría / perfil del aerogenerador
         </p>
         <div className="mt-2 grid grid-cols-3 gap-2">
-          {CATEGORIAS.map((cat) => (
+          {categorias.map((cat) => (
             <button
               key={cat.id}
               type="button"
