@@ -188,6 +188,17 @@ export async function getRoleByName(roleName: string): Promise<KeycloakRole> {
   return fetchAdminApi(`/roles/${encodeURIComponent(roleName)}`);
 }
 
+/**
+ * Miembros de un rol de realm en UNA sola llamada (US08-04.5): permite marcar el
+ * rol de cada usuario del listado sin un N+1 por usuario.
+ */
+export async function getRealmRoleMembers(
+  roleName: string,
+  max = 2000,
+): Promise<KeycloakUser[]> {
+  return fetchAdminApi(`/roles/${encodeURIComponent(roleName)}/users?max=${max}`);
+}
+
 export async function assignRealmRole(
   userId: string,
   roleName: string
