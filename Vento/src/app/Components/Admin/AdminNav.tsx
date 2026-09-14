@@ -8,6 +8,8 @@ const TABS = [
   { href: "/admin/variables", label: "Variables y datasets" },
   { href: "/admin/normativa", label: "Normativa regulatoria" },
   { href: "/admin/escenarios", label: "Escenarios económicos" },
+  { href: "/admin/master", label: "Actualizar master" },
+  { href: "/admin/sources", label: "Fuentes de datos" },
 ];
 
 /** Navegación entre las secciones de administración (US08). */
