@@ -17,10 +17,28 @@
  */
 import { latLngToCell, cellToLatLng, gridDisk } from "h3-js";
 import { MAP_SYMBOLS, type MapSymbol, type MapSymbolKind } from "./mapSymbols";
+import { getVariableById } from "../variables/variablesCatalog";
 import { USE_BACKEND } from "../projectData";
 
 /** Resolución H3 de las capas de ÁREA (cobertura localizada de la máster). */
 export const MAP_LAYER_RES = 8;
+
+/**
+ * MODO SUBTEMPLATE por variable: si el código real de la variable aún NO se
+ * conoce (p.ej. no sabemos cuál código de la máster es viento/densidad), el
+ * backend elige uno disponible al azar (determinista) para mostrar datos reales
+ * "de puente". Activable/desactivable por variable (granular, como USE_BACKEND).
+ * Por defecto, las de viento (códigos por confirmar). Editar este set = seam.
+ */
+export const SUBTEMPLATE_VARS = new Set<string>([
+  "velocidad-viento",
+  "densidad-viento",
+]);
+
+/** masterId de la variable (código de la máster) para pedirle al backend. */
+function masterIdFor(variableId: string): string {
+  return getVariableById(variableId)?.masterId || variableId;
+}
 
 /**
  * Umbral de display del heat de viento (0–1): por debajo el hex no se pinta.
@@ -37,12 +55,46 @@ export const WIND_THRESHOLD = 0;
  * posición del hex (centro cálido / bordes fríos). Real: valor de la máster
  * (`variables[code]`) del hex, agregado a la resolución mostrada.
  */
-export function windValueForHex(variableId: string, h3Index: string): number {
+export function windValueForHex(
+  variableId: string,
+  h3Index: string,
+  realValues?: Map<string, number> | null,
+): number {
+  // Dato REAL del backend si el hex está en el mapa cargado (res8/zoom alto);
+  // si no, el campo placeholder (corredores).
+  const real = realValues?.get(h3Index);
+  if (real != null) return real;
   const [lat, lng] = cellToLatLng(h3Index);
   // Desfase por variable → velocidad y densidad no calcan idéntico.
   const off = variableId === "densidad-viento" ? 0.7 : 0;
   const theta = (lng * 2.1 + lat * 1.1 + off) * Math.PI;
   return Math.pow(Math.max(0, Math.sin(theta)), 1.4);
+}
+
+/**
+ * Valores reales por hex (res8) de una variable de viento desde el backend.
+ * Devuelve `Map<h3, valor 0–1>`, o `null` si no hay backend o falla → el
+ * heatmap cae al placeholder. Envía el `masterId` y el flag `subtemplate`.
+ */
+export async function fetchWindCells(
+  variableId: string,
+): Promise<Map<string, number> | null> {
+  if (!USE_BACKEND) return null;
+  try {
+    const res = await fetch(`/api/tiles/variable`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code: masterIdFor(variableId),
+        subtemplate: SUBTEMPLATE_VARS.has(variableId),
+      }),
+    });
+    if (!res.ok) return null;
+    const rows = (await res.json()) as { h3_index: string; value: number }[];
+    return new Map(rows.map((r) => [r.h3_index, r.value]));
+  } catch {
+    return null;
+  }
 }
 
 export interface MapLayerCell {
@@ -89,7 +141,11 @@ export async function fetchMapLayerCells(
       const res = await fetch(`/api/tiles/variable`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: s.variableId, res: MAP_LAYER_RES }),
+        body: JSON.stringify({
+          code: masterIdFor(s.variableId),
+          res: MAP_LAYER_RES,
+          subtemplate: SUBTEMPLATE_VARS.has(s.variableId),
+        }),
       });
       if (res.ok) {
         const rows = (await res.json()) as { h3_index: string; value: number }[];
