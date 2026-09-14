@@ -26,4 +26,10 @@ export type InformeEntry = {
    * entradas antiguas no la tienen → al restaurar se cae al default.
    */
   reportConfig?: ReportConfig;
+  /**
+   * Versión de la MASTER con la que se generó el informe (trazabilidad: qué
+   * datos vio). La estampa el backend al guardar (`masterVersion`). Las entradas
+   * viejas o en modo template pueden no tenerla.
+   */
+  masterVersion?: string | null;
 };
