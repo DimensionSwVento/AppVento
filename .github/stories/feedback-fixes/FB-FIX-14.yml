@@ -1,0 +1,20 @@
+id: FB-FIX-14
+title: "[FB-FIX-14] Búsqueda de usuarios insensible a tildes"
+epic: "E3-Admin"
+epic_label: "epic:E3-Admin"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  El buscador es sensible a tildes (no encuentra 'Gomez' sin tilde).
+
+  **Corrección:** Normalizar el query para ignorar tildes.
+  **Estimación:** 20-30m
+
+  ## Criterio de aceptación
+  - Buscar 'Gomez' encuentra 'Gómez' y viceversa.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

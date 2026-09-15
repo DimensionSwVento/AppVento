@@ -1,0 +1,20 @@
+id: FB-FIX-15
+title: "[FB-FIX-15] Mejorar la visibilidad de la confirmación de edición"
+epic: "E3-Admin"
+epic_label: "epic:E3-Admin"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  La confirmación al editar usuario es pequeña y en una esquina.
+
+  **Corrección:** Mejorar el tamaño/posición del mensaje de confirmación.
+  **Estimación:** 10-15m
+
+  ## Criterio de aceptación
+  - La confirmación de edición es claramente visible.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

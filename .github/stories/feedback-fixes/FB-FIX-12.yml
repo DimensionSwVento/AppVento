@@ -1,0 +1,20 @@
+id: FB-FIX-12
+title: "[FB-FIX-12] Etiqueta de texto junto al color por rol"
+epic: "E3-Admin"
+epic_label: "epic:E3-Admin"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  La codificación por color de rol no tiene etiqueta de texto de respaldo (a11y).
+
+  **Corrección:** Agregar una etiqueta de texto junto al color por rol.
+  **Estimación:** 10-15m
+
+  ## Criterio de aceptación
+  - Cada rol muestra color + texto (accesible sin depender del color).
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

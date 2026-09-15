@@ -1,0 +1,20 @@
+id: FB-FIX-01
+title: "[FB-FIX-01] Pintar en el mapa las informativas seleccionadas"
+epic: "E2-Mapa-SIG"
+epic_label: "epic:E2-Mapa-SIG"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  En la pantalla final no se ven las informativas que se seleccionaron previamente.
+
+  **Corrección:** Sincronizar el estado de selección de informativas con las capas del mapa.
+  **Estimación:** 20-30m
+
+  ## Criterio de aceptación
+  - Las informativas activadas se pintan como capa en el mapa final.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

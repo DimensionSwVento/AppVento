@@ -1,0 +1,20 @@
+id: FB-FIX-17
+title: "[FB-FIX-17] Aclarar que el downgrade de rol es reversible"
+epic: "E3-Admin"
+epic_label: "epic:E3-Admin"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  Hay incertidumbre sobre si se puede revertir un rol admin→analista.
+
+  **Corrección:** Aclarar en el mensaje que el downgrade es reversible (si el usuario no fue borrado de Keycloak).
+  **Estimación:** 10-15m
+
+  ## Criterio de aceptación
+  - El mensaje comunica que el downgrade es reversible bajo esa condición.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

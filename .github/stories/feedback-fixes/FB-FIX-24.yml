@@ -1,0 +1,20 @@
+id: FB-FIX-24
+title: "[FB-FIX-24] Distinguir 'recurso' de 'técnica' (etiqueta)"
+epic: "E4-Variables"
+epic_label: "epic:E4-Variables"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  No se distingue 'recurso' (viento) de 'técnica' (aerogenerador).
+
+  **Corrección:** Si es solo etiqueta/agrupación visual, renombrar/agrupar acordemente.
+  **Estimación:** 10-15m
+
+  ## Criterio de aceptación
+  - La UI distingue visualmente recurso vs técnica (si aplica sin tocar el modelo).
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

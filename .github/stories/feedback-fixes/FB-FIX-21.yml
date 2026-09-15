@@ -1,0 +1,20 @@
+id: FB-FIX-21
+title: "[FB-FIX-21] Hacer visible el modo activo del mapa"
+epic: "E2-Mapa-SIG"
+epic_label: "epic:E2-Mapa-SIG"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  La búsqueda por municipio a veces no delimita hexágonos o no corresponden; el modo activo no es claro.
+
+  **Corrección:** Hacer más visible la etiqueta del modo activo ('autoselección' vs 'exploración').
+  **Estimación:** 15-20m
+
+  ## Criterio de aceptación
+  - El usuario ve claramente si el modo selecciona hexágonos o solo navega.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

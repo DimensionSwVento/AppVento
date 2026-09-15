@@ -1,0 +1,20 @@
+id: FB-FIX-11
+title: "[FB-FIX-11] Limpiar el campo de búsqueda al clic fuera"
+epic: "E7-UX"
+epic_label: "epic:E7-UX"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  El campo de búsqueda no se limpia de forma consistente al hacer clic fuera.
+
+  **Corrección:** Limpiar el campo al perder el foco/clic fuera.
+  **Estimación:** 10m
+
+  ## Criterio de aceptación
+  - Al hacer clic fuera, el campo de búsqueda queda limpio de forma consistente.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

@@ -1,0 +1,20 @@
+id: FB-FIX-02
+title: "[FB-FIX-02] Ajustar el zoom por scroll del mapa"
+epic: "E2-Mapa-SIG"
+epic_label: "epic:E2-Mapa-SIG"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  El scroll para el zoom se siente extraño en la navegación.
+
+  **Corrección:** Ajustar sensibilidad/comportamiento del zoom por scroll.
+  **Estimación:** 15-20m
+
+  ## Criterio de aceptación
+  - El zoom por scroll responde de forma suave y predecible.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

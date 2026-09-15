@@ -1,0 +1,20 @@
+id: FB-FIX-07
+title: "[FB-FIX-07] Modal propio para eliminar informe"
+epic: "E7-UX"
+epic_label: "epic:E7-UX"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  El diálogo de eliminar informe usa el diálogo nativo del navegador (rompe consistencia).
+
+  **Corrección:** Reemplazarlo por un modal propio, reusando el patrón de la app.
+  **Estimación:** 20-30m
+
+  ## Criterio de aceptación
+  - Eliminar informe usa el modal de la app, no el nativo del navegador.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

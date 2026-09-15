@@ -63,6 +63,9 @@ jobs:
           # Label tipo
           create_label "user-story"         "6366f1" "Historia de usuario"
 
+          # Label de feedback: fixes del feedback de Sprint 3 (sin costo adicional)
+          create_label "feedback-fix"       "b60205" "Fix del feedback de Sprint 3 (sin costo adicional)"
+
   setup-milestone:
     name: "2. Crear Milestones"
     runs-on: ubuntu-latest
@@ -116,7 +119,9 @@ jobs:
           UPDATED=0
           SKIPPED=0
 
-          for file in .github/stories/sprint-04/*.yml; do
+          # Sincroniza las stories de Sprint 4 Y los fixes del feedback de Sprint 3.
+          # Todo archivo bajo feedback-fixes/ recibe además la label `feedback-fix`.
+          for file in .github/stories/sprint-04/*.yml .github/stories/feedback-fixes/*.yml; do
             [ -f "$file" ] || continue
 
             TITLE=$(yq '.title' "$file")
@@ -129,13 +134,21 @@ jobs:
             # Entrega" parta la expresión de yq (bug del lexer).
             FILE_MILESTONE=$(DEFAULT_MS="$MILESTONE_NAME" yq '.milestone // strenv(DEFAULT_MS)' "$file")
 
+            # Labels extra: los fixes del feedback llevan `feedback-fix`.
+            EXTRA_LABELS=""
+            case "$file" in
+              *feedback-fixes*) EXTRA_LABELS="feedback-fix" ;;
+            esac
+            ALL_LABELS="user-story,$EPIC_LABEL,$PRIORITY_LABEL"
+            [ -n "$EXTRA_LABELS" ] && ALL_LABELS="$ALL_LABELS,$EXTRA_LABELS"
+
             echo "──────────────────────────────────"
             echo "📋 Procesando: $STORY_ID  →  $FILE_MILESTONE"
 
             # Garantiza que las labels del issue existen (por si setup-labels no
             # las creó — E4/E7/QA son nuevas). Idempotente: si ya existe, no toca
             # su color. Evita "could not add label: '...' not found".
-            for lbl in "user-story" "$EPIC_LABEL" "$PRIORITY_LABEL"; do
+            for lbl in "user-story" "$EPIC_LABEL" "$PRIORITY_LABEL" "$EXTRA_LABELS"; do
               if [ -n "$lbl" ] && [ "$lbl" != "null" ]; then
                 # Sin 2>/dev/null: si falla por permisos se verá el motivo en el log.
                 # "already exists" es esperado e inofensivo.
@@ -167,7 +180,7 @@ jobs:
               # Labels best-effort (no bloquea si alguna no existe / no se pudo crear).
               gh issue edit "$ISSUE_URL" \
                 --repo "$GH_REPO" \
-                --add-label "user-story,$EPIC_LABEL,$PRIORITY_LABEL" \
+                --add-label "$ALL_LABELS" \
                 || echo "   ⚠️  labels parciales para $STORY_ID (revisa permisos / creación de labels)"
 
               # Añadir al Project Kanban
@@ -196,7 +209,7 @@ jobs:
               gh issue edit "$EXISTING" \
                 --repo "$GH_REPO" \
                 --body "$BODY" \
-                --add-label "user-story,$EPIC_LABEL,$PRIORITY_LABEL" 2>/dev/null || true
+                --add-label "$ALL_LABELS" 2>/dev/null || true
 
               echo "🔄 Issue #$EXISTING actualizado (body sincronizado)"
               UPDATED=$((UPDATED + 1))

@@ -1,0 +1,20 @@
+id: FB-FIX-10
+title: "[FB-FIX-10] 'Inicio' reinicia el flujo del módulo"
+epic: "E7-UX"
+epic_label: "epic:E7-UX"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  El botón 'Inicio' no reinicia el flujo; redirige a la bienvenida general.
+
+  **Corrección:** Que 'Inicio' reinicie el flujo del módulo actual.
+  **Estimación:** 15-20m
+
+  ## Criterio de aceptación
+  - Pulsar 'Inicio' reinicia el flujo del módulo en vez de ir a bienvenida.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+
