@@ -159,6 +159,11 @@ export default function HistorialList() {
                     {fmtKm2.format(e.areaKm2)} km² · Score{" "}
                     {e.scores.general.toFixed(1)}
                   </p>
+                  {e.masterVersion && (
+                    <p className="text-[10px] text-gray-400">
+                      Datos: master {e.masterVersion}
+                    </p>
+                  )}
                 </div>
                 <button
                   onClick={() => verInforme(e)}

@@ -124,12 +124,29 @@ async function refreshAccessToken(
   };
 }
 
+/**
+ * Censura ~la mitad de una cadena (URL/secreto) para logs: deja visible el
+ * primer y último cuarto, oculta el medio con `****`. Suficiente para
+ * identificar el valor sin filtrarlo entero a los logs.
+ */
+function maskHalf(value?: string | null): string {
+  if (!value) return "❌ missing";
+  const s = String(value);
+  if (s.length <= 8) return "****";
+  const q = Math.max(2, Math.floor(s.length / 4));
+  return `${s.slice(0, q)}****${s.slice(-q)}`;
+}
+
 console.log("[AUTH] ENV CHECK:", {
   AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST ? "✅" : "❌",
   AUTH_SECRET: process.env.AUTH_SECRET ? "✅" : "❌",
   AUTH_KEYCLOAK_ID: process.env.AUTH_KEYCLOAK_ID ?? "❌ missing",
   AUTH_KEYCLOAK_SECRET: process.env.AUTH_KEYCLOAK_SECRET ? "✅" : "❌",
-  AUTH_KEYCLOAK_ISSUER: process.env.AUTH_KEYCLOAK_ISSUER ?? "❌ missing",
+  // URLs censuradas a la mitad (no se filtran enteras al log).
+  AUTH_KEYCLOAK_ISSUER: maskHalf(process.env.AUTH_KEYCLOAK_ISSUER),
+  BACKEND_URL: maskHalf(process.env.BACKEND_URL),
+  NEXT_PUBLIC_API_URL: maskHalf(process.env.NEXT_PUBLIC_API_URL),
+  INTERNAL_API_SECRET: process.env.INTERNAL_API_SECRET ? "✅" : "❌",
 });
 
 // AccuWeb: Keycloak reporta HTTPS como issuer pero internamente solo acepta HTTP.
@@ -148,9 +165,9 @@ const issuer = isLocalIssuer
 const wellKnownUrl = `${issuerEnv}/.well-known/openid-configuration`;
 
 console.log("[AUTH] ISSUER CONFIG:", {
-  envOriginal: issuerEnv,
-  issuerRewritten: issuer,
-  wellKnownUrl,
+  envOriginal: maskHalf(issuerEnv),
+  issuerRewritten: maskHalf(issuer),
+  wellKnownUrl: maskHalf(wellKnownUrl),
 });
 
 // Reescribe URLs HTTPS → HTTP para conexiones internas en AccuWeb
@@ -165,18 +182,69 @@ if (issuerEnv) {
     .then((res) => res.json())
     .then((config) => {
       console.log("[AUTH] DISCOVERY OK:", {
-        issuerFromKeycloak: config.issuer,
-        issuerWeExpect: issuer,
+        issuerFromKeycloak: maskHalf(config.issuer),
+        issuerWeExpect: maskHalf(issuer),
         match: config.issuer === issuer ? "✅" : "❌ MISMATCH",
-        tokenEndpoint: config.token_endpoint,
-        tokenEndpointRewritten: httpsToHttp(config.token_endpoint),
-        authEndpoint: config.authorization_endpoint,
-        authEndpointRewritten: httpsToHttp(config.authorization_endpoint),
+        tokenEndpoint: maskHalf(config.token_endpoint),
+        tokenEndpointRewritten: maskHalf(httpsToHttp(config.token_endpoint)),
+        authEndpoint: maskHalf(config.authorization_endpoint),
+        authEndpointRewritten: maskHalf(httpsToHttp(config.authorization_endpoint)),
       });
     })
     .catch((err) => {
       console.error("[AUTH] DISCOVERY FETCH FAILED:", err.message);
     });
+}
+
+// ── Diagnóstico de conexión al BACKEND (una vez al arrancar) ────────────────
+// No solo /health: prueba varios endpoints (abiertos y autenticados) para ver,
+// por cada uno, la URL (censurada), el método, el estado y el cuerpo de la
+// respuesta. Los autenticados envían la identidad interna (mismo patrón que el
+// BFF `proxyBackend`). Se salta durante `next build` (sería ruido de red).
+const BACKEND_BASE = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || "";
+if (BACKEND_BASE && process.env.NEXT_PHASE !== "phase-production-build") {
+  const internalSecret = process.env.INTERNAL_API_SECRET || "";
+  const PROBES: { method: string; path: string; auth?: boolean }[] = [
+    { method: "GET", path: "/api/health" }, // abierto
+    { method: "GET", path: "/api/tiles/warmup" }, // abierto
+    { method: "GET", path: "/api/tiles/counts", auth: true }, // requiere identidad
+    { method: "GET", path: "/api/historico", auth: true }, // requiere identidad
+  ];
+  console.log("[BACKEND] PROBE START:", {
+    base: maskHalf(BACKEND_BASE),
+    internalSecret: internalSecret ? "✅" : "❌ missing",
+    endpoints: PROBES.length,
+  });
+  for (const p of PROBES) {
+    const url = `${BACKEND_BASE}${p.path}`;
+    const headers: Record<string, string> = {};
+    if (p.auth) {
+      headers["X-Internal-Secret"] = internalSecret;
+      headers["X-User-Sub"] = "startup-probe";
+      headers["X-User-Roles"] = "admin";
+    }
+    const t0 = Date.now();
+    fetch(url, { method: p.method, headers, cache: "no-store" })
+      .then(async (res) => {
+        const body = (await res.text().catch(() => "")).slice(0, 200);
+        console.log("[BACKEND] PROBE:", {
+          method: p.method,
+          url: maskHalf(url),
+          status: res.status,
+          ok: res.ok ? "✅" : "⚠️",
+          ms: Date.now() - t0,
+          body: body || "(vacío)",
+        });
+      })
+      .catch((err) => {
+        console.error("[BACKEND] PROBE FAILED:", {
+          method: p.method,
+          url: maskHalf(url),
+          ms: Date.now() - t0,
+          error: err?.message ?? String(err),
+        });
+      });
+  }
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({

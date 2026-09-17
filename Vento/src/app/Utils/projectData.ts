@@ -24,36 +24,51 @@ export const AEROGENERADORES: Record<
   {
     label: string;
     detail: string;
-    /** Potencia nominal por aerogenerador (MW). */
-    potenciaMW: number;
-    /** Área ocupada por aerogenerador (km²) — base para estimar el número. */
+    /** Potencia por aerogenerador — RANGO REAL (Tabla 2 del cliente), en MW.
+     *  `potenciaMaxMW === 0` = sin tope superior (utility "1 MW o más"). */
+    potenciaMinMW: number;
+    potenciaMaxMW: number;
+    /** Área ocupada por aerogenerador (km²) — base para estimar el número.
+     *  ⚠️ TEMPLATE: el cliente NO envió área/espaciamiento; queda estimado hasta
+     *  que defina el cálculo de nº de aerogeneradores por hex (Tabla 2, pendiente). */
     areaPorAeroKm2: number;
-    /** Separación entre aerogeneradores (m) — "los m" de cada categoría. */
+    /** Separación entre aerogeneradores (m). ⚠️ TEMPLATE (ver arriba). */
     espaciamientoM: number;
   }
 > = {
   S: {
     label: "S",
-    detail: "Pequeño · hasta ~2 MW",
-    potenciaMW: 2,
+    detail: "Turbina pequeña · 1 kW – 100 kW",
+    potenciaMinMW: 0.001,
+    potenciaMaxMW: 0.1,
     areaPorAeroKm2: 0.3,
     espaciamientoM: 300,
   },
   M: {
     label: "M",
-    detail: "Mediano · 2–4 MW",
-    potenciaMW: 3.5,
+    detail: "Turbina mediana · 100 kW – 1 MW",
+    potenciaMinMW: 0.1,
+    potenciaMaxMW: 1,
     areaPorAeroKm2: 0.6,
     espaciamientoM: 500,
   },
   L: {
     label: "L",
-    detail: "Grande · 4 MW o más",
-    potenciaMW: 6,
+    detail: "Turbina grande · 1 MW o más (utility)",
+    potenciaMinMW: 1,
+    potenciaMaxMW: 0,
     areaPorAeroKm2: 1.0,
     espaciamientoM: 800,
   },
 };
+
+/** Potencia representativa (MW) de una categoría para el cálculo: tope del rango
+ *  si existe; si es abierto (utility), el mínimo. */
+export function turbinePotenciaMW(
+  spec: (typeof AEROGENERADORES)[CategoriaAeroId],
+): number {
+  return spec.potenciaMaxMW > 0 ? spec.potenciaMaxMW : spec.potenciaMinMW;
+}
 
 /**
  * Nº de aerogeneradores estimado = área del proyecto ÷ área por aerogenerador.
@@ -62,11 +77,13 @@ export const AEROGENERADORES: Record<
 export function calcNumAerogeneradores(
   areaKm2: number,
   categoria: CategoriaAeroId | null,
+  /** Specs override (viene de `catalog_turbine` en backend); default = template. */
+  specs: typeof AEROGENERADORES = AEROGENERADORES,
 ): number {
   if (!categoria || areaKm2 <= 0) return 0;
   return Math.max(
     1,
-    Math.floor(areaKm2 / AEROGENERADORES[categoria].areaPorAeroKm2),
+    Math.floor(areaKm2 / specs[categoria].areaPorAeroKm2),
   );
 }
 
@@ -74,16 +91,18 @@ export function calcNumAerogeneradores(
  * Rango de ÁREA (km²) esperado para una capacidad nominal (US04-04) — TEMPLATE
  * hasta que D. Técnica entregue las áreas mínimas/máximas oficiales por
  * capacidad. Se deriva de la densidad de la categoría: nº de turbinas necesarias
- * para la potencia (ceil(MW / potenciaMW)) × área por turbina, con una banda de
+ * para la potencia (ceil(MW / turbinePotenciaMW)) × área por turbina, con una banda de
  * tolerancia [0.6×, 1.6×]. Si no hay categoría, usa "M" como referencia.
  */
 export function areaRangeForCapacity(
   capacidadMW: number,
   categoria: CategoriaAeroId | null,
+  /** Specs override (viene de `catalog_turbine` en backend); default = template. */
+  specs: typeof AEROGENERADORES = AEROGENERADORES,
 ): { min: number; max: number; esperada: number } | null {
   if (!Number.isFinite(capacidadMW) || capacidadMW <= 0) return null;
-  const spec = AEROGENERADORES[categoria ?? "M"];
-  const turbinas = Math.max(1, Math.ceil(capacidadMW / spec.potenciaMW));
+  const spec = specs[categoria ?? "M"];
+  const turbinas = Math.max(1, Math.ceil(capacidadMW / turbinePotenciaMW(spec)));
   const esperada = turbinas * spec.areaPorAeroKm2;
   return { min: esperada * 0.6, max: esperada * 1.6, esperada };
 }

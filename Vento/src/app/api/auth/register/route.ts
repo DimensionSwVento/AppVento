@@ -70,3 +70,12 @@ export async function GET(req: NextRequest) {
 
   return response;
 }
+
+/**
+ * Algunos navegadores/formularios inician el flujo con POST (p. ej. reenvío de
+ * formulario). Lo tratamos igual que GET para no devolver 405 en el iniciador
+ * del registro.
+ */
+export async function POST(req: NextRequest) {
+  return GET(req);
+}

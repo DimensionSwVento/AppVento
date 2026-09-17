@@ -4,6 +4,7 @@ import { useVariables } from "../../Utils/contexts/VariablesContext";
 import { colorForVariable } from "../../Utils/variables/dimensionColors";
 import { VariableIcon } from "../../Utils/variables/variableIcons";
 import VariableTooltip from "./VariableTooltip";
+import { dbField } from "../../Utils/audit";
 import type { Variable } from "../../Utils/variables/variablesCatalog";
 
 /**
@@ -54,7 +55,7 @@ export default function VariableSwitch({ variable }: { variable: Variable }) {
           <VariableTooltip variable={variable} />
         </div>
         <p className="text-[11px] text-gray-500 mt-0.5 leading-tight">
-          {variable.description}
+          {dbField(variable.description)}
         </p>
       </div>
       <span
