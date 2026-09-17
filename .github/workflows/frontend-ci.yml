@@ -1,18 +1,18 @@
-# CI del frontend (Vento/). No requiere secrets del repositorio: las
-# credenciales de Keycloak para e2e son de DEV/E2E y viven en
-# infra/keycloak/realm-export.json (jamás usarlas en producción).
+# CI del frontend (Vento/). No requiere secrets del repositorio.
 #
 # NOTA: la política de Actions de la organización sólo permite actions de
 # repos propios de DimensionSwVento, así que este workflow NO usa ninguna
 # action de marketplace (ni siquiera actions/checkout): el checkout se hace
 # con git + github.token y Node sale del tool cache del runner.
 #
+# El E2E (Playwright) se retiró: consumía demasiado tiempo (levantaba Keycloak
+# por Docker + build de prod) y no aporta al gate de CI. Queda lint/unit/build/
+# secrets. Si se reintroduce, hacerlo como workflow aparte / manual, no en el gate.
+#
 # Pendiente para un admin de la organización:
 #   - (Recomendado) Permitir "actions created by GitHub" en
-#     Settings → Actions → General; eso habilita actions/checkout,
-#     actions/setup-node con cache de npm y actions/upload-artifact
-#     (artefactos de coverage y playwright-report, hoy deshabilitados).
-#   - Marcar unit / build / e2e como required status checks en main
+#     Settings → Actions → General (habilita actions/checkout, setup-node, etc.).
+#   - Marcar unit / build como required status checks en main
 #   - Activar branch protection en main
 name: Frontend CI
 
@@ -115,61 +115,6 @@ jobs:
           AUTH_KEYCLOAK_ID: "vento-web"
           AUTH_KEYCLOAK_SECRET: "dev-secret-change-in-production"
           AUTH_KEYCLOAK_ISSUER: "http://localhost:8080/realms/vento"
-
-  e2e:
-    name: E2E (Playwright, chromium)
-    runs-on: ubuntu-latest
-    needs: [unit]
-    steps:
-      - name: Checkout (sin actions de marketplace)
-        run: |
-          git init -q .
-          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git fetch -q --depth 1 origin "$GITHUB_SHA"
-          git checkout -q FETCH_HEAD
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-      - name: Node 22 desde el tool cache del runner
-        run: |
-          NODE_DIR=$(ls -d /opt/hostedtoolcache/node/22.*/x64/bin 2>/dev/null | sort -V | tail -1)
-          if [ -n "$NODE_DIR" ]; then echo "$NODE_DIR" >> "$GITHUB_PATH"; fi
-          node --version
-      - run: npm ci
-        working-directory: Vento
-
-      - name: Start Keycloak (realm vento + usuarios e2e)
-        working-directory: infra/keycloak
-        run: docker compose up -d --wait
-
-      - name: Wait for realm import
-        working-directory: infra/keycloak
-        run: |
-          for i in $(seq 1 60); do
-            if curl -fsS http://localhost:8080/realms/vento/.well-known/openid-configuration > /dev/null; then
-              echo "Realm vento listo"; exit 0
-            fi
-            sleep 5
-          done
-          echo "Keycloak no respondió a tiempo"; docker compose logs --tail 50; exit 1
-
-      - name: Install Playwright chromium
-        working-directory: Vento
-        run: npx playwright install --with-deps chromium
-
-      # El webServer de playwright.config.ts compila y sirve el build de
-      # producción con el env e2e (credenciales dev in-repo).
-      - name: Run e2e suite
-        working-directory: Vento
-        run: npx playwright test --project=chromium
-
-      # Sin actions/upload-artifact (política de la org): ante un fallo,
-      # volcamos un resumen del reporte al log del job.
-      - name: Resumen del reporte en caso de fallo
-        if: failure()
-        working-directory: Vento
-        run: |
-          echo "== test-results =="
-          find test-results -maxdepth 2 -name "error-context.md" -print -exec sed -n '1,40p' {} \; 2>/dev/null || true
 
   secrets:
     name: Secret scan (gitleaks)
