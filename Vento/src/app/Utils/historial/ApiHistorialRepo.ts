@@ -9,14 +9,13 @@ import type { HistorialRepository } from "./HistorialRepository";
  */
 export class ApiHistorialRepo implements HistorialRepository {
   async list(): Promise<InformeEntry[]> {
-    // Resiliente: si el backend no responde, el histórico se ve vacío (no rompe la UI).
-    try {
-      const res = await fetch("/api/historico", { cache: "no-store" });
-      if (!res.ok) return [];
-      return (await res.json()) as InformeEntry[];
-    } catch {
-      return [];
+    // Sin silenciar: si el backend falla, LANZA para que la UI avise y ofrezca
+    // reintentar (antes devolvía [] y "parecía cache/vacío" ocultando el fallo).
+    const res = await fetch("/api/historico", { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`No se pudo cargar el histórico (${res.status})`);
     }
+    return (await res.json()) as InformeEntry[];
   }
 
   async save(entry: InformeEntry): Promise<void> {

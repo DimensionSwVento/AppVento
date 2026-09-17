@@ -22,6 +22,9 @@ const repo: HistorialRepository = USE_BACKEND
 
 type HistorialApi = {
   entries: InformeEntry[];
+  loading: boolean;
+  /** Mensaje de error al traer el histórico (null si OK). Para avisar + reintentar. */
+  error: string | null;
   save: (entry: InformeEntry) => Promise<void>;
   remove: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
@@ -37,14 +40,23 @@ export function useHistorial(): HistorialApi {
 
 export function HistorialProvider({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<InformeEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    setEntries(await repo.list());
+    setLoading(true);
+    setError(null);
+    try {
+      setEntries(await repo.list());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo cargar el histórico");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    // Carga inicial del histórico desde el repo (fetch → setState async).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // Carga inicial del histórico desde el repo (setState en callbacks async → ok).
     refresh();
   }, [refresh]);
 
@@ -65,8 +77,8 @@ export function HistorialProvider({ children }: { children: ReactNode }) {
   );
 
   const api = useMemo<HistorialApi>(
-    () => ({ entries, save, remove, refresh }),
-    [entries, save, remove, refresh],
+    () => ({ entries, loading, error, save, remove, refresh }),
+    [entries, loading, error, save, remove, refresh],
   );
 
   return <HistorialContext.Provider value={api}>{children}</HistorialContext.Provider>;
