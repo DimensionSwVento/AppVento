@@ -30,6 +30,9 @@ export default function AdminBundlePage() {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  // Archivos elegidos/arrastrados que esperan el botón "Enviar" (no se suben
+  // solos: el admin confirma qué manda antes de arrancar la subida).
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   // FASE 2: clasifica las columnas del bundle ya subido. `root` es interno (lo
   // fija la subida), nunca se escribe a mano.
@@ -49,29 +52,37 @@ export default function AdminBundlePage() {
     [toast],
   );
 
-  // FASE 1: arrastrar/elegir los parquets → se montan en el server → enseguida se
+  // Poner archivos EN ESPERA (arrastrados o elegidos): no se suben solos; el
+  // admin revisa cuántos son y confirma con el botón "Enviar".
+  const elegir = useCallback((files: FileList | File[]) => {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    setPendingFiles(list);
+    setUploadError(null);
+    setPlan(null);
+  }, []);
+
+  // FASE 1: subir al server los parquets EN ESPERA → se montan → enseguida se
   // clasifican (plan). Una sola característica; sin rutas.
-  const subir = useCallback(
-    async (files: FileList | File[]) => {
-      if (!files || Array.from(files).length === 0) return;
-      setUploading(true);
-      setUploadError(null);
-      setPlan(null);
-      try {
-        const r = await uploadBundle(files);
-        setRoot(r.root);
-        toast.success(`${r.files} archivos subidos`);
-        await verPlan(r.root);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "No se pudo subir";
-        setUploadError(msg);
-        toast.error(msg);
-      } finally {
-        setUploading(false);
-      }
-    },
-    [toast, verPlan],
-  );
+  const subir = useCallback(async () => {
+    if (pendingFiles.length === 0) return;
+    setUploading(true);
+    setUploadError(null);
+    setPlan(null);
+    try {
+      const r = await uploadBundle(pendingFiles);
+      setRoot(r.root);
+      setPendingFiles([]);
+      toast.success(`${r.files} archivos subidos`);
+      await verPlan(r.root);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "No se pudo subir";
+      setUploadError(msg);
+      toast.error(msg);
+    } finally {
+      setUploading(false);
+    }
+  }, [pendingFiles, toast, verPlan]);
 
   const aplicar = useCallback(async () => {
     setApplying(true);
@@ -139,7 +150,7 @@ export default function AdminBundlePage() {
               onDrop={(e) => {
                 e.preventDefault();
                 setDragOver(false);
-                if (e.dataTransfer.files.length) subir(e.dataTransfer.files);
+                if (e.dataTransfer.files.length) elegir(e.dataTransfer.files);
               }}
               className={`mt-3 rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
                 dragOver ? "border-[#165170ff] bg-[#cce1ee]/30" : "border-gray-300 bg-gray-50"
@@ -150,7 +161,9 @@ export default function AdminBundlePage() {
                   ? "Subiendo…"
                   : loading
                     ? "Revisando…"
-                    : "Arrastra aquí los archivos del modelo"}
+                    : pendingFiles.length > 0
+                      ? `${pendingFiles.length} archivo(s) en espera`
+                      : "Arrastra aquí los archivos del modelo"}
               </p>
               <p className="mt-1 text-[11px] text-gray-500">o elige una carpeta / archivos:</p>
               <div className="mt-2 flex justify-center gap-2">
@@ -162,7 +175,7 @@ export default function AdminBundlePage() {
                     multiple
                     // @ts-expect-error webkitdirectory no está tipado en React
                     webkitdirectory=""
-                    onChange={(e) => e.target.files && subir(e.target.files)}
+                    onChange={(e) => e.target.files && elegir(e.target.files)}
                   />
                 </label>
                 <label className="cursor-pointer rounded-full border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100">
@@ -171,10 +184,31 @@ export default function AdminBundlePage() {
                     type="file"
                     hidden
                     multiple
-                    onChange={(e) => e.target.files && subir(e.target.files)}
+                    onChange={(e) => e.target.files && elegir(e.target.files)}
                   />
                 </label>
               </div>
+
+              {/* Botón EXPLÍCITO de envío: la subida no arranca hasta pulsarlo. */}
+              {pendingFiles.length > 0 && !uploading && (
+                <div className="mt-3 flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={subir}
+                    className="rounded-full bg-[#165170ff] px-5 py-2 text-sm font-semibold text-white hover:bg-[#1e6a8c]"
+                  >
+                    Enviar {pendingFiles.length} archivo(s)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingFiles([])}
+                    className="text-xs font-semibold text-gray-500 hover:text-gray-700"
+                  >
+                    Quitar
+                  </button>
+                </div>
+              )}
+
               <p className="mt-2 text-[10px] text-gray-400">
                 Para conjuntos muy grandes, pídeselo al equipo técnico. El arrastre sirve
                 para subidas normales.
