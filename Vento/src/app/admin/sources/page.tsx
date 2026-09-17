@@ -32,8 +32,8 @@ export default function AdminSourcesPage() {
   const [target, setTarget] = useState<DataSource | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Refresh manual (tras una ingesta). El setState va tras `await`.
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       setSources(await fetchDataSources());
     } catch {
@@ -43,9 +43,19 @@ export default function AdminSourcesPage() {
     }
   }, [toast]);
 
+  // Carga al montar: fetch INLINE con setState en callbacks async (React Compiler
+  // prohíbe llamar en el effect una función que hace setState, pero permite
+  // setState dentro de un callback asíncrono).
   useEffect(() => {
-    load();
-  }, [load]);
+    let alive = true;
+    fetchDataSources()
+      .then((s) => alive && setSources(s))
+      .catch(() => alive && toast.error("No se pudieron cargar las fuentes de datos"))
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, [toast]);
 
   const doIngest = async () => {
     if (!target) return;

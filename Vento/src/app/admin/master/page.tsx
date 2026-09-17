@@ -37,8 +37,8 @@ export default function AdminMasterPage() {
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Refresh manual (tras actualizar la master). El setState va tras `await`.
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       setStatus(await fetchMasterStatus());
     } catch {
@@ -48,9 +48,19 @@ export default function AdminMasterPage() {
     }
   }, [toast]);
 
+  // Carga al montar: fetch INLINE con setState en callbacks async (.then/.finally)
+  // — el React Compiler no permite llamar en el effect una función que hace
+  // setState, pero sí setState dentro de un callback asíncrono.
   useEffect(() => {
-    load();
-  }, [load]);
+    let alive = true;
+    fetchMasterStatus()
+      .then((s) => alive && setStatus(s))
+      .catch(() => alive && toast.error("No se pudo cargar el estado de la master"))
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, [toast]);
 
   const doUpdate = async () => {
     setSubmitting(true);

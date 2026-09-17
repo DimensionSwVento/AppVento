@@ -109,12 +109,17 @@ export default function MapView() {
   const [windHeatId, setWindHeatId] = useState<string | null>(null);
   // Valores REALES por hex del viento activo (backend res8); null = placeholder.
   const [windCells, setWindCells] = useState<Map<string, number> | null>(null);
+  // Reset al cambiar/apagar la variable de viento → AJUSTE EN RENDER (no en
+  // effect): evita el setState síncrono dentro del effect (React Compiler). El
+  // effect solo hace el fetch (setState asíncrono en el .then/.catch).
+  const [prevWindHeatId, setPrevWindHeatId] = useState(windHeatId);
+  if (windHeatId !== prevWindHeatId) {
+    setPrevWindHeatId(windHeatId);
+    setWindCells(null);
+  }
   useEffect(() => {
+    if (!windHeatId) return; // sin id → nada que cargar (el reset ya ocurrió en render)
     let alive = true;
-    if (!windHeatId) {
-      setWindCells(null);
-      return;
-    }
     fetchWindCells(windHeatId)
       .then((m) => alive && setWindCells(m))
       .catch(() => alive && setWindCells(null));
