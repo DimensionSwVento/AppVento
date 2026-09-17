@@ -35,8 +35,8 @@ export default function SideBar({
 
   const ORDEN = [
     "seleccion-area",
-    "dimensiones",
     "caracteristicas",
+    "dimensiones",
     "informe",
   ] as const;
   const pasoActual = ORDEN.indexOf(accion as (typeof ORDEN)[number]);
@@ -72,8 +72,8 @@ export default function SideBar({
     // Salto adelante: hasta la fase más avanzada alcanzada (atajos si ya se
     // llegó a informe → selección↔informe directo).
     if (idx <= maxFaseIdx) return true;
-    // Primera progresión: de selección a dimensiones si ya hay selección.
-    if (paso === "dimensiones" && accion === "seleccion-area" && haySeleccion)
+    // Primera progresión: de selección a CARACTERÍSTICAS si ya hay selección.
+    if (paso === "caracteristicas" && accion === "seleccion-area" && haySeleccion)
       return true;
     return false;
   }
@@ -233,33 +233,9 @@ export default function SideBar({
             <button
               type="button"
               onClick={() =>
-                dimensionesHabilitadas && navegar("dimensiones")
-              }
-              className={`${navItemBase} ${dimensionesHabilitadas ? navItemEnabled : navItemDisabled} ${showNextStepCta ? nextNavItem : ""} ${!isAdminPage && accion === "dimensiones" ? activeNavItem : ""}`}
-              aria-disabled={!dimensionesHabilitadas}
-              aria-current={
-                !isAdminPage && accion === "dimensiones" ? "step" : undefined
-              }
-            >
-              <Image src="/dim.png" alt="" width={15} height={15} unoptimized className={iconCls} />
-              <p className={`${itemLabelCls} ${labelCls}`}>
-                Dimensiones
-              </p>
-              {esPasado("dimensiones") && stepCheckIcon}
-              {esActual("dimensiones") && activeStepArrowIcon}
-            </button>
-            {mobileOpen && hasSubpage ? (
-              <hr className={dividerCls}></hr>
-            ) : (
-              <></>
-            )}
-
-            <button
-              type="button"
-              onClick={() =>
                 caracteristicasHabilitadas && navegar("caracteristicas")
               }
-              className={`${navItemBase} ${caracteristicasHabilitadas ? navItemEnabled : navItemDisabled} ${!isAdminPage && accion === "caracteristicas" ? activeNavItem : ""}`}
+              className={`${navItemBase} ${caracteristicasHabilitadas ? navItemEnabled : navItemDisabled} ${showNextStepCta ? nextNavItem : ""} ${!isAdminPage && accion === "caracteristicas" ? activeNavItem : ""}`}
               aria-disabled={!caracteristicasHabilitadas}
               aria-current={
                 !isAdminPage && accion === "caracteristicas"
@@ -279,6 +255,30 @@ export default function SideBar({
               </p>
               {esPasado("caracteristicas") && stepCheckIcon}
               {esActual("caracteristicas") && activeStepArrowIcon}
+            </button>
+            {mobileOpen && hasSubpage ? (
+              <hr className={dividerCls}></hr>
+            ) : (
+              <></>
+            )}
+
+            <button
+              type="button"
+              onClick={() =>
+                dimensionesHabilitadas && navegar("dimensiones")
+              }
+              className={`${navItemBase} ${dimensionesHabilitadas ? navItemEnabled : navItemDisabled} ${!isAdminPage && accion === "dimensiones" ? activeNavItem : ""}`}
+              aria-disabled={!dimensionesHabilitadas}
+              aria-current={
+                !isAdminPage && accion === "dimensiones" ? "step" : undefined
+              }
+            >
+              <Image src="/dim.png" alt="" width={15} height={15} unoptimized className={iconCls} />
+              <p className={`${itemLabelCls} ${labelCls}`}>
+                Dimensiones
+              </p>
+              {esPasado("dimensiones") && stepCheckIcon}
+              {esActual("dimensiones") && activeStepArrowIcon}
             </button>
             {mobileOpen && hasSubpage ? (
               <hr className={dividerCls}></hr>

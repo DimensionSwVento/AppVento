@@ -12,8 +12,8 @@ import { useAprincipal } from "./contexts/AccionPrincipalContext";
  */
 export const PHASE_ORDER = [
   "seleccion-area",
-  "dimensiones",
   "caracteristicas",
+  "dimensiones",
   "informe",
 ] as const;
 
