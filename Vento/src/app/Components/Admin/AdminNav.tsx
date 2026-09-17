@@ -10,6 +10,7 @@ const TABS = [
   { href: "/admin/escenarios", label: "Escenarios económicos" },
   { href: "/admin/master", label: "Actualizar master" },
   { href: "/admin/sources", label: "Fuentes de datos" },
+  { href: "/admin/bundle", label: "Datos del modelo" },
 ];
 
 /** Navegación entre las secciones de administración (US08). */

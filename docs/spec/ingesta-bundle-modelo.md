@@ -1,69 +1,86 @@
 ---
-version: 0.1 (DISEÑO — no implementado)
-date: 2026-09-14
-scope: Rediseño de la ingesta de datos del modelo — de "una master" a un BUNDLE multi-capa
-status: pendiente de confirmar contenido real de los parquets del modelo
+version: 0.2 (DISEÑO — estructura CONFIRMADA por modelo.txt; entrega back mañana)
+date: 2026-09-15
+scope: Consumo del BUNDLE del modelo (varios .h3.parquet). Onshore ahora, offshore después.
+status: estructura confirmada; falta implementar ingesta cuando lleguen los parquets
 ---
 
-# Ingesta del modelo como BUNDLE (no "una master")
+# Consumo del BUNDLE del modelo (varios .h3.parquet)
 
-> Realización (2026-09-14): lo que llamábamos "la master" en realidad son **varias
-> fuentes separadas** del mismo dataset. El `.parquet` que creíamos master = solo
-> la capa de **variables crudas** (ponderadas + excluyentes + `excluido`/`alerta`).
-> El **modelo** (carpeta de parquets) = las capas de **scores precalculados**.
-> Además, el modelo entregado hoy es **onshore-only**; offshore llegará como otro
-> bundle más adelante.
+> Confirmado (2026-09-15, `modelo.txt`): el back entrega **un árbol de `.h3.parquet`**,
+> NO una sola master. Los **scores vienen PRECALCULADOS** → se **ingieren**, no se
+> calculan. Entrega mañana. Hoy = **onshore**; **offshore** llega después (otro
+> bundle idéntico).
 
-## 1. Capas del bundle (de `modelo.txt`)
+## 1. Estructura REAL del bundle (confirmada)
 ```
-DATASET onshore  (offshore = bundle futuro, mismo layout)
-├── variables/variables.h3.parquet        ← valores crudos por hex (todas las columnas
-│                                             DIM_NNN…) + `excluido` (bool) + `alerta` (bool)
-├── variables_pon/variables_pon.h3.parquet ← variables ya ponderadas
-├── criterios/<dim>.h3.parquet             ← score POR DIMENSIÓN (recurso_eolico, contexto_biotico,
-│                                             contexto_abiotico, entorno_social, economia,
-│                                             infraestructura, alerta)  [¿precalculado?]
-├── criterios/global.h3.parquet            ← score GENERAL por hex               [¿precalculado?]
-└── subcriterios/minmax_anchors.json       ← rangos de normalización por variable
+modelo/
+├── criterios/
+│   ├── criterios.h3.parquet         ← TODOS los criterios por hex (1 fila/hex, columnas por criterio)
+│   ├── criterios.csv                ← definición/orden de criterios
+│   ├── global/global.h3.parquet     ← SCORE GENERAL por hex (índice de idoneidad)
+│   ├── recurso_eolico/…parquet      ← score criterio (→ dimensión TÉCNICA)
+│   ├── infraestructura/…parquet     ← score criterio (→ dimensión TÉCNICA)
+│   ├── contexto_biotico/…parquet    ← score criterio (→ dimensión AMBIENTAL)
+│   ├── contexto_abiotico/…parquet   ← score criterio (→ dimensión AMBIENTAL)
+│   ├── entorno_social/…parquet      ← score criterio (→ dimensión SOCIAL)
+│   ├── economia/…parquet            ← score criterio (→ dimensión MACROECONÓMICA)
+│   └── alerta/alerta.h3.parquet     ← bandera de ALERTA (viento) — no es dimensión
+├── subcriterios/
+│   ├── subcriterios.h3.parquet      ← TODOS los subcriterios por hex
+│   ├── minmax_anchors.json          ← RANGOS de normalización (→ hexagon_meta)
+│   └── <criterio>/<subcriterio>.h3.parquet  (amenazas, geologicas, areas_protegidas,
+│        especies_bioticas, cond_vida, dist_interes, instituciones, brecha,
+│        riesgo_seguridad, sensibilidad, gobernanza, vulnerabilidad, dist_infra,
+│        dist_nodos, densidad_wpd, …)
+├── variables/variables.h3.parquet       ← VALORES CRUDOS por hex (todas las variables) + excluido/alerta
+├── variables_pon/variables_pon.h3.parquet ← variables ya PONDERADAS por hex
+└── mcda_variables.error.txt             ← log de errores de la corrida (ignorar)
 ```
+Cada `.h3.parquet` trae su `h3_index` como clave. Los `.h3.html` son solo previews.
 
-## 2. Decisiones tomadas (usuario, 2026-09-14)
-- **Onshore-only ahora.** Dejar preparado el eje mar/tierra; offshore = bundle aparte
-  después. → columna `hexagon.emplazamiento` (default `"onshore"`), sin crearla aún.
-- **Scores: POR CONFIRMAR** si vienen precalculados (ingerir `criterios/global` +
-  `criterios/*`) o hay que calcularlos (AHP en backend). Diseñar para SOPORTAR AMBOS;
-  no implementar la ingesta de scores hasta inspeccionar los parquets.
-- **Variables→CSV: EN PAUSA.** El catálogo de metadatos (`catalog_variable`) sigue en
-  `variables_seed.json` por ahora; no migrar a CSV hasta cerrar este rediseño.
+## 2. Plan de CONSUMO (qué archivo alimenta qué) — el consumo de la app NO cambia
+El front sigue leyendo de `hexagon` vía `/api/tiles/*`. Solo cambia la INGESTA:
 
-## 3. Qué cambia y qué NO
-- **Consumo (front + tiles → `hexagon`): NO cambia.** La app seguirá leyendo de
-  `hexagon` (`score_general`, `variables`, `tipo_celda`). Cero cambios de front.
-- **Ingesta: SÍ cambia.** Hoy `tile_service.update_from_parquet` lee UN parquet y
-  **calcula** el score con pesos placeholder. Debe pasar a **ingesta de bundle**:
-  - `variables/` → `hexagon.variables` (JSONB) + `excluido`→`tipo_celda` + `alerta`→flag.
-  - `criterios/global` → `hexagon.score_general` (si precalculado).
-  - `criterios/<dim>` → **nueva** `hexagon.scores` (JSONB por dimensión) [si precalculado].
-  - `minmax_anchors.json` → `hexagon_meta` (reemplaza el min/max calculado).
-  - Si NO hay scores precalculados → fallback: calcular con `model_weights` (AHP real).
+| Archivo del bundle | → Destino en `hexagon` | Nota |
+|---|---|---|
+| `criterios/global/global.h3.parquet` | `hexagon.score_general` | índice de idoneidad (ya calculado) |
+| `criterios/criterios.h3.parquet` | **`hexagon.scores` (JSONB nuevo)** | score por criterio; 1 pasada trae todos |
+| `variables/variables.h3.parquet` | `hexagon.variables` (JSONB) + `excluido`→`tipo_celda` + `alerta` | valores crudos por hex |
+| `subcriterios/minmax_anchors.json` | `hexagon_meta` (rangos) | reemplaza el min/max calculado |
+| `variables_pon/…` | (opcional) | si se necesita el detalle ponderado |
+| `criterios/alerta/…` | bandera de alerta (viento) | informativa, no puntúa |
 
-## 4. Cambios de esquema PLANEADOS (no aplicados)
-- `hexagon.emplazamiento: str = "onshore"` (índice) — para el eje mar/tierra futuro.
-- `hexagon.scores: JSONB = {}` — score por dimensión precalculado (hoy se calcula en
-  `get_area_report`; si el modelo lo trae, se ingiere y `get_area_report` lo prefiere).
-- `data_source`: una fila POR CAPA del bundle (`model_variables`, `model_criterios`,
-  `model_global`, `model_anchors`), no una sola "master". Reutiliza `catalog_ingest`.
+**Decisión ya resuelta:** los scores se **INGIEREN** (no se recalculan). El AHP del
+backend (`model_weights.py`, hoy placeholder 1.0) queda **solo de fallback**.
 
-## 5. Ingesta (diseño, alineado con lo ya montado)
-- La ingesta destructiva del bundle = por **consola** (como hoy la master):
-  `python -m tools.ingest_docs model --destructive` (o un comando de bundle dedicado).
-- `base_code` (backend) debe ampliarse para casar `DIM_NNN` quitando sufijos
-  `_onshore/_dist/_t/_alert/_svNNN…` (mapeo columna master ↔ `master_id` del catálogo).
-- Reconciliación por capa (Quinn): ¿los hex de `criterios/global` casan con los de
-  `variables`? huérfanos/faltantes → `data_source.notes`.
+## 3. Reconciliación criterio ↔ dimensión de la app (DECISIÓN pendiente)
+El modelo tiene **7 criterios**; la app muestra **5 dimensiones**. Mapeo:
+- `recurso_eolico` + `infraestructura` → **Técnica**
+- `contexto_biotico` + `contexto_abiotico` → **Ambiental**
+- `entorno_social` → **Social**
+- `economia` → **Macroeconómica**
+- `regulatoria` → (sin datos aún)
+- `alerta` → bandera, no dimensión
 
-## 6. Pendiente de confirmar antes de implementar
-1. ¿`criterios/*` y `global` vienen con score YA calculado? (define ingerir vs calcular).
-2. ¿`variables_pon` se usa o basta con `variables` + pesos?
-3. ¿Offshore será bundle separado con mismo layout? (confirmado: sí, futuro).
-4. Formato exacto de columnas de `variables.h3.parquet` (para el mapeo `base_code`).
+⚠️ El modelo salta de criterio → `global` (no da nivel "dimensión de la app"). Para
+las **barras por dimensión** hay que decidir: (a) **mostrar los 7 criterios del
+modelo** tal cual (recomendado: es lo que el modelo calcula), o (b) **agregar**
+criterios→dimensión con una regla (promedio/pesos de `criterios.csv`). Definir con
+el equipo. `criterios.csv` probablemente trae los pesos/orden para (b).
+
+## 4. Onshore / offshore
+- Bundle de mañana = **onshore**. Offshore = otro bundle idéntico después.
+- Plan: columna `hexagon.emplazamiento` (default `"onshore"`) — una ingesta por bundle.
+  El consumo no se entera (o se filtra por emplazamiento según la selección).
+
+## 5. Checklist para MAÑANA (cuando lleguen los parquets)
+1. Migración: `hexagon.scores` (JSONB) + `hexagon.emplazamiento` (str, default onshore).
+2. Ingesta bundle en `tile_service`/`catalog_ingest`: leer los N parquets del árbol y
+   mapear según §2 (una fila `hexagon` por hex: score_general + scores + variables +
+   excluido/alerta). Registrar cada capa en `data_source`.
+3. Ampliar `base_code` para casar columnas de `variables.h3.parquet` (`DIM_NNN_...`)
+   con el `master_id` del catálogo (quitar `_onshore/_dist/_t/_alert/_svNNN`).
+4. Ingerir `minmax_anchors.json` → `hexagon_meta`.
+5. Confirmar §3 (criterios del modelo vs dimensiones de la app) antes de tocar el front.
+6. Cargar el bundle onshore, humo `USE_BACKEND=true`, verificar mapa/informe.
