@@ -920,12 +920,11 @@ export default function MapView() {
               )}
             </button>
           )}
-          {/* En informe la toolbar va a la IZQUIERDA para no cruzarse con el
-              panel de variables (top-3 right-3) ni la previsualización. */}
-          {/* En selección la toolbar sube (bottom-32) para no superponerse con
-              el cartel "Continuar a Dimensiones"/hint (centrado, ~6rem). En
-              informe no hay cartel → queda abajo-izquierda. */}
-          <div className={`absolute z-10 flex items-center gap-2 ${canSelect ? "bottom-32 right-4" : "bottom-3 left-4"}`}>
+          {/* En selección: grupo de botones CENTRADO justo encima del cartel
+              "Siguiente paso" (que va centrado abajo, ~6rem de alto). En informe
+              no hay cartel → queda abajo-izquierda para no cruzarse con el panel
+              de variables (top-3 right-3). */}
+          <div className={`absolute z-10 flex items-center gap-2 ${canSelect ? "bottom-32 left-1/2 -translate-x-1/2" : "bottom-3 left-4"}`}>
             <button
               onClick={zoomToSelection}
               disabled={!hasSelection}

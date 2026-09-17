@@ -93,6 +93,9 @@ export default function AdminUsersPage() {
     const q = norm(search);
     const tokens = q.split(/\s+/).filter(Boolean);
     const q0 = tokens[0] ?? "";
+    // Query CON acentos (para priorizar coincidencia exacta de tilde: si escribes
+    // "Ándrés" con tilde, "Ándrés" va antes que "Andres").
+    const q0Raw = (search.trim().toLowerCase().split(/\s+/)[0] ?? "");
 
     const base = allUsers.filter((u) => {
       if (estado === "activo" && !u.enabled) return false;
@@ -109,17 +112,24 @@ export default function AdminUsersPage() {
     });
 
     const rank = (u: User): number => {
-      if (!q0) return 3;
+      if (!q0) return 4;
       const fn = norm(u.firstName);
       const ln = norm(u.lastName);
-      if (fn.startsWith(q0) || ln.startsWith(q0)) return 0; // empieza por
+      // 0: coincidencia EXACTA de acento (respeta la tilde que escribiste).
+      if (
+        q0Raw &&
+        (u.firstName.toLowerCase().startsWith(q0Raw) ||
+          u.lastName.toLowerCase().startsWith(q0Raw))
+      )
+        return 0;
+      if (fn.startsWith(q0) || ln.startsWith(q0)) return 1; // empieza por (sin tildes)
       if (
         norm(`${u.firstName} ${u.lastName}`)
           .split(/\s+/)
           .some((w) => w.startsWith(q0))
       )
-        return 1; // alguna palabra empieza por
-      return 2; // solo contiene
+        return 2; // alguna palabra empieza por
+      return 3; // solo contiene
     };
 
     return base.sort((a, b) => {

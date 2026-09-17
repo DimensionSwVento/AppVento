@@ -29,6 +29,7 @@ export default function AdminBundlePage() {
   const [applying, setApplying] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // FASE 2: clasifica las columnas del bundle ya subido. `root` es interno (lo
   // fija la subida), nunca se escribe a mano.
@@ -54,14 +55,17 @@ export default function AdminBundlePage() {
     async (files: FileList | File[]) => {
       if (!files || Array.from(files).length === 0) return;
       setUploading(true);
+      setUploadError(null);
       setPlan(null);
       try {
         const r = await uploadBundle(files);
         setRoot(r.root);
-        toast.success(`${r.files} archivos montados`);
+        toast.success(`${r.files} archivos subidos`);
         await verPlan(r.root);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "No se pudo subir");
+        const msg = e instanceof Error ? e.message : "No se pudo subir";
+        setUploadError(msg);
+        toast.error(msg);
       } finally {
         setUploading(false);
       }
@@ -175,6 +179,14 @@ export default function AdminBundlePage() {
                 Para conjuntos muy grandes, pídeselo al equipo técnico. El arrastre sirve
                 para subidas normales.
               </p>
+              {uploadError && (
+                <p className="mt-2 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-[11px] text-red-700">
+                  No se pudo subir: {uploadError}.{" "}
+                  {/Error 404|not found/i.test(uploadError)
+                    ? "El servidor aún no acepta subidas (falta desplegar/actualizar el backend). Avisa al equipo técnico."
+                    : "Reintenta o avisa al equipo técnico."}
+                </p>
+              )}
             </div>
           </section>
 
