@@ -190,6 +190,15 @@ export const EXCLUSION_REASONS = [
  */
 export const USE_BACKEND = process.env.NEXT_PUBLIC_USE_BACKEND === "true";
 
+// Log de arranque del MODO — sin mixtura: o todo BACKEND (API real) o todo
+// TEMPLATE (demo). En modo backend las lecturas del seam NO caen a template: si
+// el backend falla, lanzan (para no mezclar datos reales con placeholder).
+if (typeof console !== "undefined") {
+  console.log(
+    `[VENTO] MODO: ${USE_BACKEND ? "BACKEND (API real, sin fallback a template)" : "TEMPLATE (demo, sin backend)"}`,
+  );
+}
+
 /**
  * Modo emplazamiento por DATO (mar/tierra) — sprint 3.
  * `true` → cada hex sabe si es offshore (mar) o onshore (tierra) por el dato

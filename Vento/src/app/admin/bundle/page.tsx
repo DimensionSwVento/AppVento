@@ -8,6 +8,7 @@ import {
   fetchBundlePlan,
   reconcileColumn,
   applyBundle,
+  uploadBundle,
   COLUMN_KINDS,
   type BundlePlan,
   type PlanColumn,
@@ -26,6 +27,27 @@ export default function AdminBundlePage() {
   const [plan, setPlan] = useState<BundlePlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+
+  // Sube los archivos arrastrados/elegidos → carpeta temporal en el server →
+  // fija `root` con esa ruta (queda listo para "Ver plan").
+  const subir = useCallback(
+    async (files: FileList | File[]) => {
+      if (!files || Array.from(files).length === 0) return;
+      setUploading(true);
+      try {
+        const r = await uploadBundle(files);
+        setRoot(r.root);
+        toast.success(`${r.files} archivos subidos → ${r.root}`);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "No se pudo subir");
+      } finally {
+        setUploading(false);
+      }
+    },
+    [toast],
+  );
 
   const verPlan = useCallback(async () => {
     if (!root.trim()) {
@@ -84,8 +106,59 @@ export default function AdminBundlePage() {
             <code className="text-[11px]">python -m tools.ingest_bundle &lt;carpeta&gt;</code>.
           </p>
 
+          {/* Drag-and-drop: subir los parquets desde el PC del admin */}
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              if (e.dataTransfer.files.length) subir(e.dataTransfer.files);
+            }}
+            className={`mt-5 rounded-2xl border-2 border-dashed p-6 text-center transition-colors ${
+              dragOver ? "border-[#165170ff] bg-[#cce1ee]/30" : "border-gray-300 bg-gray-50"
+            }`}
+          >
+            <p className="text-sm font-medium text-gray-700">
+              {uploading ? "Subiendo…" : "Arrastra aquí los parquets del bundle desde tu PC"}
+            </p>
+            <p className="mt-1 text-[11px] text-gray-500">
+              o elige una carpeta / archivos:
+            </p>
+            <div className="mt-2 flex justify-center gap-2">
+              <label className="cursor-pointer rounded-full border border-[#165170ff] px-3 py-1.5 text-xs font-semibold text-[#165170ff] hover:bg-[#cce1ee]/40">
+                Elegir carpeta
+                <input
+                  type="file"
+                  hidden
+                  multiple
+                  // @ts-expect-error webkitdirectory no está tipado en React
+                  webkitdirectory=""
+                  onChange={(e) => e.target.files && subir(e.target.files)}
+                />
+              </label>
+              <label className="cursor-pointer rounded-full border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100">
+                Elegir archivos
+                <input
+                  type="file"
+                  hidden
+                  multiple
+                  onChange={(e) => e.target.files && subir(e.target.files)}
+                />
+              </label>
+            </div>
+            <p className="mt-2 text-[10px] text-gray-400">
+              ⚠️ Para bundles de varios GB, mejor deja los parquets en el servidor y
+              usa la ruta abajo (o la consola). El arrastre es ideal para pruebas o
+              subidas moderadas.
+            </p>
+          </div>
+
           {/* Formulario */}
-          <section className="mt-5 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-100 p-5 shadow-sm">
+          <section className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-100 p-5 shadow-sm">
             <label className="flex-1 text-sm text-gray-600">
               Carpeta del bundle (en el servidor)
               <input

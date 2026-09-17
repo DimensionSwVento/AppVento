@@ -137,6 +137,17 @@ function maskHalf(value?: string | null): string {
   return `${s.slice(0, q)}****${s.slice(-q)}`;
 }
 
+// MODO de la app (sin mixtura): o todo BACKEND (API real) o todo TEMPLATE (demo).
+// Lado server, junto al resto de diagnósticos [AUTH]/[BACKEND].
+const USE_BACKEND_MODE = process.env.NEXT_PUBLIC_USE_BACKEND === "true";
+console.log(
+  `[AUTH] MODO: ${
+    USE_BACKEND_MODE
+      ? "BACKEND (API real — sin fallback a template; exige backend arriba)"
+      : "TEMPLATE (demo — sin backend)"
+  }`,
+);
+
 console.log("[AUTH] ENV CHECK:", {
   AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST ? "✅" : "❌",
   AUTH_SECRET: process.env.AUTH_SECRET ? "✅" : "❌",

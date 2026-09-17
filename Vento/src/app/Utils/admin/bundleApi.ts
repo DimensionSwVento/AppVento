@@ -87,6 +87,29 @@ const EMPTY_PLAN: BundlePlan = {
   error: "Requiere backend conectado (USE_BACKEND) para inspeccionar los parquets.",
 };
 
+/**
+ * Sube los archivos ARRASTRADOS desde el PC del admin al servidor (multipart) y
+ * devuelve la carpeta temporal (`root`) donde quedaron, para pasarla a /plan y
+ * /apply. Preserva la ruta relativa (carpetas) vía `webkitRelativePath`.
+ */
+export async function uploadBundle(
+  files: FileList | File[],
+): Promise<{ root: string; files: number }> {
+  const fd = new FormData();
+  for (const f of Array.from(files)) {
+    fd.append("files", f);
+    // ruta relativa si vino de una carpeta; si no, el nombre suelto.
+    const rel = (f as File & { webkitRelativePath?: string }).webkitRelativePath;
+    fd.append("paths", rel && rel.length > 0 ? rel : f.name);
+  }
+  const res = await fetch(`${BASE}/upload`, { method: "POST", body: fd });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || err.error || `Error ${res.status}`);
+  }
+  return res.json() as Promise<{ root: string; files: number }>;
+}
+
 /** FASE A: clasifica las columnas del bundle en `root` (carpeta del servidor). */
 export async function fetchBundlePlan(root: string): Promise<BundlePlan> {
   if (!USE_BACKEND) return EMPTY_PLAN;
