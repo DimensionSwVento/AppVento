@@ -402,7 +402,7 @@ export default function MapView() {
           // costuras entre tiles (evita los pilares oscuros).
           if (windHeatId && d.owned) {
             const v = windValueForHex(windHeatId, d.h, windCells);
-            if (v >= WIND_THRESHOLD) {
+            if (v != null && v >= WIND_THRESHOLD) {
               const [r, g, b] = viridis(v);
               return [r, g, b, 51];
             }
