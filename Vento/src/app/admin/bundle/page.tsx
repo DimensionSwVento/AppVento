@@ -30,41 +30,44 @@ export default function AdminBundlePage() {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
-  // Sube los archivos arrastrados/elegidos → carpeta temporal en el server →
-  // fija `root` con esa ruta (queda listo para "Ver plan").
+  // FASE 2: clasifica las columnas del bundle ya subido. `root` es interno (lo
+  // fija la subida), nunca se escribe a mano.
+  const verPlan = useCallback(
+    async (bundleRoot: string) => {
+      setLoading(true);
+      try {
+        const p = await fetchBundlePlan(bundleRoot);
+        setPlan(p);
+        if (p.error) toast.error(p.error);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "No se pudo leer el plan");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [toast],
+  );
+
+  // FASE 1: arrastrar/elegir los parquets → se montan en el server → enseguida se
+  // clasifican (plan). Una sola característica; sin rutas.
   const subir = useCallback(
     async (files: FileList | File[]) => {
       if (!files || Array.from(files).length === 0) return;
       setUploading(true);
+      setPlan(null);
       try {
         const r = await uploadBundle(files);
         setRoot(r.root);
-        toast.success(`${r.files} archivos subidos → ${r.root}`);
+        toast.success(`${r.files} archivos montados`);
+        await verPlan(r.root);
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "No se pudo subir");
       } finally {
         setUploading(false);
       }
     },
-    [toast],
+    [toast, verPlan],
   );
-
-  const verPlan = useCallback(async () => {
-    if (!root.trim()) {
-      toast.error("Indica la carpeta del bundle en el servidor");
-      return;
-    }
-    setLoading(true);
-    try {
-      const p = await fetchBundlePlan(root.trim());
-      setPlan(p);
-      if (p.error) toast.error(p.error);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No se pudo leer el plan");
-    } finally {
-      setLoading(false);
-    }
-  }, [root, toast]);
 
   const aplicar = useCallback(async () => {
     setApplying(true);
@@ -98,102 +101,91 @@ export default function AdminBundlePage() {
           <AdminNav />
 
           <h2 className="mt-2 text-lg font-semibold text-gray-800">
-            Datos del modelo (bundle)
+            Subir la master (modelo)
           </h2>
           <p className="text-sm text-gray-500">
-            Inspecciona los parquets, concilia las columnas desconocidas y aplica la
-            ingesta (upsert). El reemplazo total (destructivo) va por consola:{" "}
-            <code className="text-[11px]">python -m tools.ingest_bundle &lt;carpeta&gt;</code>.
+            Una sola característica con fases: <b>arrastras</b> los parquets desde tu
+            PC → se montan → se <b>clasifican</b> las columnas → <b>concilias</b> lo
+            desconocido → se <b>ingiere</b> a la BD (upsert). No se escribe ninguna
+            ruta. El reemplazo total (destructivo) va por consola:{" "}
+            <code className="text-[11px]">python -m tools.ingest_bundle</code>.
           </p>
 
-          {/* Drag-and-drop: subir los parquets desde el PC del admin */}
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragOver(false);
-              if (e.dataTransfer.files.length) subir(e.dataTransfer.files);
-            }}
-            className={`mt-5 rounded-2xl border-2 border-dashed p-6 text-center transition-colors ${
-              dragOver ? "border-[#165170ff] bg-[#cce1ee]/30" : "border-gray-300 bg-gray-50"
-            }`}
-          >
-            <p className="text-sm font-medium text-gray-700">
-              {uploading ? "Subiendo…" : "Arrastra aquí los parquets del bundle desde tu PC"}
-            </p>
-            <p className="mt-1 text-[11px] text-gray-500">
-              o elige una carpeta / archivos:
-            </p>
-            <div className="mt-2 flex justify-center gap-2">
-              <label className="cursor-pointer rounded-full border border-[#165170ff] px-3 py-1.5 text-xs font-semibold text-[#165170ff] hover:bg-[#cce1ee]/40">
-                Elegir carpeta
-                <input
-                  type="file"
-                  hidden
-                  multiple
-                  // @ts-expect-error webkitdirectory no está tipado en React
-                  webkitdirectory=""
-                  onChange={(e) => e.target.files && subir(e.target.files)}
-                />
-              </label>
-              <label className="cursor-pointer rounded-full border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100">
-                Elegir archivos
-                <input
-                  type="file"
-                  hidden
-                  multiple
-                  onChange={(e) => e.target.files && subir(e.target.files)}
-                />
+          {/* FASE 1 — Arrastrar los parquets (nunca se escribe una ruta) */}
+          <section className="mt-5 rounded-2xl border border-gray-100 p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-700">1 · Subir parquets</h3>
+              <label className="text-xs text-gray-500">
+                Emplazamiento{" "}
+                <select
+                  value={emplazamiento}
+                  onChange={(e) => setEmplazamiento(e.target.value as "onshore" | "offshore")}
+                  className="rounded-md border border-gray-200 px-2 py-1 text-xs outline-none focus:border-[#165170ff]"
+                >
+                  <option value="onshore">onshore</option>
+                  <option value="offshore">offshore</option>
+                </select>
               </label>
             </div>
-            <p className="mt-2 text-[10px] text-gray-400">
-              ⚠️ Para bundles de varios GB, mejor deja los parquets en el servidor y
-              usa la ruta abajo (o la consola). El arrastre es ideal para pruebas o
-              subidas moderadas.
-            </p>
-          </div>
-
-          {/* Formulario */}
-          <section className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-100 p-5 shadow-sm">
-            <label className="flex-1 text-sm text-gray-600">
-              Carpeta del bundle (en el servidor)
-              <input
-                type="text"
-                value={root}
-                onChange={(e) => setRoot(e.target.value)}
-                placeholder="/datos/onshore"
-                className="mt-1 block w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm outline-none focus:border-[#165170ff]"
-              />
-            </label>
-            <label className="text-sm text-gray-600">
-              Emplazamiento
-              <select
-                value={emplazamiento}
-                onChange={(e) => setEmplazamiento(e.target.value as "onshore" | "offshore")}
-                className="mt-1 block rounded-md border border-gray-200 px-2 py-1.5 text-sm outline-none focus:border-[#165170ff]"
-              >
-                <option value="onshore">onshore</option>
-                <option value="offshore">offshore</option>
-              </select>
-            </label>
-            <button
-              type="button"
-              onClick={verPlan}
-              disabled={loading}
-              className="rounded-full bg-[#165170ff] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#1e6a8c] disabled:opacity-40"
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                if (e.dataTransfer.files.length) subir(e.dataTransfer.files);
+              }}
+              className={`mt-3 rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+                dragOver ? "border-[#165170ff] bg-[#cce1ee]/30" : "border-gray-300 bg-gray-50"
+              }`}
             >
-              {loading ? "Leyendo…" : "Ver plan"}
-            </button>
+              <p className="text-sm font-medium text-gray-700">
+                {uploading
+                  ? "Montando…"
+                  : loading
+                    ? "Clasificando columnas…"
+                    : "Arrastra aquí los parquets del bundle"}
+              </p>
+              <p className="mt-1 text-[11px] text-gray-500">o elige una carpeta / archivos:</p>
+              <div className="mt-2 flex justify-center gap-2">
+                <label className="cursor-pointer rounded-full border border-[#165170ff] px-3 py-1.5 text-xs font-semibold text-[#165170ff] hover:bg-[#cce1ee]/40">
+                  Elegir carpeta
+                  <input
+                    type="file"
+                    hidden
+                    multiple
+                    // @ts-expect-error webkitdirectory no está tipado en React
+                    webkitdirectory=""
+                    onChange={(e) => e.target.files && subir(e.target.files)}
+                  />
+                </label>
+                <label className="cursor-pointer rounded-full border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100">
+                  Elegir archivos
+                  <input
+                    type="file"
+                    hidden
+                    multiple
+                    onChange={(e) => e.target.files && subir(e.target.files)}
+                  />
+                </label>
+              </div>
+              <p className="mt-2 text-[10px] text-gray-400">
+                Para bundles de varios GB conviene la consola (memoria/tiempo). El
+                arrastre es para pruebas o subidas moderadas.
+              </p>
+            </div>
           </section>
 
           {plan && !plan.error && (
-            <>
+            <section className="mt-4 rounded-2xl border border-gray-100 p-5 shadow-sm">
+              <h3 className="text-sm font-semibold text-gray-700">
+                2 · Revisar y conciliar columnas
+              </h3>
               {/* Resumen */}
-              <div className="mt-5 flex flex-wrap gap-2 text-xs">
+              <div className="mt-3 flex flex-wrap gap-2 text-xs">
                 <Badge label={`${plan.summary.total} columnas`} cls="bg-gray-100 text-gray-700" />
                 <Badge label={`${plan.summary.conocidas} ok`} cls="bg-emerald-100 text-emerald-700" />
                 <Badge label={`${plan.summary.propuestas} propuestas`} cls="bg-blue-100 text-blue-700" />
@@ -216,14 +208,22 @@ export default function AdminBundlePage() {
                   </thead>
                   <tbody>
                     {columnas.map((c) => (
-                      <ColumnRow key={c.name} col={c} onSaved={verPlan} toastErr={toast.error} />
+                      <ColumnRow
+                        key={c.name}
+                        col={c}
+                        onSaved={() => verPlan(root)}
+                        toastErr={toast.error}
+                      />
                     ))}
                   </tbody>
                 </table>
               </div>
 
-              {/* Aplicar */}
-              <div className="mt-5 flex items-center gap-3">
+              {/* FASE 3 — Aplicar la ingesta a la BD */}
+              <h3 className="mt-6 text-sm font-semibold text-gray-700">
+                3 · Aplicar la ingesta
+              </h3>
+              <div className="mt-2 flex items-center gap-3">
                 <button
                   type="button"
                   onClick={aplicar}
@@ -238,7 +238,7 @@ export default function AdminBundlePage() {
                   </span>
                 )}
               </div>
-            </>
+            </section>
           )}
         </div>
       </div>

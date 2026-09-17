@@ -15,6 +15,7 @@ import {
   VARIABLES,
   type Variable,
   isExcluyente,
+  applyDbCatalog,
 } from "../variables/variablesCatalog";
 import {
   REGULATORY_NORMS,
@@ -205,27 +206,33 @@ export async function fetchMenuVariables(): Promise<Variable[]> {
 }
 
 /**
- * Hidrata los pesos reales del WLC (`weightFor`) desde el catálogo de BD:
- * `polaridad`×`peso` por variable. Sin backend (o si falla) NO hace nada → el
- * template `variableWeights.ts` sigue mandando. Llamar una vez al montar la app.
+ * Hidrata el CATÁLOGO real desde BD (modo backend): TEXTO/identidad por variable
+ * (label, descripción, criterio, subcriterio, fuente, masterId) vía `applyDbCatalog`
+ * y los PESOS del WLC (polaridad×peso) vía `applyDbWeights`. Un solo fetch para
+ * ambos. Los valores estáticos del front quedan SOLO como template (modo demo).
+ * Llamar una vez al montar la app (VariablesProvider).
  */
-export async function hydrateVariableWeights(): Promise<void> {
+export async function hydrateCatalog(): Promise<void> {
   if (!USE_BACKEND) return;
-  try {
-    const [modelo, inf] = await Promise.all([
-      fetchVariables("modelo"),
-      fetchVariables("informativa"),
-    ]);
-    applyDbWeights(
-      [...modelo, ...inf].map((v) => ({
-        id: v.id,
-        polaridad: v.polaridad,
-        peso: v.peso,
-      })),
-    );
-  } catch {
-    /* backend caído → se mantiene el template */
-  }
+  const [modelo, inf] = await Promise.all([
+    fetchVariables("modelo"),
+    fetchVariables("informativa"),
+  ]);
+  const all = [...modelo, ...inf];
+  applyDbCatalog(
+    all.map((v) => ({
+      id: v.id,
+      label: v.label,
+      descripcion: v.descripcion,
+      criterio: v.criterio,
+      subcriterio: v.subcriterio,
+      fuente: v.fuente,
+      masterId: v.masterId,
+    })),
+  );
+  applyDbWeights(
+    all.map((v) => ({ id: v.id, polaridad: v.polaridad, peso: v.peso })),
+  );
 }
 
 /** IDs de variables (modelo + informativas) con "ver en mapa" DESACTIVADO (o
