@@ -38,6 +38,8 @@ export default function AdminVariablesPage() {
   }, [tab, toast]);
 
   useEffect(() => {
+    // Carga inicial / al cambiar de pestaña: fetch al montar (uso legítimo de effect).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 
@@ -260,6 +262,16 @@ function Toggle({
   );
 }
 
+// Fila clave/valor del detalle (a nivel módulo: regla react-hooks/static-components).
+function Row({ k, val }: { k: string; val: string }) {
+  return (
+    <div className="flex justify-between gap-2 border-b border-gray-100 py-1.5 text-xs">
+      <span className="text-gray-500">{k}</span>
+      <span className="text-right font-medium text-gray-800">{val}</span>
+    </div>
+  );
+}
+
 function DetailPanel({
   v,
   onEdit,
@@ -271,12 +283,6 @@ function DetailPanel({
   onDataset: () => void;
   onToggleEnabled?: () => void;
 }) {
-  const Row = ({ k, val }: { k: string; val: string }) => (
-    <div className="flex justify-between gap-2 border-b border-gray-100 py-1.5 text-xs">
-      <span className="text-gray-500">{k}</span>
-      <span className="text-right font-medium text-gray-800">{val}</span>
-    </div>
-  );
   return (
     <div>
       <div className="mb-2 flex items-center gap-2">

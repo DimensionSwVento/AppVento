@@ -34,6 +34,8 @@ export default function AdminEscenariosPage() {
   }, [toast]);
 
   useEffect(() => {
+    // Carga inicial / al cambiar de pestaña: fetch al montar (uso legítimo de effect).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 

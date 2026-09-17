@@ -59,6 +59,8 @@ export default function EconomicModal({ onClose }: { onClose: () => void }) {
     };
   }, []);
   const escList = escenarios.length ? escenarios : ECONOMIC_SCENARIOS;
+  // Escenario activo (para su `mult` de curva y su proyección `impacto`).
+  const escActivo = escList.find((e) => e.id === escenarioId);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -72,12 +74,12 @@ export default function EconomicModal({ onClose }: { onClose: () => void }) {
       ? escList.map((sc, i) => ({
           label: `${shown[0].label} · ${sc.label}`,
           color: ECONOMIC_SERIES_COLORS[i % ECONOMIC_SERIES_COLORS.length],
-          points: economicSeries(sc.id, shown[0].id, horizonYears, capacidadNominal),
+          points: economicSeries(sc.id, shown[0].id, horizonYears, capacidadNominal, sc.mult),
         }))
       : shown.map((v, i) => ({
           label: v.label,
           color: ECONOMIC_SERIES_COLORS[i % ECONOMIC_SERIES_COLORS.length],
-          points: economicSeries(escenarioId, v.id, horizonYears, capacidadNominal),
+          points: economicSeries(escenarioId, v.id, horizonYears, capacidadNominal, escActivo?.mult),
         }));
 
   if (typeof document === "undefined") return null;
@@ -178,6 +180,14 @@ export default function EconomicModal({ onClose }: { onClose: () => void }) {
                   </select>
                 </label>
               </div>
+
+              {/* Proyección ILUSTRATIVA del escenario activo (dato editable en
+                  /admin/escenarios · no definitivo). */}
+              {!compareMode && escActivo?.impacto && (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-snug text-amber-800">
+                  {escActivo.impacto}
+                </p>
+              )}
 
               {/* 3. Variables a graficar */}
               <div>

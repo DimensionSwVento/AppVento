@@ -35,11 +35,12 @@ export default function PieChart({
     cy + rad * Math.sin(ang),
   ];
 
-  let acc = 0;
+  // Offsets acumulados SIN mutar (regla react-hooks/immutability): la suma
+  // previa de cada sector se calcula desde los anteriores.
   const arcs = vals.map((d, i) => {
-    const start = (acc / total) * Math.PI * 2 - Math.PI / 2;
-    acc += d.value;
-    const end = (acc / total) * Math.PI * 2 - Math.PI / 2;
+    const before = vals.slice(0, i).reduce((s, v) => s + v.value, 0);
+    const start = (before / total) * Math.PI * 2 - Math.PI / 2;
+    const end = ((before + d.value) / total) * Math.PI * 2 - Math.PI / 2;
     const large = end - start > Math.PI ? 1 : 0;
     const [x1, y1] = polar(start, r);
     const [x2, y2] = polar(end, r);

@@ -8,7 +8,7 @@
  *
  * Contrato de endpoints (para implementar en backend): ver docs/api/admin-catalog.md
  */
-import { USE_BACKEND } from "../projectData";
+import { USE_BACKEND, AEROGENERADORES } from "../projectData";
 import {
   DIMENSIONS,
   OPTIONAL_VARIABLES,
@@ -25,6 +25,7 @@ import {
   ECONOMIC_SCENARIOS,
   PROJECTION_HORIZONS,
 } from "../economic/economicScenarios";
+import { applyDbWeights } from "../variables/variableWeights";
 
 const BASE = "/api/admin/catalog";
 
@@ -48,6 +49,21 @@ export interface AdminVariable {
   descripcion: string;
   datasetVersion: string;
   datasetUpdatedAt: string;
+  // ── Reales por-variable que ANTES estaban hardcodeados (variablesCatalog.ts /
+  //    variableWeights.ts / mapLayerData.ts). Opcionales: el template no los trae
+  //    y el seam cae al valor estático cuando faltan. ──
+  masterId?: string;
+  criterio?: string;
+  subcriterio?: string;
+  aplicaEn?: "mar" | "tierra" | "";
+  noCalculo?: boolean;
+  /** +1 suma / -1 resta / 0 no aporta al WLC. */
+  polaridad?: number;
+  /** |peso| en el cálculo multicriterio. */
+  peso?: number;
+  /** Cómo se pinta en el mapa: heatmap | zona | "". */
+  mapKind?: "heatmap" | "zona" | "";
+  mapThreshold?: number;
 }
 
 export interface AdminEscenario {
@@ -56,6 +72,23 @@ export interface AdminEscenario {
   description: string;
   /** Horizonte de proyección en años. */
   horizonte: number;
+  /** Factor que modela la curva de la gráfica económica (antes hardcode). */
+  mult?: number;
+  /** Proyección ILUSTRATIVA (no definitiva) de impacto del escenario. */
+  impacto?: string;
+}
+
+/** Aerogenerador por categoría (S/M/L). Potencia = RANGO REAL (Tabla 2 cliente);
+ *  `potenciaMaxMW === 0` = sin tope (utility "1 MW o más"). Área/espaciamiento
+ *  son TEMPLATE (el cliente no los envió). */
+export interface AdminTurbine {
+  id: string;
+  label: string;
+  detail: string;
+  potenciaMinMW: number;
+  potenciaMaxMW: number;
+  areaPorAeroKm2: number;
+  espaciamientoM: number;
 }
 
 export type { Norma, NormaEstado };
@@ -114,7 +147,13 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
 // ── VARIABLES / DATASETS (US08-01) ───────────────────────────────────────────
 export async function fetchVariables(tipo: VariableTipo): Promise<AdminVariable[]> {
-  if (USE_BACKEND) return api<AdminVariable[]>(`/variables?tipo=${tipo}`);
+  if (USE_BACKEND) {
+    try {
+      return await api<AdminVariable[]>(`/variables?tipo=${tipo}`);
+    } catch {
+      // Backend caído → degradar a template (la app NO debe colapsar).
+    }
+  }
   return variablesStore.filter((v) => v.tipo === tipo);
 }
 
@@ -134,7 +173,20 @@ export async function fetchMenuVariables(): Promise<Variable[]> {
     const a = byId.get(v.id);
     byId.delete(v.id);
     if (a && (!a.enabled || !a.enMenu)) continue;
-    out.push(a ? { ...v, enMapa: a.enMapa } : v);
+    // Preferir el dato de BD cuando viene (backend); si falta, template estático.
+    out.push(
+      a
+        ? {
+            ...v,
+            enMapa: a.enMapa,
+            description: a.descripcion || v.description,
+            criterio: a.criterio || v.criterio,
+            subcriterio: a.subcriterio || v.subcriterio,
+            fuente: a.fuente || v.fuente,
+            masterId: a.masterId || v.masterId,
+          }
+        : v,
+    );
   }
   // 2) Informativas CREADAS en admin (no existían en el catálogo).
   for (const a of byId.values()) {
@@ -154,6 +206,30 @@ export async function fetchMenuVariables(): Promise<Variable[]> {
     });
   }
   return out;
+}
+
+/**
+ * Hidrata los pesos reales del WLC (`weightFor`) desde el catálogo de BD:
+ * `polaridad`×`peso` por variable. Sin backend (o si falla) NO hace nada → el
+ * template `variableWeights.ts` sigue mandando. Llamar una vez al montar la app.
+ */
+export async function hydrateVariableWeights(): Promise<void> {
+  if (!USE_BACKEND) return;
+  try {
+    const [modelo, inf] = await Promise.all([
+      fetchVariables("modelo"),
+      fetchVariables("informativa"),
+    ]);
+    applyDbWeights(
+      [...modelo, ...inf].map((v) => ({
+        id: v.id,
+        polaridad: v.polaridad,
+        peso: v.peso,
+      })),
+    );
+  } catch {
+    /* backend caído → se mantiene el template */
+  }
 }
 
 /** IDs de variables (modelo + informativas) con "ver en mapa" DESACTIVADO (o
@@ -237,7 +313,13 @@ export async function updateDataset(
 
 // ── NORMAS (US08-02) ─────────────────────────────────────────────────────────
 export async function fetchNormas(): Promise<Norma[]> {
-  if (USE_BACKEND) return api<Norma[]>(`/normas`);
+  if (USE_BACKEND) {
+    try {
+      return await api<Norma[]>(`/normas`);
+    } catch {
+      /* backend caído → template */
+    }
+  }
   return [...normasStore];
 }
 export async function createNorma(payload: Omit<Norma, "id">): Promise<Norma> {
@@ -263,7 +345,13 @@ export async function deleteNorma(id: string): Promise<void> {
 
 // ── ESCENARIOS (US08-03) ─────────────────────────────────────────────────────
 export async function fetchEscenarios(): Promise<AdminEscenario[]> {
-  if (USE_BACKEND) return api<AdminEscenario[]>(`/escenarios`);
+  if (USE_BACKEND) {
+    try {
+      return await api<AdminEscenario[]>(`/escenarios`);
+    } catch {
+      /* backend caído → template */
+    }
+  }
   return [...escenariosStore];
 }
 export async function createEscenario(
@@ -296,4 +384,198 @@ export async function deleteEscenario(id: string): Promise<void> {
     return;
   }
   escenariosStore = escenariosStore.filter((s) => s.id !== id);
+}
+
+// ── TURBINAS / AEROGENERADORES (item 4) ───────────────────────────────────────
+// Template = `AEROGENERADORES` de projectData.ts (S/M/L). Con backend, viene de
+// la tabla `catalog_turbine` (editable en admin, persiste). El seam degrada al
+// template si el backend cae.
+const turbinesStore: AdminTurbine[] = (
+  Object.keys(AEROGENERADORES) as (keyof typeof AEROGENERADORES)[]
+).map((id) => ({
+  id,
+  label: AEROGENERADORES[id].label,
+  detail: AEROGENERADORES[id].detail,
+  potenciaMinMW: AEROGENERADORES[id].potenciaMinMW,
+  potenciaMaxMW: AEROGENERADORES[id].potenciaMaxMW,
+  areaPorAeroKm2: AEROGENERADORES[id].areaPorAeroKm2,
+  espaciamientoM: AEROGENERADORES[id].espaciamientoM,
+}));
+
+export async function fetchTurbines(): Promise<AdminTurbine[]> {
+  if (USE_BACKEND) {
+    try {
+      return await api<AdminTurbine[]>(`/turbines`);
+    } catch {
+      /* backend caído → template */
+    }
+  }
+  return [...turbinesStore];
+}
+
+/** Edita una turbina (solo admin). Lanza si falla (para avisar en el panel). */
+export async function updateTurbine(
+  id: string,
+  patch: Partial<Omit<AdminTurbine, "id">>,
+): Promise<AdminTurbine> {
+  if (USE_BACKEND) {
+    return api<AdminTurbine>(`/turbines/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    });
+  }
+  const t = turbinesStore.find((x) => x.id === id)!;
+  Object.assign(t, patch);
+  return t;
+}
+
+// ── FUENTES DE DATOS + INGESTA DE DOCS (admin) ────────────────────────────────
+// Registro de DÓNDE se guarda cada doc (master parquet + CSV/JSON del catálogo) y
+// re-ingesta a demanda. En template devuelve un registro estático demostrativo.
+export interface DataSource {
+  id: string;
+  label: string;
+  kind: "parquet" | "csv" | "json";
+  /** Ruta/URL donde se guarda la fuente (p.ej. el parquet de la master). */
+  location: string;
+  rows: number;
+  status: "ok" | "error" | "pending";
+  ingestedAt: string | null;
+  notes: string;
+}
+
+const _sourcesTemplate: DataSource[] = [
+  { id: "master", label: "Master (parquet de hexágonos)", kind: "parquet", location: "back_elements/data/master_variables.h3.parquet", rows: 0, status: "pending", ingestedAt: null, notes: "" },
+  { id: "variables", label: "Catálogo de variables (InfoVariables 1/2/3)", kind: "json", location: "infrastructure/data/variables_seed.json", rows: 91, status: "ok", ingestedAt: null, notes: "" },
+  { id: "normas", label: "Normas regulatorias", kind: "csv", location: "infrastructure/data/normas_seed.csv", rows: 7, status: "ok", ingestedAt: null, notes: "" },
+  { id: "escenarios", label: "Escenarios económicos", kind: "csv", location: "infrastructure/data/escenarios_seed.csv", rows: 3, status: "ok", ingestedAt: null, notes: "" },
+  { id: "turbines", label: "Aerogeneradores (S/M/L)", kind: "csv", location: "infrastructure/data/turbines_seed.csv", rows: 3, status: "ok", ingestedAt: null, notes: "" },
+];
+
+export async function fetchDataSources(): Promise<DataSource[]> {
+  if (USE_BACKEND) {
+    try {
+      return await api<DataSource[]>(`/sources`);
+    } catch {
+      /* backend caído → template */
+    }
+  }
+  return _sourcesTemplate.map((s) => ({ ...s }));
+}
+
+/** (Re)ingiere un doc por su id. Lanza si falla (para avisar en el panel). */
+export async function requestIngest(sourceId: string): Promise<DataSource> {
+  if (USE_BACKEND) {
+    return api<DataSource>(`/ingest/${sourceId}`, { method: "POST" });
+  }
+  const s = _sourcesTemplate.find((x) => x.id === sourceId)!;
+  return { ...s, status: "ok" };
+}
+
+// ── ACTUALIZAR MASTER (US04-03 · admin) ──────────────────────────────────────
+// Mismo patrón que el resto: con backend pega a /api/admin/master; en template
+// opera sobre un store en memoria (los valores hardcode viven aquí, en el seam,
+// para que conectar el back sea solo flipear USE_BACKEND).
+const MASTER_BASE = "/api/admin/master";
+
+export interface MasterVersion {
+  id: string;
+  version: string;
+  status: "ready" | "updating" | "scheduled" | "failed";
+  source: string | null;
+  scheduledAt: string | null;
+  appliedAt: string | null;
+  hexCount: number;
+  varCount: number;
+  notes: string | null;
+  createdAt: string;
+}
+export interface MasterStatus {
+  current: MasterVersion | null;
+  updating: boolean;
+  scheduled: MasterVersion | null;
+  warning: string;
+}
+export interface MasterUpdateInput {
+  mode: "immediate" | "scheduled";
+  scheduledAt?: string; // ISO, solo si scheduled
+  source?: string; // ruta del parquet en el servidor (opcional)
+}
+
+// Advertencia (fuente única): el back la devuelve en status.warning; aquí el
+// mismo texto para el modo template.
+const MASTER_WARNING =
+  "Actualizar la master puede dejar INCONSISTENTES los informes generados " +
+  "mientras dura la ingesta. Prográmala en baja demanda si es posible.";
+
+// Store template del estado de la master (hardcode centralizado).
+let masterStatusStore: MasterStatus = {
+  current: {
+    id: "seed",
+    version: "template (sin datos reales)",
+    status: "ready",
+    source: null,
+    scheduledAt: null,
+    appliedAt: null,
+    hexCount: 0,
+    varCount: 0,
+    notes: null,
+    createdAt: new Date(0).toISOString(),
+  },
+  updating: false,
+  scheduled: null,
+  warning: MASTER_WARNING,
+};
+
+async function masterApi<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${MASTER_BASE}${path}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `Error ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+export async function fetchMasterStatus(): Promise<MasterStatus> {
+  if (USE_BACKEND) {
+    try {
+      return await masterApi<MasterStatus>(`/status`);
+    } catch {
+      /* backend caído → template */
+    }
+  }
+  return masterStatusStore;
+}
+
+export async function requestMasterUpdate(
+  input: MasterUpdateInput,
+): Promise<MasterVersion> {
+  if (USE_BACKEND)
+    return masterApi<MasterVersion>(`/update`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  // Template: simula la respuesta (inmediata → ready; programada → scheduled).
+  const now = new Date();
+  const mv: MasterVersion = {
+    id: `tpl-${now.getTime()}`,
+    version:
+      input.mode === "scheduled" && input.scheduledAt
+        ? new Date(input.scheduledAt).toISOString()
+        : now.toISOString(),
+    status: input.mode === "scheduled" ? "scheduled" : "ready",
+    source: input.source ?? null,
+    scheduledAt: input.mode === "scheduled" ? input.scheduledAt ?? null : null,
+    appliedAt: input.mode === "scheduled" ? null : now.toISOString(),
+    hexCount: 0,
+    varCount: 0,
+    notes: null,
+    createdAt: now.toISOString(),
+  };
+  if (input.mode === "scheduled") masterStatusStore = { ...masterStatusStore, scheduled: mv };
+  else masterStatusStore = { ...masterStatusStore, current: mv, scheduled: null };
+  return mv;
 }

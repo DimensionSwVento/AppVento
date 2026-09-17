@@ -51,11 +51,13 @@ import { useMapSelection } from "./useMapSelection";
 import { fetchMapDisabledIds } from "../../Utils/admin/catalogApi";
 import {
   fetchMapLayerCells,
+  fetchWindCells,
   windValueForHex,
   WIND_THRESHOLD,
   type MapLayerCell,
 } from "../../Utils/map/mapLayerData";
 import { viridis } from "../../Utils/report/heatmapPalette";
+import { AUDIT_DB } from "../../Utils/audit";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 try { luma.registerAdapters([webgl2Adapter]); } catch { /* ok */ }
@@ -105,6 +107,26 @@ export default function MapView() {
   // velocidad no coexisten → exclusión mutua automática con un id único). Se
   // colorea sobre los hex del grid (no es capa aparte). null = sin viento.
   const [windHeatId, setWindHeatId] = useState<string | null>(null);
+  // Valores REALES por hex del viento activo (backend res8); null = placeholder.
+  const [windCells, setWindCells] = useState<Map<string, number> | null>(null);
+  // Reset al cambiar/apagar la variable de viento → AJUSTE EN RENDER (no en
+  // effect): evita el setState síncrono dentro del effect (React Compiler). El
+  // effect solo hace el fetch (setState asíncrono en el .then/.catch).
+  const [prevWindHeatId, setPrevWindHeatId] = useState(windHeatId);
+  if (windHeatId !== prevWindHeatId) {
+    setPrevWindHeatId(windHeatId);
+    setWindCells(null);
+  }
+  useEffect(() => {
+    if (!windHeatId) return; // sin id → nada que cargar (el reset ya ocurrió en render)
+    let alive = true;
+    fetchWindCells(windHeatId)
+      .then((m) => alive && setWindCells(m))
+      .catch(() => alive && setWindCells(null));
+    return () => {
+      alive = false;
+    };
+  }, [windHeatId]);
   const [mapReady, setMapReady] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [hoveredHex, setHoveredHex] = useState<string | null>(null);
@@ -142,7 +164,6 @@ export default function MapView() {
     setViewState,
     clampViewState,
     setSelectedHexes,
-    setIsTilesLoading,
     onRejectFar: () =>
       toast.info(
         `Solo puedes seleccionar hexágonos cercanos entre sí (máx ${MAX_SELECTION_GAP_KM} km). Acércate al área que ya elegiste.`,
@@ -378,7 +399,7 @@ export default function MapView() {
           // Solo el tile "dueño" del hex lo rellena → sin doble alpha en las
           // costuras entre tiles (evita los pilares oscuros).
           if (windHeatId && d.owned) {
-            const v = windValueForHex(windHeatId, d.h);
+            const v = windValueForHex(windHeatId, d.h, windCells);
             if (v >= WIND_THRESHOLD) {
               const [r, g, b] = viridis(v);
               return [r, g, b, 51];
@@ -391,7 +412,7 @@ export default function MapView() {
         lineWidthMinPixels: 1,
         filled: true,
         stroked: true,
-        updateTriggers: { getFillColor: [windHeatId] },
+        updateTriggers: { getFillColor: [windHeatId, windCells] },
         // En informe SOLO el heatmap debe ser pickable. El grid usa resolución
         // por zoom (hexágonos grandes) y sus sublayers no heredan el
         // visible:false del TileLayer para el picking → el hover enganchaba un
@@ -399,7 +420,7 @@ export default function MapView() {
         pickable: !heatmapActive,
       });
     },
-  }), [heatmapActive, windHeatId]);
+  }), [heatmapActive, windHeatId, windCells, isFlyingRef]);
 
   // Capa de borde del territorio colombiano (continente + archipiélago).
   // Pasa los polígonos sin relleno, solo contorno, para que el usuario vea hasta
@@ -678,6 +699,7 @@ export default function MapView() {
     // otras). Sin esto, la memo reutiliza la misma instancia entre fases y
     // deck.gl assertaba al recibir una capa ya finalizada (rompía el render →
     // heatmap despintado al volver a informe).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- dep intencional
   }, [selectedArr, canSelect, heatmapActive]);
 
   // capa de hover — relleno gris transparente del hex bajo el cursor.
@@ -789,6 +811,13 @@ export default function MapView() {
 
   return (
     <div ref={containerRef} className={`relative h-full w-full ${fullscreen ? "bg-black" : ""}`}>
+      {/* AUDITORÍA (temporal): el mapa es CÁLCULO → se deja igual, con la lista
+          de datos (BD) que usa. Quitar poniendo AUDIT_DB=false. */}
+      {AUDIT_DB && (
+        <div className="pointer-events-none absolute bottom-0 left-0 z-20 w-full bg-yellow-300/95 px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wide text-yellow-900">
+          MAPA USA (BD): score_general/heatmap por hex (master · global.parquet) · tipo_celda (columna excluido) · mar/tierra (derivado batimetría) · capas de variable (/api/tiles/variable)
+        </div>
+      )}
       {!mapReady && <LoadingOverlay />}
       {/* Durante el fly-to: overlay translúcido (deja ver la animación por
           detrás, para que no parezca bugueado) + spinner brand estilizado.

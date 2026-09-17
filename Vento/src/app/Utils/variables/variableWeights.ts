@@ -103,9 +103,35 @@ export const VARIABLE_WEIGHTS: Record<string, number> = {
 };
 
 /**
- * Devuelve el peso signado para una variable. 0 si no está en el catálogo
- * (la variable no aporta al agregado).
+ * Override de pesos venidos de BD (`catalog_variable.polaridad`×`peso`). Null
+ * hasta que se hidrate; entonces `weightFor` lo prefiere sobre el template. Es la
+ * forma anticipada arriba: "se reemplaza por un fetch manteniendo la misma forma".
+ */
+let dbWeights: Record<string, number> | null = null;
+
+/**
+ * Hidrata los pesos reales desde el catálogo de BD. `peso_con_signo =
+ * polaridad × peso`. Se llama una vez al cargar la app (ver VariablesContext).
+ * Solo entra en efecto si trae al menos un peso ≠ 0 (evita pisar el template con
+ * datos vacíos si el backend aún no tiene la tabla poblada).
+ */
+export function applyDbWeights(
+  entries: { id: string; polaridad?: number; peso?: number }[],
+): void {
+  const map: Record<string, number> = {};
+  for (const e of entries) {
+    if (typeof e.polaridad === "number" && typeof e.peso === "number") {
+      map[e.id] = e.polaridad * e.peso;
+    }
+  }
+  if (Object.values(map).some((w) => w !== 0)) dbWeights = map;
+}
+
+/**
+ * Devuelve el peso signado para una variable. Prefiere el valor de BD si se
+ * hidrató; si no, el template. 0 si no está en ninguno (no aporta al agregado).
  */
 export function weightFor(variableId: string): number {
+  if (dbWeights && variableId in dbWeights) return dbWeights[variableId];
   return VARIABLE_WEIGHTS[variableId] ?? 0;
 }

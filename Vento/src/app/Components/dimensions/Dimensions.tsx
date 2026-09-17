@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import DimensionCard from "./DimensionCard";
-import InformativeCatalog from "./InformativeCatalog";
 import EconomicModal from "./EconomicModal";
 import RegulatoryModal from "./RegulatoryModal";
 import { useActiveEconomicVariables } from "../../Utils/contexts/EconomicContext";

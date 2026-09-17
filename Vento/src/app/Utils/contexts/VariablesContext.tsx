@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   DimensionId,
   OPTIONAL_VARIABLES,
@@ -8,6 +15,7 @@ import {
   requiredVariableIds,
   optionalVariablesByDimension,
 } from "../variables/variablesCatalog";
+import { hydrateVariableWeights } from "../admin/catalogApi";
 
 interface VariablesContextValue {
   /** Set de IDs de variables activas (multi-selección). El heatmap del mapa agrega
@@ -49,6 +57,12 @@ export function VariablesProvider({ children }: { children: React.ReactNode }) {
   const [activeVariables, setActiveVariables] = useState<Set<string>>(
     () => new Set(requiredVariableIds()),
   );
+
+  // Hidrata los pesos reales del WLC desde BD (polaridad×peso). Sin backend no
+  // hace nada → el template sigue mandando. Solo fetch, sin setState local.
+  useEffect(() => {
+    hydrateVariableWeights();
+  }, []);
 
   const toggleVariable = useCallback((id: string) => {
     const v = getVariableById(id);

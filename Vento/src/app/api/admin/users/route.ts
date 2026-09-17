@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import {
   getUsers,
+  getRealmRoleMembers,
   createUser,
   assignRealmRole,
   resetUserPassword,
@@ -31,10 +32,20 @@ export async function GET(request: Request) {
   try {
     const keycloakUsers = await getUsers(search, page, limit);
 
-    // `roles` se propaga si Keycloak ya lo trae en el listado (realmRoles).
-    // Cuando el backend lo incluya en lote, el filtro por rol del front se
-    // activa solo (US08-04.5). Sin él, `roles` queda vacío y el filtro "Todos"
-    // sigue funcionando. Se evita el N+1 por-usuario a propósito.
+    // US08-04.5 — Rol por usuario SIN N+1: se traen los miembros del rol `admin`
+    // en UNA sola llamada y se marca cada usuario. Si Keycloak no permite la
+    // consulta de miembros, se degrada a "sin rol" (el filtro "Todos" sigue ok).
+    let adminIds = new Set<string>();
+    try {
+      const admins = await getRealmRoleMembers("admin");
+      adminIds = new Set(admins.map((a) => a.id));
+    } catch (e) {
+      console.warn(
+        "No se pudo resolver miembros del rol admin:",
+        e instanceof Error ? e.message : String(e),
+      );
+    }
+
     const users: User[] = keycloakUsers.map((u) => ({
       id: u.id,
       firstName: u.firstName || "",
@@ -42,7 +53,8 @@ export async function GET(request: Request) {
       email: u.email || "",
       enabled: u.enabled,
       createdTimestamp: u.createdTimestamp,
-      roles: u.realmRoles ?? [],
+      // "admin" si es miembro del rol; el resto queda como analista (sin rol).
+      roles: adminIds.has(u.id) ? ["admin"] : (u.realmRoles ?? []),
     }));
 
     return NextResponse.json({ users });
