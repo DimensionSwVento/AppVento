@@ -28,7 +28,6 @@ export default function AreaSelectionPage() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (!sessionStorage.getItem("vento_onboarding_seen")) setShowOnboarding(true);
     } catch {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowOnboarding(true);
     }
   }, []);
