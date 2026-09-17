@@ -104,17 +104,16 @@ export default function AdminBundlePage() {
             Subir la master (modelo)
           </h2>
           <p className="text-sm text-gray-500">
-            Una sola característica con fases: <b>arrastras</b> los parquets desde tu
-            PC → se montan → se <b>clasifican</b> las columnas → <b>concilias</b> lo
-            desconocido → se <b>ingiere</b> a la BD (upsert). No se escribe ninguna
-            ruta. El reemplazo total (destructivo) va por consola:{" "}
-            <code className="text-[11px]">python -m tools.ingest_bundle</code>.
+            Sube los datos del modelo <b>arrastrando los archivos</b> desde tu
+            computador. La herramienta los revisa, te avisa si encuentra algo que no
+            reconoce para que lo confirmes, y luego los guarda. No necesitas escribir
+            ninguna ruta.
           </p>
 
           {/* FASE 1 — Arrastrar los parquets (nunca se escribe una ruta) */}
           <section className="mt-5 rounded-2xl border border-gray-100 p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-700">1 · Subir parquets</h3>
+              <h3 className="text-sm font-semibold text-gray-700">1 · Subir archivos</h3>
               <label className="text-xs text-gray-500">
                 Emplazamiento{" "}
                 <select
@@ -144,10 +143,10 @@ export default function AdminBundlePage() {
             >
               <p className="text-sm font-medium text-gray-700">
                 {uploading
-                  ? "Montando…"
+                  ? "Subiendo…"
                   : loading
-                    ? "Clasificando columnas…"
-                    : "Arrastra aquí los parquets del bundle"}
+                    ? "Revisando…"
+                    : "Arrastra aquí los archivos del modelo"}
               </p>
               <p className="mt-1 text-[11px] text-gray-500">o elige una carpeta / archivos:</p>
               <div className="mt-2 flex justify-center gap-2">
@@ -173,8 +172,8 @@ export default function AdminBundlePage() {
                 </label>
               </div>
               <p className="mt-2 text-[10px] text-gray-400">
-                Para bundles de varios GB conviene la consola (memoria/tiempo). El
-                arrastre es para pruebas o subidas moderadas.
+                Para conjuntos muy grandes, pídeselo al equipo técnico. El arrastre sirve
+                para subidas normales.
               </p>
             </div>
           </section>
@@ -182,7 +181,7 @@ export default function AdminBundlePage() {
           {plan && !plan.error && (
             <section className="mt-4 rounded-2xl border border-gray-100 p-5 shadow-sm">
               <h3 className="text-sm font-semibold text-gray-700">
-                2 · Revisar y conciliar columnas
+                2 · Revisar y confirmar
               </h3>
               {/* Resumen */}
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
@@ -221,7 +220,7 @@ export default function AdminBundlePage() {
 
               {/* FASE 3 — Aplicar la ingesta a la BD */}
               <h3 className="mt-6 text-sm font-semibold text-gray-700">
-                3 · Aplicar la ingesta
+                3 · Guardar los datos
               </h3>
               <div className="mt-2 flex items-center gap-3">
                 <button
@@ -230,11 +229,11 @@ export default function AdminBundlePage() {
                   disabled={applying || pendientes > 0}
                   className="rounded-full bg-[#165170ff] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#1e6a8c] disabled:opacity-40"
                 >
-                  {applying ? "Ingiriendo…" : "Aplicar ingesta (upsert)"}
+                  {applying ? "Guardando…" : "Guardar los datos"}
                 </button>
                 {pendientes > 0 && (
                   <span className="text-xs text-red-600">
-                    Resuelve las {pendientes} columnas pendientes antes de aplicar.
+                    Confirma los {pendientes} campos pendientes antes de guardar.
                   </span>
                 )}
               </div>

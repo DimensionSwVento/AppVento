@@ -31,7 +31,9 @@ import { useToast } from "../ui/Toast";
 import HexValuesTooltip from "./HexValuesTooltip";
 import HeatmapDimensionSwitches from "./HeatmapDimensionSwitches";
 import HeatmapLegend from "./HeatmapLegend";
+import WindHeatmapLegend from "./WindHeatmapLegend";
 import InformativeVariablesList from "./InformativeVariablesList";
+import { getVariableById } from "../../Utils/variables/variablesCatalog";
 import SelectedVariablesChips from "../dimensions/SelectedVariablesChips";
 import AreaDisplay from "./AreaDisplay";
 import MapSearchBox from "./MapSearchBox";
@@ -1064,6 +1066,13 @@ export default function MapView() {
         <SelectedVariablesChips />
       )}
 
+
+      {/* Mini-leyenda viridis: solo cuando un heatmap de VIENTO está encendido. */}
+      {windHeatId && (
+        <div className="absolute bottom-3 left-3 z-10">
+          <WindHeatmapLegend label={getVariableById(windHeatId)?.label ?? "Viento"} />
+        </div>
+      )}
 
       {accion === "informe" && (
         <>
