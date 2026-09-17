@@ -440,6 +440,42 @@ export function getVariableById(id: string): Variable | undefined {
 }
 
 /**
+ * Hidrata el catálogo desde BD (modo backend): sobrescribe IN PLACE los campos de
+ * TEXTO/identidad (label, description, criterio, subcriterio, fuente, masterId) de
+ * las variables con los de la BD. Los valores estáticos de este archivo quedan
+ * SOLO como TEMPLATE (modo demo). La lógica del front (iconos, required, pesos por
+ * icono…) no cambia — solo el dato. Como es mutación in-place de los objetos que
+ * todos los consumidores ya referencian (getVariableById, variablesByDimension,
+ * VARIABLES.filter…), el informe y el menú toman el dato real sin tocar cada sitio.
+ * Se llama UNA vez al montar la app (VariablesProvider), como `applyDbWeights`.
+ */
+export function applyDbCatalog(
+  entries: Array<{
+    id: string;
+    label?: string;
+    descripcion?: string;
+    criterio?: string;
+    subcriterio?: string;
+    fuente?: string;
+    masterId?: string;
+  }>,
+): void {
+  const byId = new Map<string, Variable>();
+  for (const v of VARIABLES) byId.set(v.id, v);
+  for (const v of OPTIONAL_VARIABLES) byId.set(v.id, v);
+  for (const e of entries) {
+    const v = byId.get(e.id);
+    if (!v) continue;
+    if (e.label) v.label = e.label;
+    if (e.descripcion) v.description = e.descripcion;
+    if (e.criterio) v.criterio = e.criterio;
+    if (e.subcriterio) v.subcriterio = e.subcriterio;
+    if (e.fuente) v.fuente = e.fuente;
+    if (e.masterId) v.masterId = e.masterId;
+  }
+}
+
+/**
  * ¿La variable aplica a la naturaleza (mar/tierra) de la selección actual?
  * Sin `aplicaEn` → aplica a ambos. Con selección "mixta"/"vacia" no se filtra
  * (se muestran todas). Pensado para ocultar en el menú las variables que no

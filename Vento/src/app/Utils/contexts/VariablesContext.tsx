@@ -15,7 +15,7 @@ import {
   requiredVariableIds,
   optionalVariablesByDimension,
 } from "../variables/variablesCatalog";
-import { hydrateVariableWeights } from "../admin/catalogApi";
+import { hydrateCatalog } from "../admin/catalogApi";
 
 interface VariablesContextValue {
   /** Set de IDs de variables activas (multi-selección). El heatmap del mapa agrega
@@ -58,10 +58,14 @@ export function VariablesProvider({ children }: { children: React.ReactNode }) {
     () => new Set(requiredVariableIds()),
   );
 
-  // Hidrata los pesos reales del WLC desde BD (polaridad×peso). Sin backend no
-  // hace nada → el template sigue mandando. Solo fetch, sin setState local.
+  // Hidrata el CATÁLOGO real desde BD (texto: label/descr/criterio/subcriterio/
+  // fuente/masterId + pesos WLC). En modo backend el informe y el menú toman el
+  // dato de BD; el estático queda solo como template. Si el back falla, se LOGUEA
+  // (no se silencia → no mezclar template como si fuera real). Solo fetch.
   useEffect(() => {
-    hydrateVariableWeights();
+    hydrateCatalog().catch((e) =>
+      console.error("[VENTO] hidratación de catálogo falló:", e),
+    );
   }, []);
 
   const toggleVariable = useCallback((id: string) => {

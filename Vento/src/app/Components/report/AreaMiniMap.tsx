@@ -3,16 +3,17 @@
 import { useMemo } from "react";
 import { cellToBoundary, cellToChildren, getResolution } from "h3-js";
 import { viridis, dimensionHexScore } from "../../Utils/report/heatmapPalette";
+import { useAreaHexData } from "../../Utils/report/useAreaHexData";
+import { USE_PLACEHOLDER_FALLBACK } from "../../Utils/projectData";
 
 /**
- * Mini-mapa nativo (SVG) del ÁREA SELECCIONADA para el informe (sprint 3):
- * captura "enfocada" de los hexágonos del área coloreados por el score
- * GENERAL. Se dibuja en vectores (no rasteriza el canvas WebGL de deck.gl,
- * que sale en blanco/borroso) — mismo enfoque que el radar del informe.
+ * Mini-mapa nativo (SVG) del ÁREA SELECCIONADA para el informe: hexágonos del
+ * área coloreados por el score GENERAL. En vectores (no rasteriza el canvas WebGL
+ * de deck.gl) — mismo enfoque que el radar del informe.
  *
- * El color por hex usa el placeholder `dimensionHexScore("general", hex)`
- * mientras no haya datos reales; cuando la API entregue el general por hex,
- * se cambia esa fuente aquí (mismo seam que el heatmap del mapa).
+ * Color por hex: en modo BACKEND, el `score_general` REAL del hex (o gris si el
+ * back no lo entrega); en modo TEMPLATE, el placeholder `dimensionHexScore`. Sin
+ * mixtura: nunca pinta template como si fuera real.
  */
 export default function AreaMiniMap({
   selectedHexes,
@@ -25,13 +26,18 @@ export default function AreaMiniMap({
   width?: number;
   height?: number;
 }) {
+  // Datos reales del área (modo backend). Sirve para el color real por hex.
+  const areaData = useAreaHexData(selectedHexes, true);
+
   // Expandir a res-8 (como el heatmap del mapa) para el look "enfocado".
+  // Se guarda el hex ORIGEN (el seleccionado) para leer su score real del backend
+  // (que viene keyeado por el hex seleccionado, no por sus hijos res-8).
   const cells = useMemo(() => {
-    const out: string[] = [];
+    const out: { cell: string; source: string }[] = [];
     for (const h of selectedHexes) {
       const res = getResolution(h);
-      if (res >= 8) out.push(h);
-      else out.push(...cellToChildren(h, 8));
+      if (res >= 8) out.push({ cell: h, source: h });
+      else for (const c of cellToChildren(h, 8)) out.push({ cell: c, source: h });
     }
     return out;
   }, [selectedHexes]);
@@ -42,16 +48,15 @@ export default function AreaMiniMap({
       minLng = Infinity,
       maxLat = -Infinity,
       maxLng = -Infinity;
-    const polys = cells.map((h) => {
-      // cellToBoundary(h) → [[lat, lng], ...]
-      const boundary = cellToBoundary(h) as [number, number][];
+    const polys = cells.map(({ cell, source }) => {
+      const boundary = cellToBoundary(cell) as [number, number][];
       for (const [lat, lng] of boundary) {
         if (lat < minLat) minLat = lat;
         if (lat > maxLat) maxLat = lat;
         if (lng < minLng) minLng = lng;
         if (lng > maxLng) maxLng = lng;
       }
-      return { h, boundary };
+      return { h: cell, source, boundary };
     });
     return { polys, minLat, minLng, maxLat, maxLng };
   }, [cells]);
@@ -91,19 +96,27 @@ export default function AreaMiniMap({
         rx="8"
         fill="#eef2f5"
       />
-      {polys.map(({ h, boundary }) => {
-        const t = Math.max(0, Math.min(1, dimensionHexScore("general", h)));
-        const [r, g, b] = viridis(t);
+      {polys.map(({ h, source, boundary }) => {
+        // Modo backend: score_general REAL del hex (gris si el back no lo trae).
+        // Modo template: placeholder. Sin mixtura.
+        const real = areaData?.get(source)?.score_general;
         const pts = boundary
           .map(([lat, lng]) => project(lat, lng))
           .join(" ");
+        let fill: string;
+        if (typeof real === "number") {
+          const [r, g, b] = viridis(Math.max(0, Math.min(1, real)));
+          fill = `rgb(${r},${g},${b})`;
+        } else if (USE_PLACEHOLDER_FALLBACK) {
+          const [r, g, b] = viridis(
+            Math.max(0, Math.min(1, dimensionHexScore("general", h))),
+          );
+          fill = `rgb(${r},${g},${b})`;
+        } else {
+          fill = "#cbd5e1"; // backend sin dato → gris, no template
+        }
         return (
-          <polygon
-            key={h}
-            points={pts}
-            fill={`rgb(${r},${g},${b})`}
-            fillOpacity={0.9}
-          />
+          <polygon key={h} points={pts} fill={fill} fillOpacity={0.9} />
         );
       })}
     </svg>
