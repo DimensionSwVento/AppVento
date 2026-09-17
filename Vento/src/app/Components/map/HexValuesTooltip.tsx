@@ -75,15 +75,21 @@ export default function HexValuesTooltip({
 
   const infoRows = useMemo(() => {
     if (!hex) return [];
-    return INFO_VARS.map((v) => {
-      if (USE_PLACEHOLDER_FALLBACK) {
-        const score = dimensionHexScore(v.id, hex);
-        return { ...v, valueText: formatVariableValue(score, v.unit) };
-      }
-      // Modo API: valor crudo real del backend, o "—" si no lo entrega.
-      const raw = hexVariableValue(info, v.masterId);
-      return { ...v, valueText: raw == null ? "—" : formatRawValue(raw) };
-    });
+    return (
+      INFO_VARS.map((v) => {
+        if (USE_PLACEHOLDER_FALLBACK) {
+          const score = dimensionHexScore(v.id, hex);
+          return { ...v, valueText: formatVariableValue(score, v.unit) };
+        }
+        // Modo API: valor crudo real del backend, o null si no lo entrega.
+        const raw = hexVariableValue(info, v.masterId);
+        return { ...v, valueText: raw == null ? "—" : formatRawValue(raw) };
+      })
+        // Solo variables CON valor (no-nulo): las 4 que se muestran deben tener
+        // dato real, aunque no sean las primeras del catálogo (no esconder datos
+        // hardcode/nulos como si fueran reales). En template todas tienen valor.
+        .filter((v) => v.valueText !== "—")
+    );
   }, [hex, info]);
 
   if (!hex || !scores || x === null || y === null) return null;

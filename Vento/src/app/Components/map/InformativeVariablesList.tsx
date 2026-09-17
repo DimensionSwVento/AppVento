@@ -5,6 +5,11 @@ import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
 import { useVariables } from "../../Utils/contexts/VariablesContext";
 import { dimensionHexScore } from "../../Utils/report/heatmapPalette";
 import {
+  useAreaHexData,
+  areaVariableAverage,
+} from "../../Utils/report/useAreaHexData";
+import { USE_PLACEHOLDER_FALLBACK } from "../../Utils/projectData";
+import {
   INFO_VARS,
   formatVariableValue,
 } from "../../Utils/variables/informativeVariables";
@@ -24,15 +29,27 @@ export default function InformativeVariablesList() {
   const { activeVariables, toggleVariable } = useVariables();
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  // Valor real del backend (modo API) o placeholder (solo modo template). En modo
+  // API sin dato → "—" (no se muestra template como si fuera real).
+  const areaData = useAreaHexData(selectedHexes, true);
   const visibleVars = useMemo(
     () =>
       INFO_VARS.filter((v) => activeVariables.has(v.id)).map((v) => {
-        let sum = 0;
-        for (const h of selectedHexes) sum += dimensionHexScore(v.id, h);
-        const avg = selectedHexes.size > 0 ? sum / selectedHexes.size : 0;
-        return { ...v, valueText: formatVariableValue(avg, v.unit) };
+        const masterId = getVariableById(v.id)?.masterId ?? "NA";
+        const apiVal = areaVariableAverage(areaData, selectedHexes, masterId);
+        let valueText: string;
+        if (apiVal != null) {
+          valueText = formatVariableValue(apiVal / 100, v.unit);
+        } else if (USE_PLACEHOLDER_FALLBACK && selectedHexes.size > 0) {
+          let sum = 0;
+          for (const h of selectedHexes) sum += dimensionHexScore(v.id, h);
+          valueText = formatVariableValue(sum / selectedHexes.size, v.unit);
+        } else {
+          valueText = "—";
+        }
+        return { ...v, valueText };
       }),
-    [activeVariables, selectedHexes],
+    [activeVariables, selectedHexes, areaData],
   );
 
   const availableVars = useMemo(
