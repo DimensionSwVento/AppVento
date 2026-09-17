@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Trash2, Eye, Info, Search } from "lucide-react";
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
 import { useVariables } from "../../Utils/contexts/VariablesContext";
@@ -41,6 +41,15 @@ export default function HistorialList() {
 
   const [query, setQuery] = useState("");
   const [periodo, setPeriodo] = useState<Periodo>("todos");
+
+  // Re-consultar la BD CADA VEZ que se abre el histórico (este componente se
+  // monta al entrar a la vista). Antes solo se consultaba una vez al arrancar la
+  // app → al reabrir el histórico o tras un guardado en otra sesión mostraba el
+  // estado en memoria (parecía "que solo duraba la sesión"). Ahora siempre
+  // refleja lo persistido en el backend.
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   // Búsqueda por nombre (case-insensitive) → luego se agrupa por recencia.
   const filtered = useMemo(() => {
