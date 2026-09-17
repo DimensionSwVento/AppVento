@@ -147,13 +147,9 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
 // ── VARIABLES / DATASETS (US08-01) ───────────────────────────────────────────
 export async function fetchVariables(tipo: VariableTipo): Promise<AdminVariable[]> {
-  if (USE_BACKEND) {
-    try {
-      return await api<AdminVariable[]>(`/variables?tipo=${tipo}`);
-    } catch {
-      // Backend caído → degradar a template (la app NO debe colapsar).
-    }
-  }
+  // Sin mixtura: en modo BACKEND se usa SOLO la API (si falla, lanza — no cae a
+  // template). En modo TEMPLATE se usa SOLO el store. Nunca a medias.
+  if (USE_BACKEND) return api<AdminVariable[]>(`/variables?tipo=${tipo}`);
   return variablesStore.filter((v) => v.tipo === tipo);
 }
 
@@ -313,13 +309,7 @@ export async function updateDataset(
 
 // ── NORMAS (US08-02) ─────────────────────────────────────────────────────────
 export async function fetchNormas(): Promise<Norma[]> {
-  if (USE_BACKEND) {
-    try {
-      return await api<Norma[]>(`/normas`);
-    } catch {
-      /* backend caído → template */
-    }
-  }
+  if (USE_BACKEND) return api<Norma[]>(`/normas`);
   return [...normasStore];
 }
 export async function createNorma(payload: Omit<Norma, "id">): Promise<Norma> {
@@ -345,13 +335,7 @@ export async function deleteNorma(id: string): Promise<void> {
 
 // ── ESCENARIOS (US08-03) ─────────────────────────────────────────────────────
 export async function fetchEscenarios(): Promise<AdminEscenario[]> {
-  if (USE_BACKEND) {
-    try {
-      return await api<AdminEscenario[]>(`/escenarios`);
-    } catch {
-      /* backend caído → template */
-    }
-  }
+  if (USE_BACKEND) return api<AdminEscenario[]>(`/escenarios`);
   return [...escenariosStore];
 }
 export async function createEscenario(
@@ -403,13 +387,7 @@ const turbinesStore: AdminTurbine[] = (
 }));
 
 export async function fetchTurbines(): Promise<AdminTurbine[]> {
-  if (USE_BACKEND) {
-    try {
-      return await api<AdminTurbine[]>(`/turbines`);
-    } catch {
-      /* backend caído → template */
-    }
-  }
+  if (USE_BACKEND) return api<AdminTurbine[]>(`/turbines`);
   return [...turbinesStore];
 }
 
@@ -453,13 +431,7 @@ const _sourcesTemplate: DataSource[] = [
 ];
 
 export async function fetchDataSources(): Promise<DataSource[]> {
-  if (USE_BACKEND) {
-    try {
-      return await api<DataSource[]>(`/sources`);
-    } catch {
-      /* backend caído → template */
-    }
-  }
+  if (USE_BACKEND) return api<DataSource[]>(`/sources`);
   return _sourcesTemplate.map((s) => ({ ...s }));
 }
 
@@ -540,13 +512,7 @@ async function masterApi<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function fetchMasterStatus(): Promise<MasterStatus> {
-  if (USE_BACKEND) {
-    try {
-      return await masterApi<MasterStatus>(`/status`);
-    } catch {
-      /* backend caído → template */
-    }
-  }
+  if (USE_BACKEND) return masterApi<MasterStatus>(`/status`);
   return masterStatusStore;
 }
 
