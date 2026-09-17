@@ -1,0 +1,20 @@
+id: FB-FIX-22
+title: "[FB-FIX-22] Recalcular el resultado al cambiar variables"
+epic: "E4-Variables"
+epic_label: "epic:E4-Variables"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  Tras borrar todas las variables, el valor del resultado no cambió.
+
+  **Corrección:** Disparar el recálculo al cambiar la selección de variables (bug de estado/caché).
+  **Estimación:** 30-50m
+
+  ## Criterio de aceptación
+  - Cambiar/borrar variables actualiza el resultado mostrado.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

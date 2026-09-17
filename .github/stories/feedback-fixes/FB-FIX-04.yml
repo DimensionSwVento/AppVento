@@ -1,0 +1,20 @@
+id: FB-FIX-04
+title: "[FB-FIX-04] Permitir deseleccionar hexágonos grandes"
+epic: "E2-Mapa-SIG"
+epic_label: "epic:E2-Mapa-SIG"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  No deja deseleccionar áreas de hexágonos grandes, solo los pequeños.
+
+  **Corrección:** Arreglar la deselección de hexágonos grandes.
+  **Estimación:** 30-45m
+
+  ## Criterio de aceptación
+  - Un hexágono grande seleccionado se puede volver a clicar para deseleccionar.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

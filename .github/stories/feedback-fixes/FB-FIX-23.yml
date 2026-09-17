@@ -1,0 +1,20 @@
+id: FB-FIX-23
+title: "[FB-FIX-23] Búsqueda predictiva de corregimiento completa"
+epic: "E2-Mapa-SIG"
+epic_label: "epic:E2-Mapa-SIG"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  La búsqueda predictiva no presenta todas las opciones (ej. 'cal' solo propone Caldas).
+
+  **Corrección:** Corregir la búsqueda predictiva (config front o índice back).
+  **Estimación:** 15-20m
+
+  ## Criterio de aceptación
+  - Escribir un prefijo propone todas las coincidencias relevantes.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

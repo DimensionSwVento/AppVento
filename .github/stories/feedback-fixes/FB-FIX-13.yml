@@ -1,0 +1,20 @@
+id: FB-FIX-13
+title: "[FB-FIX-13] Toast de éxito al crear usuario"
+epic: "E3-Admin"
+epic_label: "epic:E3-Admin"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  No hay mensaje de confirmación visible tras crear un usuario.
+
+  **Corrección:** Mostrar un toast/mensaje de éxito al crear usuario.
+  **Estimación:** 15m
+
+  ## Criterio de aceptación
+  - Crear un usuario muestra confirmación visible de éxito.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

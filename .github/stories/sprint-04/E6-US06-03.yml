@@ -1,0 +1,40 @@
+id: US06-03
+title: "feature: [US06-03] Preconfigurar informe de idoneidad"
+epic: "E6-Reportes"
+epic_label: "epic:E6-Reportes"
+priority: critica
+priority_label: "priority:critica"
+milestone: "Cuarta Entrega"
+depends_on: []
+unlocks: ["US06-04"]
+week: 1
+body: |
+  ## Historia de Usuario
+  Como analista, quiero preconfigurar qué incluye el informe antes de guardarlo o
+  descargarlo (dimensiones, variables, tipo de gráfico, detalle del modelo), con
+  previsualización en vivo, para adaptar el informe a lo que necesito.
+
+  **Épica:** E6 — Reportes (informe configurable)
+
+  ## Criterios de Aceptación
+  1. Panel "Configuración del informe" donde el usuario define qué incluir.
+  2. Dimensiones puntuables (Técnica, Ambiental, Social) activables con sus variables.
+  3. Preconfiguración por defecto: económica (escenario) y regulatoria (normas) quedan activadas si fueron activadas antes.
+  4. Por dimensión: visualizar variables puntuadas, detalle de las que influyeron, pesos y descripción del cálculo, marcar excluyentes e informativas.
+  5. Score general + score por dimensión puntuada.
+  6. Tipo de gráfico seleccionable: radar / circular / barras.
+  7. Detalle técnico del modelo opcional (dimensión→criterio→variable, ¿se puntúa?, cálculo).
+  8. Detalle de variables informativas y de variables excluyentes.
+  9. Fuentes consultadas al final, discriminadas por dimensión.
+  10. Previsualización en vivo; incluir/excluir antes de guardar o descargar.
+  11. La configuración se refleja idéntica en el PDF y en lo guardado al histórico.
+
+  ## Tareas técnicas
+  - 📦 `Utils/report/reportConfig.ts` (tipo ReportConfig + default).
+  - 📦 `ReportConfigPanel.tsx` (toggles + selector de gráfico + detalle del modelo).
+  - 📦 `PieChart.tsx` / `BarChart.tsx` (SVG) seleccionables por config.
+  - 📦 `Report.tsx` consume ReportConfig (render condicional, fuentes por dimensión, excluyentes).
+  - 🧪 Tests: config filtra bloques; default económica/regulatoria; 3 gráficos renderizan.
+
+  ## Estimación
+  8–11 días (incluye US06-04).

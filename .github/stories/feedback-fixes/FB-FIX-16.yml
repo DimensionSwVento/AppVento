@@ -1,0 +1,20 @@
+id: FB-FIX-16
+title: "[FB-FIX-16] Confirmación antes de otorgar permisos de admin"
+epic: "E3-Admin"
+epic_label: "epic:E3-Admin"
+priority: critica
+priority_label: "priority:critica"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  Crítico: no hay advertencia ni confirmación antes de otorgar permisos de administrador.
+
+  **Corrección:** Agregar un modal de confirmación antes de otorgar admin.
+  **Estimación:** 20-30m
+
+  ## Criterio de aceptación
+  - Otorgar admin requiere confirmación explícita en un modal.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

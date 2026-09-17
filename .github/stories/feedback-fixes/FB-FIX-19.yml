@@ -1,0 +1,20 @@
+id: FB-FIX-19
+title: "[FB-FIX-19] Quitar datos duplicados del card lateral del informe"
+epic: "E6-Reportes"
+epic_label: "epic:E6-Reportes"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  El card lateral repite coordenadas/ubicación, área (x2) y variables activas (x2).
+
+  **Corrección:** Eliminar la duplicación de coordenadas/área/variables activas.
+  **Estimación:** 20-30m
+
+  ## Criterio de aceptación
+  - Cada dato aparece una sola vez en el card lateral.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

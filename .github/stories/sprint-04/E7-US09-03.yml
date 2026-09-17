@@ -1,0 +1,32 @@
+id: US09-03
+title: "fix: [US09-03] Unificar botón 'Siguiente paso' (navegación)"
+epic: "E7-UX"
+epic_label: "epic:E7-UX"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+depends_on: []
+unlocks: []
+week: 3
+body: |
+  ## Historia de Usuario
+  Como usuario, quiero un patrón único y consistente de "Siguiente paso" en todas
+  las fases, para no perderme sobre qué sigue.
+
+  **Épica:** E7 — UX / Usabilidad
+
+  ## Origen
+  Evaluación de usabilidad: el botón aparece en distinto lugar/formato en cada fase
+  (a veces centrado, a veces uno solo).
+
+  ## Criterios de Aceptación
+  1. Un único patrón de "Siguiente paso" consistente en todas las fases (mismo lugar, formato y comportamiento).
+  2. Comunica claramente qué sigue y qué falta para continuar (p.ej. "Corrige los campos marcados").
+  3. Coherente en desktop y mobile; accesible.
+
+  ## Tareas técnicas
+  - 📦 Consolidar en un solo componente de navegación de fase; eliminar variantes divergentes.
+  - 🧪 Tests: aparece igual en cada fase; estado deshabilitado/habilitado correcto.
+
+  ## Estimación
+  1–1.5 días.

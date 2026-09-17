@@ -1,0 +1,29 @@
+id: US09-04
+title: "fix: [US09-04] Disclaimer: revisión de texto (EAFIT) inicio y final"
+epic: "E7-UX"
+epic_label: "epic:E7-UX"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+depends_on: []
+unlocks: []
+week: 3
+body: |
+  ## Historia de Usuario
+  Como responsable, quiero que el disclaimer tenga el texto revisado/aprobado por
+  EAFIT, para cumplir con derechos de autor y alcance legal.
+
+  **Épica:** E7 — UX / Avisos
+
+  ## Criterios de Aceptación
+  1. El disclaimer se muestra al inicio (modal) y al final del informe (ya implementado).
+  2. Texto revisado/aprobado por EAFIT; ajustar si cambian el mensaje.
+
+  ## Tareas técnicas
+  - 📦 Actualizar `reportTemplates.ts` (`DISCLAIMER_BODY`) si EAFIT modifica el texto.
+
+  ## Dependencias
+  Validación del texto con derechos de autor EAFIT (externo).
+
+  ## Estimación
+  0.25 día.

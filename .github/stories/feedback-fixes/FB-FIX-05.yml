@@ -1,0 +1,20 @@
+id: FB-FIX-05
+title: "[FB-FIX-05] Arreglar la redirección post-login"
+epic: "E1-Auth"
+epic_label: "epic:E1-Auth"
+priority: critica
+priority_label: "priority:critica"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  Al hacer login redirige al home y obliga a dar clic en 'Iniciar sesión' otra vez.
+
+  **Corrección:** Corregir la redirección post-login para no pedir login dos veces.
+  **Estimación:** 15-20m
+
+  ## Criterio de aceptación
+  - Tras autenticarse, el usuario entra directo sin volver a pulsar 'Iniciar sesión'.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

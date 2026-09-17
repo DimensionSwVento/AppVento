@@ -1,0 +1,35 @@
+id: US04-03
+title: "feature: [US04-03] Ajustes de visualización + datos reales (menú/detalle/mapa)"
+epic: "E4-Variables"
+epic_label: "epic:E4-Variables"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Cuarta Entrega"
+depends_on: []
+unlocks: []
+week: 2
+body: |
+  ## Historia de Usuario
+  Como analista, quiero ver y usar las variables con sus datos reales (en menú,
+  detalle y mapa), incluidas las calculadas que no puedo activar, para confiar en
+  el análisis y el informe.
+
+  **Épica:** E4 — Variables (configuración de dimensiones)
+
+  ## Criterios de Aceptación
+  1. Visualización en menú y en detalle (fuente de datos, descripción) de todas las variables.
+  2. Visualización en el mapa de variables informativas y del modelo opcionales desde el menú (unas al mapa, otras solo a detalle).
+  3. Datos reales de todas las dimensiones del modelo e informativas.
+  4. Las variables no activables por el usuario pero calculadas en el modelo deben presentarse en el informe.
+  5. Ajustar la máster de variables informativas de Macro y Regulatoria.
+
+  ## Tareas técnicas
+  - 📦 Cablear `variables{code}` reales por hex (seam `useAreaHexData`); confirmar formato de claves con backend.
+  - 📦 Marcar en el catálogo qué va a mapa vs solo detalle; mover macro a informativas donde aplique.
+  - 🧪 Tests: variable calculada-no-seleccionable aparece en informe; mapa muestra solo las marcadas.
+
+  ## Dependencias
+  Datos reales (`InfoVariables.xlsx` / parquet) — equipo de datos.
+
+  ## Estimación
+  1.5–3 días.

@@ -1,0 +1,20 @@
+id: FB-FIX-18
+title: "[FB-FIX-18] Desactivar usuario sin el form completo"
+epic: "E3-Admin"
+epic_label: "epic:E3-Admin"
+priority: alta
+priority_label: "priority:alta"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  Desactivar usuario redirige al formulario completo de edición (pasos redundantes).
+
+  **Corrección:** Que desactivar sea una acción directa.
+  **Estimación:** 20-30m
+
+  ## Criterio de aceptación
+  - Desactivar un usuario no obliga a pasar por el form completo.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

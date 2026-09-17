@@ -1,0 +1,28 @@
+id: QA-04
+title: "[QA-04] Pruebas técnicas del Sprint 4"
+epic: "QA"
+epic_label: "epic:QA"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+depends_on: []
+unlocks: []
+week: 3
+body: |
+  ## Historia de Usuario
+  Como equipo, queremos pruebas técnicas sobre el entorno actual que cubran las
+  nuevas HUs, para asegurar la calidad de la entrega.
+
+  **Transversal — QA**
+
+  ## Criterios de Aceptación
+  1. Cobertura con Vitest + RTL de: preconfiguración del informe, admin de variables/normas/escenarios, panel económico, bugs de usuarios, variables excluyentes.
+  2. Smoke E2E de "configurar informe → descargar PDF".
+  3. Se ejecutan sobre el entorno actual.
+
+  ## Tareas técnicas
+  - 🧪 Tests unitarios/integración de las HUs de Ola 1/2/3.
+  - 🧪 Smoke E2E del flujo de informe.
+
+  ## Estimación
+  Transversal (a lo largo del sprint).

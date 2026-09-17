@@ -1,0 +1,33 @@
+id: US08-04
+title: "fix: [US08-04] Bugs de gestión de usuarios (H16, downgrade, delete, feedback, buscador)"
+epic: "E3-Admin"
+epic_label: "epic:E3-Admin"
+priority: critica
+priority_label: "priority:critica"
+milestone: "Cuarta Entrega"
+depends_on: []
+unlocks: []
+week: 1
+body: |
+  ## Historia de Usuario
+  Como admin, quiero que la gestión de usuarios sea segura y honesta (confirmar
+  cambios de rol, feedback claro, buscador útil), para no cometer errores.
+
+  **Épica:** E3 — Admin (usuarios)
+
+  ## Criterios de Aceptación
+  1. [H16 — riesgo alto] Otorgar rol admin exige diálogo de confirmación explícito.
+  2. Downgrade (quitar admin) claro y con confirmación.
+  3. "Eliminar usuario" no debe mentir: renombrado a "Desactivar" con copy honesto (queda inactivo, reactivable).
+  4. Feedback al crear/editar/desactivar con toasts visibles.
+  5. Buscador insensible a tildes ("Gomez" encuentra "Gómez") + filtros por rol y estado.
+  6. Desactivar es acción directa (con confirmación), no redirige al formulario de edición.
+
+  ## Tareas técnicas
+  - 📦 `ConfirmDialog` reutilizable; confirmación in-app al otorgar/quitar admin.
+  - 📦 Buscador client-side con normalización de acentos + filtros estado y rol.
+  - 📦 BFF `GET /api/admin/users` propaga `roles` (para el filtro por rol).
+  - 🧪 Tests: confirmación dar/quitar admin; buscador con tildes; toast al crear.
+
+  ## Estimación
+  2–3 días.

@@ -1,0 +1,20 @@
+id: FB-FIX-06
+title: "[FB-FIX-06] Mostrar el onboarding solo la primera vez"
+epic: "E7-UX"
+epic_label: "epic:E7-UX"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  El modal de onboarding aparece cada vez que se entra al menú, aun con sesión iniciada.
+
+  **Corrección:** Mostrarlo solo la primera vez o cada cierto período (flag persistente).
+  **Estimación:** 20-30m
+
+  ## Criterio de aceptación
+  - El modal no reaparece en cada entrada al menú; respeta un flag persistente.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

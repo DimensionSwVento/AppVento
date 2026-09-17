@@ -1,0 +1,20 @@
+id: FB-FIX-08
+title: "[FB-FIX-08] Cursor pointer en hover de 'Capas del Mapa'"
+epic: "E7-UX"
+epic_label: "epic:E7-UX"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+body: |
+  ## Fix — feedback Sprint 3
+  El hover en el diálogo 'Capas del Mapa' mantiene el cursor default.
+
+  **Corrección:** Aplicar cursor pointer en el hover.
+  **Estimación:** 5m
+
+  ## Criterio de aceptación
+  - Los elementos clicables de 'Capas del Mapa' muestran cursor de mano.
+
+  ## Origen
+  Feedback de Sprint 3. Solo FIX (sin costo adicional). Ver `docs/feedback/sprint3-triage.md`.
+

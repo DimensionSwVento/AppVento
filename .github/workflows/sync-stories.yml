@@ -1,9 +1,8 @@
 name: "Sync Stories → GitHub Project Kanban"
 
 on:
-  push:
-    paths:
-      - ".github/stories/**"
+  # MANUAL únicamente: se dispara desde Actions → "Run workflow". No corre en push.
+  # Sincroniza solo las stories de .github/stories/sprint-04/ (ver job 3).
   workflow_dispatch:
     inputs:
       force_recreate:
@@ -22,7 +21,7 @@ env:
   # y el workflow lo usará directamente sin buscar por nombre.
   PROJECT_NAME: "Vento"
   PROJECT_NUMBER: 2
-  MILESTONE_NAME: "Primera Entrega"
+  MILESTONE_NAME: "Cuarta Entrega"
   GH_REPO: ${{ github.repository }}
 
 jobs:
@@ -36,14 +35,13 @@ jobs:
         run: |
           create_label() {
             local name="$1" color="$2" desc="$3"
+            # --force = upsert (crea o actualiza). Más fiable que create-o-edit,
+            # que enmascaraba fallos y dejaba labels nuevas (E4/E7/QA) sin crear.
             gh label create "$name" \
               --color "$color" \
               --description "$desc" \
-              --repo "$GH_REPO" 2>/dev/null || \
-            gh label edit "$name" \
-              --color "$color" \
-              --description "$desc" \
-              --repo "$GH_REPO" 2>/dev/null || true
+              --repo "$GH_REPO" \
+              --force || true
           }
 
           # Labels por épica
@@ -54,6 +52,8 @@ jobs:
           create_label "epic:E4-Variables"  "ea580c" "Épica 4 — Configuración de Dimensiones (Variables)"
           create_label "epic:E5-Proyecto"   "0891b2" "Épica 5 — Características del Proyecto"
           create_label "epic:E6-Reportes"   "9333ea" "Épica 6 — Reportes / Informe PDF"
+          create_label "epic:E7-UX"         "db2777" "Épica 7 — UX / Usabilidad y navegación"
+          create_label "epic:QA"            "64748b" "Transversal — Pruebas técnicas / QA"
 
           # Labels por prioridad
           create_label "priority:critica"   "dc2626" "🔴 Bloqueante para otras historias"
@@ -62,6 +62,9 @@ jobs:
 
           # Label tipo
           create_label "user-story"         "6366f1" "Historia de usuario"
+
+          # Label de feedback: fixes del feedback de Sprint 3 (sin costo adicional)
+          create_label "feedback-fix"       "b60205" "Fix del feedback de Sprint 3 (sin costo adicional)"
 
   setup-milestone:
     name: "2. Crear Milestones"
@@ -90,6 +93,7 @@ jobs:
 
           create_milestone "Primera Entrega" "Scope de la primera entrega — 1 mes de desarrollo"
           create_milestone "Segunda Entrega" "Scope de la segunda entrega — flujo completo: variables, proyecto, informe PDF"
+          create_milestone "Cuarta Entrega" "Scope del Sprint 4 (último) — informe configurable, admin de catálogo, económica, usabilidad"
 
   sync-issues:
     name: "3. Sincronizar Issues"
@@ -115,7 +119,9 @@ jobs:
           UPDATED=0
           SKIPPED=0
 
-          for file in .github/stories/*.yml; do
+          # Sincroniza las stories de Sprint 4 Y los fixes del feedback de Sprint 3.
+          # Todo archivo bajo feedback-fixes/ recibe además la label `feedback-fix`.
+          for file in .github/stories/sprint-04/*.yml .github/stories/feedback-fixes/*.yml; do
             [ -f "$file" ] || continue
 
             TITLE=$(yq '.title' "$file")
@@ -124,10 +130,31 @@ jobs:
             BODY=$(yq '.body' "$file")
             STORY_ID=$(yq '.id' "$file")
             # Milestone por archivo (fallback al default si no está definido)
-            FILE_MILESTONE=$(yq '.milestone // "'$MILESTONE_NAME'"' "$file")
+            # `strenv` + variable de entorno: evita que el espacio de "Cuarta
+            # Entrega" parta la expresión de yq (bug del lexer).
+            FILE_MILESTONE=$(DEFAULT_MS="$MILESTONE_NAME" yq '.milestone // strenv(DEFAULT_MS)' "$file")
+
+            # Labels extra: los fixes del feedback llevan `feedback-fix`.
+            EXTRA_LABELS=""
+            case "$file" in
+              *feedback-fixes*) EXTRA_LABELS="feedback-fix" ;;
+            esac
+            ALL_LABELS="user-story,$EPIC_LABEL,$PRIORITY_LABEL"
+            [ -n "$EXTRA_LABELS" ] && ALL_LABELS="$ALL_LABELS,$EXTRA_LABELS"
 
             echo "──────────────────────────────────"
             echo "📋 Procesando: $STORY_ID  →  $FILE_MILESTONE"
+
+            # Garantiza que las labels del issue existen (por si setup-labels no
+            # las creó — E4/E7/QA son nuevas). Idempotente: si ya existe, no toca
+            # su color. Evita "could not add label: '...' not found".
+            for lbl in "user-story" "$EPIC_LABEL" "$PRIORITY_LABEL" "$EXTRA_LABELS"; do
+              if [ -n "$lbl" ] && [ "$lbl" != "null" ]; then
+                # Sin 2>/dev/null: si falla por permisos se verá el motivo en el log.
+                # "already exists" es esperado e inofensivo.
+                gh label create "$lbl" --repo "$GH_REPO" --color "ededed" || true
+              fi
+            done
 
             # Buscar si el issue ya existe por título exacto
             EXISTING=$(gh issue list \
@@ -139,16 +166,22 @@ jobs:
               2>/dev/null | head -1)
 
             if [ -z "$EXISTING" ]; then
-              # Crear nuevo issue
+              # Crear el issue SIN labels: una label faltante nunca debe impedir
+              # crear el issue. Las labels se añaden aparte (best-effort).
               ISSUE_URL=$(gh issue create \
                 --repo "$GH_REPO" \
                 --title "$TITLE" \
                 --body "$BODY" \
-                --label "user-story,$EPIC_LABEL,$PRIORITY_LABEL" \
                 --milestone "$FILE_MILESTONE")
 
               echo "✅ Issue creado: $ISSUE_URL"
               CREATED=$((CREATED + 1))
+
+              # Labels best-effort (no bloquea si alguna no existe / no se pudo crear).
+              gh issue edit "$ISSUE_URL" \
+                --repo "$GH_REPO" \
+                --add-label "$ALL_LABELS" \
+                || echo "   ⚠️  labels parciales para $STORY_ID (revisa permisos / creación de labels)"
 
               # Añadir al Project Kanban
               # Prioridad: usa PROJECT_NUMBER si está configurado, si no busca por nombre
@@ -176,7 +209,7 @@ jobs:
               gh issue edit "$EXISTING" \
                 --repo "$GH_REPO" \
                 --body "$BODY" \
-                --add-label "user-story,$EPIC_LABEL,$PRIORITY_LABEL" 2>/dev/null || true
+                --add-label "$ALL_LABELS" 2>/dev/null || true
 
               echo "🔄 Issue #$EXISTING actualizado (body sincronizado)"
               UPDATED=$((UPDATED + 1))

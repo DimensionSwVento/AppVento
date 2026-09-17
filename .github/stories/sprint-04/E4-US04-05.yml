@@ -1,0 +1,28 @@
+id: US04-05
+title: "feature: [US04-05] Regulatoria informativa: normas con etiquetas + agregar al informe"
+epic: "E4-Variables"
+epic_label: "epic:E4-Variables"
+priority: media
+priority_label: "priority:media"
+milestone: "Cuarta Entrega"
+depends_on: ["US08-02"]
+unlocks: []
+week: 3
+body: |
+  ## Historia de Usuario
+  Como analista, quiero ver la dimensión regulatoria (informativa) con las normas y
+  etiquetas rápidas, y poder agregarla al informe, para conocer el marco normativo.
+
+  **Épica:** E4 — Variables (dimensión regulatoria)
+
+  ## Criterios de Aceptación
+  1. La dimensión regulatoria es informativa (no puntúa) y muestra las normas con etiquetas rápidas (Aplica / Requiere trámite / Requiere verificación / No aplica) y contadores.
+  2. Muestra autoridades competentes e información normativa de referencia.
+  3. Opción "Agregar esta sección al informe PDF".
+
+  ## Tareas técnicas
+  - 📦 `RegulatoryPanel.tsx` (normas + etiquetas + contadores) alimentado por US08-02.
+  - 🧪 Tests: etiquetas/contadores; toggle agregar al informe.
+
+  ## Estimación
+  1–1.5 días.
