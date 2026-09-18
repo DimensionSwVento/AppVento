@@ -46,9 +46,12 @@ export default function HistorialList() {
   // monta al entrar a la vista). Antes solo se consultaba una vez al arrancar la
   // app → al reabrir el histórico o tras un guardado en otra sesión mostraba el
   // estado en memoria (parecía "que solo duraba la sesión"). Ahora siempre
-  // refleja lo persistido en el backend.
+  // refleja lo persistido en el backend. `refresh` hace setState, así que se
+  // difiere con setTimeout(0) para no llamarlo síncrono dentro del effect (regla
+  // del React Compiler: react-hooks/set-state-in-effect).
   useEffect(() => {
-    refresh();
+    const t = setTimeout(refresh, 0);
+    return () => clearTimeout(t);
   }, [refresh]);
 
   // Búsqueda por nombre (case-insensitive) → luego se agrupa por recencia.

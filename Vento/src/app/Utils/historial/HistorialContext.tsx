@@ -56,9 +56,27 @@ export function HistorialProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Carga inicial del histórico desde el repo (setState en callbacks async → ok).
-    refresh();
-  }, [refresh]);
+    // Carga inicial: fetch → setState SOLO dentro de callbacks async. El React
+    // Compiler prohíbe llamar en el effect una función que hace setState síncrono
+    // (por eso NO se llama refresh() aquí). `loading` ya arranca en true.
+    let alive = true;
+    repo
+      .list()
+      .then((list) => {
+        if (!alive) return;
+        setEntries(list);
+        setError(null);
+      })
+      .catch((e) => {
+        if (alive) setError(e instanceof Error ? e.message : "No se pudo cargar el histórico");
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const save = useCallback(
     async (entry: InformeEntry) => {
