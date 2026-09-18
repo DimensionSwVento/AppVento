@@ -67,6 +67,15 @@ export interface ApplyResult {
   files: string[];
 }
 
+/** Error de API que conserva el status HTTP (p.ej. 409 = ingesta en curso). */
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     ...init,
@@ -74,7 +83,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || err.error || `Error ${res.status}`);
+    throw new ApiError(err.detail || err.error || `Error ${res.status}`, res.status);
   }
   return res.json() as Promise<T>;
 }

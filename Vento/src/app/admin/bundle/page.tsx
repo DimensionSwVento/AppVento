@@ -9,6 +9,7 @@ import {
   reconcileColumn,
   applyBundle,
   uploadBundle,
+  ApiError,
   COLUMN_KINDS,
   type BundlePlan,
   type PlanColumn,
@@ -27,6 +28,9 @@ export default function AdminBundlePage() {
   const [plan, setPlan] = useState<BundlePlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
+  // Otra ingesta corre en el server (candado 409): aviso persistente para que el
+  // admin sepa que debe esperar a que termine antes de guardar esta máster.
+  const [ingestBusy, setIngestBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -91,10 +95,16 @@ export default function AdminBundlePage() {
 
   const aplicar = useCallback(async () => {
     setApplying(true);
+    setIngestBusy(false);
     try {
       const r = await applyBundle(root.trim(), emplazamiento);
       toast.success(`Ingesta OK: ${r.rows.toLocaleString("es-CO")} hexágonos (${r.emplazamiento})`);
     } catch (e) {
+      // 409 = otra ingesta en curso (candado del backend): aviso persistente,
+      // no solo un toast que se va → el admin ve por qué no puede guardar.
+      if (e instanceof ApiError && e.status === 409) {
+        setIngestBusy(true);
+      }
       toast.error(e instanceof Error ? e.message : "La ingesta falló");
     } finally {
       setApplying(false);
@@ -290,6 +300,19 @@ export default function AdminBundlePage() {
               <h3 className="mt-6 text-sm font-semibold text-gray-700">
                 3 · Guardar los datos
               </h3>
+              {ingestBusy && (
+                <p className="mt-2 flex items-start gap-2 rounded-lg border-l-4 border-amber-400 bg-amber-50 px-3 py-2.5 text-[12px] leading-snug text-amber-800">
+                  <svg className="mt-0.5 h-4 w-4 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle className="opacity-30" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.4 0 0 5.4 0 12h4z" />
+                  </svg>
+                  <span>
+                    <strong>Hay otra carga en proceso.</strong> El servidor solo procesa
+                    una máster a la vez para no sobrecargarse. Espera a que termine la
+                    ingesta anterior y vuelve a pulsar “Guardar los datos”.
+                  </span>
+                </p>
+              )}
               <div className="mt-2 flex items-center gap-3">
                 <button
                   type="button"
