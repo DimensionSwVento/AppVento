@@ -475,6 +475,42 @@ export function applyDbCatalog(
   }
 }
 
+// ── Catálogo VIVO desde el DB (modo backend) ──────────────────────────────────
+// Ícono y `required` son UI (no dato de negocio) → snapshot por id del catálogo
+// estático, para conservarlos cuando en backend la lista se reconstruye desde el
+// DB (que no guarda icono ni required).
+const _ICON_BY_ID: Record<string, string> = {};
+const _REQUIRED_BY_ID: Record<string, boolean> = {};
+for (const v of [...VARIABLES, ...OPTIONAL_VARIABLES]) {
+  _ICON_BY_ID[v.id] = v.iconKey;
+  if (v.required) _REQUIRED_BY_ID[v.id] = true;
+}
+export function iconForVariable(id: string): string {
+  return _ICON_BY_ID[id] ?? "lucide:Info";
+}
+export function requiredForVariable(id: string): boolean {
+  return _REQUIRED_BY_ID[id] ?? false;
+}
+
+/**
+ * Modo BACKEND: reemplaza EN SITIO el catálogo con la lista VIVA del DB. Todos
+ * los consumidores importan `VARIABLES`/`OPTIONAL_VARIABLES` por referencia, así
+ * que ven la lista nueva sin tocar cada consumidor → nada hardcodeado se consume.
+ * El estático queda solo como template (demo). Modular: si a futuro suben más
+ * variables en la máster, aparecen solas sin cambiar código. Si el DB viniera
+ * VACÍO no reemplaza (evita dejar la app en blanco); se llena al subir la máster.
+ */
+export function replaceCatalogFromDb(
+  modelo: Variable[],
+  informativa: Variable[],
+): void {
+  if (modelo.length === 0 && informativa.length === 0) return;
+  VARIABLES.length = 0;
+  VARIABLES.push(...modelo);
+  OPTIONAL_VARIABLES.length = 0;
+  OPTIONAL_VARIABLES.push(...informativa);
+}
+
 /**
  * ¿La variable aplica a la naturaleza (mar/tierra) de la selección actual?
  * Sin `aplicaEn` → aplica a ambos. Con selección "mixta"/"vacia" no se filtra

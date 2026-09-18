@@ -1,9 +1,19 @@
 import { auth } from "@/auth";
+import { Agent } from "undici";
 
 // Base interna del backend FastAPI (privado en AccuWeb). Server-only; cae a la
 // pública si no se define una interna dedicada.
 const BACKEND = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || "";
 const SECRET = process.env.INTERNAL_API_SECRET || "";
+
+// undici (el fetch de Node) corta por defecto a los ~300 s (headers/body timeout):
+// la ingesta larga de un máster daba "backend_unreachable" a los ~5 min aunque
+// nginx y gunicorn permitieran más. Este dispatcher sube ambos a 30 min. Las demás
+// llamadas responden rápido igual, así que un techo alto no las afecta.
+const longDispatcher = new Agent({
+  headersTimeout: 1_800_000,
+  bodyTimeout: 1_800_000,
+});
 
 /**
  * Proxy autenticado Next → FastAPI (patrón BFF) para TODA la API (tiles + histórico).
@@ -37,6 +47,8 @@ export async function proxyBackend(
       ...init,
       headers,
       cache: "no-store",
+      // @ts-expect-error 'dispatcher' es opción de undici, no del tipo RequestInit del DOM.
+      dispatcher: longDispatcher,
     });
   } catch {
     return Response.json({ error: "backend_unreachable" }, { status: 502 });

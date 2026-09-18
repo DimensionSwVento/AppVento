@@ -7,7 +7,8 @@ import { useToast } from "../../Components/ui/Toast";
 import {
   fetchBundlePlan,
   reconcileColumn,
-  applyBundle,
+  fetchChunkPlan,
+  applyChunk,
   uploadBundle,
   ApiError,
   COLUMN_KINDS,
@@ -21,6 +22,27 @@ const ESTADO_META: Record<PlanColumn["estado"], { label: string; cls: string }> 
   pendiente: { label: "Pendiente", cls: "bg-red-100 text-red-700" },
 };
 
+// Registro por LOTE (paquete) y resultado final de la ingesta por paquetes.
+type ChunkRow = {
+  file: string;
+  rowGroup: number;
+  rows: number;
+  ms: number;
+  ok: boolean;
+  error?: string;
+};
+type IngestResult = {
+  ok: boolean;
+  totalRows: number;
+  totalMs: number;
+  failed: number;
+  totalChunks: number;
+};
+
+const fmtN = new Intl.NumberFormat("es-CO");
+const fmtDur = (ms: number) =>
+  ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
+
 export default function AdminBundlePage() {
   const toast = useToast();
   const [root, setRoot] = useState("");
@@ -31,6 +53,10 @@ export default function AdminBundlePage() {
   // Otra ingesta corre en el server (candado 409): aviso persistente para que el
   // admin sepa que debe esperar a que termine antes de guardar esta máster.
   const [ingestBusy, setIngestBusy] = useState(false);
+  // Ingesta por PAQUETES: progreso (filas), registro por lote y resultado final.
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [chunkLog, setChunkLog] = useState<ChunkRow[]>([]);
+  const [result, setResult] = useState<IngestResult | null>(null);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -93,23 +119,92 @@ export default function AdminBundlePage() {
     }
   }, [pendingFiles, toast, verPlan]);
 
+  // Ingesta POR PAQUETES: pide el plan (row-groups) y los ingiere de forma
+  // CONSECUTIVA, cada uno rápido y con memoria acotada. Va reportando progreso
+  // (filas) y un registro por lote (rows/ms/estado); al final, un resumen.
   const aplicar = useCallback(async () => {
     setApplying(true);
     setIngestBusy(false);
+    setResult(null);
+    setChunkLog([]);
+    const r = root.trim();
     try {
-      const r = await applyBundle(root.trim(), emplazamiento);
-      toast.success(`Ingesta OK: ${r.rows.toLocaleString("es-CO")} hexágonos (${r.emplazamiento})`);
-    } catch (e) {
-      // 409 = otra ingesta en curso (candado del backend): aviso persistente,
-      // no solo un toast que se va → el admin ve por qué no puede guardar.
-      if (e instanceof ApiError && e.status === 409) {
-        setIngestBusy(true);
+      const plan = await fetchChunkPlan(r);
+      setProgress({ done: 0, total: plan.total_rows });
+      const log: ChunkRow[] = [];
+      let doneRows = 0;
+      let failed = 0;
+      const t0 = performance.now();
+      for (const ch of plan.chunks) {
+        const cs = performance.now();
+        try {
+          const res = await applyChunk(r, ch.file, ch.row_group, emplazamiento);
+          const ms = Math.round(performance.now() - cs);
+          doneRows += res.processed;
+          log.push({ file: ch.file, rowGroup: ch.row_group, rows: res.processed, ms, ok: true });
+        } catch (e) {
+          const ms = Math.round(performance.now() - cs);
+          if (e instanceof ApiError && e.status === 409) setIngestBusy(true);
+          failed += 1;
+          log.push({
+            file: ch.file,
+            rowGroup: ch.row_group,
+            rows: ch.rows,
+            ms,
+            ok: false,
+            error: e instanceof Error ? e.message : "falló",
+          });
+        }
+        setChunkLog([...log]);
+        setProgress({ done: doneRows, total: plan.total_rows });
       }
-      toast.error(e instanceof Error ? e.message : "La ingesta falló");
+      const totalMs = Math.round(performance.now() - t0);
+      setResult({ ok: failed === 0, totalRows: doneRows, totalMs, failed, totalChunks: plan.chunks.length });
+      if (failed === 0) {
+        toast.success(`Ingesta OK: ${fmtN.format(doneRows)} hexágonos en ${plan.chunks.length} lotes`);
+      } else {
+        toast.error(`Ingesta con ${failed} lote(s) fallido(s) — revisa el detalle`);
+      }
+    } catch (e) {
+      // Falló el PLAN (antes de empezar): p.ej. 409 (otra ingesta) o pendientes.
+      if (e instanceof ApiError && e.status === 409) setIngestBusy(true);
+      toast.error(e instanceof Error ? e.message : "No se pudo iniciar la ingesta");
     } finally {
       setApplying(false);
+      setProgress(null);
     }
   }, [root, emplazamiento, toast]);
+
+  // Reintenta SOLO los lotes que fallaron (idempotente por h3_index).
+  const reintentarFallidos = useCallback(async () => {
+    const fails = chunkLog.filter((c) => !c.ok);
+    if (fails.length === 0) return;
+    setApplying(true);
+    const r = root.trim();
+    const byKey = new Map(chunkLog.map((c) => [`${c.file}#${c.rowGroup}`, c]));
+    for (const f of fails) {
+      const cs = performance.now();
+      try {
+        const res = await applyChunk(r, f.file, f.rowGroup, emplazamiento);
+        byKey.set(`${f.file}#${f.rowGroup}`, {
+          file: f.file, rowGroup: f.rowGroup, rows: res.processed,
+          ms: Math.round(performance.now() - cs), ok: true,
+        });
+      } catch (e) {
+        byKey.set(`${f.file}#${f.rowGroup}`, {
+          ...f, ms: Math.round(performance.now() - cs),
+          error: e instanceof Error ? e.message : "falló",
+        });
+      }
+      setChunkLog([...byKey.values()]);
+    }
+    const merged = [...byKey.values()];
+    const failed = merged.filter((c) => !c.ok).length;
+    const totalRows = merged.filter((c) => c.ok).reduce((a, c) => a + c.rows, 0);
+    setResult({ ok: failed === 0, totalRows, totalMs: 0, failed, totalChunks: merged.length });
+    setApplying(false);
+    if (failed === 0) toast.success("Reintento OK: todos los lotes subieron");
+  }, [chunkLog, root, emplazamiento, toast]);
 
   const pendientes = plan?.summary.pendientes ?? 0;
   // Pendientes primero para conciliar rápido.
@@ -326,7 +421,11 @@ export default function AdminBundlePage() {
                       <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.4 0 0 5.4 0 12h4z" />
                     </svg>
                   )}
-                  {applying ? "Guardando en la base de datos…" : "Guardar los datos"}
+                  {applying
+                    ? progress && progress.total > 0
+                      ? `Guardando… ${Math.round((progress.done / progress.total) * 100)}%`
+                      : "Preparando lotes…"
+                    : "Guardar los datos"}
                 </button>
                 {pendientes > 0 && (
                   <span className="text-xs text-red-600">
@@ -334,14 +433,98 @@ export default function AdminBundlePage() {
                   </span>
                 )}
               </div>
-              {applying && (
-                <p className="mt-2 flex items-start gap-2 rounded-lg border-l-4 border-[#165170ff] bg-[#cce1ee]/40 px-3 py-2 text-[11px] leading-snug text-gray-600">
-                  <span>
-                    Ingiriendo los datos en la base — con másters grandes puede
-                    tardar <strong>varios minutos</strong>. No cierres esta página;
-                    al terminar verás cuántos hexágonos se guardaron.
-                  </span>
-                </p>
+
+              {/* Barra de progreso por lotes (paquetes consecutivos) */}
+              {applying && progress && (
+                <div className="mt-2">
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                    <div
+                      className="h-full rounded-full bg-[#165170ff] transition-all duration-200"
+                      style={{
+                        width: `${progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="mt-1 text-[11px] text-gray-500">
+                    {fmtN.format(progress.done)} / {fmtN.format(progress.total)} hexágonos · lote{" "}
+                    {chunkLog.length}. No cierres esta página.
+                  </p>
+                </div>
+              )}
+
+              {/* Resumen del resultado — permanece hasta el próximo intento */}
+              {result && (
+                <div
+                  className={`mt-3 rounded-lg border-l-4 px-3 py-2.5 text-[12px] ${
+                    result.ok
+                      ? "border-emerald-400 bg-emerald-50 text-emerald-800"
+                      : "border-amber-400 bg-amber-50 text-amber-800"
+                  }`}
+                >
+                  {result.ok ? (
+                    <span>
+                      <strong>Ingesta completada.</strong> {fmtN.format(result.totalRows)} hexágonos en{" "}
+                      {result.totalChunks} lotes
+                      {result.totalMs ? ` · ${fmtDur(result.totalMs)}` : ""}.
+                    </span>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span>
+                        <strong>{result.failed} lote(s) fallaron</strong> de {result.totalChunks}. Los
+                        demás ({fmtN.format(result.totalRows)} hex) sí se guardaron.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={reintentarFallidos}
+                        disabled={applying}
+                        className="rounded-full border border-amber-500 px-2.5 py-1 text-[11px] font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-40"
+                      >
+                        Reintentar los fallidos
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Registro PERMANENTE por lote: qué subió, cuánto tardó, estado */}
+              {chunkLog.length > 0 && (
+                <div className="mt-3 max-h-56 overflow-auto rounded-lg border border-gray-100">
+                  <table className="w-full min-w-[420px] text-[11px]">
+                    <thead className="sticky top-0 bg-gray-50 text-left text-gray-400">
+                      <tr>
+                        <th className="px-3 py-1.5 font-semibold">Archivo</th>
+                        <th className="px-3 py-1.5 font-semibold">Lote</th>
+                        <th className="px-3 py-1.5 font-semibold">Hex</th>
+                        <th className="px-3 py-1.5 font-semibold">Tiempo</th>
+                        <th className="px-3 py-1.5 font-semibold">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {chunkLog.map((c) => (
+                        <tr key={`${c.file}#${c.rowGroup}`} className="border-t border-gray-50">
+                          <td className="px-3 py-1.5 font-mono text-gray-700">{c.file}</td>
+                          <td className="px-3 py-1.5 text-gray-500">{c.rowGroup}</td>
+                          <td className="px-3 py-1.5 text-gray-700">{fmtN.format(c.rows)}</td>
+                          <td className="px-3 py-1.5 text-gray-500">{fmtDur(c.ms)}</td>
+                          <td className="px-3 py-1.5">
+                            {c.ok ? (
+                              <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-700">
+                                OK
+                              </span>
+                            ) : (
+                              <span
+                                className="rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-700"
+                                title={c.error}
+                              >
+                                Falló
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </section>
           )}
