@@ -30,6 +30,9 @@ export default function AdminBundlePage() {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  // % de subida (null = no hay subida en curso). Da feedback real en bundles
+  // grandes; al llegar a 100 el server aún procesa (montaje) → "Procesando…".
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
   // Archivos elegidos/arrastrados que esperan el botón "Enviar" (no se suben
   // solos: el admin confirma qué manda antes de arrancar la subida).
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
@@ -68,9 +71,10 @@ export default function AdminBundlePage() {
     if (pendingFiles.length === 0) return;
     setUploading(true);
     setUploadError(null);
+    setUploadPct(0);
     setPlan(null);
     try {
-      const r = await uploadBundle(pendingFiles);
+      const r = await uploadBundle(pendingFiles, setUploadPct);
       setRoot(r.root);
       setPendingFiles([]);
       toast.success(`${r.files} archivos subidos`);
@@ -81,6 +85,7 @@ export default function AdminBundlePage() {
       toast.error(msg);
     } finally {
       setUploading(false);
+      setUploadPct(null);
     }
   }, [pendingFiles, toast, verPlan]);
 
@@ -158,14 +163,31 @@ export default function AdminBundlePage() {
             >
               <p className="text-sm font-medium text-gray-700">
                 {uploading
-                  ? "Subiendo…"
+                  ? uploadPct !== null && uploadPct < 100
+                    ? `Subiendo… ${uploadPct}%`
+                    : "Procesando en el servidor…"
                   : loading
-                    ? "Revisando…"
+                    ? "Revisando columnas…"
                     : pendingFiles.length > 0
                       ? `${pendingFiles.length} archivo(s) en espera`
                       : "Arrastra aquí los archivos del modelo"}
               </p>
-              <p className="mt-1 text-[11px] text-gray-500">o elige una carpeta / archivos:</p>
+              {uploading && (
+                <>
+                  <div className="mx-auto mt-2 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-gray-200">
+                    <div
+                      className="h-full rounded-full bg-[#165170ff] transition-all duration-200"
+                      style={{ width: `${uploadPct ?? 0}%` }}
+                    />
+                  </div>
+                  <p className="mt-1 text-[10px] text-gray-400">
+                    Bundles grandes pueden tardar varios minutos. No cierres esta página.
+                  </p>
+                </>
+              )}
+              {!uploading && (
+                <p className="mt-1 text-[11px] text-gray-500">o elige una carpeta / archivos:</p>
+              )}
               <div className="mt-2 flex justify-center gap-2">
                 <label className="cursor-pointer rounded-full border border-[#165170ff] px-3 py-1.5 text-xs font-semibold text-[#165170ff] hover:bg-[#cce1ee]/40">
                   Elegir carpeta
@@ -273,9 +295,15 @@ export default function AdminBundlePage() {
                   type="button"
                   onClick={aplicar}
                   disabled={applying || pendientes > 0}
-                  className="rounded-full bg-[#165170ff] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#1e6a8c] disabled:opacity-40"
+                  className="inline-flex items-center gap-2 rounded-full bg-[#165170ff] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#1e6a8c] disabled:opacity-40"
                 >
-                  {applying ? "Guardando…" : "Guardar los datos"}
+                  {applying && (
+                    <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <circle className="opacity-30" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.4 0 0 5.4 0 12h4z" />
+                    </svg>
+                  )}
+                  {applying ? "Guardando en la base de datos…" : "Guardar los datos"}
                 </button>
                 {pendientes > 0 && (
                   <span className="text-xs text-red-600">
@@ -283,6 +311,15 @@ export default function AdminBundlePage() {
                   </span>
                 )}
               </div>
+              {applying && (
+                <p className="mt-2 flex items-start gap-2 rounded-lg border-l-4 border-[#165170ff] bg-[#cce1ee]/40 px-3 py-2 text-[11px] leading-snug text-gray-600">
+                  <span>
+                    Ingiriendo los datos en la base — con másters grandes puede
+                    tardar <strong>varios minutos</strong>. No cierres esta página;
+                    al terminar verás cuántos hexágonos se guardaron.
+                  </span>
+                </p>
+              )}
             </section>
           )}
         </div>
