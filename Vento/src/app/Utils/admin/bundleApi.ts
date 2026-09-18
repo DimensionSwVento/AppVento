@@ -155,6 +155,45 @@ export async function fetchBundlePlan(root: string): Promise<BundlePlan> {
   return api<BundlePlan>(`/plan`, { method: "POST", body: JSON.stringify({ root }) });
 }
 
+// ── Ingesta POR PAQUETES (lotes consecutivos con progreso) ────────────────────
+
+export interface ChunkItem {
+  index: number;
+  file: string;
+  row_group: number;
+  rows: number;
+}
+export interface ChunkPlan {
+  root: string;
+  chunks: ChunkItem[];
+  total_chunks: number;
+  total_rows: number;
+}
+export interface ChunkResult {
+  processed: number;
+  file: string;
+  row_group: number;
+  provided: string[];
+}
+
+/** Plan de paquetes (un row-group por lote) para ingerir consecutivamente. */
+export async function fetchChunkPlan(root: string): Promise<ChunkPlan> {
+  return api<ChunkPlan>(`/chunks`, { method: "POST", body: JSON.stringify({ root }) });
+}
+
+/** Ingiere UN paquete (rápido, memoria acotada). Idempotente por h3_index. */
+export async function applyChunk(
+  root: string,
+  file: string,
+  rowGroup: number,
+  emplazamiento: "onshore" | "offshore" = "onshore",
+): Promise<ChunkResult> {
+  return api<ChunkResult>(`/apply-chunk`, {
+    method: "POST",
+    body: JSON.stringify({ root, file, row_group: rowGroup, emplazamiento }),
+  });
+}
+
 /** Registro columna→clase. `estado` opcional: ok|pendiente|ignorada. */
 export async function fetchRegistryColumns(estado?: string): Promise<RegistryColumn[]> {
   if (!USE_BACKEND) return [];
