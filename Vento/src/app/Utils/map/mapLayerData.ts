@@ -59,13 +59,15 @@ export function windValueForHex(
   variableId: string,
   h3Index: string,
   realValues?: Map<string, number> | null,
-): number {
-  // Dato REAL del backend si el hex está en el mapa cargado (res8/zoom alto);
-  // si no, el campo placeholder (corredores).
+): number | null {
+  // Dato REAL del backend si el hex está en el mapa cargado (res8/zoom alto).
   const real = realValues?.get(h3Index);
   if (real != null) return real;
+  // Modo BACKEND sin dato → NO se inventa (retorna null: el hex no se pinta).
+  // Sin mixtura: nunca el corredor placeholder sobre datos reales.
+  if (USE_BACKEND) return null;
+  // Modo TEMPLATE: campo placeholder determinista (corredores).
   const [lat, lng] = cellToLatLng(h3Index);
-  // Desfase por variable → velocidad y densidad no calcan idéntico.
   const off = variableId === "densidad-viento" ? 0.7 : 0;
   const theta = (lng * 2.1 + lat * 1.1 + off) * Math.PI;
   return Math.pow(Math.max(0, Math.sin(theta)), 1.4);
@@ -137,6 +139,8 @@ export async function fetchMapLayerCells(
   s: MapSymbol,
 ): Promise<MapLayerCell[]> {
   if (USE_BACKEND) {
+    // Modo backend: los hex (con su símbolo/color) son FIELES a la máster. Si el
+    // backend no entrega la capa, vacío — NUNCA el placeholder arbitrario.
     try {
       const res = await fetch(`/api/tiles/variable`, {
         method: "POST",
@@ -152,9 +156,11 @@ export async function fetchMapLayerCells(
         return rows.map((r) => ({ h: r.h3_index, value: r.value }));
       }
     } catch {
-      /* cae a placeholder */
+      /* backend sin dato → vacío (abajo), no placeholder */
     }
+    return [];
   }
+  // Modo template (demo): placeholder de cobertura.
   return placeholderCells(s);
 }
 

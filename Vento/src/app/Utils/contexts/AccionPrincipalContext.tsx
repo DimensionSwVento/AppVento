@@ -14,8 +14,8 @@ export type Aprincipal =
 // Orden del flujo guiado (para rastrear la fase más avanzada alcanzada).
 const FLOW_ORDER: Aprincipal[] = [
   "seleccion-area",
-  "dimensiones",
   "caracteristicas",
+  "dimensiones",
   "informe",
 ];
 

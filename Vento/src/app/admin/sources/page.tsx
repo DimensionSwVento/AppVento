@@ -86,11 +86,10 @@ export default function AdminSourcesPage() {
             Fuentes de datos
           </h2>
           <p className="text-sm text-gray-500">
-            Dónde se guarda cada documento (master + catálogo) y su última ingesta.
-            &quot;Actualizar&quot; hace un <b>upsert</b> desde el archivo: actualiza los
-            valores y añade los nuevos (no borra). El reemplazo total (destructivo)
-            se corre por consola:{" "}
-            <code className="text-[11px]">python -m tools.ingest_docs &lt;fuente&gt; --destructive</code>.
+            De dónde salen los datos de la plataforma y cuándo se actualizaron por
+            última vez. <b>&quot;Actualizar&quot;</b> vuelve a leer el archivo y pone al
+            día los datos: cambia los que se modificaron y agrega los nuevos, sin
+            borrar nada.
           </p>
 
           {loading ? (
@@ -155,15 +154,8 @@ export default function AdminSourcesPage() {
           loading={submitting}
           message={
             <>
-              Se actualizarán los valores y se añadirán los nuevos desde el archivo
-              (upsert, no borra):
-              <br />
-              <br />
-              <code className="break-all text-xs">{target.location}</code>
-              <br />
-              <br />
-              El reemplazo total (destructivo) se hace por consola con
-              <code className="text-xs"> --destructive</code>.
+              Se pondrán al día los datos de <b>{target.label}</b>: se actualizan los
+              que cambiaron y se agregan los nuevos, sin borrar nada. ¿Continuar?
             </>
           }
           onConfirm={doIngest}

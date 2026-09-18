@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Trash2, Eye, Info, Search } from "lucide-react";
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
 import { useVariables } from "../../Utils/contexts/VariablesContext";
@@ -32,7 +32,7 @@ const VISIBLE_POR_PERIODO: Record<Periodo, string[]> = {
 };
 
 export default function HistorialList() {
-  const { entries, remove } = useHistorial();
+  const { entries, remove, error, loading, refresh } = useHistorial();
   const { setSelectedHexes, setAccion, requestMapFocus, restoreReportConfig } =
     useAprincipal();
   const { replaceActiveVariables } = useVariables();
@@ -41,6 +41,18 @@ export default function HistorialList() {
 
   const [query, setQuery] = useState("");
   const [periodo, setPeriodo] = useState<Periodo>("todos");
+
+  // Re-consultar la BD CADA VEZ que se abre el histórico (este componente se
+  // monta al entrar a la vista). Antes solo se consultaba una vez al arrancar la
+  // app → al reabrir el histórico o tras un guardado en otra sesión mostraba el
+  // estado en memoria (parecía "que solo duraba la sesión"). Ahora siempre
+  // refleja lo persistido en el backend. `refresh` hace setState, así que se
+  // difiere con setTimeout(0) para no llamarlo síncrono dentro del effect (regla
+  // del React Compiler: react-hooks/set-state-in-effect).
+  useEffect(() => {
+    const t = setTimeout(refresh, 0);
+    return () => clearTimeout(t);
+  }, [refresh]);
 
   // Búsqueda por nombre (case-insensitive) → luego se agrupa por recencia.
   const filtered = useMemo(() => {
@@ -69,6 +81,37 @@ export default function HistorialList() {
     await remove(e.id);
     toast.info("Informe eliminado del histórico");
   };
+
+  // Fallo al traer el histórico → avisar + reintentar (no silenciar como vacío).
+  if (error) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center p-6 text-center">
+        <p className="text-sm font-medium text-red-600">
+          No se pudo cargar el histórico
+        </p>
+        <p className="mt-1 max-w-xs text-xs text-gray-400">{error}</p>
+        <button
+          type="button"
+          onClick={() => refresh()}
+          disabled={loading}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#165170ff] px-3 py-1.5 text-xs font-semibold text-[#165170ff] hover:bg-[#cce1ee]/40 disabled:opacity-50"
+        >
+          <svg
+            className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
+            <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+            <path d="M21 3v6h-6" />
+          </svg>
+          {loading ? "Reintentando…" : "Reintentar"}
+        </button>
+      </div>
+    );
+  }
 
   if (entries.length === 0) {
     return (

@@ -756,10 +756,9 @@ export default function Report() {
         <p className="mt-1 text-[11px] text-gray-600">
           Marco normativo nacional aplicable al proyecto eólico.
         </p>
-        <p className="mt-1 text-[9px] italic text-amber-600">
-          Listado normativo ilustrativo: el estado de cada norma no es una
-          evaluación jurídica del proyecto. La verificación normativa vinculante
-          la realiza la autoridad competente (pendiente de la fuente oficial).
+        <p className="mt-1 text-[9px] italic text-gray-500">
+          El estado de cada norma no es una evaluación jurídica del proyecto; la
+          verificación normativa vinculante la realiza la autoridad competente.
         </p>
         <div className="mt-3 grid grid-cols-4 gap-2">
           {(["aplica", "tramite", "verificacion", "no-aplica"] as const).map(

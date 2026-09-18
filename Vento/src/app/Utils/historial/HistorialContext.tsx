@@ -22,6 +22,9 @@ const repo: HistorialRepository = USE_BACKEND
 
 type HistorialApi = {
   entries: InformeEntry[];
+  loading: boolean;
+  /** Mensaje de error al traer el histórico (null si OK). Para avisar + reintentar. */
+  error: string | null;
   save: (entry: InformeEntry) => Promise<void>;
   remove: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
@@ -37,16 +40,43 @@ export function useHistorial(): HistorialApi {
 
 export function HistorialProvider({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<InformeEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    setEntries(await repo.list());
+    setLoading(true);
+    setError(null);
+    try {
+      setEntries(await repo.list());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo cargar el histórico");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    // Carga inicial del histórico desde el repo (fetch → setState async).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    refresh();
-  }, [refresh]);
+    // Carga inicial: fetch → setState SOLO dentro de callbacks async. El React
+    // Compiler prohíbe llamar en el effect una función que hace setState síncrono
+    // (por eso NO se llama refresh() aquí). `loading` ya arranca en true.
+    let alive = true;
+    repo
+      .list()
+      .then((list) => {
+        if (!alive) return;
+        setEntries(list);
+        setError(null);
+      })
+      .catch((e) => {
+        if (alive) setError(e instanceof Error ? e.message : "No se pudo cargar el histórico");
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const save = useCallback(
     async (entry: InformeEntry) => {
@@ -65,8 +95,8 @@ export function HistorialProvider({ children }: { children: ReactNode }) {
   );
 
   const api = useMemo<HistorialApi>(
-    () => ({ entries, save, remove, refresh }),
-    [entries, save, remove, refresh],
+    () => ({ entries, loading, error, save, remove, refresh }),
+    [entries, loading, error, save, remove, refresh],
   );
 
   return <HistorialContext.Provider value={api}>{children}</HistorialContext.Provider>;

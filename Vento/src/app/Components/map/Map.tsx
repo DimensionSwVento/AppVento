@@ -31,7 +31,9 @@ import { useToast } from "../ui/Toast";
 import HexValuesTooltip from "./HexValuesTooltip";
 import HeatmapDimensionSwitches from "./HeatmapDimensionSwitches";
 import HeatmapLegend from "./HeatmapLegend";
+import WindHeatmapLegend from "./WindHeatmapLegend";
 import InformativeVariablesList from "./InformativeVariablesList";
+import { getVariableById } from "../../Utils/variables/variablesCatalog";
 import SelectedVariablesChips from "../dimensions/SelectedVariablesChips";
 import AreaDisplay from "./AreaDisplay";
 import MapSearchBox from "./MapSearchBox";
@@ -400,7 +402,7 @@ export default function MapView() {
           // costuras entre tiles (evita los pilares oscuros).
           if (windHeatId && d.owned) {
             const v = windValueForHex(windHeatId, d.h, windCells);
-            if (v >= WIND_THRESHOLD) {
+            if (v != null && v >= WIND_THRESHOLD) {
               const [r, g, b] = viridis(v);
               return [r, g, b, 51];
             }
@@ -918,12 +920,11 @@ export default function MapView() {
               )}
             </button>
           )}
-          {/* En informe la toolbar va a la IZQUIERDA para no cruzarse con el
-              panel de variables (top-3 right-3) ni la previsualización. */}
-          {/* En selección la toolbar sube (bottom-32) para no superponerse con
-              el cartel "Continuar a Dimensiones"/hint (centrado, ~6rem). En
-              informe no hay cartel → queda abajo-izquierda. */}
-          <div className={`absolute z-10 flex items-center gap-2 ${canSelect ? "bottom-32 right-4" : "bottom-3 left-4"}`}>
+          {/* En selección: grupo de botones CENTRADO justo encima del cartel
+              "Siguiente paso" (que va centrado abajo, ~6rem de alto). En informe
+              no hay cartel → queda abajo-izquierda para no cruzarse con el panel
+              de variables (top-3 right-3). */}
+          <div className={`absolute z-10 flex items-center gap-2 ${canSelect ? "bottom-32 left-1/2 -translate-x-1/2" : "bottom-3 left-4"}`}>
             <button
               onClick={zoomToSelection}
               disabled={!hasSelection}
@@ -1064,6 +1065,13 @@ export default function MapView() {
         <SelectedVariablesChips />
       )}
 
+
+      {/* Mini-leyenda viridis: solo cuando un heatmap de VIENTO está encendido. */}
+      {windHeatId && (
+        <div className="absolute bottom-3 left-3 z-10">
+          <WindHeatmapLegend label={getVariableById(windHeatId)?.label ?? "Viento"} />
+        </div>
+      )}
 
       {accion === "informe" && (
         <>
