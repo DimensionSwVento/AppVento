@@ -281,14 +281,29 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   ],
   callbacks: {
-    async jwt({ token, account }) {
+    async jwt({ token, account, profile }) {
       // Initial sign-in: persist tokens from the OIDC response
       if (account) {
         const idToken = (account as { id_token?: string }).id_token;
         const roles = realmRolesFromOidcTokens(account.access_token, idToken);
 
+        // `sub` ESTABLE de Keycloak. El provider OIDC manual NO fija el sub, así
+        // que NextAuth caía a uno efímero (por cookie) → como el histórico se
+        // guarda por sub, "se perdía" en cada login nuevo (83 subs para 55
+        // personas). Lo fijamos al sub real del id_token (respaldo: profile.sub
+        // / providerAccountId). Mismo usuario de Keycloak ⇒ mismo sub siempre.
+        const idTokenSub = idToken
+          ? (decodeJwt(idToken).sub as string | undefined)
+          : undefined;
+        const keycloakSub =
+          idTokenSub ??
+          (profile?.sub as string | undefined) ??
+          account.providerAccountId ??
+          token.sub;
+
         return {
           ...token,
+          sub: keycloakSub,
           refreshToken: account.refresh_token,
           expiresAt: account.expires_at,
           roles,
