@@ -15,7 +15,9 @@ import {
   VARIABLES,
   type Variable,
   isExcluyente,
-  applyDbCatalog,
+  replaceCatalogFromDb,
+  iconForVariable,
+  requiredForVariable,
 } from "../variables/variablesCatalog";
 import {
   REGULATORY_NORMS,
@@ -212,24 +214,40 @@ export async function fetchMenuVariables(): Promise<Variable[]> {
  * ambos. Los valores estáticos del front quedan SOLO como template (modo demo).
  * Llamar una vez al montar la app (VariablesProvider).
  */
+/** AdminVariable (DB) → Variable del catálogo. Ícono y `required` son UI → se
+ *  conservan por id del catálogo estático; el resto viene VIVO del DB. */
+function buildVariableFromDb(a: AdminVariable): Variable {
+  return {
+    id: a.id,
+    masterId: a.masterId || "NA",
+    dimension: a.dimension as Variable["dimension"],
+    criterio: a.criterio || "",
+    subcriterio: a.subcriterio || undefined,
+    label: a.label,
+    description: a.descripcion,
+    fuente: a.fuente || undefined,
+    enMapa: a.enMapa,
+    aplicaEn:
+      a.aplicaEn === "mar" || a.aplicaEn === "tierra" ? a.aplicaEn : undefined,
+    iconKey: iconForVariable(a.id),
+    required: requiredForVariable(a.id),
+    noCalculo: a.noCalculo ?? a.tipo === "informativa",
+    excluyente: a.excluyente,
+  };
+}
+
 export async function hydrateCatalog(): Promise<void> {
   if (!USE_BACKEND) return;
   const [modelo, inf] = await Promise.all([
     fetchVariables("modelo"),
     fetchVariables("informativa"),
   ]);
+  // Backend = catálogo VIVO del DB: reconstruye la lista (agrega las nuevas, quita
+  // las que ya no están) → NADA hardcodeado se consume. Modular: si a futuro suben
+  // más variables en la máster, aparecen solas. (Si el DB viniera vacío no
+  // reemplaza — se llena al subir la máster.)
+  replaceCatalogFromDb(modelo.map(buildVariableFromDb), inf.map(buildVariableFromDb));
   const all = [...modelo, ...inf];
-  applyDbCatalog(
-    all.map((v) => ({
-      id: v.id,
-      label: v.label,
-      descripcion: v.descripcion,
-      criterio: v.criterio,
-      subcriterio: v.subcriterio,
-      fuente: v.fuente,
-      masterId: v.masterId,
-    })),
-  );
   applyDbWeights(
     all.map((v) => ({ id: v.id, polaridad: v.polaridad, peso: v.peso })),
   );
