@@ -72,12 +72,6 @@ export default function AdminVariablesPage() {
                 Administra las variables del modelo (no deshabilitables) y las
                 informativas.
               </p>
-              <p className="mt-1 max-w-2xl text-xs text-amber-700">
-                Los cambios se guardan en el catálogo vía API. Se reflejan en el
-                mapa, el menú y el informe cuando el backend está conectado
-                (<code>NEXT_PUBLIC_USE_BACKEND=true</code>); en modo template son
-                gestión/vista previa local.
-              </p>
             </div>
             {tab === "informativa" && (
               <button

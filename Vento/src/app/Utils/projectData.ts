@@ -147,17 +147,13 @@ export const BANNED_HEXES: ReadonlySet<string> = new Set<string>([
 ]);
 
 /**
- * Mientras no lleguen las zonas excluidas reales (`tipo_celda="excluida"` del
- * parquet), muestra un **placeholder determinista** de zonas excluidas — gris
- * sólido, no seleccionable — para que la funcionalidad sea visible/demostrable.
- *
- * FORZADO a `true`: aunque el backend esté conectado (`USE_BACKEND=true`), la
- * **master definitiva de zonas excluidas aún no existe**, así que se mantiene el
- * template para no dejar la funcionalidad vacía. Cuando llegue la columna real de
- * exclusión por hex, volver a derivarlo del modo:
- *   `process.env.NEXT_PUBLIC_USE_BACKEND !== "true"`.
+ * Placeholder determinista de zonas excluidas (gris, no seleccionable) — SOLO en
+ * modo template (demo). La master ya trae la exclusión real por hex (columna
+ * `excluido` → `tipo_celda="excluida"`), así que en modo backend NO se usa el
+ * placeholder: las excluidas salen del dato real. Sin mixtura.
  */
-export const SHOW_PLACEHOLDER_EXCLUDED = true;
+export const SHOW_PLACEHOLDER_EXCLUDED =
+  process.env.NEXT_PUBLIC_USE_BACKEND !== "true";
 
 /**
  * Motivos de exclusión (TEMPLATE). Mientras no haya un campo "motivo" por hex
