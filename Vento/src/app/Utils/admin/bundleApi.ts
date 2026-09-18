@@ -94,6 +94,7 @@ const EMPTY_PLAN: BundlePlan = {
  */
 export async function uploadBundle(
   files: FileList | File[],
+  onProgress?: (pct: number) => void,
 ): Promise<{ root: string; files: number }> {
   const fd = new FormData();
   for (const f of Array.from(files)) {
@@ -102,12 +103,41 @@ export async function uploadBundle(
     const rel = (f as File & { webkitRelativePath?: string }).webkitRelativePath;
     fd.append("paths", rel && rel.length > 0 ? rel : f.name);
   }
-  const res = await fetch(`${BASE}/upload`, { method: "POST", body: fd });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || err.error || `Error ${res.status}`);
-  }
-  return res.json() as Promise<{ root: string; files: number }>;
+  // XHR (no fetch) para reportar PROGRESO real de subida: en bundles grandes
+  // (cientos de MB) el botón giraba "a ciegas" sin decir si avanzaba. Con
+  // upload.onprogress mostramos el % subido; onload/onerror dan feedback claro.
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${BASE}/upload`);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch {
+          reject(new Error("Respuesta inválida del servidor tras subir."));
+        }
+        return;
+      }
+      let msg = `Error ${xhr.status}`;
+      try {
+        const e = JSON.parse(xhr.responseText);
+        msg = e.detail || e.error || msg;
+      } catch {
+        /* respuesta no-JSON (p.ej. 413 de nginx) */
+        if (xhr.status === 413) msg = "El archivo excede el tamaño permitido por el servidor (413).";
+      }
+      reject(new Error(msg));
+    };
+    xhr.onerror = () =>
+      reject(new Error("No se pudo conectar con el servidor (revisa tamaño máximo / timeout del proxy)."));
+    xhr.ontimeout = () => reject(new Error("La subida tardó demasiado (timeout)."));
+    xhr.send(fd);
+  });
 }
 
 /** FASE A: clasifica las columnas del bundle en `root` (carpeta del servidor). */
