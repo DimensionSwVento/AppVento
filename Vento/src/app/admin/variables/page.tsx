@@ -114,6 +114,7 @@ export default function AdminVariablesPage() {
                   <thead className="bg-gray-50 text-left text-gray-500">
                     <tr>
                       <th className="px-3 py-2.5 font-semibold">Variable</th>
+                      <th className="px-3 py-2.5 font-semibold">Máster</th>
                       <th className="px-3 py-2.5 font-semibold">Dimensión</th>
                       <th className="px-3 py-2.5 font-semibold">Mapa</th>
                       {tab === "informativa" && (
@@ -137,6 +138,18 @@ export default function AdminVariablesPage() {
                               Excluyente
                             </span>
                           )}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span
+                            className={`font-mono text-[11px] ${
+                              !v.masterId || v.masterId === "NA" || v.masterId.includes("-")
+                                ? "rounded bg-amber-100 px-1.5 py-0.5 text-amber-700"
+                                : "text-gray-600"
+                            }`}
+                            title="Debe coincidir con la columna del parquet (hexagon.variables)"
+                          >
+                            {v.masterId || "—"}
+                          </span>
                         </td>
                         <td className="px-3 py-2.5 text-gray-600">{v.dimensionLabel}</td>
                         <td className="px-3 py-2.5">
@@ -335,6 +348,7 @@ function EditVarModal({
   onSaved: () => void;
 }) {
   const toast = useToast();
+  const [masterId, setMasterId] = useState(v.masterId ?? "");
   const [descripcion, setDescripcion] = useState(v.descripcion);
   const [fuente, setFuente] = useState(v.fuente);
   const [unidad, setUnidad] = useState(v.unidad);
@@ -348,7 +362,10 @@ function EditVarModal({
     e.preventDefault();
     setSaving(true);
     try {
-      await updateVariable(v.id, { descripcion, fuente, unidad, rango, enMapa, enMenu, excluyente });
+      await updateVariable(v.id, {
+        masterId: masterId.trim() || "NA",
+        descripcion, fuente, unidad, rango, enMapa, enMenu, excluyente,
+      });
       toast.success("Detalle actualizado");
       onSaved();
     } catch {
@@ -361,6 +378,21 @@ function EditVarModal({
   return (
     <ModalShell onClose={onClose} title={`Editar detalle — ${v.label}`}>
       <form onSubmit={submit}>
+        <Field label="Código de la máster (master_id)">
+          <input
+            value={masterId}
+            onChange={(e) => setMasterId(e.target.value)}
+            placeholder="ej. AMB_005, TEC_004_sv003, SOC_007_s"
+            className={`${inputCls} font-mono`}
+          />
+          <p className="mt-1 text-[11px] leading-snug text-gray-500">
+            Debe coincidir EXACTO con la columna del parquet (la clave de{" "}
+            <code>hexagon.variables</code>). Si no casa, la tabla del informe y la
+            descarga de crudos de esta variable salen vacías. Ej.: si en el catálogo
+            quedó <code>AMB-005-A</code> pero la máster trae <code>AMB_005</code>,
+            corrígelo aquí y la tabla ya la encuentra.
+          </p>
+        </Field>
         <Field label="Descripción">
           <textarea
             value={descripcion}
