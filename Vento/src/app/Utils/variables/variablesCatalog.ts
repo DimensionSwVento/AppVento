@@ -43,6 +43,10 @@ export interface Variable {
   description: string;
   /** Fuente de datos declarada por el cliente (opcional). */
   fuente?: string;
+  /** Tipo de licencia de datos (InfoVariables, Fase 1). */
+  licencia?: string;
+  /** URL de la fuente de datos (InfoVariables, Fase 1). */
+  url?: string;
   /** `true` si la variable se representa en el mapa (columna "en mapa" del Excel). */
   enMapa?: boolean;
   /**
@@ -529,6 +533,13 @@ export function variableAppliesToNature(
 /** Devuelve los ids de las variables marcadas como obligatorias. */
 export function requiredVariableIds(): string[] {
   return VARIABLES.filter((v) => v.required).map((v) => v.id);
+}
+
+/** IDs de TODAS las variables del MODELO (las ponderadas). Arrancan ACTIVAS por
+ *  defecto porque puntúan/suman (instrucción del cliente, Sprint 4). Se pueden
+ *  togglear para el informe, pero el toggle NO recalcula el modelo. */
+export function modelVariableIds(): string[] {
+  return VARIABLES.map((v) => v.id);
 }
 
 /**

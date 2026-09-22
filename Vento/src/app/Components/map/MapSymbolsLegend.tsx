@@ -19,8 +19,12 @@ export default function MapSymbolsLegend({
   disabled?: Set<string>;
 }) {
   const [open, setOpen] = useState(true);
-  // Solo símbolos habilitados para mapa (respeta el toggle de admin, US08-01).
-  const symbols = MAP_SYMBOLS.filter((s) => !disabled?.has(s.variableId));
+  // Solo símbolos de ÁREA/PUNTO habilitados para mapa (respeta el toggle de
+  // admin, US08-01). El VIENTO (`heat`: velocidad/densidad) NO va aquí — se
+  // elige desde el desplegable "Visualización en el mapa" del Informe.
+  const symbols = MAP_SYMBOLS.filter(
+    (s) => s.kind !== "heat" && !disabled?.has(s.variableId),
+  );
   if (symbols.length === 0) return null;
   const activeCount = symbols.filter((s) => active.has(s.variableId)).length;
 
