@@ -18,7 +18,15 @@ import { PolygonLayer, IconLayer, PathLayer, ScatterplotLayer } from "@deck.gl/l
 import { Crosshair, Home, Trash2 } from "lucide-react";
 import { luma } from "@luma.gl/core";
 import { webgl2Adapter } from "@luma.gl/webgl";
-import { cellToBoundary, cellToLatLng, cellsToMultiPolygon, polygonToCells } from "h3-js";
+import {
+  cellToBoundary,
+  cellToLatLng,
+  cellsToMultiPolygon,
+  polygonToCells,
+  cellToParent,
+  cellToChildren,
+  getResolution,
+} from "h3-js";
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
 import { useVariables } from "../../Utils/contexts/VariablesContext";
 import { useHeatmapDimension } from "../../Utils/contexts/HeatmapDimensionContext";
@@ -31,9 +39,7 @@ import { useToast } from "../ui/Toast";
 import HexValuesTooltip from "./HexValuesTooltip";
 import HeatmapDimensionSwitches from "./HeatmapDimensionSwitches";
 import HeatmapLegend from "./HeatmapLegend";
-import WindHeatmapLegend from "./WindHeatmapLegend";
 import InformativeVariablesList from "./InformativeVariablesList";
-import { getVariableById } from "../../Utils/variables/variablesCatalog";
 import SelectedVariablesChips from "../dimensions/SelectedVariablesChips";
 import AreaDisplay from "./AreaDisplay";
 import MapSearchBox from "./MapSearchBox";
@@ -53,12 +59,8 @@ import { useMapSelection } from "./useMapSelection";
 import { fetchMapDisabledIds } from "../../Utils/admin/catalogApi";
 import {
   fetchMapLayerCells,
-  fetchWindCells,
-  windValueForHex,
-  WIND_THRESHOLD,
   type MapLayerCell,
 } from "../../Utils/map/mapLayerData";
-import { viridis } from "../../Utils/report/heatmapPalette";
 import { AUDIT_DB } from "../../Utils/audit";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -105,30 +107,9 @@ export default function MapView() {
   const selectionZoomTooFar =
     canSelect && zoomToH3Res(viewState.zoom) < MIN_SELECTION_H3_RES;
   const heatmapActive = accion === "informe" && activeDimension !== null;
-  // Mapa de calor de VIENTO: UNA sola variable `heat` a la vez (densidad ↔
-  // velocidad no coexisten → exclusión mutua automática con un id único). Se
-  // colorea sobre los hex del grid (no es capa aparte). null = sin viento.
-  const [windHeatId, setWindHeatId] = useState<string | null>(null);
-  // Valores REALES por hex del viento activo (backend res8); null = placeholder.
-  const [windCells, setWindCells] = useState<Map<string, number> | null>(null);
-  // Reset al cambiar/apagar la variable de viento → AJUSTE EN RENDER (no en
-  // effect): evita el setState síncrono dentro del effect (React Compiler). El
-  // effect solo hace el fetch (setState asíncrono en el .then/.catch).
-  const [prevWindHeatId, setPrevWindHeatId] = useState(windHeatId);
-  if (windHeatId !== prevWindHeatId) {
-    setPrevWindHeatId(windHeatId);
-    setWindCells(null);
-  }
-  useEffect(() => {
-    if (!windHeatId) return; // sin id → nada que cargar (el reset ya ocurrió en render)
-    let alive = true;
-    fetchWindCells(windHeatId)
-      .then((m) => alive && setWindCells(m))
-      .catch(() => alive && setWindCells(null));
-    return () => {
-      alive = false;
-    };
-  }, [windHeatId]);
+  // El VIENTO (velocidad/densidad) ya NO se pinta sobre el grid: pasó a ser una
+  // opción del desplegable "Visualización en el mapa" del Informe, recortado al
+  // área seleccionada (ver `useInformeHeatmapLayer` + `HeatmapDimensionSwitches`).
   const [mapReady, setMapReady] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [hoveredHex, setHoveredHex] = useState<string | null>(null);
@@ -392,29 +373,15 @@ export default function MapView() {
         id: `${props.id}-grid`,
         data,
         getPolygon: (d) => cellToBoundary(d.h, true),
-        // Relleno: prohibidos → gris sólido. Si hay VIENTO activo → mapa de
-        // calor viridis (relleno 20%) sobre ESTOS mismos hex del grid (su res
-        // cambia con el zoom). Sin viento → sin relleno. El BORDE es la malla
-        // normal del grid (individual por hex), independiente del heatmap.
-        getFillColor: (d) => {
-          if (d.banned) return BANNED_FILL;
-          // Solo el tile "dueño" del hex lo rellena → sin doble alpha en las
-          // costuras entre tiles (evita los pilares oscuros).
-          if (windHeatId && d.owned) {
-            const v = windValueForHex(windHeatId, d.h, windCells);
-            if (v != null && v >= WIND_THRESHOLD) {
-              const [r, g, b] = viridis(v);
-              return [r, g, b, 51];
-            }
-          }
-          return [0, 0, 0, 0];
-        },
+        // Relleno: prohibidos → gris sólido; el resto sin relleno (el BORDE es
+        // la malla normal del grid, individual por hex). El heatmap del informe
+        // (idoneidad/viento) es capa aparte — ver `useInformeHeatmapLayer`.
+        getFillColor: (d) => (d.banned ? BANNED_FILL : [0, 0, 0, 0]),
         getLineColor: (d) => (d.banned ? BANNED_BORDER : GRID_BORDER),
         getLineWidth: 1,
         lineWidthMinPixels: 1,
         filled: true,
         stroked: true,
-        updateTriggers: { getFillColor: [windHeatId, windCells] },
         // En informe SOLO el heatmap debe ser pickable. El grid usa resolución
         // por zoom (hexágonos grandes) y sus sublayers no heredan el
         // visible:false del TileLayer para el picking → el hover enganchaba un
@@ -422,7 +389,7 @@ export default function MapView() {
         pickable: !heatmapActive,
       });
     },
-  }), [heatmapActive, windHeatId, windCells, isFlyingRef]);
+  }), [heatmapActive, isFlyingRef]);
 
   // Capa de borde del territorio colombiano (continente + archipiélago).
   // Pasa los polígonos sin relleno, solo contorno, para que el usuario vea hasta
@@ -441,10 +408,22 @@ export default function MapView() {
     pickable: false,
   }), []);
 
-  const selectedArr = useMemo<HexCell[]>(
-    () => Array.from(selectedHexes).map((h) => ({ h })),
-    [selectedHexes]
-  );
+  // SOLO PARA DIBUJAR: normaliza los hex seleccionados a la MISMA resolución que
+  // el grid muestra a este zoom. Sin esto, un hex elegido a res7 seguía pintándose
+  // grande al acercar a res8 (se veía "encima" de sus hijos → selección anidada que
+  // "persiste" al cambiar de escala). NO toca el grid (rendimiento intacto) ni el
+  // set real `selectedHexes` (la consulta al backend sigue igual): solo el relleno.
+  const displayRes = Math.max(0, Math.min(15, zoomToH3Res(viewState.zoom)));
+  const selectedArr = useMemo<HexCell[]>(() => {
+    const norm = new Set<string>();
+    for (const h of selectedHexes) {
+      const r = getResolution(h);
+      if (r === displayRes) norm.add(h);
+      else if (r > displayRes) norm.add(cellToParent(h, displayRes));
+      else for (const c of cellToChildren(h, displayRes)) norm.add(c);
+    }
+    return Array.from(norm, (h) => ({ h }));
+  }, [selectedHexes, displayRes]);
 
   // Capa de seleccionados — relleno visible en seleccion/dimensiones/caracteristicas
   // (US03-AC12 punto 3). Se oculta cuando el heatmap del informe está activo
@@ -492,20 +471,10 @@ export default function MapView() {
       return next;
     });
   }, []);
-  // Toggle desde la leyenda "Capas del mapa". Las variables de VIENTO (`heat`)
-  // usan el heatmap global y son MUTUAMENTE EXCLUSIVAS: encender una apaga la
-  // otra (un solo `windHeatId`). El resto (área/puntos) son multi-selección.
-  const handleSymbolToggle = useCallback(
-    (id: string) => {
-      const sym = MAP_SYMBOLS.find((s) => s.variableId === id);
-      if (sym?.kind === "heat") {
-        setWindHeatId((prev) => (prev === id ? null : id));
-      } else {
-        toggleSymbol(id);
-      }
-    },
-    [toggleSymbol],
-  );
+  // Toggle desde la leyenda "Capas del mapa" (solo capas de área/punto —
+  // multi-selección). El viento ya no se togglea aquí (vive en el desplegable
+  // del Informe), así que este handler solo enciende/apaga símbolos.
+  const handleSymbolToggle = toggleSymbol;
   // Variables con "ver en mapa" desactivado en admin (US08-01): sus símbolos se
   // ocultan de la leyenda y del mapa. Semilla vacía → nada oculto por defecto.
   const [mapDisabledIds, setMapDisabledIds] = useState<Set<string>>(new Set());
@@ -860,12 +829,8 @@ export default function MapView() {
         (accion === "seleccion-area" || accion === "caracteristicas") && (
           <div className="absolute top-3 right-3 z-10 flex w-[210px] flex-col gap-2 max-md:top-12">
             <AreaDisplay />
-            {/* Leyenda-interruptor de símbolos del mapa, DEBAJO del área km². */}
-            <MapSymbolsLegend
-              active={windHeatId ? new Set([...activeSymbols, windHeatId]) : activeSymbols}
-              onToggle={handleSymbolToggle}
-              disabled={mapDisabledIds}
-            />
+            {/* El menú "Capas del mapa" ya NO va en la vista inicial: se movió
+                al Informe (instrucción cliente Sprint 4). Aquí solo el área km². */}
           </div>
         )}
       {mapReady && accion === "seleccion-area" && (
@@ -1065,13 +1030,9 @@ export default function MapView() {
         <SelectedVariablesChips />
       )}
 
-
-      {/* Mini-leyenda viridis: solo cuando un heatmap de VIENTO está encendido. */}
-      {windHeatId && (
-        <div className="absolute bottom-3 left-3 z-10">
-          <WindHeatmapLegend label={getVariableById(windHeatId)?.label ?? "Viento"} />
-        </div>
-      )}
+      {/* El viento reusa la leyenda de idoneidad del Informe (`HeatmapLegend`),
+          así que se retiró la mini-leyenda `WindHeatmapLegend` (era redundante:
+          otro termómetro de color) — instrucción cliente Sprint 4. */}
 
       {accion === "informe" && (
         <>
@@ -1083,6 +1044,13 @@ export default function MapView() {
             <div className="max-h-[40vh] overflow-y-auto">
               <InformativeVariablesList />
             </div>
+            {/* Menú "Capas del mapa" (área/punto): movido aquí, al final, junto
+                al mapa de calor (instrucción cliente Sprint 4). */}
+            <MapSymbolsLegend
+              active={activeSymbols}
+              onToggle={handleSymbolToggle}
+              disabled={mapDisabledIds}
+            />
           </div>
         </>
       )}
@@ -1094,7 +1062,10 @@ export default function MapView() {
         // Pincel: al pintar se desactiva el paneo por arrastre (dragPan) para que
         // el arrastre pinte hexes en vez de mover el mapa. El resto (zoom, etc.) sigue.
         controller={true}
-        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer, ...symbolLayers, ...polygonDrawLayers]}
+        // Las capas de símbolo (área/punto) SOLO se pintan en Informe: su menú
+        // "Capas del mapa" vive ahí (instrucción cliente Sprint 4). En otras
+        // fases no se renderizan aunque queden activas.
+        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer, ...(accion === "informe" ? symbolLayers : []), ...polygonDrawLayers]}
         // US-FB3-03 (feedback item 8): nunca "not-allowed". Fuera de la fase de
         // selección el hex NO es inerte — en el informe se consulta con el
         // tooltip —, y el cursor de "prohibido" (muy marcado en Firefox/Windows)

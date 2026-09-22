@@ -12,7 +12,7 @@ import {
   DimensionId,
   OPTIONAL_VARIABLES,
   getVariableById,
-  requiredVariableIds,
+  modelVariableIds,
   optionalVariablesByDimension,
 } from "../variables/variablesCatalog";
 import { hydrateCatalog } from "../admin/catalogApi";
@@ -59,7 +59,7 @@ export function useVariables() {
 export function VariablesProvider({ children }: { children: React.ReactNode }) {
   // Las variables obligatorias arrancan activas y no se pueden apagar.
   const [activeVariables, setActiveVariables] = useState<Set<string>>(
-    () => new Set(requiredVariableIds()),
+    () => new Set(modelVariableIds()),
   );
   // Se pone true cuando el catálogo VIVO del DB ya reemplazó al estático → fuerza
   // un re-render para que informe/menú/mapa lean la lista real (no la hardcodeada).
@@ -90,11 +90,11 @@ export function VariablesProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const clearNonRequired = useCallback(() => {
-    setActiveVariables(new Set(requiredVariableIds()));
+    setActiveVariables(new Set(modelVariableIds()));
   }, []);
 
   const replaceActiveVariables = useCallback((ids: string[]) => {
-    setActiveVariables(new Set([...requiredVariableIds(), ...ids]));
+    setActiveVariables(new Set([...modelVariableIds(), ...ids]));
   }, []);
 
   const isActive = useCallback(

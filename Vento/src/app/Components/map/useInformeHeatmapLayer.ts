@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PolygonLayer } from "@deck.gl/layers";
 import {
   cellToBoundary,
@@ -10,6 +10,15 @@ import {
 import { dimensionHexScore, viridis } from "../../Utils/report/heatmapPalette";
 import { useAreaHexData, backendScore } from "../../Utils/report/useAreaHexData";
 import { USE_PLACEHOLDER_FALLBACK } from "../../Utils/projectData";
+import {
+  fetchWindCells,
+  windValueForHex,
+  WIND_THRESHOLD,
+} from "../../Utils/map/mapLayerData";
+import {
+  isWindHeatmap,
+  type HeatmapDimensionId,
+} from "../../Utils/contexts/HeatmapDimensionContext";
 
 /**
  * Heatmap del informe (US06-HEAT-AC1): malla de hijos res-8 dentro del área
@@ -25,6 +34,32 @@ export function useInformeHeatmapLayer(
 ) {
   // Datos reales por hex (compartidos con el informe). Fallback: placeholder.
   const areaData = useAreaHexData(selectedHexes, heatmapActive);
+
+  // Si el desplegable eligió una capa de VIENTO, este heatmap deja de pintar el
+  // score de la dimensión y pinta el valor de viento (velocidad/densidad). Los
+  // valores reales por hex (res8, 0–1) se traen aparte; en template caen al
+  // placeholder de corredores dentro de `windValueForHex`.
+  const windId = isWindHeatmap(activeDimension as HeatmapDimensionId | null)
+    ? (activeDimension as string)
+    : null;
+  const [windCells, setWindCells] = useState<Map<string, number> | null>(null);
+  // Reset al cambiar/apagar el viento → ajuste en RENDER (no en effect) para no
+  // hacer setState síncrono dentro del effect (mismo patrón que en Map.tsx).
+  const [prevWindId, setPrevWindId] = useState(windId);
+  if (windId !== prevWindId) {
+    setPrevWindId(windId);
+    setWindCells(null);
+  }
+  useEffect(() => {
+    if (!windId) return;
+    let alive = true;
+    fetchWindCells(windId)
+      .then((m) => alive && setWindCells(m))
+      .catch(() => alive && setWindCells(null));
+    return () => {
+      alive = false;
+    };
+  }, [windId]);
 
   const data = useMemo<{ h: string; baseScore: number }[]>(() => {
     if (!heatmapActive || selectedHexes.size === 0) return [];
@@ -80,6 +115,13 @@ export function useInformeHeatmapLayer(
     // SIN borde (el informe usa solo relleno; el borde se veía como una malla
     // azul sobre el heatmap).
     const colorFor = (d: { h: string; baseScore: number }): [number, number, number] | null => {
+      // VIENTO: valor real por hex del backend (0–1) o placeholder de corredores
+      // en template; `null` = no se pinta (backend sin dato para ese hex).
+      if (windId) {
+        const v = windValueForHex(windId, d.h, windCells);
+        if (v == null || v < WIND_THRESHOLD) return null;
+        return viridis(Math.max(0, Math.min(1, v)));
+      }
       const real = backendScore(areaData?.get(d.h), dim);
       let t: number;
       if (typeof real === "number") {
@@ -110,7 +152,7 @@ export function useInformeHeatmapLayer(
       // hace picking sobre capas invisibles → sin esto onHover nunca recibía
       // objeto y el tooltip por hexágono no aparecía en la fase de informe.
       pickable: active,
-      updateTriggers: { getFillColor: [dim, areaData] },
+      updateTriggers: { getFillColor: [dim, areaData, windId, windCells] },
     });
-  }, [heatmapActive, activeDimension, data, areaData]);
+  }, [heatmapActive, activeDimension, data, areaData, windId, windCells]);
 }

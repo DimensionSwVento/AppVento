@@ -18,7 +18,13 @@ export type HeatmapDimensionId =
   | "tecnica"
   | "social"
   | "macroeconomica"
-  | "regulatoria";
+  | "regulatoria"
+  // Recurso eólico (viento): NO son dimensiones puntuables — son variables del
+  // modelo (`heat`) que el usuario puede visualizar como mapa de calor desde el
+  // MISMO desplegable, en Informe, recortadas al área seleccionada. Se listan
+  // aparte (`HEATMAP_WIND_OPTIONS`) para NO contaminar scores/radar/tooltip.
+  | "velocidad-viento"
+  | "densidad-viento";
 
 /**
  * `scorable`: si la dimensión puntúa en el modelo (WLC). "Regulatoria" es
@@ -38,6 +44,25 @@ export const HEATMAP_DIMENSIONS: {
   { id: "macroeconomica", label: "económica", scorable: true },
   { id: "regulatoria", label: "Regulatoria", scorable: false },
 ];
+
+/**
+ * Opciones de VIENTO del desplegable "Visualización en el mapa" (Informe).
+ * Son variables del modelo (`heat`), NO dimensiones: por eso van fuera de
+ * `HEATMAP_DIMENSIONS` (que alimenta scores, radar, tooltip y Report). Sus ids
+ * coinciden con el catálogo/`mapSymbols` para reusar `fetchWindCells`/
+ * `windValueForHex`. El heatmap se pinta con el pipeline del Informe → recortado
+ * al área seleccionada (instrucción cliente Sprint 4).
+ */
+export const HEATMAP_WIND_OPTIONS: { id: HeatmapDimensionId; label: string }[] =
+  [
+    { id: "velocidad-viento", label: "Velocidad del viento" },
+    { id: "densidad-viento", label: "Densidad de viento" },
+  ];
+
+/** ¿El id activo es una capa de viento (no una dimensión puntuable)? */
+export function isWindHeatmap(id: HeatmapDimensionId | null): boolean {
+  return id === "velocidad-viento" || id === "densidad-viento";
+}
 
 interface HeatmapDimensionContextValue {
   activeDimension: HeatmapDimensionId | null;

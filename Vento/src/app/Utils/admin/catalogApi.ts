@@ -67,6 +67,12 @@ export interface AdminVariable {
   /** Cómo se pinta en el mapa: heatmap | zona | "". */
   mapKind?: "heatmap" | "zona" | "";
   mapThreshold?: number;
+  // ── Metadatos anidados (Fase 1): InfoVariables(2) ──
+  emplazamiento?: "onshore" | "offshore" | "both";
+  licencia?: string;
+  url?: string;
+  clase?: string;
+  subcriterioId?: string;
 }
 
 export interface AdminEscenario {
@@ -148,12 +154,138 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+// ── ACTUALIZADOR DE METADATOS (CSV/XLSX) + jerarquía (Fase 1 rediseño) ────────
+
+export interface MetadataPlan {
+  perfil: string;
+  sheet: string | null;
+  rows: number;
+  mapped: { header: string; destino: string; transform: string }[];
+  unmapped: { header: string }[];
+  summary: { total: number; mapeadas: number; sin_mapear: number };
+}
+
+export interface HierarchyVariable {
+  id: string; masterId: string; label: string; descripcion: string;
+  fuente: string; licencia: string; url: string; emplazamiento: string;
+  enMapa: boolean; tipo: string; clase: string; iconKey: string;
+  peso: number; polaridad: number;
+}
+export interface HierarchySubcriterio {
+  id: string; code: string; nombre: string; definicion: string;
+  variables: HierarchyVariable[];
+}
+export interface HierarchyCriterio {
+  id: string; code: string; nombre: string; definicion: string;
+  peso: number; subcriterios: HierarchySubcriterio[];
+}
+export interface HierarchyDimension {
+  id: string; nombre: string; definicion: string; puntua: boolean;
+  criterios: HierarchyCriterio[];
+}
+
+/** Sube un CSV/XLSX de metadatos → ruta temporal del server. Multipart (sin
+ *  Content-Type JSON: el navegador pone el boundary). */
+export async function uploadMetadata(file: File): Promise<{ path: string; filename: string }> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch(`${BASE}/metadata/upload`, { method: "POST", body: fd });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || err.error || `Error ${res.status}`);
+  }
+  return res.json();
+}
+
+/** Clasifica las columnas del doc (qué se mapea / qué se omite). */
+export async function planMetadata(
+  path: string, perfil = "infovariables", sheet?: string,
+): Promise<MetadataPlan> {
+  return api<MetadataPlan>(`/metadata/plan`, {
+    method: "POST",
+    body: JSON.stringify({ path, perfil, sheet }),
+  });
+}
+
+/** Aplica el doc: upsert jerarquía + variables (concilia por master_id). */
+export interface MetadataApplyResult {
+  dimensiones: number; criterios: number; subcriterios: number; variables: number;
+}
+export async function applyMetadata(
+  path: string, perfil = "infovariables", sheet?: string,
+): Promise<MetadataApplyResult> {
+  return api<MetadataApplyResult>(`/metadata/apply`, {
+    method: "POST",
+    body: JSON.stringify({ path, perfil, sheet }),
+  });
+}
+
+/** Catálogo anidado dimensión→criterio→subcriterio→variable. `emplazamiento`
+ *  (onshore|offshore) filtra las variables. Vacío en template o sin backend. */
+export async function fetchHierarchy(
+  emplazamiento?: "onshore" | "offshore",
+): Promise<HierarchyDimension[]> {
+  if (!USE_BACKEND) return [];
+  const q = emplazamiento ? `?emplazamiento=${emplazamiento}` : "";
+  try {
+    return await api<HierarchyDimension[]>(`/hierarchy${q}`);
+  } catch {
+    return [];
+  }
+}
+
+// ── ECONÓMICA macro (Fase 3): series reales del bundle CGE ────────────────────
+
+export interface EconomicSeriesRow {
+  panel: string; escenarioMw: number;
+  cat1: string; cat2: string; cat3: string;
+  anio: number; valor: number;
+}
+
+/** Serie de un panel económico (opcional filtrada por escenario_mw). Vacío en
+ *  template o si aún no se ingirió el bundle económico. */
+export async function fetchEconomicSeries(
+  panel: string, escenarioMw?: number,
+): Promise<EconomicSeriesRow[]> {
+  if (!USE_BACKEND) return [];
+  const q =
+    `?panel=${encodeURIComponent(panel)}` +
+    (escenarioMw != null ? `&escenario_mw=${escenarioMw}` : "");
+  try {
+    return await api<EconomicSeriesRow[]>(`/economic/series${q}`);
+  } catch {
+    return [];
+  }
+}
+
+/** Escenarios de MW disponibles para un panel (para elegir el más cercano a la
+ *  capacidad nominal). Vacío en template. */
+export async function fetchEconomicScenarios(panel: string): Promise<number[]> {
+  if (!USE_BACKEND) return [];
+  try {
+    return await api<number[]>(`/economic/scenarios?panel=${encodeURIComponent(panel)}`);
+  } catch {
+    return [];
+  }
+}
+
 // ── VARIABLES / DATASETS (US08-01) ───────────────────────────────────────────
 export async function fetchVariables(tipo: VariableTipo): Promise<AdminVariable[]> {
   // Sin mixtura: en modo BACKEND se usa SOLO la API (si falla, lanza — no cae a
   // template). En modo TEMPLATE se usa SOLO el store. Nunca a medias.
   if (USE_BACKEND) return api<AdminVariable[]>(`/variables?tipo=${tipo}`);
   return variablesStore.filter((v) => v.tipo === tipo);
+}
+
+/** Códigos REALES de la máster (claves de `hexagon.variables`) para el combobox
+ *  de vinculación del admin. Vacío en template o si no hay máster ingerida. */
+export async function fetchMasterCodes(): Promise<string[]> {
+  if (!USE_BACKEND) return [];
+  try {
+    return await api<string[]>(`/master-codes`);
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -226,9 +358,20 @@ function buildVariableFromDb(a: AdminVariable): Variable {
     label: a.label,
     description: a.descripcion,
     fuente: a.fuente || undefined,
+    licencia: a.licencia || undefined,
+    url: a.url || undefined,
     enMapa: a.enMapa,
+    // Emplazamiento real (onshore/offshore/both). Se deriva `aplicaEn` (mar/tierra)
+    // para compatibilidad con el filtro existente: offshore→mar, onshore→tierra,
+    // both→sin restricción.
     aplicaEn:
-      a.aplicaEn === "mar" || a.aplicaEn === "tierra" ? a.aplicaEn : undefined,
+      a.emplazamiento === "offshore"
+        ? "mar"
+        : a.emplazamiento === "onshore"
+          ? "tierra"
+          : a.aplicaEn === "mar" || a.aplicaEn === "tierra"
+            ? a.aplicaEn
+            : undefined,
     iconKey: iconForVariable(a.id),
     required: requiredForVariable(a.id),
     noCalculo: a.noCalculo ?? a.tipo === "informativa",
