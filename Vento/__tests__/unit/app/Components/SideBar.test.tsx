@@ -112,16 +112,18 @@ describe("SideBar — Navegación", () => {
     expect(dim.className).toContain("cursor-not-allowed");
   });
 
-  it("Dimensiones se habilita cuando hay hexágonos seleccionados", () => {
+  it("Características se habilita cuando hay hexágonos seleccionados", () => {
+    // Orden del flujo: seleccion-area → Características → Dimensiones → Informe.
+    // Desde selección, el paso habilitado es Características (no Dimensiones).
     useAprincipalMock.mockReturnValue({
       accion: "seleccion-area",
       setAccion: setAccionMock,
       selectedHexes: new Set(["8a2a1072b59ffff"]),
     });
     renderSideBar();
-    const dim = screen.getByText("Dimensiones").parentElement!;
-    expect(dim).toHaveAttribute("aria-disabled", "false");
-    expect(dim.className).toContain("cursor-pointer");
+    const car = screen.getByText("Características del proyecto").parentElement!;
+    expect(car).toHaveAttribute("aria-disabled", "false");
+    expect(car.className).toContain("cursor-pointer");
   });
 
   it("ya no renderiza el CTA de próximo paso dentro del SideBar (vive en el mapa)", () => {
@@ -145,15 +147,15 @@ describe("SideBar — Navegación", () => {
     expect(setAccionMock).toHaveBeenCalledWith("dimensiones");
   });
 
-  it("click en Dimensiones avanza si hay selección desde seleccion-area", () => {
+  it("click en Características avanza si hay selección desde seleccion-area", () => {
     useAprincipalMock.mockReturnValue({
       accion: "seleccion-area",
       setAccion: setAccionMock,
       selectedHexes: new Set(["8a2a1072b59ffff"]),
     });
     renderSideBar();
-    fireEvent.click(screen.getByText("Dimensiones").parentElement!);
-    expect(setAccionMock).toHaveBeenCalledWith("dimensiones");
+    fireEvent.click(screen.getByText("Características del proyecto").parentElement!);
+    expect(setAccionMock).toHaveBeenCalledWith("caracteristicas");
   });
 
   it("muestra link de Gestión de usuarios solo si la sesión incluye rol admin", () => {

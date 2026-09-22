@@ -29,7 +29,8 @@ describe("NextStepButton", () => {
     expect(screen.queryByText("Siguiente paso")).not.toBeInTheDocument();
   });
 
-  it("avanza de dimensiones a caracteristicas al hacer click", () => {
+  it("avanza de dimensiones a informe al hacer click", () => {
+    // Orden del flujo: seleccion-area → caracteristicas → dimensiones → informe.
     render(
       <AprincipalProvider>
         <Seeder to="dimensiones" />
@@ -40,6 +41,6 @@ describe("NextStepButton", () => {
     expect(screen.getByTestId("accion").textContent).toBe("dimensiones");
     const btn = screen.getByRole("button");
     act(() => btn.click());
-    expect(screen.getByTestId("accion").textContent).toBe("caracteristicas");
+    expect(screen.getByTestId("accion").textContent).toBe("informe");
   });
 });

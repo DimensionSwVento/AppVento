@@ -64,16 +64,18 @@ describe("SideBar — navegación desde /admin/*", () => {
     expect(routerPushMock).not.toHaveBeenCalled();
   });
 
-  it("click en 'Dimensiones' desde admin navega si hay selección (habilitada)", () => {
+  it("click en 'Características' desde admin navega si hay selección (habilitada)", () => {
+    // Orden del flujo: seleccion-area → Características → Dimensiones → Informe.
+    // Desde selección, el paso habilitado es Características.
     useAprincipalMock.mockReturnValue({
       accion: "seleccion-area",
       setAccion: setAccionMock,
       selectedHexes: new Set(["8a2a1072b59ffff"]),
     });
     renderSideBar();
-    fireEvent.click(screen.getByText("Dimensiones").parentElement!);
+    fireEvent.click(screen.getByText("Características del proyecto").parentElement!);
     expect(routerPushMock).toHaveBeenCalledWith("/dashboard");
-    expect(setAccionMock).toHaveBeenCalledWith("dimensiones");
+    expect(setAccionMock).toHaveBeenCalledWith("caracteristicas");
   });
 
   it("en /admin/* no se marca 'Selección de área' con highlight activo", () => {

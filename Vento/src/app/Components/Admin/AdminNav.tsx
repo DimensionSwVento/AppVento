@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/admin/users", label: "Usuarios y roles" },
   { href: "/admin/variables", label: "Variables y datasets" },
+  { href: "/admin/metadatos", label: "Metadatos (InfoVariables)" },
   { href: "/admin/normativa", label: "Normativa regulatoria" },
   { href: "/admin/escenarios", label: "Escenarios económicos" },
   { href: "/admin/bundle", label: "Subir master" },

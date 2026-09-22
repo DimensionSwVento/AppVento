@@ -82,6 +82,19 @@ export default function Dimensions() {
           Configura las variables de interés por cada dimensión
         </h2>
 
+        {/* Aviso PERSISTENTE (US-FB4): aclara que el toggle NO recalcula el
+            modelo — antes salía una sola vez y era poco visible. */}
+        <p className="flex items-start gap-2 rounded-md border-l-4 border-[#165170ff] bg-[#cce1eeff]/50 px-3 py-2.5 text-[12px] leading-snug text-gray-700">
+          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#165170ff]">
+            <path fillRule="evenodd" d="M18 10A8 8 0 11 2 10a8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+          </svg>
+          <span>
+            Activar o desactivar variables aquí <strong>no recalcula el modelo</strong> — el
+            puntaje de idoneidad ya viene calculado. Solo defines qué variables{" "}
+            <strong>se muestran en el informe</strong> (y en el mapa, las que apliquen).
+          </span>
+        </p>
+
         <div className="relative">
           <input
             type="search"

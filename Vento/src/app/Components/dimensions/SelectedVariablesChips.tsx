@@ -495,6 +495,24 @@ function InfoPopover({
                   ? variable.fuente
                   : "—"}
               </p>
+              {variable.licencia && (
+                <p className="mt-2 text-[11px] text-gray-500">
+                  Licencia:{" "}
+                  <span className="text-gray-700">{variable.licencia}</span>
+                </p>
+              )}
+              {variable.url && (
+                <p className="mt-1 text-[11px] text-gray-500">
+                  <a
+                    href={variable.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#165170ff] underline underline-offset-2 hover:opacity-80"
+                  >
+                    Ver fuente ↗
+                  </a>
+                </p>
+              )}
               <p className="mt-3 text-[11px] text-gray-500">
                 Código de la variable:{" "}
                 <span className="font-mono text-gray-700">

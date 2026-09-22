@@ -2,6 +2,7 @@
 
 import {
   HEATMAP_DIMENSIONS,
+  HEATMAP_WIND_OPTIONS,
   useHeatmapDimension,
   type HeatmapDimensionId,
 } from "../../Utils/contexts/HeatmapDimensionContext";
@@ -45,6 +46,16 @@ export default function HeatmapDimensionSwitches() {
           </optgroup>
           <optgroup label="Informativa">
             {HEATMAP_DIMENSIONS.filter((d) => !d.scorable).map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.label}
+              </option>
+            ))}
+          </optgroup>
+          {/* Viento (velocidad/densidad): mapas de calor del recurso eólico. Al
+              elegirlos, el heatmap se pinta sobre el área seleccionada con el
+              valor real del backend (placeholder de corredores en template). */}
+          <optgroup label="Recurso eólico">
+            {HEATMAP_WIND_OPTIONS.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.label}
               </option>

@@ -194,6 +194,18 @@ export async function applyChunk(
   });
 }
 
+/** Cierra la ingesta por paquetes: registra la nueva versión de la máster
+ *  (version++ + fecha + archivo de origen) y actualiza la fuente de datos. */
+export async function finalizeBundle(
+  root: string,
+  emplazamiento: "onshore" | "offshore" = "onshore",
+): Promise<{ version: string; appliedAt: string; source: string; hex_count: number }> {
+  return api(`/finalize`, {
+    method: "POST",
+    body: JSON.stringify({ root, emplazamiento }),
+  });
+}
+
 /** Registro columna→clase. `estado` opcional: ok|pendiente|ignorada. */
 export async function fetchRegistryColumns(estado?: string): Promise<RegistryColumn[]> {
   if (!USE_BACKEND) return [];
