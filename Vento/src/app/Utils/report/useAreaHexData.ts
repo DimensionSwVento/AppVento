@@ -15,6 +15,9 @@ export type AreaHexInfo = {
    * viene normalizado 0–1 (para el "puntaje 0–100") o crudo (para informativas).
    */
   variables?: Record<string, number>;
+  /** Valores PONDERADOS por variable (tabla `hexagon_variables_pon`), misma clave
+   *  que `variables`. Para el "descargar crudos" del informe. */
+  variables_pon?: Record<string, number>;
   /** `"disponible"` | `"excluida"` — zona excluida (inviable) → no seleccionable. */
   tipo_celda?: string;
   /**
@@ -31,6 +34,7 @@ type AreaHexRow = {
   score_general: number;
   scores: Record<string, number>;
   variables?: Record<string, number>;
+  variables_pon?: Record<string, number>;
   tipo_celda?: string;
   es_offshore?: number;
 };
@@ -156,6 +160,7 @@ function fetchArea(hexes: Set<string>): Promise<AreaHexMap> {
             score_general: h.score_general,
             scores: h.scores ?? {},
             variables: h.variables ?? {},
+            variables_pon: h.variables_pon ?? {},
             tipo_celda: h.tipo_celda,
             es_offshore: h.es_offshore,
           });

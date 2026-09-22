@@ -11,6 +11,8 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   fetchEscenarios,
+  fetchEconomicSeries,
+  fetchEconomicScenarios,
   type AdminEscenario,
 } from "../../Utils/admin/catalogApi";
 import {
@@ -22,8 +24,10 @@ import {
   BASE_YEAR,
   ECONOMIC_SCENARIOS,
   ECONOMIC_SERIES_COLORS,
+  ECO_ID_TO_SERIES,
   PROJECTION_HORIZONS,
   economicSeries,
+  type SeriesPoint,
 } from "../../Utils/economic/economicScenarios";
 import LineChart from "../report/LineChart";
 
@@ -59,6 +63,46 @@ export default function EconomicModal({ onClose }: { onClose: () => void }) {
     };
   }, []);
   const escList = escenarios.length ? escenarios : ECONOMIC_SCENARIOS;
+
+  // Series REALES del bundle económico (Fase 3). Clave = `panel|cat1`. Vacío en
+  // template o si aún no se ingirió el bundle → el gráfico cae al template.
+  const [realByKey, setRealByKey] = useState<Record<string, SeriesPoint[]>>({});
+  useEffect(() => {
+    let alive = true;
+    const panels = Array.from(
+      new Set(Object.values(ECO_ID_TO_SERIES).map((m) => m.panel)),
+    );
+    (async () => {
+      const acc: Record<string, SeriesPoint[]> = {};
+      for (const panel of panels) {
+        const scen = await fetchEconomicScenarios(panel);
+        if (!scen.length) continue;
+        // Escenario de MW más cercano a la capacidad nominal seleccionada.
+        const escMw = scen.reduce((best, s) =>
+          Math.abs(s - capacidadNominal) < Math.abs(best - capacidadNominal) ? s : best,
+        );
+        const rows = await fetchEconomicSeries(panel, escMw);
+        for (const r of rows) {
+          const key = `${panel}|${r.cat1}`;
+          (acc[key] ??= []).push({ year: r.anio, value: r.valor });
+        }
+      }
+      // Ordena cada serie por año.
+      for (const k of Object.keys(acc)) acc[k].sort((a, b) => a.year - b.year);
+      if (alive) setRealByKey(acc);
+    })().catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [capacidadNominal]);
+
+  /** Serie real de una variable (por su mapeo id→panel/cat1), o `null` si no hay. */
+  const realPointsFor = (varId: string): SeriesPoint[] | null => {
+    const m = ECO_ID_TO_SERIES[varId];
+    if (!m) return null;
+    const pts = realByKey[`${m.panel}|${m.cat1}`];
+    return pts && pts.length ? pts : null;
+  };
   // Escenario activo (para su `mult` de curva y su proyección `impacto`).
   const escActivo = escList.find((e) => e.id === escenarioId);
 
@@ -79,7 +123,10 @@ export default function EconomicModal({ onClose }: { onClose: () => void }) {
       : shown.map((v, i) => ({
           label: v.label,
           color: ECONOMIC_SERIES_COLORS[i % ECONOMIC_SERIES_COLORS.length],
-          points: economicSeries(escenarioId, v.id, horizonYears, capacidadNominal, escActivo?.mult),
+          // Serie REAL del bundle si está ingerida; si no, template determinista.
+          points:
+            realPointsFor(v.id) ??
+            economicSeries(escenarioId, v.id, horizonYears, capacidadNominal, escActivo?.mult),
         }));
 
   if (typeof document === "undefined") return null;

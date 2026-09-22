@@ -1158,6 +1158,31 @@ export default function Report() {
     }
     srcHtml += `</tbody></table>`;
 
+    // Segunda tabla: valores PONDERADOS por hex (tabla `hexagon_variables_pon`).
+    // Solo si el backend trae ponderadas (en template/sin backend va vacío).
+    const hasPon = hexes.some((hx) => {
+      const vp = areaData.get(hx)?.variables_pon;
+      return vp && Object.keys(vp).length > 0;
+    });
+    let ponHtml = "";
+    if (hasPon) {
+      ponHtml = `<table style="border-collapse:collapse;font:11px/1.3 ui-monospace,monospace;">`;
+      ponHtml += `<thead><tr><th style="${thS}text-align:left;">Hex ID</th>`;
+      for (const v of cols)
+        ponHtml += `<th style="${thS}" title="${esc(v.label)}">${esc(v.masterId)}</th>`;
+      ponHtml += `</tr></thead><tbody>`;
+      for (const hex of hexes) {
+        const info = areaData.get(hex);
+        ponHtml += `<tr><td style="${idS}">${esc(hex)}</td>`;
+        for (const v of cols) {
+          const val = hexVal(info?.variables_pon, v.masterId);
+          ponHtml += `<td style="${tdS}">${val != null ? Math.round(val * 1000) / 1000 : "—"}</td>`;
+        }
+        ponHtml += `</tr>`;
+      }
+      ponHtml += `</tbody></table>`;
+    }
+
     const wrap = document.createElement("div");
     wrap.setAttribute("data-pdf-ignore", "true");
     wrap.style.cssText =
@@ -1167,6 +1192,10 @@ export default function Report() {
       `Datos crudos por hexágono — ${hexes.length} hex × ${cols.length} variables` +
       `${region ? ` · ${esc(region)}` : ""}</div>` +
       html +
+      (ponHtml
+        ? `<div style="font:700 12px sans-serif;color:#165170;margin:14px 0 6px;">Valores ponderados por hexágono</div>` +
+          ponHtml
+        : "") +
       `<div style="font:700 12px sans-serif;color:#165170;margin:14px 0 6px;">Fuentes por variable</div>` +
       srcHtml +
       `<div style="font:italic 9px sans-serif;color:#64748b;margin-top:8px;max-width:900px;">` +

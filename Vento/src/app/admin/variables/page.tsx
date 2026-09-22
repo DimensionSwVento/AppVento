@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import SideBar from "../../Components/layout/SideBar";
 import AdminNav from "../../Components/Admin/AdminNav";
 import { useToast } from "../../Components/ui/Toast";
 import {
   createInformativa,
   fetchVariables,
+  fetchMasterCodes,
   updateDataset,
   updateVariable,
   type AdminVariable,
@@ -23,6 +24,13 @@ export default function AdminVariablesPage() {
   const [editing, setEditing] = useState<AdminVariable | null>(null);
   const [datasetFor, setDatasetFor] = useState<AdminVariable | null>(null);
   const [creating, setCreating] = useState(false);
+  // Códigos reales de la máster (hexagon.variables) para el combobox de vinculación.
+  const [masterCodes, setMasterCodes] = useState<string[]>([]);
+
+  useEffect(() => {
+    // fetch async → setState en callback (no síncrono en el effect).
+    fetchMasterCodes().then(setMasterCodes).catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -123,14 +131,31 @@ export default function AdminVariablesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {vars.map((v) => (
-                      <tr
-                        key={v.id}
-                        onClick={() => setSelected(v)}
-                        className={`cursor-pointer border-t border-gray-100 hover:bg-gray-50 ${
-                          selected?.id === v.id ? "bg-[#cce1eeff]/30" : ""
-                        }`}
-                      >
+                    {[...vars]
+                      .sort(
+                        (a, b) =>
+                          a.dimensionLabel.localeCompare(b.dimensionLabel) ||
+                          a.label.localeCompare(b.label),
+                      )
+                      .map((v, i, arr) => (
+                        <Fragment key={v.id}>
+                          {(i === 0 ||
+                            arr[i - 1].dimensionLabel !== v.dimensionLabel) && (
+                            <tr className="bg-gray-50/70">
+                              <td
+                                colSpan={5}
+                                className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500"
+                              >
+                                {v.dimensionLabel}
+                              </td>
+                            </tr>
+                          )}
+                          <tr
+                            onClick={() => setSelected(v)}
+                            className={`cursor-pointer border-t border-gray-100 hover:bg-gray-50 ${
+                              selected?.id === v.id ? "bg-[#cce1eeff]/30" : ""
+                            }`}
+                          >
                         <td className="px-3 py-2.5">
                           <p className="font-medium text-gray-800">{v.label}</p>
                           {v.excluyente && (
@@ -176,8 +201,9 @@ export default function AdminVariablesPage() {
                             />
                           </td>
                         )}
-                      </tr>
-                    ))}
+                          </tr>
+                        </Fragment>
+                      ))}
                   </tbody>
                 </table>
               )}
@@ -214,6 +240,7 @@ export default function AdminVariablesPage() {
       {editing && (
         <EditVarModal
           v={editing}
+          codes={masterCodes}
           onClose={() => setEditing(null)}
           onSaved={async () => {
             setEditing(null);
@@ -340,10 +367,12 @@ function DetailPanel({
 
 function EditVarModal({
   v,
+  codes,
   onClose,
   onSaved,
 }: {
   v: AdminVariable;
+  codes: string[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -383,8 +412,16 @@ function EditVarModal({
             value={masterId}
             onChange={(e) => setMasterId(e.target.value)}
             placeholder="ej. AMB_005, TEC_004_sv003, SOC_007_s"
+            list="master-codes-dl"
             className={`${inputCls} font-mono`}
           />
+          {/* Al hacer click/escribir despliega los códigos REALES de la máster
+              (claves de hexagon.variables) → elegir en vez de adivinar. */}
+          <datalist id="master-codes-dl">
+            {codes.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
           <p className="mt-1 text-[11px] leading-snug text-gray-500">
             Debe coincidir EXACTO con la columna del parquet (la clave de{" "}
             <code>hexagon.variables</code>). Si no casa, la tabla del informe y la

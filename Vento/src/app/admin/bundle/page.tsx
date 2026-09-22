@@ -9,6 +9,7 @@ import {
   reconcileColumn,
   fetchChunkPlan,
   applyChunk,
+  finalizeBundle,
   uploadBundle,
   ApiError,
   COLUMN_KINDS,
@@ -160,6 +161,16 @@ export default function AdminBundlePage() {
       }
       const totalMs = Math.round(performance.now() - t0);
       setResult({ ok: failed === 0, totalRows: doneRows, totalMs, failed, totalChunks: plan.chunks.length });
+      // Cierra la ingesta: registra la NUEVA versión de la máster (version++ +
+      // fecha + archivo). Solo si se ingirió algo. Si falla, no rompe el flujo.
+      if (doneRows > 0) {
+        try {
+          const fin = await finalizeBundle(r, emplazamiento);
+          toast.success(`Versión de máster registrada: ${fin.version}`);
+        } catch {
+          /* no crítico: los datos ya entraron, solo no se estampó la versión */
+        }
+      }
       if (failed === 0) {
         toast.success(`Ingesta OK: ${fmtN.format(doneRows)} hexágonos en ${plan.chunks.length} lotes`);
       } else {

@@ -59,6 +59,23 @@ export interface SeriesPoint {
   value: number;
 }
 
+/**
+ * Mapeo variable económica del front (`id` slug) → serie REAL del bundle CGE
+ * (`economic_series`): panel (hoja) + valor de `cat1`. Los `cat1` son los nombres
+ * REALES del inspect (`RESUMEN1`, `EMPLEO`, `EMISIONES`). Las variables sin mapeo
+ * fiable (pib-per-capita, oferta) caen al template. Cuando el backend tenga el
+ * bundle económico, `EconomicModal` usa estas series en vez del template.
+ */
+export const ECO_ID_TO_SERIES: Record<string, { panel: string; cat1: string }> = {
+  "precio-spot": { panel: "RESUMEN1", cat1: "PRECIO DEMANDA SPOT" },
+  pib: { panel: "RESUMEN1", cat1: "CREC PIB" },
+  ipc: { panel: "RESUMEN1", cat1: "IPC" },
+  "tasa-cambio": { panel: "RESUMEN1", cat1: "TASA DE CAMBIO" },
+  "demanda-energia": { panel: "RESUMEN1", cat1: "DEMANDA GEN" },
+  desempleo: { panel: "EMPLEO", cat1: "TASA DE DESEMPLEO" },
+  emisiones: { panel: "EMISIONES", cat1: "EMISIONES GEN" },
+};
+
 /** Hash estable de una cadena → semilla determinista para el template. */
 function seed(s: string): number {
   let h = 0;
