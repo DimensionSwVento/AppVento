@@ -98,7 +98,8 @@ describe("Caracteristicas (US05)", () => {
     // Capacidad: subir las unidades del picker (0 → 1 MW).
     fireEvent.click(screen.getByRole("button", { name: "Aumentar Unidades" }));
     // Categoría M (el Nº de aerogeneradores se deriva; ya no se ingresa).
-    fireEvent.click(screen.getByRole("button", { name: /Mediano · 2–4 MW/ }));
+    // Label real de la categoría M (specs reales Tabla 2: 100 kW – 1 MW).
+    fireEvent.click(screen.getByRole("button", { name: /Turbina mediana/ }));
 
     expect(screen.getByTestId("next-step")).toBeEnabled();
   });

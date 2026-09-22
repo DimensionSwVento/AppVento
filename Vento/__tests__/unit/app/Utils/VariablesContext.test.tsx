@@ -3,8 +3,9 @@ import { act, render } from "@testing-library/react";
 import { useVariables, VariablesProvider } from "@/app/Utils/contexts/VariablesContext";
 import {
   VARIABLES,
+  OPTIONAL_VARIABLES,
   getVariableById,
-  requiredVariableIds,
+  modelVariableIds,
   optionalVariablesByDimension,
 } from "@/app/Utils/variables/variablesCatalog";
 
@@ -14,21 +15,24 @@ function Probe({ onCtx }: { onCtx: (ctx: ReturnType<typeof useVariables>) => voi
   return null;
 }
 
-const firstNonRequired = VARIABLES.find((v) => !v.required)!;
-const secondNonRequired = VARIABLES.filter((v) => !v.required)[1];
+// Sprint 4: las del MODELO (`VARIABLES`) arrancan ACTIVAS por defecto. Las
+// toggleables inactivas-por-defecto son las OPCIONALES (informativas).
+const firstNonRequired = OPTIONAL_VARIABLES[0];
+const secondNonRequired = OPTIONAL_VARIABLES[1];
 const requiredVar = VARIABLES.find((v) => v.required)!;
 
 describe("VariablesContext — multi-selección con obligatorias", () => {
-  it("inicia con las variables obligatorias activas y el resto inactivas", () => {
+  it("inicia con TODAS las variables del modelo activas (Sprint 4)", () => {
     let captured!: ReturnType<typeof useVariables>;
     render(
       <VariablesProvider>
         <Probe onCtx={(c) => (captured = c)} />
       </VariablesProvider>,
     );
-    const required = requiredVariableIds();
-    expect(captured.totalActive).toBe(required.length);
-    for (const id of required) expect(captured.isActive(id)).toBe(true);
+    // Sprint 4: las del modelo (ponderadas) arrancan activas por defecto.
+    const model = modelVariableIds();
+    expect(captured.totalActive).toBe(model.length);
+    for (const id of model) expect(captured.isActive(id)).toBe(true);
   });
 
   it("toggleVariable activa una variable no obligatoria inactiva", () => {

@@ -9,21 +9,20 @@ describe("areaRangeForCapacity (US04-04)", () => {
     },
   );
 
-  it("deriva el rango de la densidad de la categoría (M: 3.5 MW/turbina, 0.6 km²)", () => {
-    // 35 MW / 3.5 = 10 turbinas → esperada = 6.0 km²; banda [0.6×, 1.6×].
-    const r = areaRangeForCapacity(35, "M");
-    expect(r).not.toBeNull();
-    expect(r!.esperada).toBeCloseTo(6.0, 5);
-    expect(r!.min).toBeCloseTo(3.6, 5);
-    expect(r!.max).toBeCloseTo(9.6, 5);
-    expect(r!.min).toBeLessThan(r!.esperada);
-    expect(r!.esperada).toBeLessThan(r!.max);
-  });
+  // NOTA: se removieron dos tests que fijaban valores EXACTOS de área derivados
+  // de specs de turbina TEMPLATE (antes "3.5 MW/turbina"; hoy potencia real por
+  // rango y `areaPorAeroKm2` sigue siendo template → el cliente entregará los
+  // valores reales). Eran frágiles (rompen en cada cambio de plantilla). La banda
+  // [0.6×, 1.6×] y la lógica de nº de turbinas quedan cubiertas por los tests de
+  // abajo (categoría-ref, S≠L) y por `calcNumAerogeneradores`.
 
-  it("redondea hacia arriba el nº de turbinas necesarias", () => {
-    // 4 MW / 3.5 = 1.14 → ceil = 2 turbinas → esperada = 1.2 km².
-    const r = areaRangeForCapacity(4, "M");
-    expect(r!.esperada).toBeCloseTo(1.2, 5);
+  it("banda de área alrededor de la esperada: [0.6×, 1.6×]", () => {
+    // Sin fijar el valor absoluto (template): solo la RELACIÓN de la banda.
+    const r = areaRangeForCapacity(35, "M")!;
+    expect(r.min).toBeCloseTo(r.esperada * 0.6, 5);
+    expect(r.max).toBeCloseTo(r.esperada * 1.6, 5);
+    expect(r.min).toBeLessThan(r.esperada);
+    expect(r.esperada).toBeLessThan(r.max);
   });
 
   it("usa la categoría M como referencia si no hay categoría", () => {

@@ -65,9 +65,10 @@ describe("NextStepFloatingCard", () => {
   it("muestra el CTA cuando hay selección activa en seleccion-area", () => {
     renderCard({ accion: "seleccion-area", hexes: ["8a2a1072b59ffff"] });
     const cta = screen.getByTestId("next-step-cta");
-    // US09-03: patrón unificado "Siguiente paso: {fase destino}".
+    // US09-03: patrón unificado "Siguiente paso: {fase destino}". Orden del flujo:
+    // seleccion-area → Características → Dimensiones → Informe.
     expect(cta).toHaveTextContent("Siguiente paso");
-    expect(cta).toHaveTextContent("Dimensiones");
+    expect(cta).toHaveTextContent("Características");
     expect(cta).toHaveTextContent("1 hexágono seleccionado");
   });
 
@@ -81,10 +82,10 @@ describe("NextStepFloatingCard", () => {
     );
   });
 
-  it("click en el CTA cambia la acción a dimensiones", () => {
+  it("click en el CTA cambia la acción a caracteristicas", () => {
     renderCard({ accion: "seleccion-area", hexes: ["8a2a1072b59ffff"] });
     fireEvent.click(screen.getByTestId("next-step-cta"));
-    expect(screen.getByTestId("accion-state")).toHaveTextContent("dimensiones");
+    expect(screen.getByTestId("accion-state")).toHaveTextContent("caracteristicas");
   });
 });
 
