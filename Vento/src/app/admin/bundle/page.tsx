@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import SideBar from "../../Components/layout/SideBar";
 import AdminNav from "../../Components/Admin/AdminNav";
+import QuickGuide from "../../Components/Admin/QuickGuide";
 import { useToast } from "../../Components/ui/Toast";
 import {
   fetchBundlePlan,
@@ -245,6 +246,66 @@ export default function AdminBundlePage() {
             reconoce para que lo confirmes, y luego los guarda. No necesitas escribir
             ninguna ruta.
           </p>
+
+          {/* Guía rápida en carrusel + léeme */}
+          <QuickGuide
+            intro="Cómo subir la master"
+            steps={[
+              {
+                titulo: "1 · Qué es esto",
+                texto: (
+                  <>El <b>dato por hexágono</b> del modelo (scores + valores crudos).
+                  Los <b>metadatos</b> de las variables (nombre, fuente, regulatoria…)
+                  se suben en la pestaña <b>Metadatos</b>, no aquí.</>
+                ),
+              },
+              {
+                titulo: "2 · Qué archivos",
+                texto: (
+                  <>Un árbol de <code>.h3.parquet</code> (carpetas con cualquier nombre;
+                  importan los nombres de <b>archivo</b>): <code>variables</code>,
+                  <code> criterios</code>/<code>subcriterios</code>/<code>mcda_agregado</code>,
+                  <code> variables_pon</code> y <code>minmax_anchors.json</code>. Cada
+                  parquet con columna <code>h3_index</code>.</>
+                ),
+              },
+              {
+                titulo: "3 · Cómo se sube",
+                texto: (
+                  <>Arrastras la carpeta. Se ingiere por <b>paquetes</b> (row-groups)
+                  con barra de progreso → memoria acotada, no tumba el backend. Si hay
+                  una columna que no reconoce, la deja <b>pendiente</b> y te la muestra
+                  antes de aplicar.</>
+                ),
+              },
+              {
+                titulo: "4 · Qué guarda",
+                texto: (
+                  <>Crudas → <code>hexagon.variables</code>; scores →
+                  <code> hexagon.scores</code>/<code>score_general</code>; ponderadas →
+                  <code> hexagon_variables_pon</code>; anclas →
+                  <code> hexagon_meta</code>. Al final <b>estampa la versión</b>
+                  (fecha + archivos).</>
+                ),
+              },
+              {
+                titulo: "5 · Másters muy pesadas",
+                texto: (
+                  <>Mejor por <b>consola</b>: <code>python -m tools.ingest_bundle
+                  &lt;carpeta&gt;</code> (destructiva con respaldo + swap; imprime la
+                  clase de cada columna). Aísla la memoria del backend.</>
+                ),
+              },
+            ]}
+            detalle={
+              <ul className="ml-4 list-disc space-y-0.5">
+                <li><code>variables.h3.parquet</code> → crudos + <code>excluido</code>/<code>alerta</code> → <code>hexagon.variables</code>/<code>tipo_celda</code>.</li>
+                <li><code>criterios</code>/<code>subcriterios</code>/<code>mcda_agregado</code> → <code>hexagon.scores</code> + <code>score_general</code>.</li>
+                <li><code>variables_pon.h3.parquet</code> → <code>hexagon_variables_pon</code> (mismos códigos, valor ponderado; para "descargar crudos").</li>
+                <li><code>minmax_anchors.json</code> → rangos oficiales → <code>hexagon_meta</code>.</li>
+              </ul>
+            }
+          />
 
           {/* FASE 1 — Arrastrar los parquets (nunca se escribe una ruta) */}
           <section className="mt-5 rounded-2xl border border-gray-100 p-5 shadow-sm">

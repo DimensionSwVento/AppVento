@@ -1,70 +1,72 @@
 "use client";
 
 /**
- * Actualizador de METADATOS (Fase 1 del rediseño anidado): sube un CSV/XLSX
- * (InfoVariables), muestra el PLAN (qué columnas se mapean / se omiten) y APLICA
- * (upsert de la jerarquía dimensión→criterio→subcriterio→variable, conciliando
- * por master_id). Solo admin. Ver docs/spec/backend-arquitectura-anidada.md.
+ * Actualizador de METADATOS: sube UNO O VARIOS CSV/XLSX. El sistema AUTODETECTA
+ * cada archivo (catálogo InfoVariables — incluida regulatoria → catalog_norma — o
+ * panel económico → economic_series) y lo rutea solo. Un solo drag para todo.
+ * Solo admin. Ver docs/spec/backend-arquitectura-anidada.md.
  */
 import { useCallback, useState } from "react";
 import SideBar from "../../Components/layout/SideBar";
 import AdminNav from "../../Components/Admin/AdminNav";
+import QuickGuide from "../../Components/Admin/QuickGuide";
 import { useToast } from "../../Components/ui/Toast";
 import {
   uploadMetadata,
   planMetadata,
   applyMetadata,
   type MetadataPlan,
+  type MetadataApplyResult,
 } from "../../Utils/admin/catalogApi";
 
-type ApplyResult = {
-  dimensiones: number;
-  criterios: number;
-  subcriterios: number;
-  variables: number;
-};
+type PlanItem = { name: string; path: string; plan: MetadataPlan };
+type ResultItem = { name: string; result: MetadataApplyResult };
 
 export default function AdminMetadatosPage() {
   const toast = useToast();
-  const [file, setFile] = useState<File | null>(null);
-  const [path, setPath] = useState<string | null>(null);
-  const [sheet, setSheet] = useState("");
-  const [plan, setPlan] = useState<MetadataPlan | null>(null);
-  const [result, setResult] = useState<ApplyResult | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [items, setItems] = useState<PlanItem[]>([]);
+  const [results, setResults] = useState<ResultItem[]>([]);
   const [busy, setBusy] = useState(false);
 
   const doPlan = useCallback(async () => {
-    if (!file) return;
+    if (!files.length) return;
     setBusy(true);
-    setResult(null);
+    setResults([]);
+    setItems([]);
     try {
-      const up = await uploadMetadata(file);
-      setPath(up.path);
-      const p = await planMetadata(up.path, "infovariables", sheet || undefined);
-      setPlan(p);
-      toast.success(`Analizado: ${p.summary.mapeadas} columnas mapeadas, ${p.summary.sin_mapear} omitidas`);
+      const out: PlanItem[] = [];
+      for (const f of files) {
+        const up = await uploadMetadata(f);
+        const plan = await planMetadata(up.path);
+        out.push({ name: f.name, path: up.path, plan });
+      }
+      setItems(out);
+      toast.success(`Analizados ${out.length} archivo(s)`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falló el análisis");
     } finally {
       setBusy(false);
     }
-  }, [file, sheet, toast]);
+  }, [files, toast]);
 
   const doApply = useCallback(async () => {
-    if (!path) return;
+    if (!items.length) return;
     setBusy(true);
     try {
-      const r = await applyMetadata(path, "infovariables", sheet || undefined);
-      setResult(r);
-      toast.success(
-        `Aplicado: ${r.variables} variables · ${r.dimensiones} dim · ${r.criterios} crit · ${r.subcriterios} subcrit`,
-      );
+      const out: ResultItem[] = [];
+      for (const it of items) {
+        const result = await applyMetadata(it.path);
+        out.push({ name: it.name, result });
+      }
+      setResults(out);
+      toast.success(`Aplicados ${out.length} archivo(s)`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falló la aplicación");
     } finally {
       setBusy(false);
     }
-  }, [path, sheet, toast]);
+  }, [items, toast]);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -73,101 +75,173 @@ export default function AdminMetadatosPage() {
         <AdminNav />
         <div className="mx-auto max-w-3xl">
           <h1 className="text-xl font-semibold text-gray-800">
-            Actualizador de metadatos (InfoVariables)
+            Actualizador de metadatos
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Sube el CSV/XLSX del catálogo. Se clasifican las columnas y se actualiza
-            la jerarquía <b>dimensión → criterio → subcriterio → variable</b>,
-            conciliando cada variable por su <code>master_id</code>.
+            Sube uno o varios CSV/XLSX. El sistema <b>autodetecta</b> cada archivo:
+            catálogo <b>InfoVariables</b> (jerarquía + variables + <b>regulatoria</b> →
+            normas, conciliando por <code>master_id</code>) o <b>panel económico</b>
+            (<code>escenario_mw·cat·anio·valor</code> → series). <b>Un solo drag para todo.</b>
           </p>
 
-          {/* 1. Subir + analizar */}
+          <QuickGuide
+            intro="Cómo usar metadatos"
+            steps={[
+              {
+                titulo: "1 · Qué subir",
+                texto: (
+                  <>Los archivos <b>InfoVariables</b> (a/b/c) y/o el <b>panel económico</b>
+                  (xlsx). Aquí van los <b>metadatos</b> — no el dato por hexágono (eso va
+                  en <b>Subir master</b>).</>
+                ),
+              },
+              {
+                titulo: "2 · Varios a la vez",
+                texto: (
+                  <>Puedes seleccionar <b>varios archivos</b> juntos (p.ej. InfoVariables
+                  a/b/c). Cada uno se analiza y aplica por separado.</>
+                ),
+              },
+              {
+                titulo: "3 · Se autodetecta",
+                texto: (
+                  <>El sistema reconoce cada archivo: <b>variables</b> → catálogo +
+                  jerarquía; filas <b>REG…</b> o dimensión regulatoria → <b>normas</b>;
+                  columnas <code>escenario_mw</code>+<code>valor</code> → <b>series
+                  económicas</b>.</>
+                ),
+              },
+              {
+                titulo: "4 · Cómo opera",
+                texto: (
+                  <><b>Analizar</b> muestra el plan (qué se mapea / se omite, por
+                  archivo). <b>Aplicar</b> lo guarda. Cada variable se concilia por su
+                  <code> master_id</code> — nunca se pisa por nombre.</>
+                ),
+              },
+            ]}
+            detalle={
+              <p>
+                Detalle del mapeo columna→BD en <code>docs/spec/modelo-datos-anidado.md
+                §11-ter</code>. Si una columna del catálogo no se reconoce, aparece en
+                "Omitidas" (no rompe nada). El panel económico ingiere las hojas
+                <b> curadas</b> (RESUMEN1/PIB/PRECIOS/GENERACION/EMISIONES/EMPLEO).
+              </p>
+            }
+          />
+
+          {/* 1. Subir (múltiple) + analizar */}
           <div className="mt-6 rounded-lg border border-gray-200 bg-white p-4">
             <label className="block text-sm font-medium text-gray-700">
-              Archivo (.csv / .xlsx)
+              Archivos (.csv / .xlsx) — puedes seleccionar varios
             </label>
             <input
               type="file"
+              multiple
               accept=".csv,.xlsx,.xlsm"
               onChange={(e) => {
-                setFile(e.target.files?.[0] ?? null);
-                setPlan(null);
-                setResult(null);
+                setFiles(Array.from(e.target.files ?? []));
+                setItems([]);
+                setResults([]);
               }}
               className="mt-1 block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-[#165170ff] file:px-3 file:py-1.5 file:text-white"
             />
-            <div className="mt-3 flex items-end gap-3">
-              <div>
-                <label className="block text-[11px] font-medium text-gray-500">
-                  Hoja (solo XLSX, opcional)
-                </label>
-                <input
-                  value={sheet}
-                  onChange={(e) => setSheet(e.target.value)}
-                  placeholder="Hoja1"
-                  className="mt-0.5 rounded-md border border-gray-300 px-2 py-1 text-sm"
-                />
-              </div>
-              <button
-                onClick={doPlan}
-                disabled={!file || busy}
-                className="rounded-md bg-[#165170ff] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-              >
-                {busy ? "Analizando…" : "Analizar columnas"}
-              </button>
-            </div>
+            {files.length > 0 && (
+              <p className="mt-2 text-[12px] text-gray-500">
+                {files.length} archivo(s): {files.map((f) => f.name).join(", ")}
+              </p>
+            )}
+            <button
+              onClick={doPlan}
+              disabled={!files.length || busy}
+              className="mt-3 rounded-md bg-[#165170ff] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              {busy ? "Analizando…" : "Analizar"}
+            </button>
           </div>
 
-          {/* 2. Plan */}
-          {plan && (
-            <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
+          {/* 2. Plan por archivo (según el tipo detectado) */}
+          {items.map((it) => (
+            <div key={it.path} className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
               <h2 className="text-sm font-semibold text-gray-700">
-                Plan · {plan.rows} filas{plan.sheet ? ` · hoja ${plan.sheet}` : ""}
+                {it.name} —{" "}
+                {it.plan.tipo === "economic"
+                  ? `panel económico · ${it.plan.total} hojas (${it.plan.curadas} curadas)`
+                  : `catálogo InfoVariables · ${it.plan.rows} filas`}
               </h2>
-              <div className="mt-2 grid gap-4 md:grid-cols-2">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
-                    Mapeadas ({plan.summary.mapeadas})
-                  </p>
-                  <ul className="mt-1 space-y-0.5 text-[12px]">
-                    {plan.mapped.map((m) => (
-                      <li key={m.header} className="flex justify-between gap-2">
-                        <span className="truncate text-gray-600">{m.header}</span>
-                        <span className="shrink-0 font-mono text-[#165170ff]">
-                          → {m.destino}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+
+              {it.plan.tipo === "infovariables" && (
+                <div className="mt-2 grid gap-4 md:grid-cols-2">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+                      Mapeadas ({it.plan.summary.mapeadas})
+                    </p>
+                    <ul className="mt-1 space-y-0.5 text-[12px]">
+                      {it.plan.mapped.map((m) => (
+                        <li key={m.header} className="flex justify-between gap-2">
+                          <span className="truncate text-gray-600">{m.header}</span>
+                          <span className="shrink-0 font-mono text-[#165170ff]">→ {m.destino}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                      Omitidas ({it.plan.summary.sin_mapear})
+                    </p>
+                    <ul className="mt-1 space-y-0.5 text-[12px] text-gray-400">
+                      {it.plan.unmapped.map((u) => (
+                        <li key={u.header} className="truncate">{u.header}</li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                    Omitidas ({plan.summary.sin_mapear})
-                  </p>
-                  <ul className="mt-1 space-y-0.5 text-[12px] text-gray-400">
-                    {plan.unmapped.map((u) => (
-                      <li key={u.header} className="truncate">{u.header}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-              <button
-                onClick={doApply}
-                disabled={busy || plan.summary.mapeadas === 0}
-                className="mt-4 rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-              >
-                {busy ? "Aplicando…" : "Aplicar al catálogo"}
-              </button>
+              )}
+
+              {it.plan.tipo === "economic" && (
+                <ul className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
+                  {it.plan.sheets.map((s) => (
+                    <li
+                      key={s.sheet}
+                      title={s.rol}
+                      className={`rounded px-2 py-0.5 ${
+                        s.rol === "curada"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : s.rol === "meta"
+                            ? "bg-gray-100 text-gray-500"
+                            : "bg-amber-50 text-amber-700"
+                      }`}
+                    >
+                      {s.sheet}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
+          ))}
+
+          {items.length > 0 && (
+            <button
+              onClick={doApply}
+              disabled={busy}
+              className="mt-4 rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              {busy ? "Aplicando…" : `Aplicar ${items.length} archivo(s)`}
+            </button>
           )}
 
-          {/* 3. Resultado */}
-          {result && (
-            <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-              Actualizado: <b>{result.variables}</b> variables · {result.dimensiones} dimensiones ·{" "}
-              {result.criterios} criterios · {result.subcriterios} subcriterios.
+          {/* 3. Resultados por archivo */}
+          {results.map((r) => (
+            <div
+              key={r.name}
+              className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
+            >
+              <b>{r.name}</b> —{" "}
+              {r.result.tipo === "economic"
+                ? `económico: ${r.result.rows} filas en ${r.result.panels} paneles`
+                : `catálogo: ${r.result.variables} variables · ${r.result.dimensiones} dim · ${r.result.criterios} crit · ${r.result.subcriterios} subcrit · ${r.result.normas} normas`}
             </div>
-          )}
+          ))}
         </div>
       </main>
     </div>
