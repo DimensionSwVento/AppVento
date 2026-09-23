@@ -582,6 +582,55 @@ para lo descriptivo + el modelo para peso/rango + admin para icono/unidad.
 
 ---
 
+## 11-ter. InfoVariables → BD — mapeo canónico (nada se ignora)
+
+Cómo el **drag de metadatos** rutea CADA columna de InfoVariables a la BD. El motor
+autodetecta por fila/archivo y enruta a 3 destinos: **catálogo de variable**,
+**norma regulatoria** o **serie económica**.
+
+**Reglas de ruteo (por fila):**
+- `escenario_mw` + `valor` en las columnas → **`economic_series`** (panel económico).
+- `master_id` empieza por `REG…` **o** dimensión regulatoria → **`catalog_norma`**.
+- resto → **jerarquía + `catalog_variable`** (conciliando por `master_id`).
+
+**Variable (InfoVariables b / c informativas) → `catalog_variable` + jerarquía:**
+
+| Columna InfoVariables | Campo BD |
+|---|---|
+| Dimensión | `catalog_dimension.nombre` + `catalog_variable.dimension` |
+| Definición (por nivel) | `catalog_{dimension,criterio,subcriterio}.definicion` |
+| Criterio | `catalog_criterio.nombre` + `catalog_variable.criterio` |
+| Subcriterio | `catalog_subcriterio.nombre` + `catalog_variable.subcriterio(_id)` |
+| Variable | `catalog_variable.label` |
+| Emplazamiento | `catalog_variable.emplazamiento` (onshore/offshore/both) |
+| ¿Se muestra en el mapa? | `catalog_variable.en_mapa` |
+| Menú (Activo por MCDM / Opcional) | `catalog_variable.tipo` + `no_calculo` |
+| ID | `catalog_variable.master_id` (clave de conciliación) |
+| Descripción | `catalog_variable.descripcion` |
+| Fuente de datos | `catalog_variable.fuente` |
+| Tipo de licencia | `catalog_variable.licencia` |
+| URL fuente | `catalog_variable.url_fuente` |
+| **Comentarios/ideas de visualización** | `catalog_variable.comentarios` *(antes se ignoraba)* |
+
+**Regulatoria (InfoVariables c) → `catalog_norma`:**
+
+| Columna InfoVariables | Campo BD |
+|---|---|
+| ID (REG-…) | `catalog_norma.id` |
+| Norma/disposición | `catalog_norma.nombre` |
+| Descripción | `catalog_norma.descripcion` |
+| Estado | `catalog_norma.estado` (aplica/tramite/verificacion/no-aplica) |
+| **Condición de activación** | `catalog_norma.condicion` *(antes se perdía)* |
+| **Fuente / URL** | `catalog_norma.fuente` / `url_fuente` *(antes se perdía)* |
+| (Regulación-Social/Técnica/Ambiental: código SOC/AMB…) | `catalog_norma.variable_ref` → liga la norma a la variable |
+
+**Económica (panel_por_variable) → `economic_series` / `economic_panel`** (ver §6.3).
+
+> Migraciones que habilitan esto: `0009` (jerarquía + campos de variable),
+> `0012` (campos de norma + `catalog_variable.comentarios`).
+
+---
+
 ## 11. Comparación de versiones del catálogo (VIEJA → ACTUAL)
 
 > **`InfoVariables1/2/3` = versión VIEJA** — **NO** se usa para actualizar datos.
