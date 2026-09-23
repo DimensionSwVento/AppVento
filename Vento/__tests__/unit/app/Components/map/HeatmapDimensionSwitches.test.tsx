@@ -3,7 +3,6 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import HeatmapDimensionSwitches from "@/app/Components/map/HeatmapDimensionSwitches";
 import {
   HEATMAP_DIMENSIONS,
-  HEATMAP_WIND_OPTIONS,
   HeatmapDimensionProvider,
   useHeatmapDimension,
 } from "@/app/Utils/contexts/HeatmapDimensionContext";
@@ -23,16 +22,16 @@ function renderWithProvider() {
 }
 
 describe("HeatmapDimensionSwitches", () => {
-  it("renderiza el select con las dimensiones + las capas de viento", () => {
+  it("renderiza el select con las dimensiones (el viento solo si está seleccionado)", () => {
+    // Sin VariablesProvider → ninguna variable de viento seleccionada → el grupo
+    // "Recurso eólico" no aparece; solo las dimensiones.
     renderWithProvider();
     const select = screen.getByLabelText("Visualización en el mapa");
     expect(select).toBeInTheDocument();
     const options = screen.getAllByRole("option");
-    // Dimensiones (puntuables + informativa) + el grupo "Recurso eólico" (viento).
-    expect(options.map((o) => o.textContent)).toEqual([
-      ...HEATMAP_DIMENSIONS.map((d) => d.label),
-      ...HEATMAP_WIND_OPTIONS.map((d) => d.label),
-    ]);
+    expect(options.map((o) => o.textContent)).toEqual(
+      HEATMAP_DIMENSIONS.map((d) => d.label),
+    );
   });
 
   it("arranca con 'general' activa (heatmap siempre encendido)", () => {
