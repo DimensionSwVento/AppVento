@@ -12,18 +12,26 @@ export default function MapSymbolsLegend({
   active,
   onToggle,
   disabled,
+  selected,
 }: {
   active: Set<string>;
   onToggle: (variableId: string) => void;
   /** Variables con "ver en mapa" desactivado en admin: se ocultan de la leyenda. */
   disabled?: Set<string>;
+  /** Variables SELECCIONADAS en Dimensiones (activeVariables). Si se pasa, la
+   *  leyenda solo lista las capas de esas variables (no todas las del mapa). */
+  selected?: Set<string>;
 }) {
   const [open, setOpen] = useState(true);
   // Solo símbolos de ÁREA/PUNTO habilitados para mapa (respeta el toggle de
-  // admin, US08-01). El VIENTO (`heat`: velocidad/densidad) NO va aquí — se
-  // elige desde el desplegable "Visualización en el mapa" del Informe.
+  // admin, US08-01), y SOLO los de variables seleccionadas en Dimensiones (las
+  // del modelo van fijas + las informativas que el usuario eligió). El VIENTO
+  // (`heat`) va en el desplegable "Visualización en el mapa" del Informe.
   const symbols = MAP_SYMBOLS.filter(
-    (s) => s.kind !== "heat" && !disabled?.has(s.variableId),
+    (s) =>
+      s.kind !== "heat" &&
+      !disabled?.has(s.variableId) &&
+      (!selected || selected.has(s.variableId)),
   );
   if (symbols.length === 0) return null;
   const activeCount = symbols.filter((s) => active.has(s.variableId)).length;
