@@ -1050,6 +1050,7 @@ export default function MapView() {
               active={activeSymbols}
               onToggle={handleSymbolToggle}
               disabled={mapDisabledIds}
+              selected={activeVariables}
             />
           </div>
         </>

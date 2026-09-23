@@ -1,11 +1,14 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   HEATMAP_DIMENSIONS,
   HEATMAP_WIND_OPTIONS,
+  isWindHeatmap,
   useHeatmapDimension,
   type HeatmapDimensionId,
 } from "../../Utils/contexts/HeatmapDimensionContext";
+import { useVariables } from "../../Utils/contexts/VariablesContext";
 
 /**
  * Selector compacto (dropdown) de la dimensión visualizada en el heatmap.
@@ -19,6 +22,18 @@ import {
  */
 export default function HeatmapDimensionSwitches() {
   const { activeDimension, setActiveDimension } = useHeatmapDimension();
+  const { isActive } = useVariables();
+
+  // Solo se ofrecen las capas de viento SELECCIONADAS en Dimensiones (velocidad/
+  // densidad son informativas opcionales; el usuario las activa en el menú).
+  const windOptions = HEATMAP_WIND_OPTIONS.filter((d) => isActive(d.id));
+
+  // Si el heatmap activo es un viento que ya no está seleccionado, vuelve a General.
+  useEffect(() => {
+    if (isWindHeatmap(activeDimension) && !windOptions.some((d) => d.id === activeDimension)) {
+      setActiveDimension("general");
+    }
+  }, [activeDimension, windOptions, setActiveDimension]);
 
   return (
     <div className="rounded-2xl bg-white p-3 shadow-sm">
@@ -51,16 +66,18 @@ export default function HeatmapDimensionSwitches() {
               </option>
             ))}
           </optgroup>
-          {/* Viento (velocidad/densidad): mapas de calor del recurso eólico. Al
-              elegirlos, el heatmap se pinta sobre el área seleccionada con el
+          {/* Viento (velocidad/densidad): solo las SELECCIONADAS en Dimensiones.
+              Al elegirlas, el heatmap se pinta sobre el área seleccionada con el
               valor real del backend (placeholder de corredores en template). */}
-          <optgroup label="Recurso eólico">
-            {HEATMAP_WIND_OPTIONS.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.label}
-              </option>
-            ))}
-          </optgroup>
+          {windOptions.length > 0 && (
+            <optgroup label="Recurso eólico">
+              {windOptions.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.label}
+                </option>
+              ))}
+            </optgroup>
+          )}
         </select>
         <span
           aria-hidden="true"
