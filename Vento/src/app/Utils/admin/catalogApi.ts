@@ -169,7 +169,7 @@ export interface MetadataPlanCatalog {
 }
 export interface MetadataPlanEconomic {
   tipo: "economic";
-  sheets: { sheet: string; rol: "meta" | "curada" | "solo-bd" }[];
+  sheets: { sheet: string; rol: "meta" | "curada" | "solo-bd" | "input" }[];
   total: number;
   curadas: number;
 }
