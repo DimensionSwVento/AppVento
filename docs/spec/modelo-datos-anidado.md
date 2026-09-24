@@ -411,13 +411,19 @@ opcional para el usuario.
   EMISIONES/GENERACION/PRECIOS por escenario y año); el resto (GOB*/PSS*/CEDAD/
   RESULTADOSPOT) se **almacena** pero no necesariamente se renderiza — decisión de UX.
 
-**Ingesta por el actualizador de metadatos:**
-- **XLSX** → una fila por hoja (`list_sheets` con openpyxl); por defecto solo las
-  hojas **curadas**, el resto opcional.
-- **CSV suelto** → se ingiere como **panel único** (openpyxl NO lee CSV → no se
-  llama `list_sheets`); el **nombre del archivo** se usa como nombre de panel
-  (`economic_ingest.plan/apply(default_panel=…)`, propagado desde el front como
-  `body.name`).
+**Ingesta por el actualizador de metadatos (los 3 archivos económicos):**
+El motor clasifica cada hoja/archivo **por sus columnas** (`_sheet_format`):
+- **tidy** (`escenario_mw` + `valor`) = **panel de salida** (`panel_por_variable`).
+  Una fila por hoja; por defecto solo las hojas **curadas**, el resto opcional.
+- **wide/ancho** (columnas `Escenario_mw_<N>`) = **inputs de escenario**
+  (`variables_esce`, `VARIABLES_2`). Se detectan **por columnas, NO por nombre de
+  archivo** (el nombre puede cambiar) y se **derriten (melt)** a `economic_series`
+  (`cat1 = Variable`, `escenario_mw = <N>` del encabezado, `anio = YEAR`). Se
+  registran como panel **no curado** (driver exógeno) y **siempre** se ingieren
+  (el filtro de curadas aplica solo al panel tidy).
+- **CSV suelto** → panel único (openpyxl NO lee CSV → sin `list_sheets`); el
+  **nombre del archivo** = nombre de panel (`default_panel`, propagado del front
+  como `body.name`). Puede ser tidy o ancho.
 
 #### 6.3.1 Clasificación por hoja — qué es / dónde se usa
 
