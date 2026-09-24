@@ -234,9 +234,11 @@ export default function AdminMetadatosPage() {
                       className={`rounded px-2 py-0.5 ${
                         s.rol === "curada"
                           ? "bg-emerald-100 text-emerald-700"
-                          : s.rol === "meta"
-                            ? "bg-gray-100 text-gray-500"
-                            : "bg-amber-50 text-amber-700"
+                          : s.rol === "input"
+                            ? "bg-sky-100 text-sky-700"
+                            : s.rol === "meta"
+                              ? "bg-gray-100 text-gray-500"
+                              : "bg-amber-50 text-amber-700"
                       }`}
                     >
                       {s.sheet}
