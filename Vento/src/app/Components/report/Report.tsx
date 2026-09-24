@@ -13,7 +13,7 @@ import {
 import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
 import { useIsAdmin } from "../../Utils/useIsAdmin";
-import { fetchMasterStatus, fetchEscenarios, type AdminEscenario } from "../../Utils/admin/catalogApi";
+import { fetchMasterStatus, fetchEscenarios, fetchNormas, type AdminEscenario } from "../../Utils/admin/catalogApi";
 import { dbField, AuditDataLabel } from "../../Utils/audit";
 import {
   HEATMAP_DIMENSIONS,
@@ -79,9 +79,11 @@ import {
   REGULATORY_AUTHORITIES,
   REGULATORY_NORMS,
   normasSemaforo,
+  type Norma,
 } from "../../Utils/report/regulatoryNorms";
 import { REPORT_SOURCE_LINKS } from "../../Utils/report/reportSources";
 import { compactHexes } from "../../Utils/historial/hexCodec";
+import { cellToChildren, cellToParent, getResolution } from "h3-js";
 import { useToast } from "../ui/Toast";
 import {
   useCaracteristicas,
@@ -257,6 +259,20 @@ export default function Report() {
     let alive = true;
     fetchEscenarios()
       .then((e) => alive && setEscenarios(e))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Normas del marco normativo: se traen del catálogo (InfoVariables/Admin·
+  // Normativa) para que el informe muestre las MISMAS que el modal, no el
+  // template. Semilla = template → sin parpadeo mientras carga.
+  const [normas, setNormas] = useState<Norma[]>(REGULATORY_NORMS);
+  useEffect(() => {
+    let alive = true;
+    fetchNormas()
+      .then((n) => alive && n.length > 0 && setNormas(n))
       .catch(() => {});
     return () => {
       alive = false;
@@ -741,8 +757,11 @@ export default function Report() {
   }
 
   // Hoja regulatoria (informativa) — semáforo + normas + autoridades.
+  // Solo las normas ACTIVAS (prendidas en la card de Dimensiones) entran al
+  // informe, igual que en el modal de marco normativo.
   if (config.showRegulatoria && regulatory.addToReport) {
-    const sem = normasSemaforo();
+    const activeNormas = normas.filter((no) => regulatory.isNormaActive(no.id));
+    const sem = normasSemaforo(activeNormas);
     addSection("Dimensión regulatoria (Inf.)", (n) => [
       <div key="reg" className="text-[10px]">
         <div className="flex items-center gap-2">
@@ -788,7 +807,7 @@ export default function Report() {
           Normas aplicables al proyecto
         </h4>
         <ul className="mt-1 flex flex-col gap-1">
-          {REGULATORY_NORMS.map((no) => {
+          {activeNormas.map((no) => {
             const m = NORMA_ESTADO_META[no.estado];
             return (
               <li
@@ -1121,7 +1140,34 @@ export default function Report() {
     const esc = (s: string) =>
       s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-    const hexes = Array.from(selectedHexes).sort();
+    // Los datos por hexágono en BD SIEMPRE están a res 8. La selección puede estar
+    // a otra resolución (el piso de selección es res 7, y al acercarse el zoom se
+    // selecciona más fino, res > 8). Hay que normalizar a EXACTAMENTE res 8 —igual
+    // que el heatmap del informe— o `areaData` (res 8) no casa y todo sale "—":
+    //   res > 8  → celda padre res 8 (varias caen en la misma → dedup)
+    //   res == 8 → tal cual
+    //   res < 8  → hijos res 8 (celdas compactadas al guardar, res 6/7)
+    const DATA_H3_RES = 8;
+    const hexes = Array.from(
+      new Set(
+        Array.from(selectedHexes).flatMap((h) => {
+          const res = getResolution(h);
+          return res > DATA_H3_RES
+            ? [cellToParent(h, DATA_H3_RES)]
+            : res === DATA_H3_RES
+              ? [h]
+              : cellToChildren(h, DATA_H3_RES);
+        }),
+      ),
+    )
+      // Solo celdas con dato en BD (res 8): evita filas fantasma "—" al expandir
+      // hijos de una selección compactada (res < 8).
+      .filter((h) => areaData.has(h))
+      .sort();
+    if (hexes.length === 0) {
+      toast.error("La selección no tiene datos por hexágono a res 8 en el backend.");
+      return;
+    }
     const cols = VARIABLES.filter((v) => v.masterId !== "NA");
     const thS =
       "padding:4px 6px;border:1px solid #cbd5e1;background:#165170;color:#fff;font-weight:600;white-space:nowrap;";

@@ -38,7 +38,7 @@ export default function AdminMetadatosPage() {
       const out: PlanItem[] = [];
       for (const f of files) {
         const up = await uploadMetadata(f);
-        const plan = await planMetadata(up.path);
+        const plan = await planMetadata(up.path, "infovariables", undefined, f.name);
         out.push({ name: f.name, path: up.path, plan });
       }
       setItems(out);
@@ -56,7 +56,7 @@ export default function AdminMetadatosPage() {
     try {
       const out: ResultItem[] = [];
       for (const it of items) {
-        const result = await applyMetadata(it.path);
+        const result = await applyMetadata(it.path, "infovariables", undefined, it.name);
         out.push({ name: it.name, result });
       }
       setResults(out);
@@ -121,12 +121,39 @@ export default function AdminMetadatosPage() {
               },
             ]}
             detalle={
-              <p>
-                Detalle del mapeo columna→BD en <code>docs/spec/modelo-datos-anidado.md
-                §11-ter</code>. Si una columna del catálogo no se reconoce, aparece en
-                "Omitidas" (no rompe nada). El panel económico ingiere las hojas
-                <b> curadas</b> (RESUMEN1/PIB/PRECIOS/GENERACION/EMISIONES/EMPLEO).
-              </p>
+              <div className="space-y-2">
+                <p className="font-semibold text-gray-700">
+                  Reglas de detección (por qué cada archivo va a un lado)
+                </p>
+                <p>
+                  El sistema no adivina: decide según <b>cómo se llaman las columnas
+                  y las filas</b>. Estas son las reglas exactas:
+                </p>
+                <ul className="ml-4 list-disc space-y-1">
+                  <li>
+                    Tiene columnas <code>escenario_mw</code> + <code>valor</code> →{" "}
+                    <b>panel económico</b> (series). El nombre del archivo se usa como
+                    nombre del panel.
+                  </li>
+                  <li>
+                    Fila con <code>master_id</code> que empieza por <code>REG</code>{" "}
+                    <i>o</i> cuya dimensión es «regulatoria» → <b>norma</b> (informativa,
+                    editable en Admin · Normativa; se prende/apaga en Dimensiones).
+                  </li>
+                  <li>
+                    Cualquier otra fila del catálogo → <b>variable</b> + su jerarquía
+                    (dimensión · criterio · subcriterio), conciliando por{" "}
+                    <code>master_id</code> — nunca se pisa por nombre.
+                  </li>
+                </ul>
+                <p>
+                  Si una columna del catálogo no se reconoce, aparece en <b>Omitidas</b>{" "}
+                  (no rompe nada). El panel económico solo ingiere las hojas{" "}
+                  <b>curadas</b> (RESUMEN1/PIB/PRECIOS/GENERACION/EMISIONES/EMPLEO); el
+                  resto queda en BD para trazabilidad. Detalle columna→BD en{" "}
+                  <code>docs/spec/modelo-datos-anidado.md §11-ter</code>.
+                </p>
+              </div>
             }
           />
 
@@ -207,9 +234,11 @@ export default function AdminMetadatosPage() {
                       className={`rounded px-2 py-0.5 ${
                         s.rol === "curada"
                           ? "bg-emerald-100 text-emerald-700"
-                          : s.rol === "meta"
-                            ? "bg-gray-100 text-gray-500"
-                            : "bg-amber-50 text-amber-700"
+                          : s.rol === "input"
+                            ? "bg-sky-100 text-sky-700"
+                            : s.rol === "meta"
+                              ? "bg-gray-100 text-gray-500"
+                              : "bg-amber-50 text-amber-700"
                       }`}
                     >
                       {s.sheet}

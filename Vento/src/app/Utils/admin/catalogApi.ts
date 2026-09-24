@@ -169,7 +169,7 @@ export interface MetadataPlanCatalog {
 }
 export interface MetadataPlanEconomic {
   tipo: "economic";
-  sheets: { sheet: string; rol: "meta" | "curada" | "solo-bd" }[];
+  sheets: { sheet: string; rol: "meta" | "curada" | "solo-bd" | "input" }[];
   total: number;
   curadas: number;
 }
@@ -207,13 +207,14 @@ export async function uploadMetadata(file: File): Promise<{ path: string; filena
   return res.json();
 }
 
-/** Clasifica las columnas del doc (qué se mapea / qué se omite). */
+/** Clasifica las columnas del doc (qué se mapea / qué se omite). `name` = nombre
+ *  original del archivo (para nombrar el panel de un CSV económico). */
 export async function planMetadata(
-  path: string, perfil = "infovariables", sheet?: string,
+  path: string, perfil = "infovariables", sheet?: string, name?: string,
 ): Promise<MetadataPlan> {
   return api<MetadataPlan>(`/metadata/plan`, {
     method: "POST",
-    body: JSON.stringify({ path, perfil, sheet }),
+    body: JSON.stringify({ path, perfil, sheet, name }),
   });
 }
 
@@ -230,11 +231,11 @@ export interface MetadataApplyEconomic {
 }
 export type MetadataApplyResult = MetadataApplyCatalog | MetadataApplyEconomic;
 export async function applyMetadata(
-  path: string, perfil = "infovariables", sheet?: string,
+  path: string, perfil = "infovariables", sheet?: string, name?: string,
 ): Promise<MetadataApplyResult> {
   return api<MetadataApplyResult>(`/metadata/apply`, {
     method: "POST",
-    body: JSON.stringify({ path, perfil, sheet }),
+    body: JSON.stringify({ path, perfil, sheet, name }),
   });
 }
 

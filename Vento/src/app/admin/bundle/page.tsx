@@ -301,7 +301,7 @@ export default function AdminBundlePage() {
               <ul className="ml-4 list-disc space-y-0.5">
                 <li><code>variables.h3.parquet</code> → crudos + <code>excluido</code>/<code>alerta</code> → <code>hexagon.variables</code>/<code>tipo_celda</code>.</li>
                 <li><code>criterios</code>/<code>subcriterios</code>/<code>mcda_agregado</code> → <code>hexagon.scores</code> + <code>score_general</code>.</li>
-                <li><code>variables_pon.h3.parquet</code> → <code>hexagon_variables_pon</code> (mismos códigos, valor ponderado; para "descargar crudos").</li>
+                <li><code>variables_pon.h3.parquet</code> → <code>hexagon_variables_pon</code> (mismos códigos, valor ponderado; para el descargar crudos del informe).</li>
                 <li><code>minmax_anchors.json</code> → rangos oficiales → <code>hexagon_meta</code>.</li>
               </ul>
             }
