@@ -10,6 +10,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRegulatory } from "../../Utils/contexts/RegulatoryContext";
+import { useVariables } from "../../Utils/contexts/VariablesContext";
 import {
   NORMA_ESTADO_META,
   REGULATORY_AUTHORITIES,
@@ -27,7 +28,8 @@ const INFO_NORMATIVA = [
 ];
 
 export default function RegulatoryModal({ onClose }: { onClose: () => void }) {
-  const { addToReport, setAddToReport, isNormaActive } = useRegulatory();
+  const { addToReport, setAddToReport } = useRegulatory();
+  const { isActive } = useVariables();
   const [allNormas, setAllNormas] = useState<Norma[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,9 +49,9 @@ export default function RegulatoryModal({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Solo las normas ACTIVAS (prendidas en la card de Dimensiones) entran al
-  // semáforo, al listado y al informe.
-  const normas = allNormas.filter((n) => isNormaActive(n.id));
+  // Solo las normas ACTIVAS (prendidas por switch en la dimensión regulatoria,
+  // vía VariablesContext) entran al semáforo, al listado y al informe.
+  const normas = allNormas.filter((n) => isActive(`norma:${n.id}`));
   const hidden = allNormas.length - normas.length;
   const sem = normasSemaforo(normas);
 
