@@ -86,20 +86,10 @@ export const VARIABLE_WEIGHTS: Record<string, number> = {
   "zomac": -0.4,
   "pdet": 0.4,
 
-  // ─── económica · Proyecciones (placeholder hasta datos reales) ─
-  "pib": 0.3,
-  "pib-per-capita": 0.3,
-  "ipc": -0.2,
-  "desempleo": -0.3,
-  "tasa-cambio": 0.1,
-  "precio-spot": 0.4,
-  "demanda-energia": 0.3,
-  "oferta-energia": 0.2,
-
-  // ─── Regulatoria ───────────────────────────────────────────────────
-  // EXCLUIDA del cálculo WLC (US-FB3-05 / feedback item 11) y hoy SIN variables
-  // (el cliente la dejó como "Falta"). `weightFor` devuelve 0 para lo que no
-  // esté aquí (ver `SCORABLE_DIMENSION_IDS` en variablesCatalog).
+  // ─── Económica y Regulatoria ───────────────────────────────────────
+  // AMBAS son INFORMATIVAS: no puntúan en el modelo (WLC). No llevan peso →
+  // `weightFor` devuelve 0 para sus variables/normas ("no aporta al cálculo"),
+  // igual que el resto de informativas (ver `INFORMATIVE_DIMENSION_IDS`).
 };
 
 /**
