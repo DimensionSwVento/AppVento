@@ -27,14 +27,14 @@ const INFO_NORMATIVA = [
 ];
 
 export default function RegulatoryModal({ onClose }: { onClose: () => void }) {
-  const { addToReport, setAddToReport } = useRegulatory();
-  const [normas, setNormas] = useState<Norma[]>([]);
+  const { addToReport, setAddToReport, isNormaActive } = useRegulatory();
+  const [allNormas, setAllNormas] = useState<Norma[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let alive = true;
     fetchNormas()
-      .then((n) => alive && setNormas(n))
+      .then((n) => alive && setAllNormas(n))
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
@@ -47,6 +47,10 @@ export default function RegulatoryModal({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  // Solo las normas ACTIVAS (prendidas en la card de Dimensiones) entran al
+  // semáforo, al listado y al informe.
+  const normas = allNormas.filter((n) => isNormaActive(n.id));
+  const hidden = allNormas.length - normas.length;
   const sem = normasSemaforo(normas);
 
   if (typeof document === "undefined") return null;
@@ -86,6 +90,18 @@ export default function RegulatoryModal({ onClose }: { onClose: () => void }) {
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <p className="text-[11px] text-gray-500">
             Marco normativo nacional aplicable al proyecto eólico.
+          </p>
+          {/* Origen y lógica (para que no parezca arbitrario): de dónde salen las
+              normas y por qué unas aparecen y otras no. */}
+          <p className="mt-2 rounded-md bg-[#cce1eeff]/40 px-3 py-2 text-[11px] leading-snug text-gray-600">
+            Estas normas son <b>informativas</b> (no puntúan). Provienen de las filas{" "}
+            <code>REG…</code> de <b>InfoVariables</b> (actualizador de metadatos → tabla
+            de normas) y se editan en <b>Admin · Normativa</b>. Solo se listan las que
+            dejaste <b>activas</b> en la card «Regulatoria» de Dimensiones
+            {hidden > 0 && (
+              <> — hay <b>{hidden}</b> apagada(s) que no se incluyen en el informe</>
+            )}
+            .
           </p>
 
           {loading ? (
