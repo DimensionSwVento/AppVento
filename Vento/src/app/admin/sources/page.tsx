@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import SideBar from "../../Components/layout/SideBar";
 import AdminNav from "../../Components/Admin/AdminNav";
+import QuickGuide from "../../Components/Admin/QuickGuide";
 import ConfirmDialog from "../../Components/ui/ConfirmDialog";
 import { useToast } from "../../Components/ui/Toast";
 import {
@@ -91,6 +92,36 @@ export default function AdminSourcesPage() {
             día los datos: cambia los que se modificaron y agrega los nuevos, sin
             borrar nada.
           </p>
+
+          <QuickGuide
+            intro="Cómo leer esta pantalla"
+            steps={[
+              {
+                titulo: "1 · Qué es",
+                texto: (
+                  <>El <b>registro</b> de cada fuente ingerida (máster, variables,
+                  normas, escenarios, turbinas): dónde vive el archivo, cuántas filas y
+                  el estado/fecha de su última carga.</>
+                ),
+              },
+              {
+                titulo: "2 · Actualizar",
+                texto: (
+                  <><b>Actualizar</b> re-lee la fuente y hace <b>upsert</b> (cambia +
+                  añade, no borra) → no frena la app. La carga <b>destructiva</b>
+                  (reemplazo total) es solo por consola.</>
+                ),
+              },
+              {
+                titulo: "3 · Dónde subir",
+                texto: (
+                  <>El <b>dato por hexágono</b> se sube en <b>Subir master</b>; los
+                  <b> metadatos</b> (InfoVariables + económico) en <b>Metadatos</b>.
+                  Aquí solo se ve el estado.</>
+                ),
+              },
+            ]}
+          />
 
           {loading ? (
             <div className="flex justify-center p-12">

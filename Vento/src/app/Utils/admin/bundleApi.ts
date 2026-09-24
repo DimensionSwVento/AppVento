@@ -206,6 +206,20 @@ export async function finalizeBundle(
   });
 }
 
+/** Ingesta DESTRUCTIVA en SUBPROCESO AISLADO (memoria propia): para másters
+ *  pesadas que en el worker tumbarían la API por OOM. Devuelve el pid al
+ *  instante; el estado se sigue en "Fuentes de datos" (data_source 'bundle':
+ *  updating → ok). Blue-green: la app no se frena durante la carga. */
+export async function applyBundleDetached(
+  root: string,
+  emplazamiento: "onshore" | "offshore" = "onshore",
+): Promise<{ pid: number; status: string; log: string; mem_cap_mb: number | null }> {
+  return api(`/apply-detached`, {
+    method: "POST",
+    body: JSON.stringify({ root, emplazamiento }),
+  });
+}
+
 /** Registro columna→clase. `estado` opcional: ok|pendiente|ignorada. */
 export async function fetchRegistryColumns(estado?: string): Promise<RegistryColumn[]> {
   if (!USE_BACKEND) return [];
