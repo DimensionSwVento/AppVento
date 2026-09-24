@@ -124,7 +124,7 @@ export default function AdminMetadatosPage() {
               <p>
                 Detalle del mapeo columna→BD en <code>docs/spec/modelo-datos-anidado.md
                 §11-ter</code>. Si una columna del catálogo no se reconoce, aparece en
-                "Omitidas" (no rompe nada). El panel económico ingiere las hojas
+                Omitidas (no rompe nada). El panel económico ingiere las hojas
                 <b> curadas</b> (RESUMEN1/PIB/PRECIOS/GENERACION/EMISIONES/EMPLEO).
               </p>
             }
