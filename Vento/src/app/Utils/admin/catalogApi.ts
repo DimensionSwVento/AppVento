@@ -156,7 +156,10 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
 // ── ACTUALIZADOR DE METADATOS (CSV/XLSX) + jerarquía (Fase 1 rediseño) ────────
 
-export interface MetadataPlan {
+// El actualizador AUTODETECTA el tipo de doc (un solo drag): catálogo
+// InfoVariables o panel económico. La respuesta se discrimina por `tipo`.
+export interface MetadataPlanCatalog {
+  tipo: "infovariables";
   perfil: string;
   sheet: string | null;
   rows: number;
@@ -164,6 +167,13 @@ export interface MetadataPlan {
   unmapped: { header: string }[];
   summary: { total: number; mapeadas: number; sin_mapear: number };
 }
+export interface MetadataPlanEconomic {
+  tipo: "economic";
+  sheets: { sheet: string; rol: "meta" | "curada" | "solo-bd" }[];
+  total: number;
+  curadas: number;
+}
+export type MetadataPlan = MetadataPlanCatalog | MetadataPlanEconomic;
 
 export interface HierarchyVariable {
   id: string; masterId: string; label: string; descripcion: string;
@@ -207,10 +217,18 @@ export async function planMetadata(
   });
 }
 
-/** Aplica el doc: upsert jerarquía + variables (concilia por master_id). */
-export interface MetadataApplyResult {
-  dimensiones: number; criterios: number; subcriterios: number; variables: number;
+/** Aplica el doc (autodetecta): upsert de la jerarquía + variables (catálogo) o
+ *  ingesta del panel económico → economic_series. Discriminado por `tipo`. */
+export interface MetadataApplyCatalog {
+  tipo: "infovariables";
+  dimensiones: number; criterios: number; subcriterios: number;
+  variables: number; normas: number;
 }
+export interface MetadataApplyEconomic {
+  tipo: "economic";
+  panels: number; rows: number; sheets: string[]; only_curated: boolean;
+}
+export type MetadataApplyResult = MetadataApplyCatalog | MetadataApplyEconomic;
 export async function applyMetadata(
   path: string, perfil = "infovariables", sheet?: string,
 ): Promise<MetadataApplyResult> {
@@ -268,6 +286,10 @@ export async function fetchEconomicScenarios(panel: string): Promise<number[]> {
     return [];
   }
 }
+
+// Nota: el panel económico NO tiene su propio drag. El actualizador de metadatos
+// autodetecta el panel_por_variable y rutea a /economic/apply (ver metadata_ingest
+// en el back). La lectura del panel para la app está en fetchEconomicSeries/…
 
 // ── VARIABLES / DATASETS (US08-01) ───────────────────────────────────────────
 export async function fetchVariables(tipo: VariableTipo): Promise<AdminVariable[]> {
