@@ -4,9 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import DimensionCard from "./DimensionCard";
 import EconomicModal from "./EconomicModal";
 import RegulatoryModal from "./RegulatoryModal";
-import RegulatoryCard from "./RegulatoryCard";
 import { useActiveEconomicVariables } from "../../Utils/contexts/EconomicContext";
-import { fetchMenuVariables } from "../../Utils/admin/catalogApi";
+import { fetchMenuVariables, fetchNormas } from "../../Utils/admin/catalogApi";
 import NextStepButton from "../ui/NextStepButton";
 import {
   DIMENSIONS,
@@ -56,12 +55,43 @@ export default function Dimensions() {
     };
   }, []);
 
+  // Normas regulatorias → variables informativas de la dimensión "regulatoria",
+  // para que se muestren como switches en su DimensionCard igual que las demás
+  // (informativas, no puntúan). Vienen del backend (InfoVariables / Admin·Normativa).
+  const [normaVars, setNormaVars] = useState<Variable[]>([]);
+  useEffect(() => {
+    let alive = true;
+    fetchNormas()
+      .then((ns) =>
+        alive &&
+        setNormaVars(
+          ns.map((n) => ({
+            id: `norma:${n.id}`,
+            masterId: n.id,
+            dimension: "regulatoria" as const,
+            criterio: "Marco normativo nacional",
+            label: n.nombre,
+            description: n.descripcion,
+            noCalculo: true,
+            iconKey: "lucide:Scale",
+          })),
+        ),
+      )
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Menú completo = informativas del catálogo + normas (regulatoria).
+  const allVars = useMemo(() => [...menuVars, ...normaVars], [menuVars, normaVars]);
+
   const filteredByDimension = useMemo(() => {
     const map = new Map<string, Variable[]>();
     for (const d of DIMENSIONS) {
       map.set(
         d.id,
-        menuVars.filter(
+        allVars.filter(
           (v) =>
             v.dimension === d.id &&
             matches(query, v) &&
@@ -70,7 +100,7 @@ export default function Dimensions() {
       );
     }
     return map;
-  }, [menuVars, query, nature]);
+  }, [allVars, query, nature]);
 
   return (
     <div className="flex flex-col h-full">
@@ -170,11 +200,23 @@ export default function Dimensions() {
             </button>
           )}
 
-          {/* Marco normativo (US04-05): regulatoria es informativa (no puntúa).
-              Cada norma se prende/apaga aquí; solo las activas van al modal y al
-              informe. El detalle completo se abre en el modal. */}
+          {/* Marco normativo (US04-05): la dimensión regulatoria se muestra como
+              una DimensionCard normal (arriba, con sus switches de normas). Este
+              botón solo ABRE el modal de referencia, igual que el de económica. */}
           {!query.trim() && (
-            <RegulatoryCard onOpen={() => setRegOpen(true)} />
+            <button
+              type="button"
+              onClick={() => setRegOpen(true)}
+              className="flex items-center justify-between rounded-md bg-white px-3 py-3 text-left shadow-sm transition-colors hover:bg-gray-50"
+            >
+              <span className="flex items-center gap-2 text-sm font-bold text-[#165170ff]">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M6 21V9l6-4 6 4v12M9 21v-6h6v6" />
+                </svg>
+                Regulatoria — Marco normativo
+              </span>
+              <span className="text-[11px] text-gray-400">abrir →</span>
+            </button>
           )}
         </div>
       </div>

@@ -143,18 +143,21 @@ export const DIMENSIONS: Dimension[] = [
 ];
 
 /**
- * Dimensiones que SÍ puntúan en el modelo multicriterio (WLC) — 4 en total.
- * "Regulatoria" queda fuera del cálculo y se muestra como información contextual.
+ * Dimensiones que SÍ puntúan en el modelo multicriterio (WLC) — 3 en total.
+ * "Económica" y "Regulatoria" quedan FUERA del cálculo (informativas): ayudan a
+ * la toma de decisiones pero no puntúan en el índice de idoneidad.
  */
 export const SCORABLE_DIMENSION_IDS: DimensionId[] = [
   "ambiental",
   "tecnica",
   "social",
-  "macroeconomica",
 ];
 
 /** Dimensiones informativas (no puntúan; se muestran como contexto). */
-export const INFORMATIVE_DIMENSION_IDS: DimensionId[] = ["regulatoria"];
+export const INFORMATIVE_DIMENSION_IDS: DimensionId[] = [
+  "macroeconomica",
+  "regulatoria",
+];
 
 /** `true` si la dimensión aporta al score general (WLC). */
 export function isScorableDimension(id: DimensionId): boolean {
@@ -292,21 +295,11 @@ export const VARIABLES: Variable[] = [
   { id: "zomac", masterId: "SOC-039-SR", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "ZOMAC", description: "Municipios definidos como Zonas Más Afectadas por el Conflicto Armado.", iconKey: "lucide:MapPinned" },
   { id: "pdet", masterId: "SOC-040-SER", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "PDET", description: "Municipios con Programas de Desarrollo con Enfoque Territorial; refleja condiciones históricas de conflicto y necesidades de articulación.", iconKey: "lucide:Flag" },
 
-  // ─── económica · Proyecciones · General (5) · sin IDs de la master ──
-  { id: "pib", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "PIB", description: "Proyección del Producto Interno Bruto.", iconKey: "lucide:TrendingUp" },
-  { id: "pib-per-capita", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "PIB per cápita", description: "Proyección del PIB por habitante.", iconKey: "lucide:TrendingUp" },
-  { id: "ipc", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "IPC", description: "Proyección del Índice de Precios al Consumidor.", iconKey: "lucide:Percent" },
-  { id: "desempleo", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "Desempleo", description: "Proyección de la tasa de desempleo.", iconKey: "lucide:UserX" },
-  { id: "tasa-cambio", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "Tasa de cambio (COP-USD)", description: "Proyección de la tasa de cambio peso-dólar.", iconKey: "lucide:DollarSign" },
-
-  // ─── económica · Proyecciones · Sector energético (3) · sin IDs ─────
-  { id: "precio-spot", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "Sector energético", label: "Precio spot (COP/kWh)", description: "Proyección del precio spot de la energía.", iconKey: "lucide:LineChart" },
-  { id: "demanda-energia", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "Sector energético", label: "Demanda de energía (kWh)", description: "Proyección de la demanda de energía.", iconKey: "lucide:Zap" },
-  { id: "oferta-energia", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "Sector energético", label: "Oferta de energía (kWh)", description: "Proyección de la oferta de energía.", iconKey: "lucide:Plug" },
-
-  // ─── REGULATORIA ────────────────────────────────────────────────────────
-  // Sin variables: el cliente la declaró como "Falta" (pendiente). La dimensión
-  // existe pero es informativa y hoy no aporta variables al modelo.
+  // ─── económica y REGULATORIA ────────────────────────────────────────────
+  // Económica y regulatoria son INFORMATIVAS (no pesan en el modelo): sus
+  // variables/normas viven en el MENÚ (`OPTIONAL_VARIABLES` + normas del backend),
+  // encendibles por switch como el resto de informativas. No van aquí (VARIABLES
+  // son las del modelo, siempre activas).
 ];
 
 // ════════════════════════════════════════════════════════════════════════
@@ -394,8 +387,17 @@ export const OPTIONAL_VARIABLES: Variable[] = [
   { id: "inclinaciones-politicas", masterId: "SOC-005-S", dimension: "social", criterio: "Social", label: "Inclinaciones políticas", description: "Ideología política predominante según la consulta nacional.", noCalculo: true, iconKey: "lucide:Vote" },
   { id: "riesgo-electoral", masterId: "SOC-004-SR", dimension: "social", criterio: "Social", label: "Riesgo electoral", description: "Indicadores de riesgo de fraude electoral y de violencia.", noCalculo: true, iconKey: "lucide:TriangleAlert" },
 
-  // ─── Económica (1) — sin contraparte ponderada ──────────────────────────
-  { id: "proyeccion-precio-spot", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", label: "Proyección precio spot energía", description: "Proyección a 10 años del precio del kWh negociado en bolsa.", noCalculo: true, iconKey: "lucide:TrendingUp" },
+  // ─── Económica (informativa · no puntúa) — proyecciones macro por escenario ─
+  // Encendibles por switch como cualquier informativa; el modal "Análisis
+  // prospectivo" grafica las que estén ACTIVAS (mismos ids que ECO_ID_TO_SERIES).
+  { id: "pib", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "PIB", description: "Proyección del Producto Interno Bruto por escenario de generación.", noCalculo: true, iconKey: "lucide:TrendingUp" },
+  { id: "ipc", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "IPC", description: "Proyección del Índice de Precios al Consumidor por escenario.", noCalculo: true, iconKey: "lucide:Percent" },
+  { id: "desempleo", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "Desempleo", description: "Proyección de la tasa de desempleo por escenario.", noCalculo: true, iconKey: "lucide:UserX" },
+  { id: "tasa-cambio", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "Tasa de cambio (COP-USD)", description: "Proyección de la tasa de cambio peso-dólar por escenario.", noCalculo: true, iconKey: "lucide:DollarSign" },
+  { id: "precio-spot", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "Sector energético", label: "Precio spot energía (COP/kWh)", description: "Proyección del precio spot del kWh negociado en bolsa por escenario.", noCalculo: true, iconKey: "lucide:LineChart" },
+  { id: "demanda-energia", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "Sector energético", label: "Demanda de energía (kWh)", description: "Proyección de la demanda de energía por escenario.", noCalculo: true, iconKey: "lucide:Zap" },
+  { id: "oferta-energia", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "Sector energético", label: "Oferta de energía (kWh)", description: "Proyección de la oferta de energía por escenario.", noCalculo: true, iconKey: "lucide:Plug" },
+  { id: "emisiones", masterId: "NA", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "Sector energético", label: "Emisiones (GEN)", description: "Proyección de emisiones del sector de generación por escenario.", noCalculo: true, iconKey: "lucide:Factory" },
 
   // ═══ A partir de aquí: duplican masterId con VARIABLES (ya pesan; esto es solo la tarjeta informativa) ═══
 

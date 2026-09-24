@@ -760,7 +760,7 @@ export default function Report() {
   // Solo las normas ACTIVAS (prendidas en la card de Dimensiones) entran al
   // informe, igual que en el modal de marco normativo.
   if (config.showRegulatoria && regulatory.addToReport) {
-    const activeNormas = normas.filter((no) => regulatory.isNormaActive(no.id));
+    const activeNormas = normas.filter((no) => activeVariables.has(`norma:${no.id}`));
     const sem = normasSemaforo(activeNormas);
     addSection("Dimensión regulatoria (Inf.)", (n) => [
       <div key="reg" className="text-[10px]">
