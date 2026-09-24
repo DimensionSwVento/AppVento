@@ -83,6 +83,7 @@ import {
 } from "../../Utils/report/regulatoryNorms";
 import { REPORT_SOURCE_LINKS } from "../../Utils/report/reportSources";
 import { compactHexes } from "../../Utils/historial/hexCodec";
+import { cellToChildren, cellToParent, getResolution } from "h3-js";
 import { useToast } from "../ui/Toast";
 import {
   useCaracteristicas,
@@ -1139,7 +1140,34 @@ export default function Report() {
     const esc = (s: string) =>
       s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-    const hexes = Array.from(selectedHexes).sort();
+    // Los datos por hexágono en BD SIEMPRE están a res 8. La selección puede estar
+    // a otra resolución (el piso de selección es res 7, y al acercarse el zoom se
+    // selecciona más fino, res > 8). Hay que normalizar a EXACTAMENTE res 8 —igual
+    // que el heatmap del informe— o `areaData` (res 8) no casa y todo sale "—":
+    //   res > 8  → celda padre res 8 (varias caen en la misma → dedup)
+    //   res == 8 → tal cual
+    //   res < 8  → hijos res 8 (celdas compactadas al guardar, res 6/7)
+    const DATA_H3_RES = 8;
+    const hexes = Array.from(
+      new Set(
+        Array.from(selectedHexes).flatMap((h) => {
+          const res = getResolution(h);
+          return res > DATA_H3_RES
+            ? [cellToParent(h, DATA_H3_RES)]
+            : res === DATA_H3_RES
+              ? [h]
+              : cellToChildren(h, DATA_H3_RES);
+        }),
+      ),
+    )
+      // Solo celdas con dato en BD (res 8): evita filas fantasma "—" al expandir
+      // hijos de una selección compactada (res < 8).
+      .filter((h) => areaData.has(h))
+      .sort();
+    if (hexes.length === 0) {
+      toast.error("La selección no tiene datos por hexágono a res 8 en el backend.");
+      return;
+    }
     const cols = VARIABLES.filter((v) => v.masterId !== "NA");
     const thS =
       "padding:4px 6px;border:1px solid #cbd5e1;background:#165170;color:#fff;font-weight:600;white-space:nowrap;";
