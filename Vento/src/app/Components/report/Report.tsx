@@ -13,7 +13,7 @@ import {
 import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
 import { useIsAdmin } from "../../Utils/useIsAdmin";
-import { fetchMasterStatus, fetchEscenarios, type AdminEscenario } from "../../Utils/admin/catalogApi";
+import { fetchMasterStatus, fetchEscenarios, fetchNormas, type AdminEscenario } from "../../Utils/admin/catalogApi";
 import { dbField, AuditDataLabel } from "../../Utils/audit";
 import {
   HEATMAP_DIMENSIONS,
@@ -79,6 +79,7 @@ import {
   REGULATORY_AUTHORITIES,
   REGULATORY_NORMS,
   normasSemaforo,
+  type Norma,
 } from "../../Utils/report/regulatoryNorms";
 import { REPORT_SOURCE_LINKS } from "../../Utils/report/reportSources";
 import { compactHexes } from "../../Utils/historial/hexCodec";
@@ -257,6 +258,20 @@ export default function Report() {
     let alive = true;
     fetchEscenarios()
       .then((e) => alive && setEscenarios(e))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Normas del marco normativo: se traen del catálogo (InfoVariables/Admin·
+  // Normativa) para que el informe muestre las MISMAS que el modal, no el
+  // template. Semilla = template → sin parpadeo mientras carga.
+  const [normas, setNormas] = useState<Norma[]>(REGULATORY_NORMS);
+  useEffect(() => {
+    let alive = true;
+    fetchNormas()
+      .then((n) => alive && n.length > 0 && setNormas(n))
       .catch(() => {});
     return () => {
       alive = false;
@@ -741,8 +756,11 @@ export default function Report() {
   }
 
   // Hoja regulatoria (informativa) — semáforo + normas + autoridades.
+  // Solo las normas ACTIVAS (prendidas en la card de Dimensiones) entran al
+  // informe, igual que en el modal de marco normativo.
   if (config.showRegulatoria && regulatory.addToReport) {
-    const sem = normasSemaforo();
+    const activeNormas = normas.filter((no) => regulatory.isNormaActive(no.id));
+    const sem = normasSemaforo(activeNormas);
     addSection("Dimensión regulatoria (Inf.)", (n) => [
       <div key="reg" className="text-[10px]">
         <div className="flex items-center gap-2">
@@ -788,7 +806,7 @@ export default function Report() {
           Normas aplicables al proyecto
         </h4>
         <ul className="mt-1 flex flex-col gap-1">
-          {REGULATORY_NORMS.map((no) => {
+          {activeNormas.map((no) => {
             const m = NORMA_ESTADO_META[no.estado];
             return (
               <li
