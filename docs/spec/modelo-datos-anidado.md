@@ -411,6 +411,14 @@ opcional para el usuario.
   EMISIONES/GENERACION/PRECIOS por escenario y año); el resto (GOB*/PSS*/CEDAD/
   RESULTADOSPOT) se **almacena** pero no necesariamente se renderiza — decisión de UX.
 
+**Ingesta por el actualizador de metadatos:**
+- **XLSX** → una fila por hoja (`list_sheets` con openpyxl); por defecto solo las
+  hojas **curadas**, el resto opcional.
+- **CSV suelto** → se ingiere como **panel único** (openpyxl NO lee CSV → no se
+  llama `list_sheets`); el **nombre del archivo** se usa como nombre de panel
+  (`economic_ingest.plan/apply(default_panel=…)`, propagado desde el front como
+  `body.name`).
+
 #### 6.3.1 Clasificación por hoja — qué es / dónde se usa
 
 Uso: **📊 App** = se muestra en el panel económico (US04-02) · **🗄️ BD** = se
@@ -460,7 +468,30 @@ ingiere y queda disponible (detalle/avanzado), no se pinta por defecto · **⚙�
   Requiere trámite / Requiere verificación, + descripción + URL. → `catalog_norma`
   (estados: aplica|tramite|verificacion|no-aplica).
 - **Regulación-Social / -Técnica / -Ambiental**: normas ligadas a variables
-  concretas (p.ej. `SOC-013-SR` resguardos → consulta previa; `AMB-001` RUNAP).
+  concretas (p.ej. `SOC-013-SR` resguardos → consulta previa; `AMB-001` RUNAP)
+  vía `catalog_norma.variable_ref`.
+
+**Ciclo de vida de una norma (informativa, no puntúa) — extremo a extremo:**
+
+1. **Ingesta** → filas `REG…` (o dimensión regulatoria) de InfoVariables entran por
+   el **actualizador de metadatos** (autodetección, §11-ter) → `catalog_norma`
+   (nombre, descripción, estado, `condicion`, `fuente`, `url_fuente`, `variable_ref`).
+2. **Edición** → CRUD en **Admin · Normativa** (`/normas`).
+3. **Activación** → card **«Regulatoria»** de la fase Dimensiones (`RegulatoryCard`):
+   un switch por norma. Estado en `RegulatoryContext` como conjunto de IDs
+   **desactivadas** (vacío = todas activas) → una norma nueva de metadatos entra
+   **activa** por defecto.
+4. **Modal de marco normativo** (`RegulatoryModal`, disparado desde la card): lista
+   SOLO las normas **activas** + semáforo calculado sobre ellas; indica cuántas
+   quedaron apagadas. Checkbox «Agregar esta sección al informe» = `addToReport`.
+5. **Informe/PDF** (`Report.tsx`): la hoja «Dimensión regulatoria» trae las normas
+   reales (`fetchNormas`, no el template) y muestra SOLO las **activas**. Gate:
+   `config.showRegulatoria && regulatory.addToReport` (mismo doble-gate intencional
+   que la económica; ver §6.3).
+
+> La regulatoria es informativa igual que las variables informativas: se prende/apaga
+> en Dimensiones y solo lo activo llega al modal y al informe. El template
+> `REGULATORY_NORMS` queda solo como semilla anti-parpadeo mientras carga la API.
 
 ---
 
