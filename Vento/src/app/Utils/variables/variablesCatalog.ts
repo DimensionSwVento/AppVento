@@ -143,18 +143,21 @@ export const DIMENSIONS: Dimension[] = [
 ];
 
 /**
- * Dimensiones que SÍ puntúan en el modelo multicriterio (WLC) — 4 en total.
- * "Regulatoria" queda fuera del cálculo y se muestra como información contextual.
+ * Dimensiones que SÍ puntúan en el modelo multicriterio (WLC) — 3 en total.
+ * "Económica" y "Regulatoria" quedan FUERA del cálculo (informativas): ayudan a
+ * la toma de decisiones pero no puntúan en el índice de idoneidad.
  */
 export const SCORABLE_DIMENSION_IDS: DimensionId[] = [
   "ambiental",
   "tecnica",
   "social",
-  "macroeconomica",
 ];
 
 /** Dimensiones informativas (no puntúan; se muestran como contexto). */
-export const INFORMATIVE_DIMENSION_IDS: DimensionId[] = ["regulatoria"];
+export const INFORMATIVE_DIMENSION_IDS: DimensionId[] = [
+  "macroeconomica",
+  "regulatoria",
+];
 
 /** `true` si la dimensión aporta al score general (WLC). */
 export function isScorableDimension(id: DimensionId): boolean {
