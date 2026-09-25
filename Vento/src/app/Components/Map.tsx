@@ -418,8 +418,12 @@ export default function MapView() {
     getFillColor: SELECTED_FILL,
     filled: true,
     stroked: false,
-    pickable: false,
-  }), [selectedArr, heatmapActive]);
+    // Debe participar en el picking durante la selección. Si el usuario
+    // cambia a una resolución más fina, esta capa queda encima de la nueva
+    // cuadrícula y conserva el H3 original (grande), permitiendo quitarlo al
+    // volver a clicar en vez de seleccionar el hexágono pequeño subyacente.
+    pickable: canSelect,
+  }), [selectedArr, heatmapActive, canSelect]);
 
   // Heatmap del informe (US06-HEAT): malla de hijos res-8 dentro del área
   // seleccionada (US06-HEAT-AC1) coloreados por un gradiente RADIAL desde

@@ -1,13 +1,45 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { AprincipalProvider } from "../Utils/AccionPrincipalContext";
 
 // DeckGL y MapLibre tocan WebGL/Canvas que jsdom no implementa.
 // Mock simple: renderizan un div con sus children para que el árbol React funcione.
 vi.mock("@deck.gl/react", () => ({
-  DeckGL: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="deckgl">{children}</div>
-  ),
+  DeckGL: ({
+    children,
+    layers,
+    onClick,
+  }: {
+    children: React.ReactNode;
+    layers: Array<{
+      id?: string;
+      data?: unknown[];
+      pickable?: boolean;
+    } | null>;
+    onClick?: (info: { object?: { h: string } }) => void;
+  }) => {
+    const selectedLayer = layers.find((layer) => layer?.id === "selected-hexes");
+    const selectedCount = Array.isArray(selectedLayer?.data)
+      ? selectedLayer.data.length
+      : 0;
+
+    return (
+      <div data-testid="deckgl">
+        <button
+          type="button"
+          data-testid="large-hex"
+          onClick={() => onClick?.({ object: { h: "83754efffffffff" } })}
+        >
+          Hexágono grande
+        </button>
+        <output data-testid="selected-count">{selectedCount}</output>
+        <output data-testid="selected-layer-pickable">
+          {String(selectedLayer?.pickable)}
+        </output>
+        {children}
+      </div>
+    );
+  },
 }));
 
 vi.mock("react-map-gl/maplibre", () => ({
@@ -57,5 +89,24 @@ describe("MapView", () => {
       </AprincipalProvider>
     );
     expect(screen.getByText(/cargando mapa/i)).toBeInTheDocument();
+  });
+
+  it("permite deseleccionar un hexágono grande al volver a clicar", () => {
+    render(
+      <AprincipalProvider>
+        <MapView />
+      </AprincipalProvider>
+    );
+
+    const largeHex = screen.getByTestId("large-hex");
+
+    fireEvent.click(largeHex);
+    expect(screen.getByTestId("selected-count")).toHaveTextContent("1");
+    expect(screen.getByTestId("selected-layer-pickable")).toHaveTextContent(
+      "true",
+    );
+
+    fireEvent.click(largeHex);
+    expect(screen.getByTestId("selected-count")).toHaveTextContent("0");
   });
 });
