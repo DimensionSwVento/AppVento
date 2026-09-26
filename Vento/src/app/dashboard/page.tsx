@@ -16,7 +16,7 @@ export default function AreaSelectionPage() {
   // Onboarding: UNA VEZ POR SESIÓN activa (sessionStorage). No se repite en cada
   // recarga de la misma sesión; vuelve a salir en una sesión nueva.
   const [showOnboarding, setShowOnboarding] = useState(false);
-  // Disclaimer al inicio (reunión): tras cerrar el onboarding, aparece el aviso
+  // Disclaimer al inicio (requisito de producto): tras cerrar el onboarding, aparece el aviso
   // legal en un flotante. Mismo texto que el informe → visible al inicio y al final.
   const [showDisclaimer, setShowDisclaimer] = useState(false);
 
