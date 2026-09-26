@@ -64,7 +64,7 @@ const UNIT_OVERRIDES: Record<string, string> = {
   "incidencia-delictiva": "índice",
   "desempeno-institucional": "índice",
   // económica
-  desempleo: "%",
+  inflacion: "%",
   ipc: "%",
 };
 

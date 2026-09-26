@@ -155,6 +155,8 @@ Técnicas usadas en la tercera entrega que conviene conocer antes de tocar el c�
 | ADR-013 | PDF generation lib (WeasyPrint / ReportLab / jsPDF) | ✅ Aceptado — el cliente permitió usar cualquiera a conveniencia del equipo |
 | [ADR-014](adr/ADR-014-validacion-per-tile-point-in-polygon.md) | Validación per-tile point-in-polygon (sin cache global de Colombia) | ✅ Aceptado |
 | ADR-015 | Catálogo aerogeneradores: JSON vs BE | ✅ Resuelto en reunión datos — el catálogo + restricciones se cubren en US05-AC1/AC2/AC3 |
+| [ADR-016](adr/ADR-016-provider-composer-reutilizable.md) | ProviderComposer reutilizable (evita "provider hell") | ✅ Aceptado |
+| [ADR-017](adr/ADR-017-fuente-unica-intervalos-variables.md) | Fuente única de intervalos (min–max) de variables ponderadas | ✅ Aceptado |
 
 ---
 

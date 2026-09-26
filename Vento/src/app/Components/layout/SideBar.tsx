@@ -5,6 +5,7 @@ import { useState, useSyncExternalStore } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useIsAdmin } from "../../Utils/useIsAdmin";
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
+import { PHASE_ORDER } from "../../Utils/usePhaseNav";
 import { usePathname, useRouter } from "next/navigation";
 
 // TEMPLATE — correo de soporte. Reemplazar por el real cuando el cliente lo defina.
@@ -33,12 +34,9 @@ export default function SideBar({
     getServerHydrationSnapshot,
   );
 
-  const ORDEN = [
-    "seleccion-area",
-    "caracteristicas",
-    "dimensiones",
-    "informe",
-  ] as const;
+  // Fuente ÚNICA del orden de fases (misma que el botón "Siguiente paso"): evita
+  // duplicar el orden y que diverjan stepper y navegación.
+  const ORDEN = PHASE_ORDER;
   const pasoActual = ORDEN.indexOf(accion as (typeof ORDEN)[number]);
   const haySeleccion = selectedHexes.size > 0;
   const esPasado = (paso: (typeof ORDEN)[number]) =>

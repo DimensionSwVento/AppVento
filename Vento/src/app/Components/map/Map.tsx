@@ -475,6 +475,19 @@ export default function MapView() {
   // multi-selección). El viento ya no se togglea aquí (vive en el desplegable
   // del Informe), así que este handler solo enciende/apaga símbolos.
   const handleSymbolToggle = toggleSymbol;
+  // En DIMENSIONES el menú de capas controla la VISIBILIDAD en el mapa, NO el
+  // estado de la variable: apagar una capa la oculta del mapa pero NUNCA apaga su
+  // switch (las de modelo son obligatorias y no deben romperse). Set de capas
+  // ocultas (override de visibilidad); vacío = todas las activas se ven.
+  const [hiddenLayers, setHiddenLayers] = useState<Set<string>>(new Set());
+  const toggleDimLayer = useCallback((id: string) => {
+    setHiddenLayers((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
   // Variables con "ver en mapa" desactivado en admin (US08-01): sus símbolos se
   // ocultan de la leyenda y del mapa. Semilla vacía → nada oculto por defecto.
   const [mapDisabledIds, setMapDisabledIds] = useState<Set<string>>(new Set());
@@ -495,6 +508,19 @@ export default function MapView() {
   const [symbolCells, setSymbolCells] = useState<Record<string, MapLayerCell[]>>(
     {},
   );
+  // Capas de variable EFECTIVAS (las que se pintan):
+  //  - Informe: las controla el menú "Capas del mapa" (`activeSymbols`).
+  //  - Dimensiones: las manda el SWITCH de la card (`activeVariables`), MENOS las
+  //    ocultadas desde el menú de capas (`hiddenLayers`). Así apagar una capa en el
+  //    menú la oculta del mapa sin tocar el switch de la variable (no rompe las
+  //    obligatorias).
+  const effectiveSymbols = useMemo(
+    () =>
+      accion === "dimensiones"
+        ? new Set([...activeVariables].filter((id) => !hiddenLayers.has(id)))
+        : activeSymbols,
+    [accion, activeVariables, hiddenLayers, activeSymbols],
+  );
   useEffect(() => {
     let alive = true;
     // Solo las variables de ÁREA cargan hex de cobertura; el viento (`heat`) es
@@ -502,7 +528,7 @@ export default function MapView() {
     const wanted = MAP_SYMBOLS.filter(
       (s) =>
         s.kind !== "heat" &&
-        activeSymbols.has(s.variableId) &&
+        effectiveSymbols.has(s.variableId) &&
         !mapDisabledIds.has(s.variableId),
     );
     Promise.all(
@@ -515,11 +541,11 @@ export default function MapView() {
     return () => {
       alive = false;
     };
-  }, [activeSymbols, mapDisabledIds]);
+  }, [effectiveSymbols, mapDisabledIds]);
 
   const symbolLayers = useMemo(() => {
     const active = MAP_SYMBOLS.filter(
-      (s) => activeSymbols.has(s.variableId) && !mapDisabledIds.has(s.variableId),
+      (s) => effectiveSymbols.has(s.variableId) && !mapDisabledIds.has(s.variableId),
     );
     // Capas de ÁREA (protegidas, resguardos, nodos…): hex de cobertura con
     // relleno SUAVE del color de la variable. (El viento NO va aquí: es un mapa
@@ -583,7 +609,7 @@ export default function MapView() {
         }),
     );
     return [...polys, ...paths, ...icons];
-  }, [activeSymbols, mapDisabledIds, symbolCells]);
+  }, [effectiveSymbols, mapDisabledIds, symbolCells]);
 
   // Dibujo del POLÍGONO en curso (US03-04): vértices (puntos) + contorno. Se
   // materializa en hexágonos al "Aplicar" (ver `applyPolygon`).
@@ -1030,6 +1056,69 @@ export default function MapView() {
         <SelectedVariablesChips />
       )}
 
+      {/* Capas del mapa en DIMENSIONES (petición cliente): a la IZQUIERDA. Lista
+          solo las variables seleccionadas (switches) con representación en el mapa.
+          Togglear aquí controla la VISIBILIDAD de la capa (`hiddenLayers`), NO el
+          switch de la variable → no rompe las obligatorias del modelo. */}
+      {accion === "dimensiones" && (
+        <div className="absolute top-3 left-3 z-10 w-44">
+          <MapSymbolsLegend
+            active={effectiveSymbols}
+            onToggle={toggleDimLayer}
+            disabled={mapDisabledIds}
+            selected={activeVariables}
+          />
+        </div>
+      )}
+
+      {/* Navegación del mapa (Dimensiones): abajo-derecha, en fila y compactos.
+          Ver el país (vista completa) / centrar en la selección / alejar / acercar. */}
+      {accion === "dimensiones" && (
+        <div className="absolute bottom-4 right-4 z-10 flex flex-row gap-1">
+          <button
+            onClick={resetView}
+            title="Ver el país (vista completa)"
+            aria-label="Ver el país"
+            className="flex h-7 w-7 items-center justify-center rounded bg-white text-[#165170ff] shadow ring-1 ring-[#165170ff]/30 transition-colors hover:bg-[#cce1ee]/40"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="9" />
+              <path strokeLinecap="round" d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18" />
+            </svg>
+          </button>
+          {selectedHexes.size > 0 && (
+            <button
+              onClick={zoomToSelection}
+              title="Centrar en la selección"
+              aria-label="Centrar en la selección"
+              className="flex h-7 w-7 items-center justify-center rounded bg-white text-[#165170ff] shadow ring-1 ring-[#165170ff]/30 transition-colors hover:bg-[#cce1ee]/40"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="7" />
+                <path strokeLinecap="round" d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+                <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+              </svg>
+            </button>
+          )}
+          <button
+            onClick={zoomOut}
+            title="Alejar"
+            aria-label="Alejar"
+            className="flex h-7 w-7 items-center justify-center rounded bg-[#165170ff] text-base font-bold text-white shadow transition-colors hover:bg-[#1e6a8c]"
+          >
+            −
+          </button>
+          <button
+            onClick={zoomIn}
+            title="Acercar"
+            aria-label="Acercar"
+            className="flex h-7 w-7 items-center justify-center rounded bg-[#165170ff] text-base font-bold text-white shadow transition-colors hover:bg-[#1e6a8c]"
+          >
+            +
+          </button>
+        </div>
+      )}
+
       {/* El viento reusa la leyenda de idoneidad del Informe (`HeatmapLegend`),
           así que se retiró la mini-leyenda `WindHeatmapLegend` (era redundante:
           otro termómetro de color) — instrucción cliente Sprint 4. */}
@@ -1063,10 +1152,10 @@ export default function MapView() {
         // Pincel: al pintar se desactiva el paneo por arrastre (dragPan) para que
         // el arrastre pinte hexes en vez de mover el mapa. El resto (zoom, etc.) sigue.
         controller={true}
-        // Las capas de símbolo (área/punto) SOLO se pintan en Informe: su menú
-        // "Capas del mapa" vive ahí (instrucción cliente Sprint 4). En otras
-        // fases no se renderizan aunque queden activas.
-        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer, ...(accion === "informe" ? symbolLayers : []), ...polygonDrawLayers]}
+        // Las capas de símbolo (área/punto) se pintan en Informe Y en Dimensiones
+        // (petición cliente): en Informe las controla el menú "Capas del mapa";
+        // en Dimensiones, los switches de las cards. En las demás fases no.
+        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer, ...(accion === "informe" || accion === "dimensiones" ? symbolLayers : []), ...polygonDrawLayers]}
         // US-FB3-03 (feedback item 8): nunca "not-allowed". Fuera de la fase de
         // selección el hex NO es inerte — en el informe se consulta con el
         // tooltip —, y el cursor de "prohibido" (muy marcado en Firefox/Windows)
