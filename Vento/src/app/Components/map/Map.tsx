@@ -97,7 +97,7 @@ export default function MapView() {
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const { accion, selectedHexes, setSelectedHexes, focusNonce } =
     useAprincipal();
-  const { activeVariables, toggleVariable } = useVariables();
+  const { activeVariables } = useVariables();
   const { activeDimension, setActiveDimension } = useHeatmapDimension();
   const toast = useToast();
   const canSelect = accion === "seleccion-area";
@@ -475,6 +475,19 @@ export default function MapView() {
   // multi-selección). El viento ya no se togglea aquí (vive en el desplegable
   // del Informe), así que este handler solo enciende/apaga símbolos.
   const handleSymbolToggle = toggleSymbol;
+  // En DIMENSIONES el menú de capas controla la VISIBILIDAD en el mapa, NO el
+  // estado de la variable: apagar una capa la oculta del mapa pero NUNCA apaga su
+  // switch (las de modelo son obligatorias y no deben romperse). Set de capas
+  // ocultas (override de visibilidad); vacío = todas las activas se ven.
+  const [hiddenLayers, setHiddenLayers] = useState<Set<string>>(new Set());
+  const toggleDimLayer = useCallback((id: string) => {
+    setHiddenLayers((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
   // Variables con "ver en mapa" desactivado en admin (US08-01): sus símbolos se
   // ocultan de la leyenda y del mapa. Semilla vacía → nada oculto por defecto.
   const [mapDisabledIds, setMapDisabledIds] = useState<Set<string>>(new Set());
@@ -495,12 +508,19 @@ export default function MapView() {
   const [symbolCells, setSymbolCells] = useState<Record<string, MapLayerCell[]>>(
     {},
   );
-  // Capas de variable EFECTIVAS: en Informe las controla el menú "Capas del mapa"
-  // (`activeSymbols`); en Dimensiones las controlan los SWITCHES de las cards
-  // (`activeVariables`) → lo seleccionable en el mapa se activa por switch y se
-  // refleja en el mapa (petición cliente). Mismo pipeline de capas para ambas.
-  const effectiveSymbols =
-    accion === "dimensiones" ? activeVariables : activeSymbols;
+  // Capas de variable EFECTIVAS (las que se pintan):
+  //  - Informe: las controla el menú "Capas del mapa" (`activeSymbols`).
+  //  - Dimensiones: las manda el SWITCH de la card (`activeVariables`), MENOS las
+  //    ocultadas desde el menú de capas (`hiddenLayers`). Así apagar una capa en el
+  //    menú la oculta del mapa sin tocar el switch de la variable (no rompe las
+  //    obligatorias).
+  const effectiveSymbols = useMemo(
+    () =>
+      accion === "dimensiones"
+        ? new Set([...activeVariables].filter((id) => !hiddenLayers.has(id)))
+        : activeSymbols,
+    [accion, activeVariables, hiddenLayers, activeSymbols],
+  );
   useEffect(() => {
     let alive = true;
     // Solo las variables de ÁREA cargan hex de cobertura; el viento (`heat`) es
@@ -1036,19 +1056,66 @@ export default function MapView() {
         <SelectedVariablesChips />
       )}
 
-      {/* Capas del mapa en DIMENSIONES (petición cliente): mismo menú que en el
-          Informe, pero aquí las capas se activan por los SWITCHES de las cards
-          (`activeVariables`); togglear aquí = togglear el switch (`toggleVariable`)
-          → se refleja en el mapa y en la card. Solo lista las variables con
-          representación en el mapa (MAP_SYMBOLS). */}
+      {/* Capas del mapa en DIMENSIONES (petición cliente): a la IZQUIERDA. Lista
+          solo las variables seleccionadas (switches) con representación en el mapa.
+          Togglear aquí controla la VISIBILIDAD de la capa (`hiddenLayers`), NO el
+          switch de la variable → no rompe las obligatorias del modelo. */}
       {accion === "dimensiones" && (
-        <div className="absolute top-3 right-3 z-10 w-44">
+        <div className="absolute top-3 left-3 z-10 w-44">
           <MapSymbolsLegend
             active={effectiveSymbols}
-            onToggle={toggleVariable}
+            onToggle={toggleDimLayer}
             disabled={mapDisabledIds}
             selected={activeVariables}
           />
+        </div>
+      )}
+
+      {/* Navegación del mapa (Dimensiones): abajo-derecha, en fila y compactos.
+          Ver el país (vista completa) / centrar en la selección / alejar / acercar. */}
+      {accion === "dimensiones" && (
+        <div className="absolute bottom-4 right-4 z-10 flex flex-row gap-1">
+          <button
+            onClick={resetView}
+            title="Ver el país (vista completa)"
+            aria-label="Ver el país"
+            className="flex h-7 w-7 items-center justify-center rounded bg-white text-[#165170ff] shadow ring-1 ring-[#165170ff]/30 transition-colors hover:bg-[#cce1ee]/40"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="9" />
+              <path strokeLinecap="round" d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18" />
+            </svg>
+          </button>
+          {selectedHexes.size > 0 && (
+            <button
+              onClick={zoomToSelection}
+              title="Centrar en la selección"
+              aria-label="Centrar en la selección"
+              className="flex h-7 w-7 items-center justify-center rounded bg-white text-[#165170ff] shadow ring-1 ring-[#165170ff]/30 transition-colors hover:bg-[#cce1ee]/40"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="7" />
+                <path strokeLinecap="round" d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+                <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+              </svg>
+            </button>
+          )}
+          <button
+            onClick={zoomOut}
+            title="Alejar"
+            aria-label="Alejar"
+            className="flex h-7 w-7 items-center justify-center rounded bg-[#165170ff] text-base font-bold text-white shadow transition-colors hover:bg-[#1e6a8c]"
+          >
+            −
+          </button>
+          <button
+            onClick={zoomIn}
+            title="Acercar"
+            aria-label="Acercar"
+            className="flex h-7 w-7 items-center justify-center rounded bg-[#165170ff] text-base font-bold text-white shadow transition-colors hover:bg-[#1e6a8c]"
+          >
+            +
+          </button>
         </div>
       )}
 

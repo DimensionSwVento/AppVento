@@ -44,6 +44,7 @@ export const VARIABLE_WEIGHTS: Record<string, number> = {
   "batimetria-offshore": 0.4,
   "pendiente-terreno": -0.5,
   "litologia": 0.2,
+  "fondos-marinos": 0.2, // offshore, separada de litología (AMB-029-A)
   "elevacion": 0.3,
 
   // ─── Técnica · Recurso eólico ──────────────────────────────────────

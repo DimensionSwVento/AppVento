@@ -15,14 +15,14 @@ vi.mock("@/app/Utils/contexts/AccionPrincipalContext", () => ({
   ),
 }));
 
-import Providers from "@/app/Providers";
+import AppProvider from "@/app/AppProvider";
 
-describe("Providers", () => {
+describe("AppProvider", () => {
   it("renders children within SessionProvider and AprincipalProvider", () => {
     render(
-      <Providers>
+      <AppProvider>
         <span data-testid="child">Hello</span>
-      </Providers>,
+      </AppProvider>,
     );
 
     expect(screen.getByTestId("session-provider")).toBeInTheDocument();
@@ -32,9 +32,9 @@ describe("Providers", () => {
 
   it("nests AprincipalProvider inside SessionProvider", () => {
     render(
-      <Providers>
+      <AppProvider>
         <span>nested</span>
-      </Providers>,
+      </AppProvider>,
     );
 
     const sessionProvider = screen.getByTestId("session-provider");

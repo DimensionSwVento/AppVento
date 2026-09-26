@@ -79,7 +79,7 @@ describe("Report (US06) — pantalla de informe (hojas A4)", () => {
     });
   });
 
-  it("renderiza el inline: título, las 4 dimensiones puntuables y las acciones", () => {
+  it("renderiza el inline: título, las 3 dimensiones puntuables y las acciones", () => {
     render(
       <Wrapper>
         <Report />
@@ -88,11 +88,11 @@ describe("Report (US06) — pantalla de informe (hojas A4)", () => {
     expect(
       screen.getByRole("heading", { name: /Idoneidad eólica/i }),
     ).toBeInTheDocument();
-    // Las 4 dimensiones PUNTUABLES aparecen en las barras del resumen inline.
+    // Las 3 dimensiones PUNTUABLES aparecen en las barras del resumen inline.
+    // La económica y la regulatoria son INFORMATIVAS (no puntúan) → no van aquí.
     expect(screen.getAllByText("Ambiental").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Técnica").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Social").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("económica").length).toBeGreaterThanOrEqual(1);
     expect(
       screen.getByRole("button", { name: /Previsualizar/i }),
     ).toBeInTheDocument();
