@@ -8,6 +8,7 @@
  * actualiza en vivo (CA10).
  */
 import type { ReportChartType, ReportConfig } from "../../Utils/report/reportConfig";
+import { useIsAdmin } from "../../Utils/useIsAdmin";
 
 interface ReportConfigPanelProps {
   config: ReportConfig;
@@ -32,6 +33,7 @@ export default function ReportConfigPanel({
   onToggleDim,
   vertical = false,
 }: ReportConfigPanelProps) {
+  const isAdmin = useIsAdmin();
   const activeDims = scorableDims.filter((d) => config.dims[d.id]).length;
 
   return (
@@ -143,6 +145,17 @@ export default function ReportConfigPanel({
               checked={config.showSources}
               onChange={() => onPatch({ showSources: !config.showSources })}
             />
+            {/* Solo admin: intervalos de ponderación (peso + rango real) para que
+                los testers verifiquen los datos. No visible para el usuario final. */}
+            {isAdmin && (
+              <Check
+                label="Intervalos de ponderación (admin)"
+                checked={config.showWeightRanges}
+                onChange={() =>
+                  onPatch({ showWeightRanges: !config.showWeightRanges })
+                }
+              />
+            )}
           </div>
         </div>
       </div>

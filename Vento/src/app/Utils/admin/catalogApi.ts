@@ -626,6 +626,31 @@ export async function fetchDataSources(): Promise<DataSource[]> {
   return _sourcesTemplate.map((s) => ({ ...s }));
 }
 
+/**
+ * Rangos (min–max) REALES por variable desde el backend (`hexagon_meta`, vía
+ * `GET /api/tiles/variables`). Para verificación admin en el informe. Clave =
+ * nombre de columna de la master. Vacío en modo template (no hay backend) → la
+ * sección admin muestra "s/d" en vez de inventar intervalos.
+ */
+export async function fetchVariableRanges(): Promise<
+  Record<string, { min: number; max: number }>
+> {
+  if (!USE_BACKEND) return {};
+  try {
+    const res = await fetch(`/api/tiles/variables`);
+    const data = await res.json();
+    const out: Record<string, { min: number; max: number }> = {};
+    for (const v of data?.variables ?? []) {
+      if (v?.name && v?.range && typeof v.range.min === "number") {
+        out[v.name] = { min: v.range.min, max: v.range.max };
+      }
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 /** (Re)ingiere un doc por su id. Lanza si falla (para avisar en el panel). */
 export async function requestIngest(sourceId: string): Promise<DataSource> {
   if (USE_BACKEND) {
