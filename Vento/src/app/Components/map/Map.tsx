@@ -97,7 +97,7 @@ export default function MapView() {
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const { accion, selectedHexes, setSelectedHexes, focusNonce } =
     useAprincipal();
-  const { activeVariables } = useVariables();
+  const { activeVariables, toggleVariable } = useVariables();
   const { activeDimension, setActiveDimension } = useHeatmapDimension();
   const toast = useToast();
   const canSelect = accion === "seleccion-area";
@@ -495,6 +495,12 @@ export default function MapView() {
   const [symbolCells, setSymbolCells] = useState<Record<string, MapLayerCell[]>>(
     {},
   );
+  // Capas de variable EFECTIVAS: en Informe las controla el menú "Capas del mapa"
+  // (`activeSymbols`); en Dimensiones las controlan los SWITCHES de las cards
+  // (`activeVariables`) → lo seleccionable en el mapa se activa por switch y se
+  // refleja en el mapa (petición cliente). Mismo pipeline de capas para ambas.
+  const effectiveSymbols =
+    accion === "dimensiones" ? activeVariables : activeSymbols;
   useEffect(() => {
     let alive = true;
     // Solo las variables de ÁREA cargan hex de cobertura; el viento (`heat`) es
@@ -502,7 +508,7 @@ export default function MapView() {
     const wanted = MAP_SYMBOLS.filter(
       (s) =>
         s.kind !== "heat" &&
-        activeSymbols.has(s.variableId) &&
+        effectiveSymbols.has(s.variableId) &&
         !mapDisabledIds.has(s.variableId),
     );
     Promise.all(
@@ -515,11 +521,11 @@ export default function MapView() {
     return () => {
       alive = false;
     };
-  }, [activeSymbols, mapDisabledIds]);
+  }, [effectiveSymbols, mapDisabledIds]);
 
   const symbolLayers = useMemo(() => {
     const active = MAP_SYMBOLS.filter(
-      (s) => activeSymbols.has(s.variableId) && !mapDisabledIds.has(s.variableId),
+      (s) => effectiveSymbols.has(s.variableId) && !mapDisabledIds.has(s.variableId),
     );
     // Capas de ÁREA (protegidas, resguardos, nodos…): hex de cobertura con
     // relleno SUAVE del color de la variable. (El viento NO va aquí: es un mapa
@@ -583,7 +589,7 @@ export default function MapView() {
         }),
     );
     return [...polys, ...paths, ...icons];
-  }, [activeSymbols, mapDisabledIds, symbolCells]);
+  }, [effectiveSymbols, mapDisabledIds, symbolCells]);
 
   // Dibujo del POLÍGONO en curso (US03-04): vértices (puntos) + contorno. Se
   // materializa en hexágonos al "Aplicar" (ver `applyPolygon`).
@@ -1030,6 +1036,22 @@ export default function MapView() {
         <SelectedVariablesChips />
       )}
 
+      {/* Capas del mapa en DIMENSIONES (petición cliente): mismo menú que en el
+          Informe, pero aquí las capas se activan por los SWITCHES de las cards
+          (`activeVariables`); togglear aquí = togglear el switch (`toggleVariable`)
+          → se refleja en el mapa y en la card. Solo lista las variables con
+          representación en el mapa (MAP_SYMBOLS). */}
+      {accion === "dimensiones" && (
+        <div className="absolute top-3 right-3 z-10 w-44">
+          <MapSymbolsLegend
+            active={effectiveSymbols}
+            onToggle={toggleVariable}
+            disabled={mapDisabledIds}
+            selected={activeVariables}
+          />
+        </div>
+      )}
+
       {/* El viento reusa la leyenda de idoneidad del Informe (`HeatmapLegend`),
           así que se retiró la mini-leyenda `WindHeatmapLegend` (era redundante:
           otro termómetro de color) — instrucción cliente Sprint 4. */}
@@ -1063,10 +1085,10 @@ export default function MapView() {
         // Pincel: al pintar se desactiva el paneo por arrastre (dragPan) para que
         // el arrastre pinte hexes en vez de mover el mapa. El resto (zoom, etc.) sigue.
         controller={true}
-        // Las capas de símbolo (área/punto) SOLO se pintan en Informe: su menú
-        // "Capas del mapa" vive ahí (instrucción cliente Sprint 4). En otras
-        // fases no se renderizan aunque queden activas.
-        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer, ...(accion === "informe" ? symbolLayers : []), ...polygonDrawLayers]}
+        // Las capas de símbolo (área/punto) se pintan en Informe Y en Dimensiones
+        // (petición cliente): en Informe las controla el menú "Capas del mapa";
+        // en Dimensiones, los switches de las cards. En las demás fases no.
+        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer, ...(accion === "informe" || accion === "dimensiones" ? symbolLayers : []), ...polygonDrawLayers]}
         // US-FB3-03 (feedback item 8): nunca "not-allowed". Fuera de la fase de
         // selección el hex NO es inerte — en el informe se consulta con el
         // tooltip —, y el cursor de "prohibido" (muy marcado en Firefox/Windows)
