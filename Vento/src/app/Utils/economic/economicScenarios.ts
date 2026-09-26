@@ -72,8 +72,10 @@ export const ECO_ID_TO_SERIES: Record<string, { panel: string; cat1: string }> =
   ipc: { panel: "RESUMEN1", cat1: "IPC" },
   "tasa-cambio": { panel: "RESUMEN1", cat1: "TASA DE CAMBIO" },
   "demanda-energia": { panel: "RESUMEN1", cat1: "DEMANDA GEN" },
-  desempleo: { panel: "EMPLEO", cat1: "TASA DE DESEMPLEO" },
   emisiones: { panel: "EMISIONES", cat1: "EMISIONES GEN" },
+  // `inflacion` (ECO-004) no tiene serie directa en el panel (se deriva del IPC) →
+  // sin mapeo: no grafica serie (honesto, no se finge). `desempleo` se retiró: ya
+  // no es variable económica en InfoVariables c.
 };
 
 /** Hash estable de una cadena → semilla determinista para el template. */
