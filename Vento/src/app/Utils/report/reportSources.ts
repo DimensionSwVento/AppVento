@@ -1,8 +1,13 @@
 /**
  * Fuentes de datos con VERSIÓN y LINK (US06-03, tabla de fuentes del informe).
- * TEMPLATE hasta que el admin de fuentes (US08) entregue la lista oficial: la
- * tabla y el emplazamiento no cambian, solo esta lista. Cada fila apunta a la
- * versión/portal del que se extraen las variables.
+ *
+ * ⚠️ SOLO MODO TEMPLATE / PRUEBA. ⚠️
+ * En MODO BACKEND la tabla de fuentes del informe se DERIVA de las variables
+ * (`fuente` + `url` de cada variable), que vienen de BD tras la subida de
+ * metadatos (`catalog_variable.fuente` / `url_fuente`, InfoVariables). Esta lista
+ * hardcoded NO se usa en backend salvo, opcionalmente, para enriquecer la
+ * `version` por coincidencia laxa de nombre (`sourceVersion`), que no se almacena
+ * por variable. Ver `Report.tsx` (`sourceRows`).
  */
 export interface ReportSourceLink {
   fuente: string;

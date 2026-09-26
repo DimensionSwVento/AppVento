@@ -1,21 +1,24 @@
+import { USE_PLACEHOLDER_FALLBACK } from "../projectData";
+
 /**
- * Pesos signados por variable para el modelo multicriterio (placeholder).
+ * Pesos signados por variable para el modelo multicriterio.
  *
- * Convención:
- * - **Positivo** → contribución aditiva (a mayor score de la variable, mayor idoneidad)
- * - **Negativo** → contribución penalizadora (a mayor score, menor idoneidad)
+ * ⚠️ ESTE MAPA HARDCODED ES SOLO PARA EL MODO TEMPLATE / PRUEBA. ⚠️
+ * YA EXISTE la conexión a BD: en modo backend (`USE_BACKEND`) los pesos REALES se
+ * hidratan del catálogo (`applyDbWeights`, `catalog_variable.polaridad × peso`) y
+ * mandan. DECISIÓN: con el backend prendido NO se usan valores falsos/template →
+ * `weightFor` NO cae al template (devuelve el de BD o 0). Este `VARIABLE_WEIGHTS`
+ * solo se usa como semilla para probar sin backend.
+ * (Los comentarios anteriores que decían "cuando exista la fuente real se
+ *  reemplazará por un fetch" quedaron OBSOLETOS: eso ya está implementado.)
+ *
+ * Convención de signo (aplica a ambos orígenes, BD y template):
+ * - **Positivo** → aditivo (a mayor score de la variable, mayor idoneidad)
+ * - **Negativo** → penalizador (a mayor score, menor idoneidad)
  * - **Magnitud** → cuánto pesa esa variable frente a las demás
  *
- * Estos valores son hardcoded mientras el cliente no entregue la tabla
- * definitiva en BD. Cuando exista la fuente real, se reemplaza este módulo
- * por un fetch al backend manteniendo la misma forma (`Record<string, number>`)
- * para que el resto del código no cambie.
- *
- * Ajustar números aquí es la forma de probar escenarios en local sin tocar
- * el catálogo ni el cálculo agregado del heatmap.
- *
- * Variables que NO aparecen aquí → peso 0 (no aportan al agregado hasta que
- * el cliente confirme su polaridad).
+ * Ajustar números aquí solo afecta al MODO TEMPLATE (probar escenarios en local
+ * sin backend). Variables que NO aparecen → peso 0.
  */
 export const VARIABLE_WEIGHTS: Record<string, number> = {
   // ─── Ambiental · Especies bióticas — sensibilidades ecológicas restan ─
@@ -41,6 +44,7 @@ export const VARIABLE_WEIGHTS: Record<string, number> = {
   "batimetria-offshore": 0.4,
   "pendiente-terreno": -0.5,
   "litologia": 0.2,
+  "fondos-marinos": 0.2, // offshore, separada de litología (AMB-029-A)
   "elevacion": 0.3,
 
   // ─── Técnica · Recurso eólico ──────────────────────────────────────
@@ -119,9 +123,12 @@ export function applyDbWeights(
 
 /**
  * Devuelve el peso signado para una variable. Prefiere el valor de BD si se
- * hidrató; si no, el template. 0 si no está en ninguno (no aporta al agregado).
+ * hidrató. En modo backend NO cae al template (decisión: sin valores falsos con
+ * el backend prendido) → devuelve 0 si BD no lo trae. Solo en modo template usa
+ * el `VARIABLE_WEIGHTS` hardcoded. 0 = no aporta al agregado.
  */
 export function weightFor(variableId: string): number {
   if (dbWeights && variableId in dbWeights) return dbWeights[variableId];
+  if (!USE_PLACEHOLDER_FALLBACK) return 0; // backend ON → sin fallback a template
   return VARIABLE_WEIGHTS[variableId] ?? 0;
 }

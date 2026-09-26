@@ -15,6 +15,7 @@ import {
   ApiError,
   COLUMN_KINDS,
   type BundlePlan,
+  type ChunkPlan,
   type PlanColumn,
 } from "../../Utils/admin/bundleApi";
 
@@ -68,6 +69,16 @@ export default function AdminBundlePage() {
   // Archivos elegidos/arrastrados que esperan el botón "Enviar" (no se suben
   // solos: el admin confirma qué manda antes de arrancar la subida).
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  // Nombres/rutas de lo que el admin ELIGIÓ subir (para avisar cuáles quedan
+  // fuera de la ingesta). Se compara con lo que el chunk plan realmente procesa.
+  const [uploadedNames, setUploadedNames] = useState<string[]>([]);
+  // Confirmación pre-ingesta: qué archivos entran (`ingested`) y cuáles no
+  // (`leftOut`). El chunk plan ya obtenido se guarda para continuar tras confirmar.
+  const [confirmIngest, setConfirmIngest] = useState<{
+    chunkPlan: ChunkPlan;
+    ingested: string[];
+    leftOut: string[];
+  } | null>(null);
 
   // FASE 2: clasifica las columnas del bundle ya subido. `root` es interno (lo
   // fija la subida), nunca se escribe a mano.
@@ -106,9 +117,17 @@ export default function AdminBundlePage() {
     setUploadPct(0);
     setPlan(null);
     try {
+      // Nombres/rutas de lo que se ELIGIÓ (para comparar luego con lo que la
+      // ingesta realmente procesa y avisar qué queda fuera).
+      const chosen = pendingFiles.map(
+        (f) =>
+          (f as File & { webkitRelativePath?: string }).webkitRelativePath ||
+          f.name,
+      );
       const r = await uploadBundle(pendingFiles, setUploadPct);
       setRoot(r.root);
       setPendingFiles([]);
+      setUploadedNames(chosen);
       toast.success(`${r.files} archivos subidos`);
       await verPlan(r.root);
     } catch (e) {
@@ -121,71 +140,94 @@ export default function AdminBundlePage() {
     }
   }, [pendingFiles, toast, verPlan]);
 
-  // Ingesta POR PAQUETES: pide el plan (row-groups) y los ingiere de forma
-  // CONSECUTIVA, cada uno rápido y con memoria acotada. Va reportando progreso
-  // (filas) y un registro por lote (rows/ms/estado); al final, un resumen.
-  const aplicar = useCallback(async () => {
-    setApplying(true);
-    setIngestBusy(false);
-    setResult(null);
-    setChunkLog([]);
-    const r = root.trim();
-    try {
-      const plan = await fetchChunkPlan(r);
-      setProgress({ done: 0, total: plan.total_rows });
+  // Ingesta POR PAQUETES (loop real): ingiere de forma CONSECUTIVA cada row-group
+  // del chunk plan YA obtenido, con progreso y registro por lote; al final, un
+  // resumen + registro de versión. Se separa de `aplicar` para poder confirmar
+  // antes (modal de archivos que quedan fuera).
+  const runIngest = useCallback(
+    async (r: string, chunkPlan: ChunkPlan) => {
+      setApplying(true);
+      setIngestBusy(false);
+      setResult(null);
+      setChunkLog([]);
+      setProgress({ done: 0, total: chunkPlan.total_rows });
       const log: ChunkRow[] = [];
       let doneRows = 0;
       let failed = 0;
       const t0 = performance.now();
-      for (const ch of plan.chunks) {
-        const cs = performance.now();
-        try {
-          const res = await applyChunk(r, ch.file, ch.row_group, emplazamiento);
-          const ms = Math.round(performance.now() - cs);
-          doneRows += res.processed;
-          log.push({ file: ch.file, rowGroup: ch.row_group, rows: res.processed, ms, ok: true });
-        } catch (e) {
-          const ms = Math.round(performance.now() - cs);
-          if (e instanceof ApiError && e.status === 409) setIngestBusy(true);
-          failed += 1;
-          log.push({
-            file: ch.file,
-            rowGroup: ch.row_group,
-            rows: ch.rows,
-            ms,
-            ok: false,
-            error: e instanceof Error ? e.message : "falló",
-          });
+      try {
+        for (const ch of chunkPlan.chunks) {
+          const cs = performance.now();
+          try {
+            const res = await applyChunk(r, ch.file, ch.row_group, emplazamiento);
+            const ms = Math.round(performance.now() - cs);
+            doneRows += res.processed;
+            log.push({ file: ch.file, rowGroup: ch.row_group, rows: res.processed, ms, ok: true });
+          } catch (e) {
+            const ms = Math.round(performance.now() - cs);
+            if (e instanceof ApiError && e.status === 409) setIngestBusy(true);
+            failed += 1;
+            log.push({
+              file: ch.file,
+              rowGroup: ch.row_group,
+              rows: ch.rows,
+              ms,
+              ok: false,
+              error: e instanceof Error ? e.message : "falló",
+            });
+          }
+          setChunkLog([...log]);
+          setProgress({ done: doneRows, total: chunkPlan.total_rows });
         }
-        setChunkLog([...log]);
-        setProgress({ done: doneRows, total: plan.total_rows });
-      }
-      const totalMs = Math.round(performance.now() - t0);
-      setResult({ ok: failed === 0, totalRows: doneRows, totalMs, failed, totalChunks: plan.chunks.length });
-      // Cierra la ingesta: registra la NUEVA versión de la máster (version++ +
-      // fecha + archivo). Solo si se ingirió algo. Si falla, no rompe el flujo.
-      if (doneRows > 0) {
-        try {
-          const fin = await finalizeBundle(r, emplazamiento);
-          toast.success(`Versión de máster registrada: ${fin.version}`);
-        } catch {
-          /* no crítico: los datos ya entraron, solo no se estampó la versión */
+        const totalMs = Math.round(performance.now() - t0);
+        setResult({ ok: failed === 0, totalRows: doneRows, totalMs, failed, totalChunks: chunkPlan.chunks.length });
+        if (doneRows > 0) {
+          try {
+            const fin = await finalizeBundle(r, emplazamiento);
+            toast.success(`Versión de máster registrada: ${fin.version}`);
+          } catch {
+            /* no crítico: los datos ya entraron, solo no se estampó la versión */
+          }
         }
+        if (failed === 0) {
+          toast.success(`Ingesta OK: ${fmtN.format(doneRows)} hexágonos en ${chunkPlan.chunks.length} lotes`);
+        } else {
+          toast.error(`Ingesta con ${failed} lote(s) fallido(s) — revisa el detalle`);
+        }
+      } finally {
+        setApplying(false);
+        setProgress(null);
       }
-      if (failed === 0) {
-        toast.success(`Ingesta OK: ${fmtN.format(doneRows)} hexágonos en ${plan.chunks.length} lotes`);
-      } else {
-        toast.error(`Ingesta con ${failed} lote(s) fallido(s) — revisa el detalle`);
-      }
+    },
+    [emplazamiento, toast],
+  );
+
+  // Antes de ingerir: pide el plan de paquetes y AVISA cuáles de los archivos que
+  // ELEGISTE realmente entran a la actualización y cuáles quedan FUERA (la ingesta
+  // procesa solo un subconjunto de los parquets subidos). Así nadie cree que "se
+  // actualiza todo". Con archivos fuera → modal de confirmación; sin fuera → directo.
+  const aplicar = useCallback(async () => {
+    setIngestBusy(false);
+    const r = root.trim();
+    let chunkPlan: ChunkPlan;
+    try {
+      chunkPlan = await fetchChunkPlan(r);
     } catch (e) {
-      // Falló el PLAN (antes de empezar): p.ej. 409 (otra ingesta) o pendientes.
       if (e instanceof ApiError && e.status === 409) setIngestBusy(true);
       toast.error(e instanceof Error ? e.message : "No se pudo iniciar la ingesta");
-    } finally {
-      setApplying(false);
-      setProgress(null);
+      return;
     }
-  }, [root, emplazamiento, toast]);
+    const base = (p: string) => p.split("/").pop() ?? p;
+    // Archivos que SÍ entran (basenames del chunk plan) vs lo que se eligió subir.
+    const ingested = [...new Set(chunkPlan.chunks.map((c) => base(c.file)))];
+    const ingestedSet = new Set(ingested);
+    const leftOut = uploadedNames.filter((n) => !ingestedSet.has(base(n)));
+    if (leftOut.length > 0) {
+      setConfirmIngest({ chunkPlan, ingested, leftOut });
+      return;
+    }
+    await runIngest(r, chunkPlan);
+  }, [root, uploadedNames, toast, runIngest]);
 
   // Reintenta SOLO los lotes que fallaron (idempotente por h3_index).
   const reintentarFallidos = useCallback(async () => {
@@ -602,6 +644,79 @@ export default function AdminBundlePage() {
           )}
         </div>
       </div>
+
+      {/* Aviso pre-ingesta: qué archivos entran a la actualización y cuáles NO.
+          Evita que se crea que "se actualiza todo" cuando la ingesta procesa
+          solo un subconjunto de lo subido. */}
+      {confirmIngest && (
+        <div
+          className="fixed inset-0 z-[95] flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setConfirmIngest(null)}
+        >
+          <div
+            className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="border-b border-gray-100 px-5 py-4">
+              <h3 className="text-base font-bold text-[#165170ff]">
+                No se actualizarán todos los archivos
+              </h3>
+              <p className="mt-1 text-[12px] leading-snug text-gray-600">
+                De los <b>{uploadedNames.length}</b> archivos que subiste, la
+                actualización procesará <b>{confirmIngest.ingested.length}</b>. Los
+                otros <b>{confirmIngest.leftOut.length}</b> quedarán <b>fuera</b> de
+                esta ingesta. Revísalos antes de continuar.
+              </p>
+            </div>
+            <div className="grid flex-1 grid-cols-1 gap-3 overflow-y-auto px-5 py-4 sm:grid-cols-2">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+                  Se actualizarán ({confirmIngest.ingested.length})
+                </p>
+                <ul className="mt-1 space-y-0.5 text-[12px]">
+                  {confirmIngest.ingested.map((f) => (
+                    <li key={f} className="truncate font-mono text-gray-700" title={f}>
+                      ✓ {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                  Quedan fuera ({confirmIngest.leftOut.length})
+                </p>
+                <ul className="mt-1 space-y-0.5 text-[12px]">
+                  {confirmIngest.leftOut.map((f) => (
+                    <li key={f} className="truncate font-mono text-gray-400" title={f}>
+                      ✕ {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-gray-100 px-5 py-3">
+              <button
+                type="button"
+                onClick={() => setConfirmIngest(null)}
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const ci = confirmIngest;
+                  setConfirmIngest(null);
+                  void runIngest(root.trim(), ci.chunkPlan);
+                }}
+                className="rounded-md bg-[#165170ff] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1e6a8c]"
+              >
+                Actualizar solo estos {confirmIngest.ingested.length}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

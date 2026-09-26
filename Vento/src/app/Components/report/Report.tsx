@@ -13,7 +13,7 @@ import {
 import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
 import { useIsAdmin } from "../../Utils/useIsAdmin";
-import { fetchMasterStatus, fetchEscenarios, fetchNormas, type AdminEscenario } from "../../Utils/admin/catalogApi";
+import { fetchMasterStatus, fetchEscenarios, fetchNormas, fetchVariableRanges, type AdminEscenario } from "../../Utils/admin/catalogApi";
 import { dbField, AuditDataLabel } from "../../Utils/audit";
 import {
   HEATMAP_DIMENSIONS,
@@ -62,6 +62,7 @@ import {
 } from "../../Utils/variables/informativeVariables";
 import {
   VARIABLES,
+  OPTIONAL_VARIABLES,
   getVariableById,
   isExcluyente,
   variableAppliesToNature,
@@ -81,7 +82,10 @@ import {
   normasSemaforo,
   type Norma,
 } from "../../Utils/report/regulatoryNorms";
-import { REPORT_SOURCE_LINKS } from "../../Utils/report/reportSources";
+import {
+  REPORT_SOURCE_LINKS,
+  type ReportSourceLink,
+} from "../../Utils/report/reportSources";
 import { compactHexes } from "../../Utils/historial/hexCodec";
 import { cellToChildren, cellToParent, getResolution } from "h3-js";
 import { useToast } from "../ui/Toast";
@@ -197,7 +201,7 @@ function ViridisLegend() {
 export default function Report() {
   const { selectedHexes, restoredReportConfig, reportConfigNonce } =
     useAprincipal();
-  const { activeVariables } = useVariables();
+  const { activeVariables, catalogReady } = useVariables();
   const toast = useToast();
   const caracteristicas = useCaracteristicas();
   const { save: saveInforme } = useHistorial();
@@ -278,6 +282,22 @@ export default function Report() {
       alive = false;
     };
   }, []);
+
+  // Intervalos (min–max) REALES por variable desde el backend (hexagon_meta) —
+  // solo para la sección de verificación admin. Vacío si no es admin / template.
+  const [varRanges, setVarRanges] = useState<
+    Record<string, { min: number; max: number }>
+  >({});
+  useEffect(() => {
+    if (!isAdmin) return;
+    let alive = true;
+    fetchVariableRanges()
+      .then((r) => alive && setVarRanges(r))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [isAdmin]);
   useEffect(() => {
     let alive = true;
     const load = () =>
@@ -411,6 +431,35 @@ export default function Report() {
       .filter((x) => x.fuentes.length > 0);
   }, [config.dims, config.showRegulatoria, nature, scorableDims]);
 
+  // Tabla "Fuentes de datos" del informe. En MODO TEMPLATE usa la lista curada
+  // `REPORT_SOURCE_LINKS` (con versión editorial). En MODO BACKEND se DERIVA de
+  // las variables reales del catálogo (fuente + url ← metadatos/BD): así no se
+  // muestran fuentes hardcoded como si fueran las reales. La `version` no se
+  // almacena por variable → enriquecimiento best-effort por nombre (o "s/v").
+  const sourceRows = useMemo<ReportSourceLink[]>(() => {
+    if (USE_PLACEHOLDER_FALLBACK) return REPORT_SOURCE_LINKS;
+    const byFuente = new Map<string, string>(); // fuente → url (primera no vacía)
+    for (const v of [...VARIABLES, ...OPTIONAL_VARIABLES]) {
+      const f = (v.fuente ?? "").trim();
+      if (!f || f === "(sin definir)") continue;
+      if (!byFuente.get(f) && v.url) byFuente.set(f, v.url);
+      else if (!byFuente.has(f)) byFuente.set(f, v.url ?? "");
+    }
+    return [...byFuente.entries()]
+      .map(([fuente, url]) => ({
+        fuente,
+        version: sourceVersion(fuente),
+        url:
+          url ||
+          REPORT_SOURCE_LINKS.find((s) =>
+            fuente.toLowerCase().includes(s.fuente.toLowerCase().split(/[ /]/)[0]),
+          )?.url ||
+          "",
+      }))
+      .sort((a, b) => a.fuente.localeCompare(b.fuente, "es"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogReady]);
+
   // Dimensión económica (US04-02): serie(s) de proyección. Refleja el escenario,
   // la capacidad nominal y el modo "comparar escenarios" del panel (llega al PDF).
   const econ = useEconomic();
@@ -462,6 +511,7 @@ export default function Report() {
               : null));
       return {
         label: v.label,
+        description: v.description,
         criterio: v.subcriterio
           ? `${v.criterio} › ${v.subcriterio}`
           : v.criterio,
@@ -610,6 +660,18 @@ export default function Report() {
                     "fecha = versión de fuente (data_source)",
                   ]}
                 />
+                {/* Detalle/descripción por variable (US "detalle interno del
+                    modelo"): opt-in bajo showModelDetail para no saturar. */}
+                {config.showModelDetail && (
+                  <ul className="mt-2 flex flex-col gap-0.5">
+                    {pr.map((r) => (
+                      <li key={r.label} className="text-[9px] leading-snug text-gray-600">
+                        <b className="text-gray-700">{dbField(r.label)}:</b>{" "}
+                        {dbField(r.description)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </>
             )}
 
@@ -632,7 +694,7 @@ export default function Report() {
               </div>
             )}
 
-            {pi === pages.length - 1 && (
+            {pi === pages.length - 1 && config.showModelDetail && (
               <div className="mt-auto rounded-lg bg-gray-50 p-2.5">
                 <p className="text-[10px] font-bold text-[#165170ff]">
                   Resumen del cálculo
@@ -897,7 +959,7 @@ export default function Report() {
               </tr>
             </thead>
             <tbody>
-              {REPORT_SOURCE_LINKS.map((s) => (
+              {sourceRows.map((s) => (
                 <tr
                   key={s.fuente}
                   className="border-t border-gray-100 align-top even:bg-gray-50/60"
@@ -970,6 +1032,53 @@ export default function Report() {
             manual de múltiples fuentes por una evaluación auditable.
           </p>
         </div>
+      </div>,
+    ]);
+  }
+
+  // Verificación ADMIN (US-tester): intervalos de ponderación por variable —
+  // peso, polaridad y rango min–max REAL de la master (backend hexagon_meta).
+  // Solo admin, opt-in por la casilla del panel. No es para el usuario final.
+  if (config.showWeightRanges && isAdmin) {
+    const round = (x: number) => Math.round(x * 1000) / 1000;
+    const rangeText = (masterId: string): string => {
+      const k2 = masterId.replace(/-/g, "_");
+      const k3 = k2.replace(/_[A-Z]+$/, "");
+      const r = varRanges[masterId] ?? varRanges[k2] ?? varRanges[k3];
+      return r ? `${round(r.min)} – ${round(r.max)}` : "s/d";
+    };
+    const rows = VARIABLES.filter((v) => v.masterId !== "NA").map((v) => {
+      const w = weightFor(v.id);
+      const pol = w > 0 ? "Suma (+)" : w < 0 ? "Resta (−)" : "—";
+      return [
+        dbField(v.masterId),
+        dbField(v.label),
+        w.toFixed(2),
+        pol,
+        rangeText(v.masterId),
+      ];
+    });
+    addSection("Ponderación (verificación admin)", (n) => [
+      <div key="wr" className="text-[10px]">
+        <div className="flex items-center gap-2">
+          <h3 className="text-base font-bold text-[#165170ff]">
+            {n}. Intervalos de ponderación
+          </h3>
+          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
+            Solo admin · verificación
+          </span>
+        </div>
+        <p className="mt-1 text-[9px] leading-snug text-gray-600">
+          Peso (con signo), polaridad y rango de medición (min–max) por variable
+          ponderada, para verificar la normalización y el cálculo. El rango es el
+          REAL de la master ({varRanges && Object.keys(varRanges).length > 0
+            ? "backend · hexagon_meta"
+            : "sin backend → s/d"}); el peso viene de BD en modo backend.
+        </p>
+        <MiniTable
+          columns={["Código", "Variable", "Peso", "Polaridad", "Intervalo (min–max)"]}
+          rows={rows}
+        />
       </div>,
     ]);
   }

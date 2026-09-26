@@ -4,16 +4,18 @@ import { useEffect, useMemo, useState } from "react";
 import DimensionCard from "./DimensionCard";
 import EconomicModal from "./EconomicModal";
 import RegulatoryModal from "./RegulatoryModal";
-import { useActiveEconomicVariables } from "../../Utils/contexts/EconomicContext";
 import { fetchMenuVariables, fetchNormas } from "../../Utils/admin/catalogApi";
 import NextStepButton from "../ui/NextStepButton";
 import {
   DIMENSIONS,
   OPTIONAL_VARIABLES,
+  VARIABLES,
   isScorableDimension,
   variableAppliesToNature,
 } from "../../Utils/variables/variablesCatalog";
 import type { Dimension, Variable } from "../../Utils/variables/variablesCatalog";
+import { useVariables } from "../../Utils/contexts/VariablesContext";
+import { useActiveEconomicVariables } from "../../Utils/contexts/EconomicContext";
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
 import { selectionNature } from "../../Utils/h3/hexClassification";
 import { USE_API_EMPLAZAMIENTO } from "../../Utils/projectData";
@@ -31,7 +33,6 @@ export default function Dimensions() {
   const [query, setQuery] = useState("");
   const [econOpen, setEconOpen] = useState(false);
   const [regOpen, setRegOpen] = useState(false);
-  const econVars = useActiveEconomicVariables();
   const { selectedHexes } = useAprincipal();
 
   // Naturaleza mar/tierra de la selección (modo API emplazamiento): oculta las
@@ -83,8 +84,30 @@ export default function Dimensions() {
     };
   }, []);
 
-  // Menú completo = informativas del catálogo + normas (regulatoria).
-  const allVars = useMemo(() => [...menuVars, ...normaVars], [menuVars, normaVars]);
+  // catalogReady: en modo backend, `VARIABLES` se hidrata desde BD; al cambiar,
+  // recomputamos el menú para reflejar el catálogo vivo.
+  const { catalogReady } = useVariables();
+  const econActive = useActiveEconomicVariables();
+
+  // Menú completo = variables de MODELO (switch BLOQUEADO, siempre activas) +
+  // informativas (toggleables) + normas (regulatoria). Cada variable tiene su
+  // switch; las del modelo salen como obligatorias (no se pueden desactivar),
+  // petición cliente. Dedup: si una informativa duplica el masterId de una del
+  // modelo, se omite (gana la del modelo, que es la que puntúa).
+  const allVars = useMemo(() => {
+    const modelReq: Variable[] = VARIABLES.map((v) =>
+      v.required ? v : { ...v, required: true },
+    );
+    const modelMasters = new Set(
+      VARIABLES.map((v) => v.masterId).filter((m) => m && m !== "NA"),
+    );
+    const infoUnique = menuVars.filter(
+      (v) => v.masterId === "NA" || !modelMasters.has(v.masterId),
+    );
+    return [...modelReq, ...infoUnique, ...normaVars];
+    // `catalogReady` fuerza recomputo tras hidratar `VARIABLES` desde BD.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [menuVars, normaVars, catalogReady]);
 
   const filteredByDimension = useMemo(() => {
     const map = new Map<string, Variable[]>();
@@ -166,58 +189,38 @@ export default function Dimensions() {
             if (query.trim() && vars.length === 0) return null;
             // Sin búsqueda pero sin variables (regulatoria pendiente, o dimensión
             // vaciada por el filtro mar/tierra): se muestra igual para que las 5
-            // dimensiones estén siempre presentes en el menú (petición reunión).
+            // dimensiones estén siempre presentes en el menú (requisito de UX).
             if (vars.length === 0) {
               return <EmptyDimensionCard key={d.id} dimension={d} nature={nature} />;
             }
+            // Botón del módulo DENTRO de la card (petición cliente): económica y
+            // regulatoria llevan el disparador de su modal bajo sus switches.
+            const footer =
+              // Económica: el disparador del panel solo aparece si hay ≥1 variable
+              // económica ACTIVA (planning: "si hay por lo menos una activar un panel").
+              d.id === "macroeconomica" && econActive.length > 0 ? (
+                <ModuleButton
+                  onClick={() => setEconOpen(true)}
+                  label="Ver análisis prospectivo"
+                  icon="M4 19V5m0 14h16M8 15l3-3 2 2 4-5"
+                />
+              ) : d.id === "regulatoria" ? (
+                <ModuleButton
+                  onClick={() => setRegOpen(true)}
+                  label="Ver marco normativo"
+                  icon="M3 21h18M6 21V9l6-4 6 4v12M9 21v-6h6v6"
+                />
+              ) : undefined;
             return (
               <DimensionCard
                 key={d.id}
                 dimension={d}
                 variables={vars}
-                defaultOpen={Boolean(query.trim())}
+                defaultOpen
+                footer={footer}
               />
             );
           })}
-
-          {/* Análisis prospectivo económico (US04-02): disparador del modal;
-              aparece si hay ≥1 variable económica activa. */}
-          {!query.trim() && econVars.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setEconOpen(true)}
-              className="flex items-center justify-between rounded-md bg-white px-3 py-3 text-left shadow-sm transition-colors hover:bg-gray-50"
-            >
-              <span className="flex items-center gap-2 text-sm font-bold text-[#165170ff]">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 19V5m0 14h16M8 15l3-3 2 2 4-5" />
-                </svg>
-                Económica — Análisis prospectivo
-              </span>
-              <span className="text-[11px] text-gray-400">
-                {econVars.length} var. · abrir →
-              </span>
-            </button>
-          )}
-
-          {/* Marco normativo (US04-05): la dimensión regulatoria se muestra como
-              una DimensionCard normal (arriba, con sus switches de normas). Este
-              botón solo ABRE el modal de referencia, igual que el de económica. */}
-          {!query.trim() && (
-            <button
-              type="button"
-              onClick={() => setRegOpen(true)}
-              className="flex items-center justify-between rounded-md bg-white px-3 py-3 text-left shadow-sm transition-colors hover:bg-gray-50"
-            >
-              <span className="flex items-center gap-2 text-sm font-bold text-[#165170ff]">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M6 21V9l6-4 6 4v12M9 21v-6h6v6" />
-                </svg>
-                Regulatoria — Marco normativo
-              </span>
-              <span className="text-[11px] text-gray-400">abrir →</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -229,6 +232,33 @@ export default function Dimensions() {
         <NextStepButton />
       </div>
     </div>
+  );
+}
+
+/**
+ * Botón del módulo (económica/regulatoria) que abre su modal. Va DENTRO de la
+ * DimensionCard, bajo los switches (petición cliente) — no como fila aparte.
+ */
+function ModuleButton({
+  onClick,
+  label,
+  icon,
+}: {
+  onClick: () => void;
+  label: string;
+  icon: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center justify-center gap-1.5 rounded-md border border-[#165170ff]/30 py-1.5 text-[12px] font-semibold text-[#165170ff] hover:bg-[#165170ff]/5"
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path strokeLinecap="round" strokeLinejoin="round" d={icon} />
+      </svg>
+      {label} →
+    </button>
   );
 }
 

@@ -35,6 +35,13 @@ export interface ReportConfig {
   showEconomica: boolean;
   /** Tabla de fuentes de datos, discriminadas por dimensión. */
   showSources: boolean;
+  /**
+   * Intervalos de ponderación por variable (peso, polaridad y rango min–max real
+   * de la master) para verificación. SOLO admin: la casilla y la sección solo
+   * aparecen con rol admin (para que testers validen datos). No es para el
+   * usuario final.
+   */
+  showWeightRanges: boolean;
 }
 
 /**
@@ -61,5 +68,6 @@ export function defaultReportConfig(
     showRegulatoria: true,
     showEconomica: opts.hasEconomica ?? true,
     showSources: true,
+    showWeightRanges: false, // admin opt-in (verificación de testers)
   };
 }

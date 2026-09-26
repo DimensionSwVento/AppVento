@@ -147,7 +147,7 @@ Items que **el cliente listó** pero que ya están cubiertos por scopes anterior
 | Item | Estado | Detalle |
 |------|--------|---------|
 | Límites offshore (ampliar millas náuticas costa afuera) | Solicitado al equipo de datos | Cartografía IGAC + Nominatim ya cubre 12 millas náuticas oficiales (US-FB-04, cerrado). La ampliación adicional está solicitada al equipo de datos. |
-| Datos offshore | Pendiente Camila | Pendiente que Camila (equipo de datos) suba el dataset ampliado al parquet maestro. |
+| Datos offshore | Pendiente equipo de datos | Pendiente que el equipo de datos suba el dataset ampliado al parquet maestro. |
 
 ---
 
@@ -157,7 +157,7 @@ Items que **el cliente listó** pero que ya están cubiertos por scopes anterior
 
 | Item | Bloquea | Owner |
 |------|---------|-------|
-| Pruebas con datos reales | Todo el pipeline de scoring depende de la conexión maestra a datos (ver README raíz, sección "Pendiente") | Camila / equipo datos |
+| Pruebas con datos reales | Todo el pipeline de scoring depende de la conexión maestra a datos (ver README raíz, sección "Pendiente") | Equipo de datos |
 | Despliegue en nube Virtuozzo | Migración a infra Virtuozzo | Infra externa |
 
 ### 🔍 Bugs para reproducir
@@ -186,7 +186,7 @@ Items marcados por el cliente como "no bug, discutir". Se documentan para futura
 - **Navegación entre pasos: clics adicionales.** El usuario debe pasar por las flechas "siguiente" de cada paso para volver a editar; no puede saltar directo al informe si solo cambia área. Propuesta: permitir saltos si los pasos siguientes ya están completos.
 - **Elementos percibidos como "genéricos / IA".** Refinamiento de UI en general.
 - **Inconsistencia visual.** Recuadros y bordes que rompen la línea gráfica.
-- **MWPicker sin coherencia visual.** Alternativa gráfica pendiente (Santiago tiene contexto de la última reunión). Nota: `US-FB3-04` cubre solo la entrada por teclado + saltos, no el rediseño visual.
+- **MWPicker sin coherencia visual.** Alternativa gráfica pendiente (contexto disponible en las notas de diseño). Nota: `US-FB3-04` cubre solo la entrada por teclado + saltos, no el rediseño visual.
 
 ### Preguntas pendientes (para próxima reunión)
 

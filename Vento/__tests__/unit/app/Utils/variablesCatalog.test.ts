@@ -34,18 +34,19 @@ describe("variablesCatalog — estructura", () => {
     }
   });
 
-  // US-FB3-05 / feedback item 11 — 4 dimensiones puntuables; regulatoria fuera.
-  it("expone 4 dimensiones puntuables sin 'regulatoria'", () => {
-    expect(SCORABLE_DIMENSION_IDS).toHaveLength(4);
+  // 3 dimensiones puntuables; económica y regulatoria son INFORMATIVAS (no puntúan).
+  it("expone 3 dimensiones puntuables (sin económica ni regulatoria)", () => {
+    expect(SCORABLE_DIMENSION_IDS).toHaveLength(3);
     expect(SCORABLE_DIMENSION_IDS).not.toContain("regulatoria");
+    expect(SCORABLE_DIMENSION_IDS).not.toContain("macroeconomica");
     expect([...SCORABLE_DIMENSION_IDS].sort()).toEqual(
-      ["ambiental", "macroeconomica", "social", "tecnica"].sort(),
+      ["ambiental", "social", "tecnica"].sort(),
     );
   });
 
-  it("isScorableDimension: true para puntuables, false para regulatoria", () => {
+  it("isScorableDimension: true para puntuables, false para económica/regulatoria", () => {
     expect(isScorableDimension("tecnica")).toBe(true);
-    expect(isScorableDimension("macroeconomica")).toBe(true);
+    expect(isScorableDimension("macroeconomica")).toBe(false);
     expect(isScorableDimension("regulatoria")).toBe(false);
   });
 });

@@ -25,11 +25,16 @@ describe("HexValuesTooltip", () => {
     }
   });
 
-  // US-FB3-05 / feedback item 11 — "Regulatoria" al lado como informativa.
-  it("muestra 'Regulatoria' aparte, marcada como informativa", () => {
+  // Dimensiones INFORMATIVAS (no puntúan) aparte, cada una marcada "informativa":
+  // hoy son económica y regulatoria (scorable:false en HEATMAP_DIMENSIONS).
+  it("muestra las dimensiones informativas aparte, marcadas como informativa", () => {
     render(<HexValuesTooltip hex={HEX} x={100} y={50} />);
+    const informativas = HEATMAP_DIMENSIONS.filter((d) => !d.scorable);
+    for (const d of informativas) {
+      expect(screen.getByText(d.label)).toBeInTheDocument();
+    }
     expect(screen.getByText("Regulatoria")).toBeInTheDocument();
-    expect(screen.getByText("informativa")).toBeInTheDocument();
+    expect(screen.getAllByText("informativa")).toHaveLength(informativas.length);
   });
 
   it("se ancla al cursor con offset de 12px", () => {

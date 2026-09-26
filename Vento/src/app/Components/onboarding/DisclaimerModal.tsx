@@ -6,7 +6,7 @@ import {
 } from "../../Utils/report/reportTemplates";
 
 /**
- * Aviso legal / disclaimer al INICIO (petición reunión): igual que el onboarding,
+ * Aviso legal / disclaimer al INICIO (requisito de producto): igual que el onboarding,
  * aparece en un flotante para que el usuario sepa —antes de usar la herramienta—
  * que Vento es INFORMATIVO y no constituye un certificado/aval legal. El mismo
  * texto (template `reportTemplates.ts`) se repite en el informe/PDF, así el aviso

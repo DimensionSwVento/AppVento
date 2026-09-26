@@ -79,6 +79,24 @@ export default function VariableTooltip({ variable }: { variable: Variable }) {
           <p className="mt-1 text-xs text-gray-600 leading-snug">
             {dbField(variable.description)}
           </p>
+          {/* Fuente de datos (US04: "visualización del detalle — fuente de datos"). */}
+          {variable.fuente && variable.fuente !== "(sin definir)" && (
+            <p className="mt-1 text-[10px] leading-snug text-gray-500">
+              <span className="font-semibold text-gray-600">Fuente:</span>{" "}
+              {variable.url ? (
+                <a
+                  href={variable.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[#165170ff] underline"
+                >
+                  {dbField(variable.fuente)}
+                </a>
+              ) : (
+                dbField(variable.fuente)
+              )}
+            </p>
+          )}
           <span
             className={`mt-2 inline-block rounded px-2 py-0.5 text-[10px] font-semibold ${polarityClass}`}
           >

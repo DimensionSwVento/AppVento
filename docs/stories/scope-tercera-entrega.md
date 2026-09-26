@@ -22,7 +22,7 @@ Sigue a [scope-segunda-entrega.md](./scope-segunda-entrega.md) y al cierre de Sc
 ## Estado de precondiciones
 
 - Scope 1 y Scope 2 entregados; feedback rondas 1 y 2 atendido.
-- **Bloqueo transversal:** ingesta real del `.h3.parquet` (US03-AC6) pendiente — hoy los scores/heatmap usan placeholders deterministas por `(varId, hex)`. Owner: equipo de datos (Camila).
+- **Bloqueo transversal:** ingesta real del `.h3.parquet` (US03-AC6) pendiente — hoy los scores/heatmap usan placeholders deterministas por `(varId, hex)`. Owner: equipo de datos.
 - **Decisiones internas tomadas (2026-07-07):**
   - US06 radar → **4 ejes puntuables** + **SVG propio** (sin librería de charting).
   - US07 histórico → **persistencia en Postgres (backend)** vía patrón repositorio (`HistorialRepository`): se guardan **parámetros compactados** (selección con `compactCells` + variables + características + `scores_snapshot`), **NUNCA el PDF**. Alineado con "Histórico informes" de ADR-006 (E6). **Límites por usuario/área = TEMPORALES** (constante configurable) — valores finales en próxima reunión.
@@ -42,10 +42,10 @@ Sigue a [scope-segunda-entrega.md](./scope-segunda-entrega.md) y al cierre de Sc
 | US09 UX/UI | US09-01 | Mensajes de confirmación (success toasts) | 🟢 Media | ✅ Sí |
 | US09 UX/UI | US09-02 | Alertas de error en validación de datos | 🟢 Media | ✅ Sí |
 | US01 Acceso | US01-01 | Configuración de SMTP pago (MailerSend) | 🟡 Alta | ⛔ Externo (cliente) |
-| US03 Mapa | US03-01 | Pruebas con datos reales | 🔴 Crítica | 🟡 Datos (Camila) |
+| US03 Mapa | US03-01 | Pruebas con datos reales | 🔴 Crítica | 🟡 Datos (equipo de datos) |
 | US03 Mapa | US03-02 | Selección anclada a resolución (fix anidados) | 🟡 Alta | ✅ Implementado |
-| US03 Mapa | US03-03 | Zonas prohibidas (gris sólido no seleccionable) | 🟢 Media | 🟡 Datos (Camila) |
-| US04 Variables | US04-01 | Pruebas con datos reales | 🟡 Alta | 🟡 Datos (Camila) |
+| US03 Mapa | US03-03 | Zonas prohibidas (gris sólido no seleccionable) | 🟢 Media | 🟡 Datos (equipo de datos) |
+| US04 Variables | US04-01 | Pruebas con datos reales | 🟡 Alta | 🟡 Datos (equipo de datos) |
 | US05 Proyecto | US05-01 | Negociar cambios de alcance | 🟡 Alta | ⛔ Externo (reunión) |
 
 **Total: 14 HUs pendientes** en 8 épicas. (US08 Admin no tiene HUs pendientes → fuera del sprint.)
@@ -240,7 +240,7 @@ Sigue a [scope-segunda-entrega.md](./scope-segunda-entrega.md) y al cierre de Sc
 
 ### US03-03 — Mapa:Zonas prohibidas / inviables (gris sólido no seleccionable)
 - **Prioridad:** 🟢 Media
-- **Bloqueo:** 🟡 Datos — el cableado está listo; falta la **lista real** de hexes vetados (equipo de datos, Camila).
+- **Bloqueo:** 🟡 Datos — el cableado está listo; falta la **lista real** de hexes vetados (equipo de datos).
 - **Origen:** feedback cliente v2 #26 — "¿Zonas excluidas/prohibidas marcadas visualmente en el Sprint 3?"
 - **Criterios de Aceptación:**
   1. Los hexágonos prohibidos se pintan en **gris sólido** (`BANNED_FILL`) y **no son seleccionables** (cursor `not-allowed`, sin hover-fill).
@@ -303,7 +303,7 @@ Sigue a [scope-segunda-entrega.md](./scope-segunda-entrega.md) y al cierre de Sc
 |----|------|-----------|
 | US01-01 (SMTP MailerSend) | ⛔ Externo | Cliente entrega credenciales + dominio |
 | US05-01 (negociación alcance) | ⛔ Externo | Reunión con cliente |
-| US03-01 / US04-01 (pruebas datos reales) | 🟡 Datos | Equipo de datos entrega `.h3.parquet` real (Camila) |
+| US03-01 / US04-01 (pruebas datos reales) | 🟡 Datos | Equipo de datos entrega `.h3.parquet` real |
 
 ## Propuesta de asignación
 
