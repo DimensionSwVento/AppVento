@@ -17,12 +17,16 @@ interface DimensionCardProps {
   dimension: Dimension;
   variables: Variable[];
   defaultOpen?: boolean;
+  /** Acción extra dentro de la card (bajo los switches): p.ej. el botón que abre
+   *  el modal de económica/regulatoria. Va DENTRO de la card, no como fila aparte. */
+  footer?: React.ReactNode;
 }
 
 export default function DimensionCard({
   dimension,
   variables,
   defaultOpen = false,
+  footer,
 }: DimensionCardProps) {
   const [open, setOpen] = useState(defaultOpen);
   // Sincroniza con `defaultOpen` SIN effect (patrón "ajustar estado en render"
@@ -141,6 +145,9 @@ export default function DimensionCard({
               ))}
             </div>
           ))}
+          {/* Acción del módulo (económica/regulatoria): DENTRO de la card, bajo
+              los switches — el botón que abre su modal. */}
+          {footer && <div className="mt-3">{footer}</div>}
         </div>
       )}
     </div>
