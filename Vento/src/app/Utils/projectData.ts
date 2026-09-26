@@ -2,9 +2,15 @@
  * ════════════════════════════════════════════════════════════════════════
  *  DOC MAESTRO DE VALORES DEL PROYECTO
  * ════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ ESTOS VALORES SON SOLO PARA EL MODO TEMPLATE / MODO DE PRUEBA. ⚠️
+ * EN MODO BACKEND (USE_BACKEND) LOS DATOS REALES VIENEN DEL BACKEND/BD Y ESTOS
+ * PLACEHOLDER NO SE USAN. SIRVEN ÚNICAMENTE COMO SEMILLA/FALLBACK PARA PROBAR LA
+ * APP SIN BACKEND — NO SON DATOS REALES DEL PROYECTO.
+ *
  * Única fuente de los valores del proyecto que dependen del equipo de
  * investigación / cliente. TODOS son PLACEHOLDER hasta que entreguen los
- * reales — para ajustarlos, editar SÓLO este archivo.
+ * reales — para ajustarlos (en modo template), editar SÓLO este archivo.
  *
  * Valores placeholder relacionados que viven cerca de su lógica (consumen de
  * aquí o se migrarán aquí cuando lleguen los reales):
@@ -135,7 +141,7 @@ export const MIN_SELECTION_H3_RES = 7;
  * Se pintan en gris sólido y NO son seleccionables.
  *
  * ⚠️ PLACEHOLDER / TEMPLATE: hoy está vacío porque faltan los datos reales del
- * equipo de datos (Camila). Cuando lleguen, poblar este set con los índices H3
+ * equipo de datos. Cuando lleguen, poblar este set con los índices H3
  * (a resolución `MIN_SELECTION_H3_RES`) de las celdas vetadas — el render gris y
  * el bloqueo de selección ya están cableados y funcionarán sin tocar más código.
  *
