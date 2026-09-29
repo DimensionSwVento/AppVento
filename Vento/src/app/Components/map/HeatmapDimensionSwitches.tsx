@@ -4,11 +4,16 @@ import { useEffect } from "react";
 import {
   HEATMAP_DIMENSIONS,
   HEATMAP_WIND_OPTIONS,
-  isWindHeatmap,
+  isVariableHeatmap,
   useHeatmapDimension,
   type HeatmapDimensionId,
 } from "../../Utils/contexts/HeatmapDimensionContext";
 import { useVariables } from "../../Utils/contexts/VariablesContext";
+import {
+  mapHeatmapVariableOptions,
+  getVariableById,
+  mapKindForVariable,
+} from "../../Utils/variables/variablesCatalog";
 
 /**
  * Selector compacto (dropdown) de la dimensión visualizada en el heatmap.
@@ -28,12 +33,31 @@ export default function HeatmapDimensionSwitches() {
   // densidad son informativas opcionales; el usuario las activa en el menú).
   const windOptions = HEATMAP_WIND_OPTIONS.filter((d) => isActive(d.id));
 
-  // Si el heatmap activo es un viento que ya no está seleccionado, vuelve a General.
+  // SOLO las variables cuyo MÉTODO de mapa es "calor" van al desplegable de
+  // heatmap (corrección cliente: enMapa ya NO manda todo aquí). Las de "area" e
+  // "interconectado" se pintan como capas de icono/color/red, no como heatmap.
+  // Además deben estar ACTIVAS y no ser viento (que tiene su propio grupo).
+  const variableOptions = mapHeatmapVariableOptions().filter((o) => {
+    if (!isActive(o.id)) return false;
+    if (o.id === "velocidad-viento" || o.id === "densidad-viento") return false;
+    const kind = getVariableById(o.id)?.mapKind ?? mapKindForVariable(o.id);
+    return kind === "calor";
+  });
+
+  // Si el heatmap por variable activo ya no está disponible (deseleccionado en
+  // Dimensiones o su enMapa apagado), vuelve a General.
+  const availableVarIds = [
+    ...windOptions.map((d) => d.id as string),
+    ...variableOptions.map((o) => o.id),
+  ];
   useEffect(() => {
-    if (isWindHeatmap(activeDimension) && !windOptions.some((d) => d.id === activeDimension)) {
+    if (
+      isVariableHeatmap(activeDimension) &&
+      !availableVarIds.includes(activeDimension as string)
+    ) {
       setActiveDimension("general");
     }
-  }, [activeDimension, windOptions, setActiveDimension]);
+  }, [activeDimension, availableVarIds, setActiveDimension]);
 
   return (
     <div className="rounded-2xl bg-white p-3 shadow-sm">
@@ -74,6 +98,17 @@ export default function HeatmapDimensionSwitches() {
               {windOptions.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.label}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {/* Variables con "en mapa" activas (admin): su mapa de calor por valor
+              normalizado, recortado al área. Las zonas/puntos (icono) NO van aquí. */}
+          {variableOptions.length > 0 && (
+            <optgroup label="Variables en el mapa">
+              {variableOptions.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
                 </option>
               ))}
             </optgroup>

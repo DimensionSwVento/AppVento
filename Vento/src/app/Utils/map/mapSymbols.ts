@@ -281,12 +281,40 @@ export function symbolPolygons(s: MapSymbol): SymbolPolygon[] {
 }
 
 /**
- * Líneas de RED — SOLO para "nodos de conexión": conecta sus puntos con una
- * polilínea → transmite la red eléctrica interconectada (SIN). El resto de
- * capas de puntos (puertos, vías) NO se conectan (no forman una red).
+ * Líneas de RED — SOLO para "nodos de conexión": cada nodo se conecta con el más
+ * CERCANO de su mismo tipo (grafo de vecino-más-cercano, deduplicado) → transmite
+ * la red eléctrica interconectada (SIN). El resto de capas de puntos (puertos,
+ * vías) NO se conectan (no forman una red). O(n²), pero los nodos son pocos.
  */
 export function symbolPaths(s: MapSymbol): SymbolPath[] {
   if (s.variableId !== "nodos-conexion" || s.points.length < 2) return [];
   const [r, g, b] = hexToRgb(s.color);
-  return [{ path: s.points.map((p) => [p.lng, p.lat]), color: [r, g, b, 170] }];
+  const pts = s.points;
+  const edges: SymbolPath[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i < pts.length; i++) {
+    let best = -1;
+    let bestD = Infinity;
+    for (let j = 0; j < pts.length; j++) {
+      if (i === j) continue;
+      const d = (pts[i].lat - pts[j].lat) ** 2 + (pts[i].lng - pts[j].lng) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        best = j;
+      }
+    }
+    if (best < 0) continue;
+    // Arista no dirigida → clave ordenada para no duplicar A-B y B-A.
+    const key = i < best ? `${i}-${best}` : `${best}-${i}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    edges.push({
+      path: [
+        [pts[i].lng, pts[i].lat],
+        [pts[best].lng, pts[best].lat],
+      ],
+      color: [r, g, b, 170],
+    });
+  }
+  return edges;
 }

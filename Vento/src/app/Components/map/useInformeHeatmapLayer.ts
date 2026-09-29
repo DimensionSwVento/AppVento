@@ -16,7 +16,7 @@ import {
   WIND_THRESHOLD,
 } from "../../Utils/map/mapLayerData";
 import {
-  isWindHeatmap,
+  isVariableHeatmap,
   type HeatmapDimensionId,
 } from "../../Utils/contexts/HeatmapDimensionContext";
 
@@ -35,11 +35,13 @@ export function useInformeHeatmapLayer(
   // Datos reales por hex (compartidos con el informe). Fallback: placeholder.
   const areaData = useAreaHexData(selectedHexes, heatmapActive);
 
-  // Si el desplegable eligió una capa de VIENTO, este heatmap deja de pintar el
-  // score de la dimensión y pinta el valor de viento (velocidad/densidad). Los
-  // valores reales por hex (res8, 0–1) se traen aparte; en template caen al
-  // placeholder de corredores dentro de `windValueForHex`.
-  const windId = isWindHeatmap(activeDimension as HeatmapDimensionId | null)
+  // Si el desplegable eligió una capa POR VARIABLE (viento u otra variable con
+  // `enMapa`), este heatmap deja de pintar el score de la dimensión y pinta el
+  // valor normalizado de esa variable. Los valores reales por hex (res8, 0–1) se
+  // traen aparte vía `/tiles/variable`; en template caen al placeholder de
+  // `windValueForHex`. `windId` conserva el nombre por historia (hoy = cualquier
+  // variable), pero el fetch/pintado son genéricos (`masterIdFor` traduce el id).
+  const windId = isVariableHeatmap(activeDimension as HeatmapDimensionId | null)
     ? (activeDimension as string)
     : null;
   const [windCells, setWindCells] = useState<Map<string, number> | null>(null);

@@ -81,10 +81,10 @@ export function dimensionScore(
 }
 
 /**
- * Puntaje general placeholder del área seleccionada: promedio entre las
- * dimensiones PUNTUABLES (`SCORABLE_DIMENSION_IDS` — 4 dimensiones).
- * "Regulatoria" queda excluida del cálculo (US-FB3-05 / feedback item 11) y
- * pasa a ser información contextual. Devuelve string en formato `XX.X`.
+ * Puntaje general del área seleccionada: promedio entre las dimensiones
+ * PUNTUABLES (`SCORABLE_DIMENSION_IDS` — Ambiental, Técnica y Social).
+ * Regulatoria y económica quedan excluidas del cálculo y pasan a ser
+ * información contextual (informativas). Devuelve string en formato `XX.X`.
  */
 export function generalScore(hexes: Iterable<string>): string {
   const arr = Array.from(hexes);
