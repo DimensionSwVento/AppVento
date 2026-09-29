@@ -470,12 +470,18 @@ export default function MapView() {
       const heatVar = activeHeatRef.current;
       let heatByCell: Map<string, number> | null = null;
       if (heatVar && USE_BACKEND) {
-        const real = await fetchVariableCellsBBox(heatVar, {
-          west: west - lngMargin,
-          south: south - latMargin,
-          east: east + lngMargin,
-          north: north + latMargin,
-        });
+        // `res` del zoom → el backend AGREGA al padre y devuelve pocas filas
+        // (memoria acotada). `aggregateValuesToRes` queda como no-op salvo res>8.
+        const real = await fetchVariableCellsBBox(
+          heatVar,
+          {
+            west: west - lngMargin,
+            south: south - latMargin,
+            east: east + lngMargin,
+            north: north + latMargin,
+          },
+          res,
+        );
         if (real) heatByCell = aggregateValuesToRes(real, res);
       }
       const tileCells = polygonToCells(tilePolygon, res, true);
