@@ -9,8 +9,10 @@ const TABS = [
   { href: "/admin/metadatos", label: "Metadatos (InfoVariables)" },
   { href: "/admin/normativa", label: "Normativa regulatoria" },
   { href: "/admin/escenarios", label: "Escenarios económicos" },
+  { href: "/admin/turbinas", label: "Aerogeneradores" },
+  { href: "/admin/report-text", label: "Resumen del cálculo" },
+  { href: "/admin/columnas", label: "Columnas consumidas" },
   { href: "/admin/bundle", label: "Subir master" },
-  { href: "/admin/sources", label: "Fuentes de datos" },
 ];
 
 /** Navegación entre las secciones de administración (US08). */

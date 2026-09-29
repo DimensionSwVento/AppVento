@@ -13,7 +13,12 @@ import {
   type AdminVariable,
   type VariableTipo,
 } from "../../Utils/admin/catalogApi";
-import { DIMENSIONS } from "../../Utils/variables/variablesCatalog";
+import { DIMENSIONS, type MapKind } from "../../Utils/variables/variablesCatalog";
+import {
+  IconByKey,
+  MAP_ICON_CHOICES,
+  randomMapIconKey,
+} from "../../Utils/variables/variableIcons";
 
 export default function AdminVariablesPage() {
   const toast = useToast();
@@ -178,13 +183,36 @@ export default function AdminVariablesPage() {
                         </td>
                         <td className="px-3 py-2.5 text-gray-600">{v.dimensionLabel}</td>
                         <td className="px-3 py-2.5">
-                          <Toggle
-                            checked={v.enMapa}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              patch(v.id, { enMapa: !v.enMapa }, "Visualización en mapa actualizada");
-                            }}
-                          />
+                          <div className="flex items-center gap-2">
+                            <Toggle
+                              checked={v.enMapa}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                patch(v.id, { enMapa: !v.enMapa }, "Visualización en mapa actualizada");
+                              }}
+                            />
+                            {/* Desplegable de MÉTODO de mapa, al lado del switch.
+                                Deshabilitado si "en mapa" está apagado. */}
+                            <select
+                              value={v.mapKind ?? "area"}
+                              disabled={!v.enMapa}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                patch(
+                                  v.id,
+                                  { mapKind: e.target.value as MapKind },
+                                  "Método de mapa actualizado",
+                                );
+                              }}
+                              title="Cómo se muestra en el mapa"
+                              className="rounded border border-gray-200 bg-white px-1.5 py-1 text-[11px] text-gray-700 disabled:opacity-40"
+                            >
+                              <option value="area">Área</option>
+                              <option value="interconectado">Conexión</option>
+                              <option value="calor">Calor</option>
+                            </select>
+                          </div>
                         </td>
                         {tab === "informativa" && (
                           <td className="px-3 py-2.5">
@@ -327,6 +355,14 @@ function DetailPanel({
       </div>
       <p className="mb-3 text-xs text-gray-500">{v.descripcion}</p>
       <Row k="Dimensión" val={v.dimensionLabel} />
+      {v.tipo === "modelo" && (
+        <Row
+          k="Peso (modelo)"
+          val={`${(v.peso ?? 0).toString()} · ${
+            (v.polaridad ?? 1) > 0 ? "suma" : (v.polaridad ?? 1) < 0 ? "resta" : "no aporta"
+          }`}
+        />
+      )}
       <Row k="Fuente" val={v.fuente} />
       <Row k="Unidad" val={v.unidad} />
       <Row k="Rango" val={v.rango} />
@@ -385,7 +421,18 @@ function EditVarModal({
   const [enMapa, setEnMapa] = useState(v.enMapa);
   const [enMenu, setEnMenu] = useState(v.enMenu);
   const [excluyente, setExcluyente] = useState(v.excluyente);
+  // Pesos del modelo (solo variables de MODELO): magnitud + polaridad (signo).
+  // El peso signado = peso × polaridad (lo aplica el WLC vía applyDbWeights).
+  const [peso, setPeso] = useState(v.peso ?? 0);
+  const [polaridad, setPolaridad] = useState(v.polaridad ?? 1);
+  // "Cómo se calcula" (método/fórmula) por variable — editable e ingestable.
+  const [metodoCalculo, setMetodoCalculo] = useState(v.metodoCalculo ?? "");
+  // Ícono de la capa de mapa (asignable; botón "aleatorio").
+  const [iconKey, setIconKey] = useState(v.iconKey || "lucide:MapPin");
+  // Método de visualización en el mapa (solo aplica si "En mapa").
+  const [mapKind, setMapKind] = useState<MapKind>(v.mapKind ?? "area");
   const [saving, setSaving] = useState(false);
+  const esModelo = v.tipo === "modelo";
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -394,6 +441,8 @@ function EditVarModal({
       await updateVariable(v.id, {
         masterId: masterId.trim() || "NA",
         descripcion, fuente, unidad, rango, enMapa, enMenu, excluyente,
+        metodoCalculo, iconKey, mapKind,
+        ...(esModelo ? { peso, polaridad } : {}),
       });
       toast.success("Detalle actualizado");
       onSaved();
@@ -441,6 +490,58 @@ function EditVarModal({
         <Field label="Fuente">
           <input value={fuente} onChange={(e) => setFuente(e.target.value)} className={inputCls} />
         </Field>
+        <Field label="Cómo se calcula (método/fórmula)">
+          <textarea
+            value={metodoCalculo}
+            onChange={(e) => setMetodoCalculo(e.target.value)}
+            rows={3}
+            placeholder="Texto libre: cómo se obtiene el valor de esta variable."
+            className={inputCls}
+          />
+        </Field>
+        <Field label="Ícono de la capa de mapa">
+          <div className="mt-1 flex items-center gap-2">
+            <span
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#165170ff] text-white"
+              title={iconKey}
+            >
+              <IconByKey iconKey={iconKey} className="h-5 w-5" strokeWidth={2.2} />
+            </span>
+            <select
+              value={MAP_ICON_CHOICES.includes(iconKey) ? iconKey : ""}
+              onChange={(e) => setIconKey(e.target.value)}
+              className={inputCls}
+            >
+              {!MAP_ICON_CHOICES.includes(iconKey) && (
+                <option value="">{iconKey} (actual)</option>
+              )}
+              {MAP_ICON_CHOICES.map((k) => (
+                <option key={k} value={k}>
+                  {k.replace("lucide:", "")}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setIconKey(randomMapIconKey())}
+              title="Asignar un ícono aleatorio"
+              className="shrink-0 rounded-md border border-[#165170ff] px-3 py-2 text-sm font-semibold text-[#165170ff] hover:bg-[#cce1eeff]/40"
+            >
+              🎲 Aleatorio
+            </button>
+          </div>
+        </Field>
+        <Field label="Método en el mapa (aplica si «En mapa»)">
+          <select
+            value={mapKind}
+            onChange={(e) => setMapKind(e.target.value as MapKind)}
+            className={inputCls}
+          >
+            <option value="area">Normal por área — icono + hexágonos del color</option>
+            <option value="interconectado">Interconectado — nodos al más cercano</option>
+            <option value="calor">Mapa de calor — viridis (viento/WPD)</option>
+          </select>
+        </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Unidad">
             <input value={unidad} onChange={(e) => setUnidad(e.target.value)} className={inputCls} />
@@ -449,6 +550,33 @@ function EditVarModal({
             <input value={rango} onChange={(e) => setRango(e.target.value)} className={inputCls} />
           </Field>
         </div>
+        {/* Pesos del modelo (solo MODELO): magnitud + polaridad. Editables aquí
+            porque la ruta BD↔API ya existe; el WLC usa peso×polaridad (#2A). */}
+        {esModelo && (
+          <div className="mb-1 grid grid-cols-2 gap-3">
+            <Field label="Peso (magnitud ≥ 0)">
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                value={peso}
+                onChange={(e) => setPeso(parseFloat(e.target.value) || 0)}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Polaridad (signo)">
+              <select
+                value={polaridad}
+                onChange={(e) => setPolaridad(Number(e.target.value))}
+                className={inputCls}
+              >
+                <option value={1}>+1 · Suma idoneidad</option>
+                <option value={-1}>−1 · Resta idoneidad</option>
+                <option value={0}>0 · No aporta</option>
+              </select>
+            </Field>
+          </div>
+        )}
         <div className="mb-4 flex flex-wrap gap-4 pt-1">
           <Check label="En mapa" checked={enMapa} onChange={() => setEnMapa((b) => !b)} />
           <Check label="En menú" checked={enMenu} onChange={() => setEnMenu((b) => !b)} />

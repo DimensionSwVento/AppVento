@@ -16,8 +16,12 @@ import {
   type Variable,
   isExcluyente,
   replaceCatalogFromDb,
+  patchCatalogVariable,
   iconForVariable,
   requiredForVariable,
+  aplicaEnForVariable,
+  mapKindForVariable,
+  type MapKind,
 } from "../variables/variablesCatalog";
 import {
   REGULATORY_NORMS,
@@ -29,6 +33,12 @@ import {
   PROJECTION_HORIZONS,
 } from "../economic/economicScenarios";
 import { applyDbWeights } from "../variables/variableWeights";
+import {
+  CALC_SUMMARY_DEFAULTS,
+  REPORT_CONTENT_DEFAULTS,
+  type CalcSummaryText,
+  type ReportContentText,
+} from "../report/reportTemplates";
 
 const BASE = "/api/admin/catalog";
 
@@ -64,8 +74,8 @@ export interface AdminVariable {
   polaridad?: number;
   /** |peso| en el cálculo multicriterio. */
   peso?: number;
-  /** Cómo se pinta en el mapa: heatmap | zona | "". */
-  mapKind?: "heatmap" | "zona" | "";
+  /** Método de visualización en el mapa: calor | interconectado | area. */
+  mapKind?: MapKind;
   mapThreshold?: number;
   // ── Metadatos anidados (Fase 1): InfoVariables(2) ──
   emplazamiento?: "onshore" | "offshore" | "both";
@@ -73,6 +83,10 @@ export interface AdminVariable {
   url?: string;
   clase?: string;
   subcriterioId?: string;
+  /** "Cómo se calcula" (método/fórmula, texto libre). Editable + ingestable. */
+  metodoCalculo?: string;
+  /** Ícono de la capa de mapa (`lucide:Name` / `tabler:key`). Asignable en admin. */
+  iconKey?: string;
 }
 
 export interface AdminEscenario {
@@ -152,6 +166,80 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(err.error || `Error ${res.status}`);
   }
   return res.json() as Promise<T>;
+}
+
+// ── CONFIG EDITABLE: "Resumen del cálculo" del informe (US08 · #2B) ───────────
+// Solo DESCRIPTIVO: el admin edita el texto/fórmulas que se IMPRIMEN en el
+// informe; no recalcula el score (lo precalcula el backend). Clave en app_config.
+const CALC_TEXT_KEY = "report_calc_text";
+// Store en memoria para modo template (sin backend): persiste durante la sesión.
+let calcTextStore: CalcSummaryText = { ...CALC_SUMMARY_DEFAULTS };
+
+/** Texto del "Resumen del cálculo" (override de BD fusionado sobre los defaults). */
+export async function fetchReportCalcText(): Promise<CalcSummaryText> {
+  if (USE_BACKEND) {
+    const raw = await api<Partial<CalcSummaryText>>(`/config/${CALC_TEXT_KEY}`);
+    return { ...CALC_SUMMARY_DEFAULTS, ...(raw ?? {}) };
+  }
+  return { ...calcTextStore };
+}
+
+/** Persiste el texto del "Resumen del cálculo" (PUT admin) y lo devuelve fusionado. */
+export async function updateReportCalcText(
+  text: CalcSummaryText,
+): Promise<CalcSummaryText> {
+  if (USE_BACKEND) {
+    const raw = await api<Partial<CalcSummaryText>>(`/config/${CALC_TEXT_KEY}`, {
+      method: "PATCH",
+      body: JSON.stringify(text),
+    });
+    return { ...CALC_SUMMARY_DEFAULTS, ...(raw ?? {}) };
+  }
+  calcTextStore = { ...text };
+  return { ...calcTextStore };
+}
+
+// ── CONFIG EDITABLE: contenido del informe (disclaimer + incentivos · #3) ─────
+const REPORT_CONTENT_KEY = "report_content";
+let reportContentStore: ReportContentText = { ...REPORT_CONTENT_DEFAULTS };
+
+/** Disclaimer + incentivos del informe (override de BD sobre los defaults). */
+export async function fetchReportContent(): Promise<ReportContentText> {
+  if (USE_BACKEND) {
+    const raw = await api<Partial<ReportContentText>>(`/config/${REPORT_CONTENT_KEY}`);
+    return {
+      ...REPORT_CONTENT_DEFAULTS,
+      ...(raw ?? {}),
+      // `incentivos` es array: si el override no lo trae, conserva el default.
+      incentivos:
+        raw?.incentivos && raw.incentivos.length > 0
+          ? raw.incentivos
+          : REPORT_CONTENT_DEFAULTS.incentivos,
+    };
+  }
+  return { ...reportContentStore };
+}
+
+/** Persiste el contenido editable del informe (PATCH admin). */
+export async function updateReportContent(
+  content: ReportContentText,
+): Promise<ReportContentText> {
+  if (USE_BACKEND) {
+    const raw = await api<Partial<ReportContentText>>(`/config/${REPORT_CONTENT_KEY}`, {
+      method: "PATCH",
+      body: JSON.stringify(content),
+    });
+    return {
+      ...REPORT_CONTENT_DEFAULTS,
+      ...(raw ?? {}),
+      incentivos:
+        raw?.incentivos && raw.incentivos.length > 0
+          ? raw.incentivos
+          : content.incentivos,
+    };
+  }
+  reportContentStore = { ...content };
+  return { ...reportContentStore };
 }
 
 // ── ACTUALIZADOR DE METADATOS (CSV/XLSX) + jerarquía (Fase 1 rediseño) ────────
@@ -354,6 +442,15 @@ export async function fetchMenuVariables(): Promise<Variable[]> {
       description: a.descripcion,
       fuente: a.fuente,
       enMapa: a.enMapa,
+      // Emplazamiento de la informativa creada en admin (para el filtro mar/tierra).
+      aplicaEn:
+        a.emplazamiento === "offshore"
+          ? "mar"
+          : a.emplazamiento === "onshore"
+            ? "tierra"
+            : a.aplicaEn === "mar" || a.aplicaEn === "tierra"
+              ? a.aplicaEn
+              : aplicaEnForVariable(a.id),
       noCalculo: true,
       excluyente: a.excluyente,
       iconKey: "lucide:Info",
@@ -384,9 +481,10 @@ function buildVariableFromDb(a: AdminVariable): Variable {
     licencia: a.licencia || undefined,
     url: a.url || undefined,
     enMapa: a.enMapa,
-    // Emplazamiento real (onshore/offshore/both). Se deriva `aplicaEn` (mar/tierra)
-    // para compatibilidad con el filtro existente: offshore→mar, onshore→tierra,
-    // both→sin restricción.
+    // Emplazamiento real (onshore/offshore/both). Se deriva `aplicaEn` (mar/tierra):
+    // offshore→mar, onshore→tierra, both→sin restricción. Fallback al snapshot del
+    // catálogo estático (aplicaEnForVariable) mientras la master no puebla el dato
+    // → así el filtro mar/tierra sigue operando (#9).
     aplicaEn:
       a.emplazamiento === "offshore"
         ? "mar"
@@ -394,11 +492,20 @@ function buildVariableFromDb(a: AdminVariable): Variable {
           ? "tierra"
           : a.aplicaEn === "mar" || a.aplicaEn === "tierra"
             ? a.aplicaEn
-            : undefined,
-    iconKey: iconForVariable(a.id),
+            : aplicaEnForVariable(a.id),
+    // Ícono de BD (asignable en admin) prima; si no viene, el snapshot estático.
+    iconKey: a.iconKey || iconForVariable(a.id),
     required: requiredForVariable(a.id),
     noCalculo: a.noCalculo ?? a.tipo === "informativa",
     excluyente: a.excluyente,
+    // Datos por-variable editables/ingestables: en modo backend priman sobre el
+    // template (unidad hardcoded, texto de "cómo se calcula" derivado). Vacío =
+    // undefined → el consumidor cae a su fallback estático.
+    unidad: a.unidad || undefined,
+    rango: a.rango || undefined,
+    metodoCalculo: a.metodoCalculo || undefined,
+    // Método de mapa: BD manda; si falta, se deriva por defecto.
+    mapKind: a.mapKind || mapKindForVariable(a.id),
   };
 }
 
@@ -469,16 +576,39 @@ export async function updateVariable(
   id: string,
   patch: Partial<AdminVariable>,
 ): Promise<AdminVariable> {
-  if (USE_BACKEND)
-    return api<AdminVariable>(`/variables/${id}`, {
+  if (USE_BACKEND) {
+    const updated = await api<AdminVariable>(`/variables/${id}`, {
       method: "PATCH",
       body: JSON.stringify(patch),
     });
+    // La BD es la fuente de verdad (ya persistió). Además refrescamos el CATÁLOGO
+    // en memoria (lo que leen mapa/menú vía `getVariableById`) con la fila
+    // autoritativa, para que el cambio de enMapa/método/icono se vea al instante
+    // sin esperar a un re-hydrate completo. Simétrico a la cache de template.
+    patchCatalogVariable(id, buildVariableFromDb(updated));
+    return updated;
+  }
   variablesStore = variablesStore.map((v) =>
     v.id === id
       ? { ...v, ...patch, enabled: v.tipo === "modelo" ? true : (patch.enabled ?? v.enabled) }
       : v,
   );
+  // TEMPLATE = usa CACHE: refleja la edición también en el CATÁLOGO (`getVariableById`),
+  // que es lo que leen el mapa/menú de capas. Sin esto, el toggle "en mapa"/método/icono
+  // solo vivía en el store de admin y no se veía en el mapa hasta prender el backend.
+  const cp: Partial<Variable> = {};
+  if (patch.enMapa !== undefined) cp.enMapa = patch.enMapa;
+  if (patch.mapKind !== undefined) cp.mapKind = patch.mapKind;
+  if (patch.iconKey !== undefined) cp.iconKey = patch.iconKey;
+  if (patch.unidad !== undefined) cp.unidad = patch.unidad;
+  if (patch.rango !== undefined) cp.rango = patch.rango;
+  if (patch.metodoCalculo !== undefined) cp.metodoCalculo = patch.metodoCalculo;
+  if (patch.descripcion !== undefined) cp.description = patch.descripcion;
+  if (patch.fuente !== undefined) cp.fuente = patch.fuente;
+  if (patch.masterId !== undefined) cp.masterId = patch.masterId;
+  if (patch.excluyente !== undefined) cp.excluyente = patch.excluyente;
+  if (patch.aplicaEn === "mar" || patch.aplicaEn === "tierra") cp.aplicaEn = patch.aplicaEn;
+  patchCatalogVariable(id, cp);
   return variablesStore.find((v) => v.id === id)!;
 }
 
@@ -598,33 +728,44 @@ export async function updateTurbine(
   return t;
 }
 
-// ── FUENTES DE DATOS + INGESTA DE DOCS (admin) ────────────────────────────────
-// Registro de DÓNDE se guarda cada doc (master parquet + CSV/JSON del catálogo) y
-// re-ingesta a demanda. En template devuelve un registro estático demostrativo.
-export interface DataSource {
-  id: string;
-  label: string;
-  kind: "parquet" | "csv" | "json";
-  /** Ruta/URL donde se guarda la fuente (p.ej. el parquet de la master). */
-  location: string;
-  rows: number;
-  status: "ok" | "error" | "pending";
-  ingestedAt: string | null;
-  notes: string;
+/** Crea una turbina (solo admin). Los specs son de ingeniería (no del cliente):
+ *  se editan aquí. Lanza si el id ya existe (409). */
+export async function createTurbine(
+  body: Partial<AdminTurbine> & { label: string },
+): Promise<AdminTurbine> {
+  if (USE_BACKEND) {
+    return api<AdminTurbine>(`/turbines`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
+  const id = (body.id || body.label).trim();
+  const t: AdminTurbine = {
+    id,
+    label: body.label,
+    detail: body.detail ?? "",
+    potenciaMinMW: body.potenciaMinMW ?? 0,
+    potenciaMaxMW: body.potenciaMaxMW ?? 0,
+    areaPorAeroKm2: body.areaPorAeroKm2 ?? 0,
+    espaciamientoM: body.espaciamientoM ?? 0,
+  };
+  turbinesStore.push(t);
+  return t;
 }
 
-const _sourcesTemplate: DataSource[] = [
-  { id: "master", label: "Master (parquet de hexágonos)", kind: "parquet", location: "back_elements/data/master_variables.h3.parquet", rows: 0, status: "pending", ingestedAt: null, notes: "" },
-  { id: "variables", label: "Catálogo de variables (InfoVariables 1/2/3)", kind: "json", location: "infrastructure/data/variables_seed.json", rows: 91, status: "ok", ingestedAt: null, notes: "" },
-  { id: "normas", label: "Normas regulatorias", kind: "csv", location: "infrastructure/data/normas_seed.csv", rows: 7, status: "ok", ingestedAt: null, notes: "" },
-  { id: "escenarios", label: "Escenarios económicos", kind: "csv", location: "infrastructure/data/escenarios_seed.csv", rows: 3, status: "ok", ingestedAt: null, notes: "" },
-  { id: "turbines", label: "Aerogeneradores (S/M/L)", kind: "csv", location: "infrastructure/data/turbines_seed.csv", rows: 3, status: "ok", ingestedAt: null, notes: "" },
-];
-
-export async function fetchDataSources(): Promise<DataSource[]> {
-  if (USE_BACKEND) return api<DataSource[]>(`/sources`);
-  return _sourcesTemplate.map((s) => ({ ...s }));
+/** Borra una turbina (solo admin). */
+export async function deleteTurbine(id: string): Promise<void> {
+  if (USE_BACKEND) {
+    await api(`/turbines/${id}`, { method: "DELETE" });
+    return;
+  }
+  const i = turbinesStore.findIndex((x) => x.id === id);
+  if (i >= 0) turbinesStore.splice(i, 1);
 }
+
+// ── RANGOS POR VARIABLE (verificación admin del informe) ──────────────────────
+// (La pestaña "Fuentes de datos" se eliminó: re-ingería seeds y pisaba datos
+//  curados en BD — ver #3. El informe deriva sus fuentes de las variables reales.)
 
 /**
  * Rangos (min–max) REALES por variable desde el backend (`hexagon_meta`, vía
@@ -649,15 +790,6 @@ export async function fetchVariableRanges(): Promise<
   } catch {
     return {};
   }
-}
-
-/** (Re)ingiere un doc por su id. Lanza si falla (para avisar en el panel). */
-export async function requestIngest(sourceId: string): Promise<DataSource> {
-  if (USE_BACKEND) {
-    return api<DataSource>(`/ingest/${sourceId}`, { method: "POST" });
-  }
-  const s = _sourcesTemplate.find((x) => x.id === sourceId)!;
-  return { ...s, status: "ok" };
 }
 
 // ── ACTUALIZAR MASTER (US04-03 · admin) ──────────────────────────────────────
