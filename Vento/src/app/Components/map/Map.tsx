@@ -249,7 +249,7 @@ export default function MapView() {
       if (!next) setPolygonPoints([]); // apagar → limpiar puntos
       return next;
     });
-  }, []);
+  }, [setPolygonMode, setPolygonPoints]);
   const applyPolygon = useCallback(() => {
     if (polygonPoints.length < 3) return;
     const n = selectPolygon(polygonPoints);
@@ -257,7 +257,7 @@ export default function MapView() {
     setPolygonMode(false);
     if (n > 0) toast.success(`${n} hexágonos seleccionados`);
     else toast.error("El polígono no cubrió hexágonos seleccionables");
-  }, [polygonPoints, selectPolygon, toast]);
+  }, [polygonPoints, selectPolygon, toast, setPolygonMode, setPolygonPoints]);
   // Añade un vértice por COORDENADA (desde el buscador) y vuela ahí. Activa el
   // modo polígono para que se dibuje y se pueda aplicar.
   const addPolygonCoordinate = useCallback(
@@ -266,7 +266,7 @@ export default function MapView() {
       setPolygonPoints((pts) => [...pts, [lng, lat]]);
       setViewState((v) => clampViewState({ ...v, longitude: lng, latitude: lat }));
     },
-    [clampViewState],
+    [clampViewState, setPolygonMode, setPolygonPoints, setViewState],
   );
 
   // Al SALIR de la fase de selección hacia una fase "congelada" (dimensiones,

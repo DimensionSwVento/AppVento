@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import {
   HEATMAP_DIMENSIONS,
   HEATMAP_WIND_OPTIONS,
@@ -31,25 +31,36 @@ export default function HeatmapDimensionSwitches() {
 
   // Solo se ofrecen las capas de viento SELECCIONADAS en Dimensiones (velocidad/
   // densidad son informativas opcionales; el usuario las activa en el menú).
-  const windOptions = HEATMAP_WIND_OPTIONS.filter((d) => isActive(d.id));
+  // Memoizado por `isActive` para que las deps del effect no cambien cada render.
+  const windOptions = useMemo(
+    () => HEATMAP_WIND_OPTIONS.filter((d) => isActive(d.id)),
+    [isActive],
+  );
 
   // SOLO las variables cuyo MÉTODO de mapa es "calor" van al desplegable de
   // heatmap (corrección cliente: enMapa ya NO manda todo aquí). Las de "area" e
   // "interconectado" se pintan como capas de icono/color/red, no como heatmap.
   // Además deben estar ACTIVAS y no ser viento (que tiene su propio grupo).
-  const variableOptions = mapHeatmapVariableOptions().filter((o) => {
-    if (!isActive(o.id)) return false;
-    if (o.id === "velocidad-viento" || o.id === "densidad-viento") return false;
-    const kind = getVariableById(o.id)?.mapKind ?? mapKindForVariable(o.id);
-    return kind === "calor";
-  });
+  const variableOptions = useMemo(
+    () =>
+      mapHeatmapVariableOptions().filter((o) => {
+        if (!isActive(o.id)) return false;
+        if (o.id === "velocidad-viento" || o.id === "densidad-viento") return false;
+        const kind = getVariableById(o.id)?.mapKind ?? mapKindForVariable(o.id);
+        return kind === "calor";
+      }),
+    [isActive],
+  );
 
   // Si el heatmap por variable activo ya no está disponible (deseleccionado en
   // Dimensiones o su enMapa apagado), vuelve a General.
-  const availableVarIds = [
-    ...windOptions.map((d) => d.id as string),
-    ...variableOptions.map((o) => o.id),
-  ];
+  const availableVarIds = useMemo(
+    () => [
+      ...windOptions.map((d) => d.id as string),
+      ...variableOptions.map((o) => o.id),
+    ],
+    [windOptions, variableOptions],
+  );
   useEffect(() => {
     if (
       isVariableHeatmap(activeDimension) &&
