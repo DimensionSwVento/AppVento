@@ -45,7 +45,9 @@ Herramienta web SIG multicriterio para evaluar la idoneidad de proyectos de ener
 | 4 | Regulatoria | Normativa colombiana, zonas de exclusión legal, NSR-10 |
 | 5 | económica | Indicadores financieros (VPN, TIR, LCOE), costos de implementación |
 
-> **Actualización (US-FB3-06, Sprint 3):** la **Regulatoria pasó a informativa** — ya no puntúa en el score general. El WLC se calcula sobre **4 dimensiones puntuables** (Técnica, Ambiental, Socioeconómica, económica).
+> **Actualización (US-FB3-06, Sprint 3):** la **Regulatoria pasó a informativa** — ya no puntúa en el score general.
+>
+> **Actualización (Sprint 4):** la **económica también pasó a informativa**. El WLC se calcula sobre **3 dimensiones puntuables** (Ambiental, Técnica, Social); económica y Regulatoria se muestran como contexto (no puntúan).
 
 ### 1.4 Tipos de Variables
 

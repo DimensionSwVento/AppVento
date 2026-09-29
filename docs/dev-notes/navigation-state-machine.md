@@ -88,7 +88,7 @@ Item activo: `bg-blue-800`.
 
 ```
 layout.tsx
-  └─ Providers.tsx
+  └─ AppProvider.tsx  (compone providers vía Utils/ProviderComposer.tsx — ADR-016)
        └─ AprincipalProvider  (accion, setAccion, selectedHexes, setSelectedHexes)
             └─ dashboard/page.tsx
                  ├─ SideBar (lee accion + selectedHexes, controla retroceso)
@@ -237,8 +237,8 @@ En la fase `seleccion-area`, el item "Dimensiones" se habilita visualmente y per
 | Archivo | Estado | Responsabilidad |
 |---------|--------|----------------|
 | `Utils/AccionPrincipalContext.tsx` | Implementado | Estado global: accion, selectedHexes |
-| `Providers.tsx` | Implementado | Composición de providers |
-| `layout.tsx` | Implementado | Root layout, wrapping con Providers |
+| `AppProvider.tsx` + `Utils/ProviderComposer.tsx` | Implementado | Composición de providers (ADR-016) |
+| `layout.tsx` | Implementado | Root layout, wrapping con `AppProvider` |
 | `dashboard/page.tsx` | Implementado | Dynamic import MapView, switch subpáginas |
 | `Components/SideBar.tsx` | Implementado | Retroceso libre, avance condicional, iconos, logo |
 | `Components/NextStepButton.tsx` | Implementado | Botón de avance al final de cada subpágina |
