@@ -174,7 +174,10 @@ function placeholderCatalogCells(variableId: string): string[] {
  */
 export async function fetchCatalogCells(variableId: string): Promise<string[]> {
   if (USE_BACKEND) {
-    const m = await fetchWindCells(variableId);
+    // Capa de ÁREA/interconectado: solo se necesita la PRESENCIA (keys), no el
+    // valor. Se pide agregado a res 7 (padre) para acotar payload/render de una
+    // variable muy extendida; el backend además hace stream (memoria acotada).
+    const m = await fetchWindCells(variableId, undefined, 7);
     return m ? [...m.keys()] : [];
   }
   return placeholderCatalogCells(variableId);
