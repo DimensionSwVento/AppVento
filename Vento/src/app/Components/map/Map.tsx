@@ -853,7 +853,11 @@ export default function MapView() {
   }, [selectedHexes]);
 
   const catalogLayers = useMemo(() => {
-    const out: (H3HexagonLayer<any> | IconLayer<any> | PathLayer<any>)[] = [];
+    const out: (
+      | H3HexagonLayer<{ h: string }>
+      | IconLayer<{ lng: number; lat: number }>
+      | PathLayer<{ path: [number, number][] }>
+    )[] = [];
     for (const { id, kind } of extraMapVars) {
       const cells = extraCells[id] ?? [];
       if (cells.length === 0) continue;

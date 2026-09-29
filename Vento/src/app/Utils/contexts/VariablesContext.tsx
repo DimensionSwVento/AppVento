@@ -86,6 +86,9 @@ export function VariablesProvider({ children }: { children: React.ReactNode }) {
   // catálogo real. Ver #8 (obligatorias desactivadas en prod).
   useEffect(() => {
     if (!catalogReady) return;
+    // Semilla legítima al hidratar el catálogo (merge, no pisa la selección del
+    // usuario) — mismo patrón que el resto de effects de carga del proyecto.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveVariables(
       (prev) =>
         new Set([...modelVariableIds(), ...requiredVariableIds(), ...prev]),
