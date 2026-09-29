@@ -13,7 +13,7 @@ import {
 import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
 import { useIsAdmin } from "../../Utils/useIsAdmin";
-import { fetchMasterStatus, fetchEscenarios, fetchNormas, fetchVariableRanges, type AdminEscenario } from "../../Utils/admin/catalogApi";
+import { fetchMasterStatus, fetchEscenarios, fetchNormas, fetchVariableRanges, fetchReportCalcText, fetchReportContent, type AdminEscenario } from "../../Utils/admin/catalogApi";
 import { dbField, AuditDataLabel } from "../../Utils/audit";
 import {
   HEATMAP_DIMENSIONS,
@@ -22,7 +22,7 @@ import {
 import RadarChart from "./RadarChart";
 import PieChart from "./PieChart";
 import BarChart from "./BarChart";
-import LineChart from "./LineChart";
+import LineChartGrid from "./LineChartGrid";
 import Gauge from "./Gauge";
 import DivergingBars from "./DivergingBars";
 import ReportSheet from "./ReportSheet";
@@ -70,9 +70,10 @@ import {
   type DimensionId,
 } from "../../Utils/variables/variablesCatalog";
 import {
-  DISCLAIMER_BODY,
-  DISCLAIMER_TITLE,
-  WEIGHT_BALANCING_NOTE,
+  CALC_SUMMARY_DEFAULTS,
+  REPORT_CONTENT_DEFAULTS,
+  type CalcSummaryText,
+  type ReportContentText,
 } from "../../Utils/report/reportTemplates";
 import { weightFor } from "../../Utils/variables/variableWeights";
 import {
@@ -106,20 +107,30 @@ const RADAR_DIMS: HeatmapDimensionId[] = [
 ];
 
 // Cuántas filas de tabla caben cómodamente en una hoja (mini-tablas).
-const ROWS_PER_SHEET = 16;
-
-// Impuestos / incentivos clave de la dimensión económica (template — Ley 1715
-// y régimen tributario aplicable a proyectos de energía renovable).
-const IMPUESTOS_CLAVE: { label: string; value: string }[] = [
-  { label: "Deducción de renta (Ley 1715)", value: "50% inversión" },
-  { label: "Exclusión de IVA (equipos)", value: "Aplica" },
-  { label: "Exención arancelaria", value: "Aplica" },
-  { label: "Depreciación acelerada", value: "hasta 33%/año" },
-];
+// La PRIMERA hoja de una dimensión comparte espacio con las esquinas (score/peso),
+// las variables que influyen y las excluyentes; la ÚLTIMA comparte con el "Resumen
+// del cálculo" y las informativas → por eso los cupos son CONSERVADORES, para que
+// ninguna hoja exceda el A4 (1123px) y el export no corte a mitad de fila. Si aún
+// se corta, bajar más estos números (el precio es más hojas, no cortes).
+const FIRST_SHEET_ROWS = 6;
+const CONT_SHEET_ROWS = 11;
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+/**
+ * Trocea `arr` reservando `first` elementos para el primer bloque (hoja pesada:
+ * comparte espacio con esquinas/influyentes/excluyentes) y `rest` para los
+ * siguientes (hojas de continuación, solo tabla). Evita que la primera hoja se
+ * desborde y se corte a mitad de fila.
+ */
+function chunkFirstThen<T>(arr: T[], first: number, rest: number): T[][] {
+  if (arr.length <= first) return [arr];
+  const out: T[][] = [arr.slice(0, first)];
+  for (let i = first; i < arr.length; i += rest) out.push(arr.slice(i, i + rest));
   return out;
 }
 
@@ -179,20 +190,87 @@ function MiniTable({
   );
 }
 
-/** Franja de leyenda viridis para el mapa de calor. */
-function ViridisLegend() {
+/** Franja de leyenda viridis + marcador del score GENERAL sobre la escala. */
+function ViridisLegend({
+  generalPct,
+  lowPct,
+  highPct,
+}: {
+  /** Score GENERAL (0–100) → marcador (palo) que se mueve sobre la barra. */
+  generalPct?: number;
+  /** Idoneidad (0–100) del hex MENOS apto de la selección → muesca fina. */
+  lowPct?: number;
+  /** Idoneidad (0–100) del hex MÁS apto de la selección → muesca fina. */
+  highPct?: number;
+}) {
+  const clamp = (v: number) => Math.max(0, Math.min(100, v));
+  const ticks: { pct: number; label: string }[] = [];
+  if (typeof lowPct === "number") ticks.push({ pct: clamp(lowPct), label: "menor" });
+  if (typeof highPct === "number") ticks.push({ pct: clamp(highPct), label: "mayor" });
+  const gen = typeof generalPct === "number" ? clamp(generalPct) : null;
   return (
     <div className="mt-1">
+      {/* Marcador del score GENERAL: triángulo que apunta a su posición en la
+          barra (se mueve según el puntaje). */}
+      <div className="relative h-2">
+        {gen !== null && (
+          <span
+            className="absolute bottom-0 -translate-x-1/2 text-[9px] leading-none text-[#165170ff]"
+            style={{ left: `${gen}%` }}
+            title={`Idoneidad general: ${gen.toFixed(0)}`}
+            aria-hidden="true"
+          >
+            ▼
+          </span>
+        )}
+      </div>
       <div
-        className="h-2.5 w-full rounded"
+        className="relative h-2.5 w-full rounded"
         style={{
           background:
             "linear-gradient(90deg,#440154,#3b528b,#21918c,#5ec962,#fde725)",
         }}
-      />
+      >
+        {/* Palo del score GENERAL: barra vertical marcada sobre el gradiente. */}
+        {gen !== null && (
+          <span
+            className="absolute top-[-2px] h-[calc(100%+4px)] w-[3px] -translate-x-1/2 rounded-sm bg-[#165170ff] ring-1 ring-white"
+            style={{ left: `${gen}%` }}
+            title={`Idoneidad general: ${gen.toFixed(0)}`}
+          />
+        )}
+        {/* Muescas finas del hex menos/más apto de la selección. */}
+        {ticks.map((t) => (
+          <span
+            key={t.label}
+            className="absolute top-[-1px] h-[calc(100%+2px)] w-[2px] -translate-x-1/2 rounded-sm bg-white ring-1 ring-black/50"
+            style={{ left: `${t.pct}%` }}
+            title={`${t.label}: ${t.pct.toFixed(0)}`}
+          />
+        ))}
+      </div>
+      {gen !== null && (
+        <div className="mt-0.5 text-center text-[8px] font-semibold text-[#165170ff]">
+          Idoneidad general: {gen.toFixed(0)} / 100
+        </div>
+      )}
       <div className="mt-0.5 flex justify-between text-[8px] text-gray-500">
-        <span>0 · menor idoneidad</span>
-        <span>100 · mayor idoneidad</span>
+        {/* Swatch en cada extremo → deja explícito qué color es el más bajo
+            (morado #440154) y el más alto (amarillo #fde725) de la escala. */}
+        <span className="flex items-center gap-1">
+          <span
+            className="inline-block h-2 w-2 rounded-sm"
+            style={{ backgroundColor: "#440154" }}
+          />
+          0 · menor idoneidad (morado)
+        </span>
+        <span className="flex items-center gap-1">
+          100 · mayor idoneidad (amarillo)
+          <span
+            className="inline-block h-2 w-2 rounded-sm"
+            style={{ backgroundColor: "#fde725" }}
+          />
+        </span>
       </div>
     </div>
   );
@@ -216,6 +294,27 @@ export default function Report() {
   const [builderOpen, setBuilderOpen] = useState(false);
   // Al capturar el PDF las hojas se renderizan a escala 1 (tamaño real).
   const [capturing, setCapturing] = useState(false);
+
+  // "Resumen del cálculo" del informe (editable desde admin, solo descriptivo).
+  // Arranca con defaults e hidrata el override de BD (app_config·report_calc_text).
+  const [calcText, setCalcText] = useState<CalcSummaryText>(CALC_SUMMARY_DEFAULTS);
+  // Contenido editable del informe (disclaimer + incentivos, #3). Fallback a
+  // defaults; el admin lo edita en /admin/report-text.
+  const [reportContent, setReportContent] = useState<ReportContentText>(
+    REPORT_CONTENT_DEFAULTS,
+  );
+  useEffect(() => {
+    let alive = true;
+    fetchReportCalcText()
+      .then((t) => alive && setCalcText(t))
+      .catch(() => {});
+    fetchReportContent()
+      .then((c) => alive && setReportContent(c))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // Configuración del informe (US06-03): qué dimensiones/secciones/gráfico
   // incluir. Gobierna la previsualización, el PDF (US06-04) y lo guardado.
@@ -326,6 +425,22 @@ export default function Report() {
   // Datos por hexágono (valor por variable del área).
   const areaData = useAreaHexData(selectedHexes, true);
 
+  // Idoneidad (0–100) del hex MENOS y MÁS apto de la selección → muescas en la
+  // barra viridis. Solo con datos reales por hex (backend); sin ellos, sin muescas.
+  const idoneidadRange = useMemo(() => {
+    if (!areaData || areaData.size === 0) return null;
+    let min = Infinity;
+    let max = -Infinity;
+    for (const info of areaData.values()) {
+      const s = info.score_general;
+      if (typeof s !== "number") continue;
+      const pct = s * 100;
+      if (pct < min) min = pct;
+      if (pct > max) max = pct;
+    }
+    return min <= max ? { min, max } : null;
+  }, [areaData]);
+
   // Naturaleza mar/tierra del área (filtra variables que no aplican).
   const nature = useMemo(
     () => (USE_API_EMPLAZAMIENTO ? selectionNature(selectedHexes) : "mixta"),
@@ -384,26 +499,38 @@ export default function Report() {
       unit: string;
       valueText: string;
       description: string;
+      dimension: string;
     }[] = [];
     for (const id of activeVariables) {
       const meta = getInfoVarById(id);
       if (!meta) continue;
-      const masterId = getVariableById(id)?.masterId ?? "NA";
+      const catVar = getVariableById(id);
+      const masterId = catVar?.masterId ?? "NA";
       const apiVal = areaVariableAverage(areaData, selectedHexes, masterId);
-      const seedScore =
+      // Valor a mostrar: el REAL crudo del backend TAL CUAL (+ su unidad). Sin
+      // dato real → en template, valor sintético de referencia; en backend sin
+      // dato, vacío (nunca cifras fabricadas cuando el backend está prendido).
+      const valueText =
         apiVal != null
-          ? apiVal
-          : selectedHexes.size === 0 || !USE_PLACEHOLDER_FALLBACK
-            ? 0
-            : parseFloat(dimensionScore(id, selectedHexes));
+          ? Number.isInteger(apiVal)
+            ? apiVal.toString()
+            : apiVal.toFixed(2)
+          : USE_PLACEHOLDER_FALLBACK && selectedHexes.size > 0
+            ? formatVariableValue(
+                parseFloat(dimensionScore(id, selectedHexes)) / 100,
+                meta.unit,
+              )
+            : "";
       rows.push({
         id: meta.id,
         label: meta.label,
         unit: meta.unit,
-        valueText: formatVariableValue(seedScore / 100, meta.unit),
+        valueText,
         // Detalle (P1): la descripción "qué es / cómo opera", igual que en la
         // pestaña Dimensiones (la `Variable` del catálogo la trae; `InfoVar` no).
-        description: getVariableById(id)?.description ?? "",
+        description: catVar?.description ?? "",
+        // Dimensión (para mostrar las informativas TRAS la tabla de su dimensión, #10).
+        dimension: catVar?.dimension ?? "",
       });
     }
     return rows;
@@ -472,12 +599,14 @@ export default function Report() {
       return escList.map((sc, i) => ({
         label: `${shown[0].label} · ${sc.label}`,
         color: ECONOMIC_SERIES_COLORS[i % ECONOMIC_SERIES_COLORS.length],
+        unit: getInfoVarById(shown[0].id)?.unit ?? "",
         points: economicSeries(sc.id, shown[0].id, econ.horizonYears, econ.capacidadNominal, sc.mult),
       }));
     }
     return shown.map((v, i) => ({
       label: v.label,
       color: ECONOMIC_SERIES_COLORS[i % ECONOMIC_SERIES_COLORS.length],
+      unit: getInfoVarById(v.id)?.unit ?? "",
       points: economicSeries(econ.escenarioId, v.id, econ.horizonYears, econ.capacidadNominal, escActivo?.mult),
     }));
   }, [
@@ -511,6 +640,7 @@ export default function Report() {
               : null));
       return {
         label: v.label,
+        masterId: v.masterId,
         description: v.description,
         criterio: v.subcriterio
           ? `${v.criterio} › ${v.subcriterio}`
@@ -574,7 +704,7 @@ export default function Report() {
       const influ = dimInfluencers(d.id);
       const excl = dimExcluyentes(d.id);
       addSection(`Dimensión ${dl}`, (n) => {
-        const pages = chunk(rows, ROWS_PER_SHEET);
+        const pages = chunkFirstThen(rows, FIRST_SHEET_ROWS, CONT_SHEET_ROWS);
         return pages.map((pr, pi) => (
           <div key={pi} className="flex h-full flex-col text-[10px]">
             <div className="flex items-baseline justify-between">
@@ -634,6 +764,7 @@ export default function Report() {
                 </h4>
                 <MiniTable
                   columns={[
+                    "Código",
                     "Variable",
                     ...(config.showModelDetail ? ["Criterio"] : []),
                     "Tipo",
@@ -643,6 +774,7 @@ export default function Report() {
                     "Fuente",
                   ]}
                   rows={pr.map((r) => [
+                    dbField(r.masterId),
                     dbField(r.label),
                     ...(config.showModelDetail ? [dbField(r.criterio)] : []),
                     dbField(r.tipo),
@@ -694,28 +826,59 @@ export default function Report() {
               </div>
             )}
 
+            {/* Variables INFORMATIVAS de ESTA dimensión (no puntúan), TRAS su tabla
+                (#10) — antes salían todas juntas en una hoja global al final. */}
+            {pi === pages.length - 1 &&
+              config.showInformative &&
+              informativeRows.some((r) => r.dimension === d.id) && (
+                <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50/60 p-2.5">
+                  <div className="flex items-center gap-2">
+                    <p className="text-[10px] font-bold text-[#165170ff]">
+                      Variables informativas
+                    </p>
+                    <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-gray-600">
+                      No puntúa
+                    </span>
+                  </div>
+                  <ul className="mt-1 flex flex-col gap-0.5">
+                    {informativeRows
+                      .filter((r) => r.dimension === d.id)
+                      .map((r) => (
+                        <li key={r.id} className="text-[9px] leading-snug text-gray-700">
+                          <b>{dbField(r.label)}</b>
+                          {r.valueText ? <> — {dbField(r.valueText)}</> : null}
+                          {r.description ? (
+                            <span className="text-gray-500">: {dbField(r.description)}</span>
+                          ) : null}
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
+
             {pi === pages.length - 1 && config.showModelDetail && (
               <div className="mt-auto rounded-lg bg-gray-50 p-2.5">
                 <p className="text-[10px] font-bold text-[#165170ff]">
                   Resumen del cálculo
                 </p>
+                {/* El modelo produce cada dimensión/global en escala 1–5 con una
+                    fórmula de pesos (TEMPORAL — el cliente la ajusta). Aquí se
+                    muestra el RESULTADO 1–5 y su normalización a 0–100. */}
                 <p className="mt-0.5 font-mono text-[9px] text-gray-700">
-                  Score dimensión = Σ(pesoᵢ × valorᵢ) / Σ pesoᵢ ={" "}
-                  <b>{dimScore.toFixed(1)} / 100</b>
+                  Dimensión = {calcText.formulaDimension} ={" "}
+                  <b>{(1 + (dimScore / 100) * 4).toFixed(1)}</b> (escala 1–5)
                 </p>
                 <p className="mt-0.5 font-mono text-[9px] text-gray-700">
-                  Índice general = Σ(peso_dim × score_dim) ={" "}
-                  {scorableDims
-                    .filter((x) => config.dims[x.id])
-                    .map(
-                      (x) =>
-                        `${pesoDim.toFixed(0)}%·${(scores.byDim[x.id] ?? 0).toFixed(0)}`,
-                    )
-                    .join(" + ")}{" "}
+                  → normalizado (v−1)/4×100 = ({(1 + (dimScore / 100) * 4).toFixed(1)}−1)/4×100
+                  = <b>{dimScore.toFixed(1)} / 100</b>
+                </p>
+                <p className="mt-0.5 font-mono text-[9px] text-gray-700">
+                  Índice general = {calcText.formulaGeneral} ={" "}
+                  <b>{(1 + (scores.general / 100) * 4).toFixed(1)}</b> (1–5) → normalizado
                   = <b>{scores.general.toFixed(1)} / 100</b>
                 </p>
                 <p className="mt-1 text-[8px] italic leading-snug text-gray-500">
-                  {WEIGHT_BALANCING_NOTE}
+                  {calcText.metodologiaNota}
                 </p>
                 <AuditDataLabel
                   uses={[
@@ -758,11 +921,14 @@ export default function Report() {
         </p>
         {econSeries.length > 0 && (
           <div className="mt-3 flex justify-center">
-            <LineChart
+            {/* Small-multiples (#7): comparar escenarios = 1 gráfico; si no, se
+                parte por unidad/≤3 series para no saturar. */}
+            <LineChartGrid
               series={econSeries}
-              width={640}
-              height={300}
-              className="w-full max-w-[640px]"
+              chartWidth={econ.compareMode ? 600 : 300}
+              chartHeight={econ.compareMode ? 300 : 190}
+              maxPerChart={econ.compareMode ? Infinity : 3}
+              className="max-w-[680px]"
             />
           </div>
         )}
@@ -798,7 +964,7 @@ export default function Report() {
           Impuestos e incentivos clave
         </h4>
         <div className="mt-1 grid grid-cols-2 gap-2">
-          {IMPUESTOS_CLAVE.map((it) => (
+          {reportContent.incentivos.map((it) => (
             <div
               key={it.label}
               className="flex items-baseline justify-between rounded-md border border-gray-200 px-2 py-1.5"
@@ -824,6 +990,9 @@ export default function Report() {
   if (config.showRegulatoria && regulatory.addToReport) {
     const activeNormas = normas.filter((no) => activeVariables.has(`norma:${no.id}`));
     const sem = normasSemaforo(activeNormas);
+    // Si NO hay ninguna norma activa, no se agrega la hoja (antes salía el semáforo
+    // con 0s). Mismo patrón de guarda de vacío que las informativas (#6).
+    if (activeNormas.length > 0)
     addSection("Dimensión regulatoria (Inf.)", (n) => [
       <div key="reg" className="text-[10px]">
         <div className="flex items-center gap-2">
@@ -906,11 +1075,16 @@ export default function Report() {
     ]);
   }
 
-  // Hoja(s) de variables informativas seleccionadas.
-  if (config.showInformative && informativeRows.length > 0) {
+  // Hoja(s) de variables informativas seleccionadas que NO cuelgan de una
+  // dimensión puntuable ya renderizada (esas salen tras su tabla, #10). Aquí caen
+  // las informativas de dimensiones no puntuables (p.ej. económica) o no incluidas.
+  const globalInformative = informativeRows.filter(
+    (r) => !scorableDims.some((d) => d.id === r.dimension && config.dims[d.id]),
+  );
+  if (config.showInformative && globalInformative.length > 0) {
     addSection("Variables informativas", (n) => {
       // Con detalle (P1): menos por hoja porque cada una lleva su descripción.
-      const pages = chunk(informativeRows, 12);
+      const pages = chunk(globalInformative, 12);
       return pages.map((pr, pi) => (
         <div key={pi} className="text-[10px]">
           <h3 className="text-base font-bold text-[#165170ff]">
@@ -997,7 +1171,7 @@ export default function Report() {
         )}
 
         <p className="mt-2 text-[9px] italic leading-snug text-gray-500">
-          {WEIGHT_BALANCING_NOTE}
+          {calcText.metodologiaNota}
         </p>
 
         {/* Trazabilidad: cómo verificar el informe de lo agregado a lo crudo. */}
@@ -1011,11 +1185,11 @@ export default function Report() {
           </p>
           <ol className="mt-1 flex flex-col gap-0.5 text-[9px] leading-snug text-gray-700">
             <li>
-              <b>1. Índice general</b> = Σ(peso_dim × score_dim) — resumen
+              <b>1. Índice general</b> = {calcText.formulaGeneral} — resumen
               ejecutivo.
             </li>
             <li>
-              <b>2. Score por dimensión</b> = Σ(peso_var × valor_var) / Σ pesos —
+              <b>2. Score por dimensión</b> = {calcText.formulaDimension} —
               página de cada dimensión.
             </li>
             <li>
@@ -1087,9 +1261,9 @@ export default function Report() {
   addSection("Disclaimer", (n) => [
     <div key="dis" className="text-[10px]">
       <h3 className="text-base font-bold text-[#165170ff]">
-        {n}. {DISCLAIMER_TITLE}
+        {n}. {reportContent.disclaimerTitle}
       </h3>
-      <p className="mt-2 leading-relaxed text-gray-600">{dbField(DISCLAIMER_BODY)}</p>
+      <p className="mt-2 leading-relaxed text-gray-600">{dbField(reportContent.disclaimerBody)}</p>
       <footer className="mt-6 border-t border-gray-200 pt-3 text-[9px] text-gray-400">
         Vento · ANH · EAFIT · Mavalan Software · {timestamp}
         {masterVersion ? ` · Datos: master ${masterVersion}` : ""}
@@ -1151,7 +1325,11 @@ export default function Report() {
                 <AreaMiniMap selectedHexes={selectedHexes} className="w-full" />
               )}
             </div>
-            <ViridisLegend />
+            <ViridisLegend
+              generalPct={scores.general}
+              lowPct={idoneidadRange?.min}
+              highPct={idoneidadRange?.max}
+            />
             <AuditDataLabel uses={["mapa de calor: score_general por hex (master/global.parquet)"]} />
           </>
         )}
@@ -1413,14 +1591,26 @@ export default function Report() {
             el.getAttribute("data-pdf-ignore") === "true",
         });
         const imgData = canvas.toDataURL("image/jpeg", 0.95);
-        // Ajuste "contain" a A4 preservando el aspecto de la hoja.
-        const ratio = Math.min(pageW / canvas.width, pageH / canvas.height);
-        const w = canvas.width * ratio;
-        const h = canvas.height * ratio;
-        const x = (pageW - w) / 2;
-        const y = (pageH - h) / 2;
+        // Escala la hoja al ANCHO A4; si queda MÁS ALTA que una página, se reparte
+        // en varias páginas (slicing por offset vertical) para no recortar el
+        // contenido (#1). Antes se hacía "contain" a 1 sola página → cortaba.
+        const imgW = pageW;
+        const imgH = (canvas.height * pageW) / canvas.width;
         if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, "JPEG", x, y, w, h);
+        let position = 0;
+        let heightLeft = imgH;
+        pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
+        heightLeft -= pageH;
+        // Umbral: no añadir una página de continuación si lo que resta es una
+        // franja mínima (sobrante de redondeo del render) → evita hojas casi
+        // vacías. 2 mm ≈ 7 px @96dpi, menos que cualquier fila de tabla.
+        const SLICE_EPS_MM = 2;
+        while (heightLeft > SLICE_EPS_MM) {
+          position -= pageH;
+          pdf.addPage();
+          pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
+          heightLeft -= pageH;
+        }
       }
 
       pdf.save(`informe-vento-${Date.now()}.pdf`);

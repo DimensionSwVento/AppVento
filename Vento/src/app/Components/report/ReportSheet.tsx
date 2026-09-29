@@ -40,8 +40,11 @@ export default function ReportSheet({
   return (
     <div
       data-report-sheet="true"
-      className="report-sheet relative mx-auto flex w-[794px] flex-col overflow-hidden bg-white shadow-md ring-1 ring-black/5"
-      style={{ width: 794, height: 1123 }}
+      className="report-sheet relative mx-auto flex w-[794px] flex-col bg-white shadow-md ring-1 ring-black/5"
+      // Alto MÍNIMO A4 (794×1123 @96dpi) pero crece con el contenido en vez de
+      // recortarlo (antes `height`+`overflow-hidden` cortaba lo que sobraba, #1).
+      // El export corta en páginas A4 por altura (slicing multipágina).
+      style={{ width: 794, minHeight: 1123 }}
     >
       {/* Cabecera: logo del aerogenerador + "Idoneidad eólica" en negrilla */}
       <div className="flex items-center justify-between border-b-2 border-[#165170ff] px-10 pb-3 pt-8">

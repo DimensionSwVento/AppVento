@@ -8,6 +8,8 @@ export interface LineSeries {
   label: string;
   color: string;
   points: { year: number; value: number }[];
+  /** Unidad de la serie (%, USD/MWh, …) — para agrupar por escala en LineChartGrid. */
+  unit?: string;
 }
 
 export default function LineChart({
@@ -47,7 +49,13 @@ export default function LineChart({
 
   return (
     <svg
+      // width/height explícitos → tamaño INTRÍNSECO. Sin ellos, el `viewBox`
+      // solo da relación de aspecto y el SVG se colapsa a ~0 dentro de un flex
+      // (p.ej. la rejilla de LineChartGrid). `maxWidth:100%` lo mantiene responsive.
+      width={width}
+      height={height}
       viewBox={`0 0 ${width} ${height}`}
+      style={{ maxWidth: "100%", height: "auto", flexShrink: 0 }}
       className={className}
       role="img"
       aria-label={`Proyección económica: ${withData.map((s) => s.label).join(", ")}`}
