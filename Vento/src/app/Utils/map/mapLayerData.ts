@@ -80,19 +80,25 @@ export function windValueForHex(
  */
 export async function fetchWindCells(
   variableId: string,
+  bbox?: { west: number; south: number; east: number; north: number },
+  resolution?: number,
 ): Promise<Map<string, number> | null> {
   if (!USE_BACKEND) return null;
   try {
-    const res = await fetch(`/api/tiles/variable`, {
+    const resp = await fetch(`/api/tiles/variable`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         code: masterIdFor(variableId),
+        // bbox + res acotan la consulta y el backend AGREGA al padre `res` →
+        // memoria y payload acotados (evita OOM con el país entero).
+        ...(bbox ? { bbox } : {}),
+        ...(resolution != null ? { res: resolution } : {}),
         subtemplate: SUBTEMPLATE_VARS.has(variableId),
       }),
     });
-    if (!res.ok) return null;
-    const rows = (await res.json()) as { h3_index: string; value: number }[];
+    if (!resp.ok) return null;
+    const rows = (await resp.json()) as { h3_index: string; value: number }[];
     return new Map(rows.map((r) => [r.h3_index, r.value]));
   } catch {
     return null;
@@ -100,27 +106,30 @@ export async function fetchWindCells(
 }
 
 /**
- * Valores res8 (0–1) de una variable ACOTADOS a un bbox (solo lo visible) — para
- * colorear la rejilla del mapa como heatmap por zoom. Backend `/tiles/variable`
- * con bbox; `null` si no hay backend o falla (el grid queda sin color de calor).
+ * Valores (0–1) de una variable ACOTADOS a un bbox — para colorear la rejilla del
+ * mapa como heatmap por zoom. Pasa `resolution` (zoom→res) para que el backend
+ * AGREGUE al hexágono padre (respuesta pequeña, memoria acotada, sin OOM).
+ * `null` si no hay backend o falla (el grid queda sin color de calor).
  */
 export async function fetchVariableCellsBBox(
   variableId: string,
   bbox: { west: number; south: number; east: number; north: number },
+  resolution?: number,
 ): Promise<Map<string, number> | null> {
   if (!USE_BACKEND) return null;
   try {
-    const res = await fetch(`/api/tiles/variable`, {
+    const resp = await fetch(`/api/tiles/variable`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         code: masterIdFor(variableId),
         bbox,
+        ...(resolution != null ? { res: resolution } : {}),
         subtemplate: SUBTEMPLATE_VARS.has(variableId),
       }),
     });
-    if (!res.ok) return null;
-    const rows = (await res.json()) as { h3_index: string; value: number }[];
+    if (!resp.ok) return null;
+    const rows = (await resp.json()) as { h3_index: string; value: number }[];
     return new Map(rows.map((r) => [r.h3_index, r.value]));
   } catch {
     return null;
