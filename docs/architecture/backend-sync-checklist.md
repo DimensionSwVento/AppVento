@@ -24,7 +24,8 @@ Todo pasa por el **BFF**: el navegador llama same-origin `/api/tiles/*` y `/api/
   {"h3_index","lat","lng","score_general","scores":{...},"tipo_celda","variables":{...}}
   ```
 - **El backend debe proveer:**
-  - `score_general` (0–1) y `scores` **por dimensión** con claves de categoría: `TEC, AMB, SOE, SOC, MAC, REG` (normalizados 0–1). El front agrega **SOE + SOC → "social"**, `MAC → económica`, `TEC → técnica`, `AMB → ambiental`, `REG` informativa.
+  - `score_general` (0–1) y `scores` **por dimensión** con claves de categoría: `TEC, AMB, SOE, SOC, MAC, REG` (normalizados 0–1). El front agrega **SOE + SOC → "social"**, `MAC → económica` (informativa), `TEC → técnica`, `AMB → ambiental`, `REG` informativa. El WLC puntúa solo **Ambiental, Técnica y Social**.
+    - ⚠️ **Escala del modelo = 1–5** (5 = más viable; **−1 = zona excluida**). TODO el modelo va en 1–5: variables, subcriterios, dimensiones y `global`. El backend **normaliza en lectura** a `[0,1]` con **`(raw−1)/4`** (`normalize_model_score`; `raw<0`/`None` → usa el score calculado). NO es `raw/5` (eso daría 20 % a un `global`=1). Los `scores` por dimensión ya salen 0–1 (se computan de variables normalizadas por rango). Así el front nunca recibe 1–5 (evita el "500 %").
   - `variables`: valor **por variable individual**. El front las llavea por **`masterId`** = **el código de la master** (`TEC-004-T`, `AMB-005-A`, `SOC-011-S`) → **es el mismo código** que usa el backend, así que casan directo. ⚠️ Solo **confirmar el FORMATO exacto de la clave** (si el parquet la trae como `TEC_001`/`TEC_001_sv001` con guion bajo, normalizar guion↔guion_bajo) y **si el valor viene 0–1 o crudo** (0–1 para el "puntaje 0–100"; crudo para informativas con unidad).
   - `tipo_celda` (`"disponible"` / `"excluida"`).
   - **Columna mar/tierra** (bool 0/1) — ⚠️ **hoy no está en el contrato**; definir su **nombre** e incluirla.

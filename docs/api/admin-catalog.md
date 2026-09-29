@@ -81,6 +81,24 @@ Alimentan el panel económico (modal) y la sección económica del informe.
 
 ---
 
+## 3-bis. Config editable clave→valor — "Resumen del cálculo" (#2B)
+
+Store genérico `app_config` (`key` PK, `value` JSONB). Hoy lo usa el **texto del
+"Resumen del cálculo"** del informe (`report_calc_text`): admin edita las
+expresiones/nota que se IMPRIMEN en el informe. Es **solo descriptivo** — no
+recalcula el score (lo precalcula el backend).
+
+`CalcSummaryText = { formulaDimension, formulaGeneral, metodologiaNota }`
+
+- `GET   /api/admin/catalog/config/:key` → `value` JSON (`{}` si no está fijado; el
+  front fusiona sobre `CALC_SUMMARY_DEFAULTS`). Lectura = usuario autenticado.
+- `PATCH /api/admin/catalog/config/:key` — body = `value` JSON → `value`. Solo admin.
+
+El informe hidrata `report_calc_text` al montar (`fetchReportCalcText`); si falla
+o falta, usa los defaults de `reportTemplates.ts`. Editor en `/admin/report-text`.
+
+---
+
 ## 4. Usuarios — filtro por rol (US08-04.5)
 
 Cambio pequeño en el endpoint EXISTENTE `GET /api/admin/users`:

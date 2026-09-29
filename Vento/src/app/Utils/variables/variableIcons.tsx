@@ -62,3 +62,29 @@ export function VariableIcon({
 }: { variableId: string } & SVGProps<SVGSVGElement>) {
   return createElement(getIconByVariableId(variableId), svgProps);
 }
+
+/** Renderiza un ícono directamente por su `iconKey` (selector de admin). */
+export function IconByKey({
+  iconKey,
+  ...svgProps
+}: { iconKey: string } & SVGProps<SVGSVGElement>) {
+  return createElement(getIconByKey(iconKey), svgProps);
+}
+
+/**
+ * Íconos que el admin puede asignar a la CAPA DE MAPA de una variable. Todos son
+ * `lucide` (existen en la librería); si alguno no se resolviera, cae al fallback.
+ */
+export const MAP_ICON_CHOICES: readonly string[] = [
+  "lucide:MapPin", "lucide:Leaf", "lucide:Droplet", "lucide:Fish", "lucide:Bird",
+  "lucide:TreePine", "lucide:Mountain", "lucide:Waves", "lucide:Wind", "lucide:Zap",
+  "lucide:Factory", "lucide:Anchor", "lucide:Landmark", "lucide:Users", "lucide:House",
+  "lucide:Sprout", "lucide:Flag", "lucide:Radar", "lucide:Gauge", "lucide:Sun",
+  "lucide:Cloud", "lucide:Flower2", "lucide:Bug", "lucide:Shell", "lucide:Tent",
+  "lucide:Pickaxe", "lucide:Route", "lucide:Plug", "lucide:Building2", "lucide:Trees",
+];
+
+/** Un `iconKey` aleatorio de la lista (botón "aleatorio" del admin). */
+export function randomMapIconKey(): string {
+  return MAP_ICON_CHOICES[Math.floor(Math.random() * MAP_ICON_CHOICES.length)];
+}

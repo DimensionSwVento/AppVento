@@ -10,6 +10,7 @@ import {
 import {
   DIMENSIONS,
   getVariableById,
+  modelVariableIds,
   type DimensionId,
   type Variable,
 } from "../../Utils/variables/variablesCatalog";
@@ -171,7 +172,89 @@ function PanelExpanded({
   activeInfoId: string | null;
 }) {
   const titleId = useId();
-  const hasClearable = variables.some((v) => !v.required);
+  // La modal es para QUITAR rápido lo seleccionado → arriba solo las informativas
+  // (deseleccionables). Las del MODELO estorban ahí; van abajo en un desplegable
+  // para ver sus detalles sin ensuciar la vista.
+  // OJO: aquí las variables vienen del catálogo CRUDO (getVariableById), donde solo
+  // `wpd` trae required:true. El discriminador real de "modelo" es pertenecer a
+  // `modelVariableIds()` (las 61 ponderadas) — no el flag `required`.
+  const modelIds = new Set(modelVariableIds());
+  const isModel = (v: Variable) => modelIds.has(v.id) || Boolean(v.required);
+  const hasClearable = variables.some((v) => !isModel(v));
+  const infoVars = variables.filter((v) => !isModel(v));
+  const modelVars = variables.filter((v) => isModel(v));
+
+  const renderRow = (v: Variable) => {
+    const required = isModel(v);
+    const isInfoActive = activeInfoId === v.id;
+    return (
+      <li
+        key={v.id}
+        className={`flex items-center gap-2 px-3 py-2 hover:bg-gray-50 ${
+          isInfoActive ? "bg-gray-50" : ""
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => onSelectInfo(v.id)}
+          aria-label={`Ver detalle de ${v.label}`}
+          title="Ver detalle"
+          className="group flex flex-1 items-center gap-3 text-left cursor-pointer"
+        >
+          <span
+            aria-hidden="true"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md shadow-sm"
+            style={{ backgroundColor: colorForVariable(v.id) }}
+          >
+            <VariableIcon variableId={v.id} className="h-4 w-4 text-white" strokeWidth={2.2} />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-sm font-semibold text-[#393939] leading-tight">
+              {v.label}
+              {required && (
+                <span className="ml-1 text-[9px] font-normal text-gray-400 uppercase tracking-wide">
+                  obligatoria
+                </span>
+              )}
+            </span>
+            <span className="flex items-center gap-1 text-[11px] text-gray-500 mt-0.5">
+              <span>{dimensionShortLabel(v.dimension)}</span>
+              <span aria-hidden="true" className="text-gray-300">·</span>
+              <span
+                aria-hidden="true"
+                className="inline-flex items-center gap-0.5 text-[10px] text-[#165170ff] opacity-70 group-hover:opacity-100"
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM9 9a1 1 0 012 0v4a1 1 0 11-2 0V9zm1-4a1 1 0 100 2 1 1 0 000-2z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Ver detalle
+              </span>
+            </span>
+          </span>
+        </button>
+        {!required && (
+          <button
+            type="button"
+            onClick={() => onDeselect(v.id)}
+            aria-label={`Deseleccionar ${v.label}`}
+            className="shrink-0 text-gray-400 hover:text-red-600"
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+              <path
+                fillRule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+        )}
+      </li>
+    );
+  };
 
   // Panel "fijo": no se cierra por click fuera ni por ESC, sólo por chevron-up
   // o re-click sobre la pill (manejado por el padre). Sin listeners globales.
@@ -180,7 +263,7 @@ function PanelExpanded({
     <div
       role="dialog"
       aria-labelledby={titleId}
-      className="w-60 max-h-[28rem] overflow-y-scroll [scrollbar-gutter:stable] rounded-lg bg-white border border-[#eae9e9ff] shadow-lg shadow-[#cacacbff]"
+      className="w-44 max-h-[24rem] overflow-y-scroll [scrollbar-gutter:stable] rounded-lg bg-white border border-[#eae9e9ff] shadow-lg shadow-[#cacacbff]"
     >
       <header
         onClick={onCollapse}
@@ -193,9 +276,9 @@ function PanelExpanded({
         role="button"
         tabIndex={0}
         aria-label="Cerrar lista"
-        className="sticky top-0 flex items-center justify-between gap-2 px-4 py-3 bg-white border-b border-gray-300 rounded-t-lg cursor-pointer hover:bg-gray-50"
+        className="sticky top-0 flex items-center justify-between gap-2 px-3 py-2.5 bg-white border-b border-gray-300 rounded-t-lg cursor-pointer hover:bg-gray-50"
       >
-        <h3 id={titleId} className="text-base font-bold text-[#383838]">
+        <h3 id={titleId} className="text-sm font-bold text-[#383838]">
           Variables seleccionadas
         </h3>
         <div className="flex items-center gap-3">
@@ -214,93 +297,29 @@ function PanelExpanded({
           <ChevronUp />
         </div>
       </header>
+      {/* Arriba: solo INFORMATIVAS (deseleccionables con ✕). */}
       <ul className="flex flex-col divide-y divide-gray-300">
-        {variables.map((v) => {
-          const required = Boolean(v.required);
-          const isInfoActive = activeInfoId === v.id;
-          return (
-            <li
-              key={v.id}
-              className={`flex items-center gap-3 px-4 py-3 hover:bg-gray-50 ${
-                isInfoActive ? "bg-gray-50" : ""
-              }`}
-            >
-              <button
-                type="button"
-                onClick={() => onSelectInfo(v.id)}
-                aria-label={`Ver detalle de ${v.label}`}
-                title="Ver detalle"
-                className="group flex flex-1 items-center gap-3 text-left cursor-pointer"
-              >
-                {(() => {
-                          return (
-                    <span
-                      aria-hidden="true"
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md shadow-sm"
-                      style={{ backgroundColor: colorForVariable(v.id) }}
-                    >
-                      <VariableIcon variableId={v.id} className="h-5 w-5 text-white" strokeWidth={2.2} />
-                    </span>
-                  );
-                })()}
-                <span className="flex-1 min-w-0">
-                  <span className="block text-sm font-semibold text-[#393939] leading-tight">
-                    {v.label}
-                    {required && (
-                      <span className="ml-1 text-[9px] font-normal text-gray-400 uppercase tracking-wide">
-                        obligatoria
-                      </span>
-                    )}
-                  </span>
-                  <span className="flex items-center gap-1 text-[11px] text-gray-500 mt-0.5">
-                    <span>{dimensionShortLabel(v.dimension)}</span>
-                    <span aria-hidden="true" className="text-gray-300">
-                      ·
-                    </span>
-                    <span
-                      aria-hidden="true"
-                      className="inline-flex items-center gap-0.5 text-[10px] text-[#165170ff] opacity-70 group-hover:opacity-100"
-                    >
-                      <svg
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        className="h-3 w-3"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM9 9a1 1 0 012 0v4a1 1 0 11-2 0V9zm1-4a1 1 0 100 2 1 1 0 000-2z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      Ver detalle
-                    </span>
-                  </span>
-                </span>
-              </button>
-              {!required && (
-                <button
-                  type="button"
-                  onClick={() => onDeselect(v.id)}
-                  aria-label={`Deseleccionar ${v.label}`}
-                  className="shrink-0 text-gray-400 hover:text-red-600"
-                >
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    className="h-4 w-4"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </button>
-              )}
-            </li>
-          );
-        })}
+        {infoVars.map(renderRow)}
       </ul>
+      {/* Abajo: las del MODELO plegadas (siempre activas) — clic para ver detalle. */}
+      {modelVars.length > 0 && (
+        <details className="group border-t border-gray-200">
+          <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-[#165170ff] hover:bg-gray-50">
+            <svg
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="h-3 w-3 transition-transform group-open:rotate-90"
+              aria-hidden="true"
+            >
+              <path d="M7 5l6 5-6 5V5z" />
+            </svg>
+            Del modelo ({modelVars.length} · siempre activas) — ver detalles
+          </summary>
+          <ul className="flex flex-col divide-y divide-gray-300">
+            {modelVars.map(renderRow)}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }

@@ -24,7 +24,11 @@ export type HeatmapDimensionId =
   // MISMO desplegable, en Informe, recortadas al área seleccionada. Se listan
   // aparte (`HEATMAP_WIND_OPTIONS`) para NO contaminar scores/radar/tooltip.
   | "velocidad-viento"
-  | "densidad-viento";
+  | "densidad-viento"
+  // Cualquier VARIABLE con `enMapa` (editable en admin) también es seleccionable
+  // como mapa de calor por variable. `(string & {})` mantiene el autocompletado
+  // de los literales de arriba y admite ids de variable arbitrarios.
+  | (string & {});
 
 /**
  * `scorable`: si la dimensión puntúa en el modelo (WLC). "Regulatoria" es
@@ -60,9 +64,16 @@ export const HEATMAP_WIND_OPTIONS: { id: HeatmapDimensionId; label: string }[] =
     { id: "densidad-viento", label: "Densidad de viento" },
   ];
 
-/** ¿El id activo es una capa de viento (no una dimensión puntuable)? */
-export function isWindHeatmap(id: HeatmapDimensionId | null): boolean {
-  return id === "velocidad-viento" || id === "densidad-viento";
+/** IDs de las DIMENSIONES (score) — todo lo demás es una capa por variable. */
+const DIMENSION_HEATMAP_IDS = new Set<string>(HEATMAP_DIMENSIONS.map((d) => d.id));
+
+/**
+ * ¿El id activo es un mapa de calor POR VARIABLE (viento u otra variable con
+ * `enMapa`)? = no es una dimensión de score. El pintado (`/tiles/variable` →
+ * viridis) es el mismo para todas; solo cambia el `code` que se pide al backend.
+ */
+export function isVariableHeatmap(id: HeatmapDimensionId | null): boolean {
+  return id != null && !DIMENSION_HEATMAP_IDS.has(id);
 }
 
 interface HeatmapDimensionContextValue {

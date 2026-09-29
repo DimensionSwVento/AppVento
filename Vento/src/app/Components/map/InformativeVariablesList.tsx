@@ -39,7 +39,10 @@ export default function InformativeVariablesList() {
         const apiVal = areaVariableAverage(areaData, selectedHexes, masterId);
         let valueText: string;
         if (apiVal != null) {
-          valueText = formatVariableValue(apiVal / 100, v.unit);
+          // Valor REAL crudo del backend, tal cual (no una cifra sintética).
+          valueText = Number.isInteger(apiVal)
+            ? apiVal.toString()
+            : apiVal.toFixed(2);
         } else if (USE_PLACEHOLDER_FALLBACK && selectedHexes.size > 0) {
           let sum = 0;
           for (const h of selectedHexes) sum += dimensionHexScore(v.id, h);

@@ -53,6 +53,8 @@ export default function AdminBundlePage() {
   const [plan, setPlan] = useState<BundlePlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
+  // Distingue el REINTENTO de fallidos de la primera carga (mensaje del botón, #4).
+  const [retrying, setRetrying] = useState(false);
   // Otra ingesta corre en el server (candado 409): aviso persistente para que el
   // admin sepa que debe esperar a que termine antes de guardar esta máster.
   const [ingestBusy, setIngestBusy] = useState(false);
@@ -234,6 +236,7 @@ export default function AdminBundlePage() {
     const fails = chunkLog.filter((c) => !c.ok);
     if (fails.length === 0) return;
     setApplying(true);
+    setRetrying(true);
     const r = root.trim();
     const byKey = new Map(chunkLog.map((c) => [`${c.file}#${c.rowGroup}`, c]));
     for (const f of fails) {
@@ -257,6 +260,7 @@ export default function AdminBundlePage() {
     const totalRows = merged.filter((c) => c.ok).reduce((a, c) => a + c.rows, 0);
     setResult({ ok: failed === 0, totalRows, totalMs: 0, failed, totalChunks: merged.length });
     setApplying(false);
+    setRetrying(false);
     if (failed === 0) toast.success("Reintento OK: todos los lotes subieron");
   }, [chunkLog, root, emplazamiento, toast]);
 
@@ -536,9 +540,11 @@ export default function AdminBundlePage() {
                     </svg>
                   )}
                   {applying
-                    ? progress && progress.total > 0
-                      ? `Guardando… ${Math.round((progress.done / progress.total) * 100)}%`
-                      : "Preparando lotes…"
+                    ? retrying
+                      ? "Resubiendo lotes…"
+                      : progress && progress.total > 0
+                        ? `Guardando… ${Math.round((progress.done / progress.total) * 100)}%`
+                        : "Preparando lotes…"
                     : "Guardar los datos"}
                 </button>
                 {pendientes > 0 && (
@@ -593,7 +599,7 @@ export default function AdminBundlePage() {
                         disabled={applying}
                         className="rounded-full border border-amber-500 px-2.5 py-1 text-[11px] font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-40"
                       >
-                        Reintentar los fallidos
+                        {retrying ? "Resubiendo lotes…" : "Reintentar los fallidos"}
                       </button>
                     </div>
                   )}

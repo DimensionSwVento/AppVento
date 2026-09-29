@@ -29,7 +29,8 @@ import {
   economicSeries,
   type SeriesPoint,
 } from "../../Utils/economic/economicScenarios";
-import LineChart from "../report/LineChart";
+import LineChartGrid from "../report/LineChartGrid";
+import { getInfoVarById } from "../../Utils/variables/informativeVariables";
 
 export default function EconomicModal({ onClose }: { onClose: () => void }) {
   const econVars = useActiveEconomicVariables();
@@ -118,11 +119,13 @@ export default function EconomicModal({ onClose }: { onClose: () => void }) {
       ? escList.map((sc, i) => ({
           label: `${shown[0].label} · ${sc.label}`,
           color: ECONOMIC_SERIES_COLORS[i % ECONOMIC_SERIES_COLORS.length],
+          unit: getInfoVarById(shown[0].id)?.unit ?? "",
           points: economicSeries(sc.id, shown[0].id, horizonYears, capacidadNominal, sc.mult),
         }))
       : shown.map((v, i) => ({
           label: v.label,
           color: ECONOMIC_SERIES_COLORS[i % ECONOMIC_SERIES_COLORS.length],
+          unit: getInfoVarById(v.id)?.unit ?? "",
           // Serie REAL del bundle si está ingerida; si no, template determinista.
           points:
             realPointsFor(v.id) ??
@@ -289,9 +292,17 @@ export default function EconomicModal({ onClose }: { onClose: () => void }) {
                     Comparar escenarios
                   </label>
                 </div>
-                <div className="flex justify-center rounded-lg border border-gray-100 bg-gray-50/40 p-2">
+                <div className="flex justify-center overflow-x-auto rounded-lg border border-gray-100 bg-gray-50/40 p-2">
                   {series.length > 0 ? (
-                    <LineChart series={series} width={620} height={280} className="w-full max-w-[620px]" />
+                    // Small-multiples: en "comparar escenarios" (misma variable, N
+                    // escenarios, misma unidad) va todo en un gráfico; si no, se
+                    // parte por unidad/≤3 series para no saturar (#7).
+                    <LineChartGrid
+                      series={series}
+                      chartWidth={compareMode ? 600 : 300}
+                      chartHeight={compareMode ? 280 : 190}
+                      maxPerChart={compareMode ? Infinity : 3}
+                    />
                   ) : (
                     <p className="py-8 text-center text-[11px] text-gray-400">
                       Agrega al menos una variable a la gráfica.

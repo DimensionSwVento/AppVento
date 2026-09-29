@@ -33,8 +33,8 @@ import { useHeatmapDimension } from "../../Utils/contexts/HeatmapDimensionContex
 import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS, SNAPSHOT_KEY } from "../../Utils/h3/h3Resolution";
 import { useCachedImage } from "../../Utils/useCachedImage";
 import { zoomToH3Res, tileToBBox, isInColombia } from "../../Utils/h3/mapGeo";
-import { isHexBanned, bannedReason } from "../../Utils/h3/hexClassification";
-import { MAX_SELECTION_GAP_KM, MIN_SELECTION_H3_RES } from "../../Utils/projectData";
+import { isHexBanned, bannedReason, setBannedData, selectionNature } from "../../Utils/h3/hexClassification";
+import { MAX_SELECTION_GAP_KM, MIN_SELECTION_H3_RES, USE_BACKEND, USE_API_EMPLAZAMIENTO } from "../../Utils/projectData";
 import { useToast } from "../ui/Toast";
 import HexValuesTooltip from "./HexValuesTooltip";
 import HeatmapDimensionSwitches from "./HeatmapDimensionSwitches";
@@ -44,7 +44,6 @@ import SelectedVariablesChips from "../dimensions/SelectedVariablesChips";
 import AreaDisplay from "./AreaDisplay";
 import MapSearchBox from "./MapSearchBox";
 import NextStepFloatingCard from "./NextStepFloatingCard";
-import PhaseHintCard from "./PhaseHintCard";
 import LoadingOverlay from "../ui/LoadingOverlay";
 import { useInformeHeatmapLayer } from "./useInformeHeatmapLayer";
 import { useAreaHexData } from "../../Utils/report/useAreaHexData";
@@ -59,8 +58,20 @@ import { useMapSelection } from "./useMapSelection";
 import { fetchMapDisabledIds } from "../../Utils/admin/catalogApi";
 import {
   fetchMapLayerCells,
+  fetchCatalogCells,
+  fetchVariableCellsBBox,
+  windValueForHex,
+  WIND_THRESHOLD,
   type MapLayerCell,
 } from "../../Utils/map/mapLayerData";
+import { viridis } from "../../Utils/report/heatmapPalette";
+import { getVariableById } from "../../Utils/variables/variablesCatalog";
+import { colorForVariable } from "../../Utils/variables/dimensionColors";
+import { iconKeyToDataUri } from "../../Utils/map/iconRender";
+import {
+  genericMapVariables,
+  variableAppliesToNatureById,
+} from "../../Utils/map/mapCatalogVariables";
 import { AUDIT_DB } from "../../Utils/audit";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -86,12 +97,80 @@ function hexToRgb(hex: string): [number, number, number] {
   const n = parseInt(h.length === 3 ? h.replace(/(.)/g, "$1$1") : h, 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
-// Zonas prohibidas / inviables — gris sólido, no seleccionables (BANNED_HEXES).
-// Zonas excluidas = 0% idoneidad → color viridis(0) (morado oscuro), no gris,
-// para que sean coherentes con la paleta de idoneidad (sprint 3).
+
+/**
+ * Aristas de RED para capas `interconectado`: conecta cada punto con el MÁS
+ * CERCANO (grafo vecino-más-cercano, deduplicado). O(n²), pero n es pequeño (≤12).
+ */
+function nearestNeighborEdges(
+  pts: { lng: number; lat: number }[],
+): { path: [number, number][] }[] {
+  const edges: { path: [number, number][] }[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i < pts.length; i++) {
+    let best = -1;
+    let bestD = Infinity;
+    for (let j = 0; j < pts.length; j++) {
+      if (i === j) continue;
+      const d =
+        (pts[i].lat - pts[j].lat) ** 2 + (pts[i].lng - pts[j].lng) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        best = j;
+      }
+    }
+    if (best < 0) continue;
+    const key = i < best ? `${i}-${best}` : `${best}-${i}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    edges.push({
+      path: [
+        [pts[i].lng, pts[i].lat],
+        [pts[best].lng, pts[best].lat],
+      ],
+    });
+  }
+  return edges;
+}
+
+/**
+ * Agrega valores res8 (0–1) a la resolución `res` del render (resumen de padres,
+ * misma tecnología que el grid):
+ *  - res < 8 → cada padre = promedio de sus hijos res8 presentes.
+ *  - res == 8 → tal cual.
+ *  - res > 8 → cada hijo hereda el valor de su padre res8.
+ * Devuelve `Map<cellAtRes, value>` para colorear la rejilla como heatmap.
+ */
+function aggregateValuesToRes(
+  res8: Map<string, number>,
+  res: number,
+): Map<string, number> {
+  if (res === 8) return res8;
+  const acc = new Map<string, { s: number; n: number }>();
+  const add = (cell: string, v: number) => {
+    const a = acc.get(cell) ?? { s: 0, n: 0 };
+    a.s += v;
+    a.n += 1;
+    acc.set(cell, a);
+  };
+  for (const [h8, v] of res8) {
+    try {
+      if (res < 8) add(cellToParent(h8, res), v);
+      else for (const c of cellToChildren(h8, res)) add(c, v);
+    } catch {
+      /* celda inválida → ignorar */
+    }
+  }
+  const out = new Map<string, number>();
+  for (const [cell, { s, n }] of acc) out.set(cell, s / n);
+  return out;
+}
+// Zonas EXCLUIDAS / inviables — no seleccionables. Color viridis(0) (morado
+// oscuro), coherente con la paleta de idoneidad. Fuentes: score global −1 del
+// backend (tipo_celda="excluida", vía bannedStore) o el placeholder local.
 const BANNED_FILL: [number, number, number, number] = [68, 1, 84, 205];
 const BANNED_BORDER: [number, number, number, number] = [59, 1, 74, 230];
-interface HexCell { h: string; banned?: boolean; owned?: boolean; }
+interface HexCell { h: string; banned?: boolean; owned?: boolean; value?: number; }
 
 export default function MapView() {
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
@@ -120,6 +199,11 @@ export default function MapView() {
   const [isTilesLoading, setIsTilesLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapRef>(null);
+  // Variable de CALOR activa que colorea la rejilla (ver `activeHeatVarId`). Se lee
+  // por REF dentro del `getTileData` async del grid (definido antes); `heatVersion`
+  // bumpea al cambiarla para remontar el TileLayer y refetchear los tiles.
+  const activeHeatRef = useRef<string | null>(null);
+  const [heatVersion, setHeatVersion] = useState(0);
 
   // Detecta mobile (< 768px = md breakpoint de Tailwind)
   useEffect(() => {
@@ -165,7 +249,7 @@ export default function MapView() {
       if (!next) setPolygonPoints([]); // apagar → limpiar puntos
       return next;
     });
-  }, []);
+  }, [setPolygonMode, setPolygonPoints]);
   const applyPolygon = useCallback(() => {
     if (polygonPoints.length < 3) return;
     const n = selectPolygon(polygonPoints);
@@ -173,7 +257,7 @@ export default function MapView() {
     setPolygonMode(false);
     if (n > 0) toast.success(`${n} hexágonos seleccionados`);
     else toast.error("El polígono no cubrió hexágonos seleccionables");
-  }, [polygonPoints, selectPolygon, toast]);
+  }, [polygonPoints, selectPolygon, toast, setPolygonMode, setPolygonPoints]);
   // Añade un vértice por COORDENADA (desde el buscador) y vuela ahí. Activa el
   // modo polígono para que se dibuje y se pueda aplicar.
   const addPolygonCoordinate = useCallback(
@@ -182,7 +266,7 @@ export default function MapView() {
       setPolygonPoints((pts) => [...pts, [lng, lat]]);
       setViewState((v) => clampViewState({ ...v, longitude: lng, latitude: lat }));
     },
-    [clampViewState],
+    [clampViewState, setPolygonMode, setPolygonPoints, setViewState],
   );
 
   // Al SALIR de la fase de selección hacia una fase "congelada" (dimensiones,
@@ -322,7 +406,9 @@ export default function MapView() {
   // corren DESPUÉS del render; el linter no distingue el momento de ejecución.
   // eslint-disable-next-line react-hooks/refs
   const gridTileLayer = useMemo(() => new TileLayer<HexCell>({
-    id: "colombia-grid-tiles",
+    // El id incluye `heatVersion`: al cambiar la variable de calor, el TileLayer se
+    // remonta y refetchea los tiles con los nuevos valores (viridis).
+    id: `colombia-grid-tiles-${heatVersion}`,
     visible: !heatmapActive,
     minZoom: 2,
     maxZoom: 14,
@@ -352,6 +438,46 @@ export default function MapView() {
         [west - lngMargin, north + latMargin],
         [west - lngMargin, south - latMargin],
       ];
+      // Excluidos REALES del backend para este tile: el `global` −1 se traduce a
+      // `tipo_celda="excluida"` (F1). La cuadrícula es geometría de cliente, así
+      // que sin esto la exclusión solo aparecía al SELECCIONAR un área; aquí se
+      // pide el tile y se marcan `banned` los hexes excluidos en TODO el mapa.
+      // Con `USE_BACKEND=false` (template) se omite y manda el placeholder local.
+      let excludedFromApi: Set<string> | null = null;
+      if (USE_BACKEND) {
+        try {
+          const r = await fetch(`/api/tiles/${z}/${x}/${y}`);
+          if (r.ok) {
+            const hexes = (await r.json()) as { h: string; t: string }[];
+            excludedFromApi = new Set(
+              hexes.filter((hx) => hx.t === "excluida").map((hx) => hx.h),
+            );
+            // Alimenta el store de excluidos ANTES de pintar: `isHexBanned` (que
+            // usa la SELECCIÓN en useMapSelection) los verá → no seleccionables.
+            // Sin esto solo se pintarían, pero seguirían siendo seleccionables.
+            if (excludedFromApi.size > 0) {
+              setBannedData([...excludedFromApi].map((h) => [h, true] as [string, boolean]));
+            }
+          }
+        } catch {
+          // Red caída → cae al placeholder local (isHexBanned), sin romper la grid.
+        }
+      }
+      // CALOR: si hay una variable de calor activa, se colorea ESTA rejilla con su
+      // valor (viridis), usando el mismo resumen de padres por zoom. Backend: los
+      // valores res8 del bbox se AGREGAN a `res`. Template: `windValueForHex` (campo
+      // determinista, sirve a cualquier resolución) → no necesita fetch.
+      const heatVar = activeHeatRef.current;
+      let heatByCell: Map<string, number> | null = null;
+      if (heatVar && USE_BACKEND) {
+        const real = await fetchVariableCellsBBox(heatVar, {
+          west: west - lngMargin,
+          south: south - latMargin,
+          east: east + lngMargin,
+          north: north + latMargin,
+        });
+        if (real) heatByCell = aggregateValuesToRes(real, res);
+      }
       const tileCells = polygonToCells(tilePolygon, res, true);
       const result: HexCell[] = [];
       for (const h of tileCells) {
@@ -362,7 +488,17 @@ export default function MapView() {
         // repitan los hex del borde → con relleno translúcido eso duplicaba el
         // alpha en las costuras ("pilares" oscuros). Rellenamos solo los owned.
         const owned = lat >= south && lat < north && lng >= west && lng < east;
-        result.push({ h, banned: isHexBanned(h), owned });
+        // `banned` = excluido por dato (bannedStore, ya incluye los del backend)
+        // o placeholder local. Morado (BANNED_FILL = viridis(0)), no seleccionable.
+        const banned = isHexBanned(h);
+        let value: number | undefined;
+        if (heatVar) {
+          const v = USE_BACKEND
+            ? heatByCell?.get(h)
+            : windValueForHex(heatVar, h, null);
+          if (v != null && v >= WIND_THRESHOLD) value = v;
+        }
+        result.push({ h, banned, owned, value });
       }
       return result as unknown as HexCell;
     },
@@ -373,10 +509,18 @@ export default function MapView() {
         id: `${props.id}-grid`,
         data,
         getPolygon: (d) => cellToBoundary(d.h, true),
-        // Relleno: prohibidos → gris sólido; el resto sin relleno (el BORDE es
-        // la malla normal del grid, individual por hex). El heatmap del informe
-        // (idoneidad/viento) es capa aparte — ver `useInformeHeatmapLayer`.
-        getFillColor: (d) => (d.banned ? BANNED_FILL : [0, 0, 0, 0]),
+        // Relleno: prohibidos → gris sólido; con CALOR activo, cada hex se pinta
+        // con `viridis(valor)` (mismo palette+alpha 51 que el heatmap del informe),
+        // solo los `owned` para no duplicar alpha en las costuras; el resto sin
+        // relleno (el BORDE es la malla normal). Ver `activeHeatVarId`.
+        getFillColor: (d) => {
+          if (d.banned) return BANNED_FILL;
+          if (d.value != null && d.owned) {
+            const c = viridis(Math.max(0, Math.min(1, d.value)));
+            return [c[0], c[1], c[2], 51];
+          }
+          return [0, 0, 0, 0];
+        },
         getLineColor: (d) => (d.banned ? BANNED_BORDER : GRID_BORDER),
         getLineWidth: 1,
         lineWidthMinPixels: 1,
@@ -389,7 +533,7 @@ export default function MapView() {
         pickable: !heatmapActive,
       });
     },
-  }), [heatmapActive, isFlyingRef]);
+  }), [heatmapActive, isFlyingRef, heatVersion]);
 
   // Capa de borde del territorio colombiano (continente + archipiélago).
   // Pasa los polígonos sin relleno, solo contorno, para que el usuario vea hasta
@@ -501,6 +645,13 @@ export default function MapView() {
     };
   }, []);
 
+  // Naturaleza mar/tierra del área seleccionada → filtra en el menú de capas las
+  // variables que no aplican (p.ej. pastos marinos no sale si la selección es tierra).
+  const mapNature = useMemo(
+    () => (USE_API_EMPLAZAMIENTO ? selectionNature(selectedHexes) : "mixta"),
+    [selectedHexes],
+  );
+
   // Celdas res8 por capa de variable activa (V0 "verse en el mapa"): se cargan
   // desde el seam `mapLayerData` (placeholder hoy → `/api/tiles/variable` con la
   // máster). Se pintan como hexágonos res8: `area` relleno suave, `heat` viridis
@@ -508,6 +659,17 @@ export default function MapView() {
   const [symbolCells, setSymbolCells] = useState<Record<string, MapLayerCell[]>>(
     {},
   );
+
+  // Blink SEGURO de los iconos de capa: alterna la opacidad de los IconLayer.
+  // GATE en `mapReady`: la causa del crash anterior era actualizar el IconLayer
+  // antes de que el device (GPU) estuviera listo (`device.limits undefined`);
+  // arrancar el intervalo solo tras `mapReady` lo evita. Solo con capas visibles.
+  const [blinkOn, setBlinkOn] = useState(true);
+  useEffect(() => {
+    if (!mapReady || (accion !== "informe" && accion !== "dimensiones")) return;
+    const t = setInterval(() => setBlinkOn((b) => !b), 800);
+    return () => clearInterval(t);
+  }, [mapReady, accion]);
   // Capas de variable EFECTIVAS (las que se pintan):
   //  - Informe: las controla el menú "Capas del mapa" (`activeSymbols`).
   //  - Dimensiones: las manda el SWITCH de la card (`activeVariables`), MENOS las
@@ -529,7 +691,8 @@ export default function MapView() {
       (s) =>
         s.kind !== "heat" &&
         effectiveSymbols.has(s.variableId) &&
-        !mapDisabledIds.has(s.variableId),
+        !mapDisabledIds.has(s.variableId) &&
+        variableAppliesToNatureById(s.variableId, mapNature), // filtro mar/tierra
     );
     Promise.all(
       wanted.map(async (s) => [s.variableId, await fetchMapLayerCells(s)] as const),
@@ -541,11 +704,14 @@ export default function MapView() {
     return () => {
       alive = false;
     };
-  }, [effectiveSymbols, mapDisabledIds]);
+  }, [effectiveSymbols, mapDisabledIds, mapNature]);
 
   const symbolLayers = useMemo(() => {
     const active = MAP_SYMBOLS.filter(
-      (s) => effectiveSymbols.has(s.variableId) && !mapDisabledIds.has(s.variableId),
+      (s) =>
+        effectiveSymbols.has(s.variableId) &&
+        !mapDisabledIds.has(s.variableId) &&
+        variableAppliesToNatureById(s.variableId, mapNature), // filtro mar/tierra
     );
     // Capas de ÁREA (protegidas, resguardos, nodos…): hex de cobertura con
     // relleno SUAVE del color de la variable. (El viento NO va aquí: es un mapa
@@ -590,26 +756,198 @@ export default function MapView() {
             parameters: { depthCompare: "always" },
           }),
       );
-    // Iconos SIEMPRE encima (lo más importante): un marcador por cada capa,
-    // incluidas zonas y heat (marca el/los centros de la variable).
-    const icons = active.map(
-      (s) =>
+    // Iconos encima: un marcador por capa de zona/punto. Las de CALOR (`heat`,
+    // viento) NO llevan icono: se representan coloreando la rejilla (viridis, ver
+    // `activeHeatVarId`), igual que el heatmap del informe → sin marcador redundante.
+    const icons = active.filter((s) => s.kind !== "heat").map((s) => {
+      // Icono ASIGNADO EN ADMIN (iconKey del catálogo, hidratado de BD) renderizado
+      // a data-URI con el color de la variable. Fallback al icono estático de
+      // `MAP_SYMBOLS` si el catálogo no tiene iconKey.
+      const iconKey = getVariableById(s.variableId)?.iconKey;
+      const iconUrl = iconKey ? iconKeyToDataUri(iconKey, s.color) : s.icon;
+      return (
         new IconLayer<MapSymbolPoint>({
           id: `map-symbol-${s.variableId}`,
           data: s.points,
           getPosition: (d) => [d.lng, d.lat],
-          getIcon: () => ({ url: s.icon, width: 48, height: 48, anchorY: 24, mask: false }),
+          // `id` incluye el iconKey: al cambiarlo en admin, deck.gl re-empaca el
+          // atlas (sin él cachearía el icono viejo). Único por capa → sin colisión.
+          getIcon: () => ({ id: `${s.variableId}|${iconKey ?? "static"}`, url: iconUrl, width: 48, height: 48, anchorY: 24, mask: false }),
           getSize: 30,
           sizeUnits: "pixels",
+          opacity: blinkOn ? 1 : 0.45, // blink
           pickable: false,
           // Los polígonos (zonas/heat) escriben profundidad a z=0 y ocultarían el
           // icono que cae encima. `depthCompare: "always"` (luma.gl v9) hace que
           // el test de profundidad siempre pase → el icono SIEMPRE se dibuja.
           parameters: { depthCompare: "always" },
-        }),
-    );
+        })
+      );
+    });
     return [...polys, ...paths, ...icons];
-  }, [effectiveSymbols, mapDisabledIds, symbolCells]);
+  }, [effectiveSymbols, mapDisabledIds, symbolCells, blinkOn, mapNature]);
+
+  // ── N1a-mapa 2b: capas GENÉRICAS de catálogo ────────────────────────────────
+  // Variables enMapa (área/interconectado, NO calor) que NO están en la lista
+  // curada `MAP_SYMBOLS` → capa aislada: hexes REALES del backend coloreados con
+  // el color de la variable + icono asignado en admin. Aditivo: no toca el
+  // pipeline curado. `calor` va por el heatmap (no aquí). FUENTE ÚNICA compartida
+  // con la modal de capas (`genericMapVariables`) → mismo predicado (incluye el
+  // filtro mar/tierra), así mapa y modal no divergen.
+  // `calor` solo entra en Dimensiones (en Informe va por su desplegable).
+  const extraMapVars = useMemo(
+    () =>
+      genericMapVariables(
+        effectiveSymbols,
+        mapDisabledIds,
+        mapNature,
+        accion === "dimensiones",
+      ),
+    [effectiveSymbols, mapDisabledIds, mapNature, accion],
+  );
+
+  const [extraCells, setExtraCells] = useState<Record<string, string[]>>({});
+  useEffect(() => {
+    let alive = true;
+    Promise.all(
+      // Regla: template = placeholder (pinta algo); backend = real o vacío.
+      // `calor` no usa celdas de área (colorea la rejilla) → no se fetchea aquí.
+      extraMapVars
+        .filter((x) => x.kind !== "calor")
+        .map(async (x) => [x.id, await fetchCatalogCells(x.id)] as const),
+    )
+      .then((pairs) => alive && setExtraCells(Object.fromEntries(pairs)))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [extraMapVars]);
+
+  // Variable de CALOR activa (la primera): su valor por hex COLOREA la rejilla del
+  // grid como heatmap viridis (resumen de padres por zoom, `gridTileLayer`). El
+  // heatmap muestra UNA variable a la vez, como el desplegable del informe.
+  const activeHeatVarId = useMemo(
+    () => extraMapVars.find((x) => x.kind === "calor")?.id ?? null,
+    [extraMapVars],
+  );
+  // Sincroniza el ref que lee el grid + remonta el TileLayer (bump de versión)
+  // cuando cambia la variable de calor activa → refetch con los nuevos valores.
+  useEffect(() => {
+    if (activeHeatRef.current === activeHeatVarId) return;
+    activeHeatRef.current = activeHeatVarId;
+    setHeatVersion((n) => n + 1);
+  }, [activeHeatVarId]);
+
+  // Centroide del área seleccionada — para que las capas `interconectado` tracen
+  // una línea desde el centro del área a cada punto (además de la red vecinal).
+  const selectionCenter = useMemo(() => {
+    if (selectedHexes.size === 0) return null;
+    let sLat = 0;
+    let sLng = 0;
+    for (const h of selectedHexes) {
+      const [lat, lng] = cellToLatLng(h);
+      sLat += lat;
+      sLng += lng;
+    }
+    return { lat: sLat / selectedHexes.size, lng: sLng / selectedHexes.size };
+  }, [selectedHexes]);
+
+  const catalogLayers = useMemo(() => {
+    const out: (
+      | H3HexagonLayer<{ h: string }>
+      | IconLayer<{ lng: number; lat: number }>
+      | PathLayer<{ path: [number, number][] }>
+    )[] = [];
+    for (const { id, kind } of extraMapVars) {
+      const cells = extraCells[id] ?? [];
+      if (cells.length === 0) continue;
+      const color = colorForVariable(id);
+      const [r, g, b] = hexToRgb(color);
+
+      // CALOR: NO se pinta aquí. Colorea la REJILLA del grid (`gridTileLayer`,
+      // resumen de padres por zoom) con `viridis` → ver `activeHeatVarId`.
+      if (kind === "calor") continue;
+
+      // ÁREA / INTERCONECTADO: hexes del color de la variable + icono.
+      out.push(
+        new H3HexagonLayer<{ h: string }>({
+          id: `catalog-hex-${id}`,
+          data: cells.map((h) => ({ h })),
+          getHexagon: (d) => d.h,
+          extruded: false,
+          stroked: true,
+          filled: true,
+          getFillColor: () => [r, g, b, 51],
+          getLineColor: () => [r, g, b, 200],
+          getLineWidth: 1,
+          lineWidthUnits: "pixels",
+          lineWidthMinPixels: 1,
+          pickable: false,
+        }),
+      );
+      // Icono (asignado en admin) en una MUESTRA de hexes (≤12) para no saturar.
+      const iconKey = getVariableById(id)?.iconKey ?? "lucide:MapPin";
+      const iconUrl = iconKeyToDataUri(iconKey, color);
+      const step = Math.max(1, Math.ceil(cells.length / 12));
+      const points = cells
+        .filter((_, i) => i % step === 0)
+        .slice(0, 12)
+        .map((h) => {
+          const [lat, lng] = cellToLatLng(h);
+          return { lng, lat };
+        });
+      out.push(
+        new IconLayer<{ lng: number; lat: number }>({
+          id: `catalog-icon-${id}`,
+          data: points,
+          getPosition: (d) => [d.lng, d.lat],
+          getIcon: () => ({
+            id: `${id}|${iconKey}`,
+            url: iconUrl,
+            width: 48,
+            height: 48,
+            anchorY: 24,
+            mask: false,
+          }),
+          getSize: 26,
+          sizeUnits: "pixels",
+          opacity: blinkOn ? 1 : 0.45, // blink
+          pickable: false,
+          parameters: { depthCompare: "always" },
+        }),
+      );
+      // `interconectado`: red vecino-más-cercano entre los puntos + una línea
+      // desde el CENTRO del área seleccionada a cada punto (petición cliente).
+      if (kind === "interconectado" && points.length >= 2) {
+        const edges = nearestNeighborEdges(points);
+        if (selectionCenter) {
+          for (const p of points) {
+            edges.push({
+              path: [
+                [selectionCenter.lng, selectionCenter.lat],
+                [p.lng, p.lat],
+              ],
+            });
+          }
+        }
+        out.push(
+          new PathLayer<{ path: [number, number][] }>({
+            id: `catalog-net-${id}`,
+            data: edges,
+            getPath: (d) => d.path,
+            getColor: () => [r, g, b, 170],
+            getWidth: 2,
+            widthUnits: "pixels",
+            capRounded: true,
+            jointRounded: true,
+            pickable: false,
+            parameters: { depthCompare: "always" },
+          }),
+        );
+      }
+    }
+    return out;
+  }, [extraMapVars, extraCells, selectionCenter, blinkOn]);
 
   // Dibujo del POLÍGONO en curso (US03-04): vértices (puntos) + contorno. Se
   // materializa en hexágonos al "Aplicar" (ver `applyPolygon`).
@@ -786,6 +1124,21 @@ export default function MapView() {
     return () => cancelAnimationFrame(id);
   }, [focusNonce, selectedHexes, zoomToSelection]);
 
+  // Al ENTRAR al informe, reencuadra al ÁREA seleccionada antes de la captura del
+  // snapshot: la imagen del informe/PDF debe mostrar la zona, no el zoom que el
+  // usuario dejó. Solo en la TRANSICIÓN a "informe" (no re-encuadra si luego
+  // paneó/zoomeó para inspeccionar). El delay de la captura (1200 ms) da tiempo a
+  // que deck repinte en el nuevo encuadre (fitBounds fija el viewState al vuelo).
+  const prevAccionZoomRef = useRef(accion);
+  useEffect(() => {
+    const entering =
+      accion === "informe" && prevAccionZoomRef.current !== "informe";
+    prevAccionZoomRef.current = accion;
+    if (!entering || selectedHexes.size === 0) return;
+    const id = requestAnimationFrame(() => zoomToSelection());
+    return () => cancelAnimationFrame(id);
+  }, [accion, selectedHexes, zoomToSelection]);
+
   // US-FB3-02 AC2 — Reset a Colombia: vuelve a la vista inicial (INITIAL_VIEW_STATE).
   const resetView = useCallback(() => {
     setViewState(INITIAL_VIEW_STATE);
@@ -873,7 +1226,7 @@ export default function MapView() {
       {/* Aviso viridis (sprint 3): explica que los hexágonos morados = idoneidad
           nula (zonas no aptas), coherente con la paleta del heatmap. */}
       {mapReady && canSelect && (
-        <div className="pointer-events-none absolute bottom-4 left-4 z-10 max-w-[230px] rounded-md bg-white/95 px-3 py-2 shadow-md ring-1 ring-black/5 max-md:hidden">
+        <div className="pointer-events-none absolute bottom-4 right-4 z-10 max-w-[230px] rounded-md bg-white/95 px-3 py-2 shadow-md ring-1 ring-black/5 max-md:hidden">
           <div className="flex items-center gap-2">
             <span
               aria-hidden="true"
@@ -891,7 +1244,6 @@ export default function MapView() {
         </div>
       )}
       {mapReady && <NextStepFloatingCard />}
-      {mapReady && <PhaseHintCard />}
 
       {/* Botones del mapa: SOLO en selección de área o en informe (sprint 3). */}
       {mapReady && (canSelect || accion === "informe") && (
@@ -911,11 +1263,11 @@ export default function MapView() {
               )}
             </button>
           )}
-          {/* En selección: grupo de botones CENTRADO justo encima del cartel
-              "Siguiente paso" (que va centrado abajo, ~6rem de alto). En informe
-              no hay cartel → queda abajo-izquierda para no cruzarse con el panel
-              de variables (top-3 right-3). */}
-          <div className={`absolute z-10 flex items-center gap-2 ${canSelect ? "bottom-32 left-1/2 -translate-x-1/2" : "bottom-3 left-4"}`}>
+          {/* Botones de zoom/vista: el cartel "Siguiente paso" ahora va abajo-
+              IZQUIERDA (pequeño) y la leyenda de excluidas abajo-derecha, así que
+              este grupo va centrado abajo en selección. En informe, abajo-izquierda
+              (no hay cartel) para no cruzarse con el panel de variables. */}
+          <div className={`absolute z-10 flex items-center gap-2 ${canSelect ? "bottom-4 left-1/2 -translate-x-1/2" : "bottom-3 left-4"}`}>
             <button
               onClick={zoomToSelection}
               disabled={!hasSelection}
@@ -1067,6 +1419,8 @@ export default function MapView() {
             onToggle={toggleDimLayer}
             disabled={mapDisabledIds}
             selected={activeVariables}
+            nature={mapNature}
+            includeHeat
           />
         </div>
       )}
@@ -1140,6 +1494,7 @@ export default function MapView() {
               onToggle={handleSymbolToggle}
               disabled={mapDisabledIds}
               selected={activeVariables}
+              nature={mapNature}
             />
           </div>
         </>
@@ -1155,7 +1510,7 @@ export default function MapView() {
         // Las capas de símbolo (área/punto) se pintan en Informe Y en Dimensiones
         // (petición cliente): en Informe las controla el menú "Capas del mapa";
         // en Dimensiones, los switches de las cards. En las demás fases no.
-        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer, ...(accion === "informe" || accion === "dimensiones" ? symbolLayers : []), ...polygonDrawLayers]}
+        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer, ...(accion === "informe" || accion === "dimensiones" ? [...symbolLayers, ...catalogLayers] : []), ...polygonDrawLayers]}
         // US-FB3-03 (feedback item 8): nunca "not-allowed". Fuera de la fase de
         // selección el hex NO es inerte — en el informe se consulta con el
         // tooltip —, y el cursor de "prohibido" (muy marcado en Firefox/Windows)

@@ -238,6 +238,17 @@ export async function reconcileColumn(
   });
 }
 
+/** Renombra una columna del registro (la fuente cambió el nombre de columna). */
+export async function renameColumn(
+  name: string,
+  newName: string,
+): Promise<RegistryColumn> {
+  return api<RegistryColumn>(`/columns/${encodeURIComponent(name)}/rename`, {
+    method: "POST",
+    body: JSON.stringify({ newName }),
+  });
+}
+
 /** Ingesta UPSERT del bundle (interfaz; no destructiva). Lanza si hay pendientes. */
 export async function applyBundle(
   root: string,
