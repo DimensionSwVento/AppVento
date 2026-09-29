@@ -55,13 +55,34 @@ export function useInformeHeatmapLayer(
   useEffect(() => {
     if (!windId) return;
     let alive = true;
-    fetchWindCells(windId)
+    // Acota la consulta al BBOX del área seleccionada (no el país entero) + res8:
+    // el backend agrega/acota → sin OOM. Margen pequeño para cubrir los hijos res8
+    // de los hexágonos del borde.
+    let bbox:
+      | { west: number; south: number; east: number; north: number }
+      | undefined;
+    if (selectedHexes.size > 0) {
+      let w = Infinity,
+        s = Infinity,
+        e = -Infinity,
+        n = -Infinity;
+      for (const h of selectedHexes) {
+        const [lat, lng] = cellToLatLng(h);
+        if (lng < w) w = lng;
+        if (lng > e) e = lng;
+        if (lat < s) s = lat;
+        if (lat > n) n = lat;
+      }
+      const m = 0.05;
+      bbox = { west: w - m, south: s - m, east: e + m, north: n + m };
+    }
+    fetchWindCells(windId, bbox, 8)
       .then((m) => alive && setWindCells(m))
       .catch(() => alive && setWindCells(null));
     return () => {
       alive = false;
     };
-  }, [windId]);
+  }, [windId, selectedHexes]);
 
   const data = useMemo<{ h: string; baseScore: number }[]>(() => {
     if (!heatmapActive || selectedHexes.size === 0) return [];
