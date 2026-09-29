@@ -51,6 +51,41 @@ export default function DimensionCard({
   const dimColor = dimensionBaseColor(dimension.id);
   const pct = total > 0 ? (active / total) * 100 : 0;
 
+  // Separa informativas (configurables) de las del MODELO (required → siempre
+  // activas, no configurables). Opción B: informativas arriba, modelo plegado.
+  const modelVars = variables.filter((v) => v.required);
+  const infoVars = variables.filter((v) => !v.required);
+
+  // Render de un grupo de variables agrupadas por criterio → subcriterio.
+  const renderGroups = (vars: Variable[]) =>
+    groupByCriterio(vars).map((g) => (
+      <div key={g.criterio} className="mt-2">
+        <h4
+          className="text-[11px] font-bold uppercase tracking-wide text-gray-600"
+          title={CRITERIO_DESCRIPTIONS[g.criterio]}
+        >
+          {g.criterio}
+        </h4>
+        {g.subgrupos.map((sg) => (
+          <div key={sg.subcriterio ?? "_none"} className="mt-1">
+            {sg.subcriterio && (
+              <h5
+                className="pl-2 text-[10px] font-semibold text-gray-500"
+                title={SUBCRITERIO_DESCRIPTIONS[sg.subcriterio]}
+              >
+                {sg.subcriterio}
+              </h5>
+            )}
+            <div className="divide-y divide-gray-100">
+              {sg.variables.map((v) => (
+                <VariableSwitch key={v.id} variable={v} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    ));
+
   if (variables.length === 0) return null;
 
   return (
@@ -116,35 +151,44 @@ export default function DimensionCard({
               {dimension.description}
             </p>
           )}
-          {groupByCriterio(variables).map((g) => (
-            <div key={g.criterio} className="mt-2">
-              {/* Criterio (grupo) */}
-              <h4
-                className="text-[11px] font-bold uppercase tracking-wide text-gray-600"
-                title={CRITERIO_DESCRIPTIONS[g.criterio]}
-              >
-                {g.criterio}
-              </h4>
-              {g.subgrupos.map((sg) => (
-                <div key={sg.subcriterio ?? "_none"} className="mt-1">
-                  {/* Subcriterio (subgrupo) — solo si existe */}
-                  {sg.subcriterio && (
-                    <h5
-                      className="pl-2 text-[10px] font-semibold text-gray-500"
-                      title={SUBCRITERIO_DESCRIPTIONS[sg.subcriterio]}
-                    >
-                      {sg.subcriterio}
-                    </h5>
-                  )}
-                  <div className="divide-y divide-gray-100">
-                    {sg.variables.map((v) => (
-                      <VariableSwitch key={v.id} variable={v} />
-                    ))}
-                  </div>
+          {/* Informativas primero (lo que el usuario configura). La banda solo se
+              muestra cuando la card es MIXTA (hay también variables del modelo). */}
+          {infoVars.length > 0 && (
+            <>
+              {modelVars.length > 0 && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="rounded bg-[#cce1eeff] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#165170ff]">
+                    Informativas
+                  </span>
+                  <span className="text-[10px] text-gray-500">
+                    tú eliges cuáles analizar · no puntúan
+                  </span>
+                  <span className="h-px flex-1 bg-gray-100" />
                 </div>
-              ))}
-            </div>
-          ))}
+              )}
+              {renderGroups(infoVars)}
+            </>
+          )}
+
+          {/* Variables del MODELO: plegadas (siempre activas, no configurables) →
+              menos scroll; se abren solo si el usuario quiere ver sus detalles. */}
+          {modelVars.length > 0 && (
+            <details className="group mt-3 border-t border-gray-100 pt-2">
+              <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[11px] font-semibold text-[#165170ff]">
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="h-3 w-3 transition-transform group-open:rotate-90"
+                  aria-hidden="true"
+                >
+                  <path d="M7 5l6 5-6 5V5z" />
+                </svg>
+                Consideradas en el modelo ({modelVars.length} · siempre activas)
+              </summary>
+              <div className="mt-1">{renderGroups(modelVars)}</div>
+            </details>
+          )}
+
           {/* Acción del módulo (económica/regulatoria): DENTRO de la card, bajo
               los switches — el botón que abre su modal. */}
           {footer && <div className="mt-3">{footer}</div>}

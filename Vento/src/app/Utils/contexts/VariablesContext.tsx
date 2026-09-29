@@ -13,6 +13,7 @@ import {
   OPTIONAL_VARIABLES,
   getVariableById,
   modelVariableIds,
+  requiredVariableIds,
   optionalVariablesByDimension,
 } from "../variables/variablesCatalog";
 import { hydrateCatalog } from "../admin/catalogApi";
@@ -59,7 +60,7 @@ export function useVariables() {
 export function VariablesProvider({ children }: { children: React.ReactNode }) {
   // Las variables obligatorias arrancan activas y no se pueden apagar.
   const [activeVariables, setActiveVariables] = useState<Set<string>>(
-    () => new Set(modelVariableIds()),
+    () => new Set([...modelVariableIds(), ...requiredVariableIds()]),
   );
   // Se pone true cuando el catálogo VIVO del DB ya reemplazó al estático → fuerza
   // un re-render para que informe/menú/mapa lean la lista real (no la hardcodeada).
@@ -77,6 +78,20 @@ export function VariablesProvider({ children }: { children: React.ReactNode }) {
       );
   }, []);
 
+  // Tras hidratar desde BD, `VARIABLES` se reemplazó con la lista VIVA (ids/pesos
+  // reales). El seed inicial de `activeVariables` usó los ids ESTÁTICOS, así que
+  // las del MODELO del DB (cuyo id pudo cambiar) podían quedar apagadas. Se
+  // re-siembran haciendo MERGE con la selección actual (no pisa lo que el usuario
+  // tocó): garantiza que las obligatorias/del modelo arranquen activas con el
+  // catálogo real. Ver #8 (obligatorias desactivadas en prod).
+  useEffect(() => {
+    if (!catalogReady) return;
+    setActiveVariables(
+      (prev) =>
+        new Set([...modelVariableIds(), ...requiredVariableIds(), ...prev]),
+    );
+  }, [catalogReady]);
+
   const toggleVariable = useCallback((id: string) => {
     const v = getVariableById(id);
     // Variables obligatorias no se pueden desactivar; tampoco re-activar (no-op).
@@ -90,15 +105,20 @@ export function VariablesProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const clearNonRequired = useCallback(() => {
-    setActiveVariables(new Set(modelVariableIds()));
+    setActiveVariables(new Set([...modelVariableIds(), ...requiredVariableIds()]));
   }, []);
 
   const replaceActiveVariables = useCallback((ids: string[]) => {
-    setActiveVariables(new Set([...modelVariableIds(), ...ids]));
+    setActiveVariables(
+      new Set([...modelVariableIds(), ...requiredVariableIds(), ...ids]),
+    );
   }, []);
 
   const isActive = useCallback(
-    (id: string) => activeVariables.has(id),
+    // Garantía dura: una variable OBLIGATORIA (required) está SIEMPRE activa,
+    // independientemente del set (que puede quedar desincronizado tras hidratar
+    // con ids nuevos). Evita que una obligatoria aparezca desactivada (bug prod).
+    (id: string) => getVariableById(id)?.required === true || activeVariables.has(id),
     [activeVariables],
   );
 

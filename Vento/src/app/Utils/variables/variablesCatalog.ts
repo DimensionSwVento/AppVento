@@ -74,7 +74,27 @@ export interface Variable {
    * por la API de variables; el catálogo template lo deriva con `isExcluyente`.
    */
   excluyente?: boolean;
+  /** Unidad de medida (MW, %, m…). Hidratada de BD; prima sobre el override. */
+  unidad?: string;
+  /** Rango declarado (texto libre, p.ej. "0–100 normalizado"). Hidratado de BD. */
+  rango?: string;
+  /**
+   * "Cómo se calcula" (método/fórmula, texto libre). Editable en admin e
+   * ingestable por metadatos. Cuando viene, PRIMA sobre el texto de plantilla
+   * derivado en `variableDetails.ts` (regla: en modo backend nada hardcoded).
+   */
+  metodoCalculo?: string;
+  /**
+   * MÉTODO de visualización en el mapa (solo si `enMapa`):
+   * - `"calor"` → mapa de calor viridis (viento/WPD; va al desplegable de heatmap).
+   * - `"interconectado"` → nodos conectados al más cercano (p.ej. nodos de conexión).
+   * - `"area"` → icono + hexágonos del área pintados del color de la variable.
+   * Editable/ingestable; default derivado por `mapKindForVariable`.
+   */
+  mapKind?: MapKind;
 }
+
+export type MapKind = "calor" | "interconectado" | "area";
 
 /**
  * IDs de variables EXCLUYENTES (template — hasta que la API entregue el flag).
@@ -356,7 +376,8 @@ export const INFORMATIVE_VARIABLES: InformativeVariable[] = [
   { masterId: "AMB-008-A", dimension: "ambiental", label: "Elevación", description: "Altitud media sobre el nivel del mar." },
   { masterId: "AMB-030-A", dimension: "ambiental", label: "Batimetría", description: "Profundidad del lecho marino." },
 
-  // ─── Regulatoria ── "Falta" (pendiente por el cliente) ──────────────────
+  // ─── Regulatoria ── sus variables se administran en el módulo de Normativa
+  //     (US08), no en este catálogo estático ──────────────────────────────
 ];
 
 export function variablesByDimension(dim: DimensionId): Variable[] {
@@ -400,41 +421,19 @@ export const OPTIONAL_VARIABLES: Variable[] = [
   { id: "oferta-energia", masterId: "ECO-007", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "Sector energético", label: "Oferta de energía (kWh)", description: "Proyección de la oferta de energía por escenario.", noCalculo: true, iconKey: "lucide:Plug" },
   { id: "emisiones", masterId: "ECO-008", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "Sector energético", label: "Emisiones (GEN)", description: "Proyección de emisiones del sector de generación por escenario.", noCalculo: true, iconKey: "lucide:Factory" },
 
-  // ═══ A partir de aquí: duplican masterId con VARIABLES (ya pesan; esto es solo la tarjeta informativa) ═══
-
-  // ─── Social · Vulnerabilidad social (5) ──────────────────────────────────
-  { id: "desocupados-info", masterId: "SOC-001-SE", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Tasa de desocupados", description: "Tasa de desocupación de la población.", noCalculo: true, iconKey: "lucide:UserX" },
-  { id: "densidad-poblacional-info", masterId: "SOC-002-S", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Proyección de densidad poblacional", description: "Habitantes por km² proyectado.", noCalculo: true, iconKey: "lucide:Users" },
-  { id: "distancia-viviendas-info", masterId: "SOC-007-S", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Distancia de viviendas a centros urbanos", description: "Distancia lineal de viviendas a centros urbanos.", noCalculo: true, iconKey: "lucide:House" },
-  { id: "ipm-info", masterId: "SOC-008-SE", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Índice de pobreza multidimensional (IPM)", description: "IPM municipal o departamental.", noCalculo: true, iconKey: "lucide:Boxes" },
-  { id: "pobreza-monetaria-info", masterId: "SOC-035-SE", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Índice de pobreza monetaria", description: "Índice de pobreza monetaria.", noCalculo: true, iconKey: "lucide:CircleDollarSign" },
-
-  // ─── Social · Brecha energética y asequibilidad (3) ──────────────────────
-  { id: "tarifa-energia-info", masterId: "SOC-010-TSE", dimension: "social", criterio: "Social", subcriterio: "Brecha energética y asequibilidad", label: "Tarifa de energía por comercializador", description: "Tarifa de energía según comercializador.", noCalculo: true, iconKey: "lucide:Zap" },
-  { id: "ipm-energetica-info", masterId: "SOC-038-TSE", dimension: "social", criterio: "Social", subcriterio: "Brecha energética y asequibilidad", label: "IPM energética", description: "IPM energética.", noCalculo: true, iconKey: "lucide:ZapOff" },
-  { id: "zni-info", masterId: "SOC-009-TS", dimension: "social", criterio: "Social", subcriterio: "Brecha energética y asequibilidad", label: "Zona no interconectada", description: "Pertenencia a ZNI.", noCalculo: true, iconKey: "lucide:PlugZap" },
-
-  // ─── Social · Riesgo en seguridad, delictividad y conflicto armado (4) ───
-  { id: "grupos-beligerantes-info", masterId: "SOC-011-S", dimension: "social", criterio: "Social", subcriterio: "Riesgo en seguridad, delictividad y conflicto armado", label: "Presencia de grupos beligerantes", description: "Actividad de grupos armados ilegales.", noCalculo: true, iconKey: "lucide:Swords" },
-  { id: "cultivos-coca-info", masterId: "SOC-015-SR", dimension: "social", criterio: "Social", subcriterio: "Riesgo en seguridad, delictividad y conflicto armado", label: "Densidad de cultivos de coca", description: "Concentración de cultivos ilícitos de coca.", noCalculo: true, iconKey: "lucide:Sprout" },
-  { id: "mineria-ilegal-info", masterId: "SOC-018-AE", dimension: "social", criterio: "Social", subcriterio: "Riesgo en seguridad, delictividad y conflicto armado", label: "Minería ilegal", description: "Presencia de minería ilegal.", noCalculo: true, iconKey: "lucide:Pickaxe" },
-  { id: "incidencia-delictiva-info", masterId: "SOC-041-S", dimension: "social", criterio: "Social", subcriterio: "Riesgo en seguridad, delictividad y conflicto armado", label: "Índice de incidencia delictiva", description: "Incidencia delictiva municipal.", noCalculo: true, iconKey: "lucide:ShieldAlert" },
-
-  // ─── Social · Falta de gobernanza, institucionalidad y riesgo político (1) ─
-  { id: "desempeno-institucional-info", masterId: "SOC-023-SER", dimension: "social", criterio: "Social", subcriterio: "Falta de gobernanza, institucionalidad y riesgo político", label: "Índice de desempeño institucional", description: "Desempeño de las instituciones locales.", noCalculo: true, iconKey: "lucide:Landmark" },
-
-  // ─── Social · Sensibilidad sociocultural, étnica y territorial (3) ───────
-  { id: "resguardos-indigenas-info", masterId: "SOC-013-SR", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "Resguardos indígenas", description: "Solapamiento con resguardos indígenas.", enMapa: true, noCalculo: true, iconKey: "tabler:tent" },
-  { id: "reservas-campesinas-info", masterId: "SOC-016-SR", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "Zonas de reserva campesina", description: "Solapamiento con zonas de reserva campesina.", noCalculo: true, iconKey: "lucide:Wheat" },
-  { id: "comunidades-negras-info", masterId: "SOC-032-S", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "Territorios de comunidades negras", description: "Solapamiento con territorios de comunidades negras.", noCalculo: true, iconKey: "lucide:UsersRound" },
-
-  // ─── Ambiental (6) ─────────────────────────────────────────────────────
-  // ⚠️ AMB-006 sin sufijo "-A": así aparece en la hoja Informativas del cliente
-  //    (la ponderada equivalente "uso-suelo" usa AMB-006-A). Se conserva tal cual.
-  { id: "uso-suelo-info", masterId: "AMB-006", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Uso y cobertura del suelo", description: "Clasificación de cobertura y uso del suelo.", aplicaEn: "tierra", noCalculo: true, iconKey: "lucide:Grid2x2" }, { id: "aves-playeras-info", masterId: "AMB-038-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Especies bióticas", label: "Congregación de aves playeras", description: "Zonas de concentración estacional de aves playeras.", noCalculo: true, iconKey: "svg:birds3" },
-  { id: "reproduccion-aves-info", masterId: "AMB-034-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Áreas protegidas", label: "Zonas de reproducción de aves", description: "Sitios identificados para reproducción de aves.", noCalculo: true, iconKey: "svg:nestBird" },
-  // ⚠️ masterId "NA" aquí (la ponderada equivalente "amenaza-volcanica" usa TEC-016).
-  { id: "amenaza-volcanica-info", masterId: "NA", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Amenazas", label: "Amenazas volcánicas", description: "Presencia de volcanes (sin ID asignado por el cliente).", aplicaEn: "tierra", noCalculo: true, iconKey: "tabler:volcano" }, { id: "elevacion-info", masterId: "AMB-008-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Elevación", description: "Altitud media sobre el nivel del mar.", aplicaEn: "tierra", noCalculo: true, iconKey: "lucide:MountainSnow" }, { id: "batimetria-info", masterId: "AMB-030-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Batimetría", description: "Profundidad del lecho marino.", aplicaEn: "mar", noCalculo: true, iconKey: "lucide:Radar" }];/** Variables opcionales (no-cálculo) de una dimensión — universo del menú. */
+  // ─── Informativas que TAMBIÉN son ponderadas (mismo masterId en InfoVariables
+  //     b y c). El cliente las lista en c como "Opcional para el usuario": son
+  //     entradas informativas LEGÍTIMAS (rol de consulta/overlay), NO el mismo
+  //     rol que el modelo. Fuente de verdad: InfoVariables(2)c (§4 modelo-datos-anidado).
+  { id: "pobreza-monetaria-info", masterId: "SOC-035-SE", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Índice de pobreza monetaria", description: "Proporción de población con ingresos por debajo de la línea de pobreza monetaria.", noCalculo: true, iconKey: "lucide:CircleDollarSign" },
+  { id: "uso-suelo-info", masterId: "AMB-006", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Uso y cobertura del suelo", description: "Clasificación de cobertura y uso del suelo.", aplicaEn: "tierra", noCalculo: true, iconKey: "lucide:Grid2x2" },
+  { id: "aves-playeras-info", masterId: "AMB-038-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Especies bióticas", label: "Congregación de aves playeras", description: "Ocurrencias de congregación de aves playeras.", noCalculo: true, iconKey: "svg:birds3" },
+  { id: "reproduccion-aves-info", masterId: "AMB-034-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Áreas protegidas", label: "Zonas de reproducción de aves", description: "Sitios de reproducción de aves.", noCalculo: true, iconKey: "svg:nestBird" },
+  { id: "elevacion-info", masterId: "AMB-008-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Elevación", description: "Altitud sobre el nivel del mar.", aplicaEn: "tierra", noCalculo: true, iconKey: "lucide:MountainSnow" },
+  { id: "batimetria-info", masterId: "AMB-030-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Batimetría", description: "Profundidad del lecho marino.", aplicaEn: "mar", noCalculo: true, iconKey: "lucide:Radar" },
+  // ─── Ambiental · informativa autónoma (AMB-041 en InfoVariables c) ─────────
+  { id: "amenaza-volcanica-info", masterId: "AMB-041", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Amenazas", label: "Amenazas volcánicas", description: "Presencia de volcanes.", aplicaEn: "tierra", noCalculo: true, iconKey: "tabler:volcano" },
+];/** Variables opcionales (no-cálculo) de una dimensión — universo del menú. */
 export function optionalVariablesByDimension(dim: DimensionId): Variable[] {
   return OPTIONAL_VARIABLES.filter((v) => v.dimension === dim);
 }
@@ -488,15 +487,23 @@ export function applyDbCatalog(
 // DB (que no guarda icono ni required).
 const _ICON_BY_ID: Record<string, string> = {};
 const _REQUIRED_BY_ID: Record<string, boolean> = {};
+// Emplazamiento mar/tierra: hoy la master NO lo puebla, así que en backend la
+// variable pierde su `aplicaEn` y el filtro mar/tierra no operaría. Snapshot por
+// id (como icono/required) para conservarlo hasta que el back envíe el dato real.
+const _APLICA_EN_BY_ID: Record<string, "mar" | "tierra"> = {};
 for (const v of [...VARIABLES, ...OPTIONAL_VARIABLES]) {
   _ICON_BY_ID[v.id] = v.iconKey;
   if (v.required) _REQUIRED_BY_ID[v.id] = true;
+  if (v.aplicaEn) _APLICA_EN_BY_ID[v.id] = v.aplicaEn;
 }
 export function iconForVariable(id: string): string {
   return _ICON_BY_ID[id] ?? "lucide:Info";
 }
 export function requiredForVariable(id: string): boolean {
   return _REQUIRED_BY_ID[id] ?? false;
+}
+export function aplicaEnForVariable(id: string): "mar" | "tierra" | undefined {
+  return _APLICA_EN_BY_ID[id];
 }
 
 /**
@@ -516,6 +523,17 @@ export function replaceCatalogFromDb(
   VARIABLES.push(...modelo);
   OPTIONAL_VARIABLES.length = 0;
   OPTIONAL_VARIABLES.push(...informativa);
+}
+
+/**
+ * Aplica EN SITIO un patch a una variable del catálogo. En modo TEMPLATE (sin
+ * backend que hidrate) es la "cache": deja que una edición de admin (enMapa,
+ * método de mapa, icono, unidad…) se refleje al instante en el mapa/menú, que
+ * leen `getVariableById`. En backend real esto lo hace la hidratación del DB.
+ */
+export function patchCatalogVariable(id: string, patch: Partial<Variable>): void {
+  const v = getVariableById(id);
+  if (v) Object.assign(v, patch);
 }
 
 /**
@@ -543,6 +561,36 @@ export function requiredVariableIds(): string[] {
  *  togglear para el informe, pero el toggle NO recalcula el modelo. */
 export function modelVariableIds(): string[] {
   return VARIABLES.map((v) => v.id);
+}
+
+/** Variables de CALOR (heatmap viridis) — recurso eólico continuo. */
+const _CALOR_IDS = new Set(["velocidad-viento", "densidad-viento", "wpd"]);
+/** Variables de red (nodos conectados al más cercano). */
+const _INTERCONECTADO_IDS = new Set(["nodos-conexion"]);
+
+/**
+ * Método de mapa por defecto de una variable (fallback del snapshot; BD manda).
+ * `calor` viento/WPD; `interconectado` nodos; `area` el resto.
+ */
+export function mapKindForVariable(id: string): MapKind {
+  if (_CALOR_IDS.has(id)) return "calor";
+  if (_INTERCONECTADO_IDS.has(id)) return "interconectado";
+  return "area";
+}
+
+/**
+ * Variables del modelo con `enMapa` activo → candidatas a mostrarse como mapa de
+ * calor por variable en el desplegable "Visualización en el mapa". El consumidor
+ * (HeatmapDimensionSwitches) las filtra además por: estar ACTIVA (seleccionada en
+ * Dimensiones) y NO ser una capa de icono (zona/punto, que van por su símbolo).
+ * Tras hidratar, `VARIABLES` es la lista viva del backend → refleja los `enMapa`
+ * reales editados en admin.
+ */
+export function mapHeatmapVariableOptions(): { id: string; label: string }[] {
+  return VARIABLES.filter((v) => v.enMapa).map((v) => ({
+    id: v.id,
+    label: v.label,
+  }));
 }
 
 /**

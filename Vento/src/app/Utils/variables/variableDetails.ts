@@ -23,9 +23,9 @@ function dimLabel(id: Variable["dimension"]): string {
   return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
-/** Unidad legible de la variable (o "índice" 0–100 por defecto). */
+/** Unidad legible de la variable (vacía si no tiene unidad real → índice 0–100). */
 function unitOf(id: string): string {
-  return getInfoVarById(id)?.unit ?? "índice";
+  return getInfoVarById(id)?.unit ?? "";
 }
 
 export interface VariableDetail {
@@ -41,7 +41,8 @@ export interface VariableDetail {
 export function variableDetail(variable: Variable): VariableDetail {
   const w = weightFor(variable.id);
   const dim = dimLabel(variable.dimension);
-  const unit = unitOf(variable.id);
+  // Unidad de BD (editable/ingestable) prima sobre el override estático.
+  const unit = variable.unidad?.trim() || unitOf(variable.id);
   const grupo = variable.subcriterio
     ? `${variable.criterio} › ${variable.subcriterio}`
     : variable.criterio;
@@ -77,7 +78,7 @@ export function variableDetail(variable: Variable): VariableDetail {
 
   // ── Rango e interpretación ─────────────────────────────────────────
   const escala =
-    unit === "índice"
+    !unit || unit === "índice"
       ? "El indicador se expresa como un índice normalizado de 0 a 100."
       : `El indicador se expresa en ${unit} y luego se normaliza a 0–100 para el modelo.`;
   const lectura =
@@ -88,5 +89,10 @@ export function variableDetail(variable: Variable): VariableDetail {
         : "Interpretación: se usa solo como referencia, sin efecto en el puntaje.";
   const rango = `${escala} ${lectura} (Los rangos definitivos dependen de los datos reales de la master.)`;
 
-  return { calculo: calculoPartes.join(" "), relevancia, rango };
+  // "Cómo se calcula" editado/ingerido (BD) PRIMA sobre el texto de plantilla
+  // (regla: en modo backend nada hardcoded). Si está vacío, cae al derivado.
+  const calculo = variable.metodoCalculo?.trim()
+    ? variable.metodoCalculo.trim()
+    : calculoPartes.join(" ");
+  return { calculo, relevancia, rango };
 }
