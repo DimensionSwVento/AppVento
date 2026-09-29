@@ -483,8 +483,9 @@ ingiere y queda disponible (detalle/avanzado), no se pinta por defecto · **⚙�
    el **actualizador de metadatos** (autodetección, §11-ter) → `catalog_norma`
    (nombre, descripción, estado, `condicion`, `fuente`, `url_fuente`, `variable_ref`).
 2. **Edición** → CRUD en **Admin · Normativa** (`/normas`).
-3. **Activación** → card **«Regulatoria»** de la fase Dimensiones (`RegulatoryCard`):
-   un switch por norma. Estado en `RegulatoryContext` como conjunto de IDs
+3. **Activación** → card **«Regulatoria»** de la fase Dimensiones, renderizada
+   por el `DimensionCard` genérico (un switch por norma, igual que las demás
+   dimensiones informativas). Estado en `RegulatoryContext` como conjunto de IDs
    **desactivadas** (vacío = todas activas) → una norma nueva de metadatos entra
    **activa** por defecto.
 4. **Modal de marco normativo** (`RegulatoryModal`, disparado desde la card): lista

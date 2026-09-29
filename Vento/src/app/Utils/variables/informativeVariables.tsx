@@ -69,7 +69,9 @@ const UNIT_OVERRIDES: Record<string, string> = {
 };
 
 function unitFor(id: string): string {
-  return UNIT_OVERRIDES[id] ?? "índice";
+  // Sin unidad real → cadena VACÍA (no "índice"): en pantalla se muestra solo el
+  // número (p.ej. "34", no "34 índice"). Las unidades reales (MW, %, m/s…) sí salen.
+  return UNIT_OVERRIDES[id] ?? "";
 }
 
 /** Construye el InfoVar runtime a partir de un Variable del catálogo. */
@@ -78,7 +80,9 @@ function toInfoVar(v: Variable): InfoVar {
     id: v.id,
     masterId: v.masterId,
     label: v.label,
-    unit: unitFor(v.id),
+    // Unidad de BD (editable/ingestable) prima sobre el override estático — así
+    // en modo backend la unidad no queda hardcodeada. Vacío → cae al override.
+    unit: v.unidad?.trim() || unitFor(v.id),
     Icon: getIconByVariableId(v.id),
     color: colorForVariable(v.id),
   };

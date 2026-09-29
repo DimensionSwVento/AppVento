@@ -22,12 +22,54 @@ import {
 type PlanItem = { name: string; path: string; plan: MetadataPlan };
 type ResultItem = { name: string; result: MetadataApplyResult };
 
+// Plantilla InfoVariables: columnas que el importador reconoce (por palabra clave)
+// + una fila de EJEMPLO con valores demostrativos para que el cliente la llene.
+// Headers que COINCIDEN con los de InfoVariables real (el importador los reconoce
+// por palabra clave, así que el texto largo "¿Se muestra en el mapa? Opcional…" y
+// "ID (Mostrar en el detalle)" también casan). "¿Se muestra en el mapa?" se llena
+// con Sí/No; "Menú" con la nota del InfoVariables.
+const TEMPLATE_HEADERS = [
+  "Dimensión", "Criterio", "Subcriterio", "Variable", "Emplazamiento",
+  "¿Se muestra en el mapa? Opcional para que el usuario lo active desde el mismo menú.",
+  "Menú", "ID (Mostrar en el detalle)", "Descripción (Mostrar en el detalle)",
+  "Fuente de datos (Mostrar en el detalle)", "Tipo de licencia de datos (Mostrar en el detalle)",
+  "URL fuente de datos (Mostrar en el detalle)", "Unidad", "Rango",
+  "Cómo se calcula", "Peso", "Polaridad",
+  "Comentarios/ideas sobre la forma de visualización", "Estado", "Condición de activación",
+];
+const TEMPLATE_DEMO = [
+  "Ambiental", "Variables bióticas", "Áreas protegidas", "Humedales RAMSAR",
+  "Onshore", "Sí", "Activo por defecto por MCDM", "AMB-012-A",
+  "Ubicación de los humedales RAMSAR en Colombia", "IGAC", "uso libre",
+  "https://www.colombiaenmapas.gov.co/", "índice", "0–100 (normalizado)",
+  "Presencia normalizada 0–1 de la capa", "0.8", "-1",
+  "Mostrar como capa de área con icono", "activo", "",
+];
+
+function csvEscape(v: string): string {
+  return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}
+
+function downloadInfoVariablesTemplate(): void {
+  const rows = [TEMPLATE_HEADERS, TEMPLATE_DEMO];
+  // BOM (﻿) → Excel abre el CSV con acentos correctos (UTF-8).
+  const csv = "﻿" + rows.map((r) => r.map(csvEscape).join(",")).join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "plantilla_infovariables.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function AdminMetadatosPage() {
   const toast = useToast();
   const [files, setFiles] = useState<File[]>([]);
   const [items, setItems] = useState<PlanItem[]>([]);
   const [results, setResults] = useState<ResultItem[]>([]);
   const [busy, setBusy] = useState(false);
+  const [showTemplate, setShowTemplate] = useState(false);
 
   const doPlan = useCallback(async () => {
     if (!files.length) return;
@@ -178,14 +220,75 @@ export default function AdminMetadatosPage() {
                 {files.length} archivo(s): {files.map((f) => f.name).join(", ")}
               </p>
             )}
-            <button
-              onClick={doPlan}
-              disabled={!files.length || busy}
-              className="mt-3 rounded-md bg-[#165170ff] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-            >
-              {busy ? "Analizando…" : "Analizar"}
-            </button>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                onClick={doPlan}
+                disabled={!files.length || busy}
+                className="rounded-md bg-[#165170ff] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              >
+                {busy ? "Analizando…" : "Analizar"}
+              </button>
+              {/* Descargar la plantilla vacía para llenarla y subirla (con una modal
+                  que explica qué pasa antes de descargar). */}
+              <button
+                type="button"
+                onClick={() => setShowTemplate(true)}
+                className="rounded-md border border-[#165170ff] px-4 py-2 text-sm font-semibold text-[#165170ff] hover:bg-[#cce1eeff]/40"
+              >
+                Descargar plantilla vacía
+              </button>
+            </div>
           </div>
+
+          {/* Modal explicativa antes de descargar la plantilla InfoVariables. */}
+          {showTemplate && (
+            <div
+              className="fixed inset-0 z-[90] flex items-center justify-center p-4"
+              style={{ backgroundColor: "rgba(30,45,60,0.45)", backdropFilter: "blur(2px)" }}
+              onClick={() => setShowTemplate(false)}
+            >
+              <div
+                className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="text-base font-bold text-[#165170ff]">
+                  Descargar plantilla de InfoVariables
+                </h3>
+                <p className="mt-2 text-sm leading-snug text-gray-600">
+                  Se descarga un <b>CSV</b> con las columnas que el sistema reconoce
+                  y <b>una fila de ejemplo</b> (valor demostrativo). Llénalo con tus
+                  variables/normas y súbelo aquí con <b>«Analizar»</b>: el importador
+                  mapea cada columna a su campo (dimensión, criterio, fuente, unidad,
+                  peso, cómo se calcula…). Se abre en Excel; al subir vale CSV o XLSX.
+                </p>
+                <ul className="mt-2 list-disc pl-5 text-[12px] leading-snug text-gray-500">
+                  <li>Reemplaza la fila de ejemplo por tus datos reales (o bórrala).</li>
+                  <li>No cambies los nombres de las columnas (se reconocen por palabra clave).</li>
+                  <li>Los acentos se conservan (UTF-8).</li>
+                </ul>
+                <div className="mt-5 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowTemplate(false)}
+                    className="rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      downloadInfoVariablesTemplate();
+                      setShowTemplate(false);
+                    }}
+                    className="rounded-full px-5 py-2 text-sm font-semibold text-white"
+                    style={{ backgroundColor: "#165170" }}
+                  >
+                    Descargar CSV
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 2. Plan por archivo (según el tipo detectado) */}
           {items.map((it) => (

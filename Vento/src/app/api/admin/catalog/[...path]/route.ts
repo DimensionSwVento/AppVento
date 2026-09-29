@@ -19,6 +19,8 @@ import { proxyBackend } from "@/app/Utils/apis/backendProxy";
  *   POST   /escenarios
  *   PATCH  /escenarios/:id
  *   DELETE /escenarios/:id
+ *   GET    /config/:key            (config editable; p.ej. report_calc_text)
+ *   PATCH  /config/:key            (upsert del valor JSON)
  */
 async function handle(req: Request, path: string[]): Promise<Response> {
   const session = await auth();

@@ -51,11 +51,19 @@
     (no está en el /upload —guarda todos— ni en chunk_plan —itera todos—; revisar
     proxy/nginx multipart, `_select_paths` canónicos, o tmp). Reproducir subiendo 10.
 
-## Pendiente de barrido de docs/comentarios (al final)
+## Barrido de docs/comentarios — RESUELTO (Sprint 4)
 
-- Buscar y corregir menciones a comportamiento viejo: "4 dimensiones puntuables",
-  económica que puntúa, `RegulatoryCard` (borrado), `Providers.tsx` (renombrado),
-  variables económicas en `VARIABLES` (ahora en `OPTIONAL_VARIABLES`).
-- Docs de comportamiento a revisar: `modelo-datos-anidado.md`, `manual-usuario.md`,
-  `docs/README.md`, `spec`, `dev-notes` relacionados.
-- NO tocar stories/ADRs históricos salvo afirmación de scoring falsa.
+Corregidas las menciones a comportamiento viejo:
+- "4 dimensiones puntuables" → **3 puntuables** (Ambiental, Técnica, Social);
+  económica y Regulatoria son **informativas**. Actualizado en `README.md`,
+  `Vento/README.md`, `docs/README.md`, `Spec_doc.md` y el comentario de
+  `heatmapPalette.ts` (`generalScore`).
+- `RegulatoryCard` (borrado) → la Regulatoria usa el `DimensionCard` genérico
+  (`modelo-datos-anidado.md`).
+- `Providers.tsx` (renombrado) → `AppProvider.tsx` + `Utils/ProviderComposer.tsx`
+  (ADR-016) en `navigation-state-machine.md`.
+- Score de la master (`global`) **0–5 / -1 excluida** → normalizado en lectura a
+  `[0,1]` (`normalize_model_score`), documentado en `backend-sync-checklist.md`.
+- Comentarios referenciales/anecdóticos ("del equipo de análisis", "pendiente por
+  el cliente", "completar con el catálogo real") → reescritos en tono lógico.
+- NO se tocaron stories/ADRs históricos (solo afirmaciones de scoring falsas).

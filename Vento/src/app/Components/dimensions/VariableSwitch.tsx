@@ -29,18 +29,39 @@ export default function VariableSwitch({ variable }: { variable: Variable }) {
         aria-label={variable.label}
         aria-disabled={required}
         disabled={required}
-        title={required ? "Variable obligatoria" : undefined}
+        title={required ? "Variable del modelo · siempre activa, no configurable" : undefined}
         onClick={() => toggleVariable(variable.id)}
         className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
-          active ? "bg-[#22c55e]" : "bg-gray-300"
-        } ${required ? "opacity-70 cursor-not-allowed" : "cursor-pointer"}`}
+          // Bloqueada (del modelo): activa pero no configurable → VERDE AZULADO
+          // (teal): distingue de las informativas (verde) y avisa que no se toca.
+          required
+            ? "cursor-not-allowed bg-[#0d9488]"
+            : active
+              ? "cursor-pointer bg-[#22c55e]"
+              : "cursor-pointer bg-gray-300"
+        }`}
       >
         <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-            active ? "translate-x-[18px]" : "translate-x-[2px]"
-          }`}
+          className={`inline-block h-4 w-4 transform rounded-full shadow transition-transform ${
+            required ? "bg-gray-100" : "bg-white"
+          } ${active ? "translate-x-[18px]" : "translate-x-[2px]"}`}
         />
       </button>
+      {required && (
+        <span
+          aria-hidden="true"
+          title="Variable del modelo (obligatoria)"
+          className="-ml-1 mt-0.5 shrink-0 text-gray-400"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+            <path
+              fillRule="evenodd"
+              d="M10 1a4 4 0 00-4 4v2H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V5a4 4 0 00-4-4zm2 6V5a2 2 0 10-4 0v2h4z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </span>
+      )}
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-1">
           <p className="text-sm font-semibold text-[#393939ff] leading-tight">

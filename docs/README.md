@@ -104,7 +104,7 @@ Técnicas usadas en la tercera entrega que conviene conocer antes de tocar el c�
 
 | Doc | Para qué |
 |-----|----------|
-| [Spec_doc.md](Spec_doc.md) | Visión, problema, objetivos, flujo de usuario, dimensiones (4 puntuables + Regulatoria informativa), tipos de variables |
+| [Spec_doc.md](Spec_doc.md) | Visión, problema, objetivos, flujo de usuario, dimensiones (3 puntuables + económica y Regulatoria informativas), tipos de variables |
 | [project-status.md](project-status.md) | Tabla de estado del proyecto, índice maestro de docs, actividades hechas y pendientes |
 | [manual-usuario.md](manual-usuario.md) | Guía paso a paso para el **usuario final** del software |
 | Este archivo (`docs/README.md`) | Punto de entrada general — qué es Vento y dónde mirar |
@@ -205,8 +205,8 @@ Técnicas usadas en la tercera entrega que conviene conocer antes de tocar el c�
 | **FastAPI** | Framework Python para el backend. Sirve los tiles H3 y endpoints de datos. |
 | **`.h3.parquet`** | Archivo binario con datos geoespaciales por hexágono — entregado por el equipo de investigación. |
 | **Modelo multicriterio** | Algoritmo del equipo de investigación que calcula scores de idoneidad eólica por hex. En desarrollo. |
-| **Score general** | Promedio ponderado (WLC) de las **4 dimensiones puntuables** para un hexágono. |
-| **Dimensiones** | Ambiental, Técnica, **Social**, **económica*4 puntuables**) + Regulatoria (**informativa**). |
+| **Score general** | Promedio ponderado (WLC) de las **3 dimensiones puntuables** para un hexágono. |
+| **Dimensiones** | Ambiental, Técnica, **Social** (**3 puntuables**) + **económica** y Regulatoria (**informativas**). |
 | **Idoneidad** | Aptitud relativa de una zona para un proyecto eólico (antes "prefactibilidad"; renombrado en la 3ª entrega). |
 | **Criterio / Subcriterio** | Niveles de agrupación de variables dentro de una dimensión (Dimensión→Criterio→Subcriterio→Variable). |
 | **Modo template** | La app funciona con marcadores deterministas hasta tener datos reales; se activa lo real con interruptores en `projectData.ts`. |
