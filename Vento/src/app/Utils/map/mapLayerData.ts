@@ -106,6 +106,25 @@ export async function fetchWindCells(
 }
 
 /**
+ * Capa COMPLETA de excluidos en UNA sola petición (`GET /api/tiles/excluded`).
+ * El front la pide una vez al montar el mapa y la cachea (bannedStore), en vez de
+ * pedir `get_tile` por cada tile solo para marcar zonas no seleccionables (ese
+ * endpoint, a zoom bajo, barría millones de filas por tile → saturaba los hilos).
+ * `[]` si no hay backend o falla → cae al placeholder local, sin romper la malla.
+ */
+export async function fetchExcludedCells(): Promise<string[]> {
+  if (!USE_BACKEND) return [];
+  try {
+    const resp = await fetch(`/api/tiles/excluded`);
+    if (!resp.ok) return [];
+    const data = (await resp.json()) as { cells?: string[] };
+    return Array.isArray(data?.cells) ? data.cells : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Valores (0–1) de una variable ACOTADOS a un bbox — para colorear la rejilla del
  * mapa como heatmap por zoom. Pasa `resolution` (zoom→res) para que el backend
  * AGREGUE al hexágono padre (respuesta pequeña, memoria acotada, sin OOM).
@@ -172,15 +191,35 @@ function placeholderCatalogCells(variableId: string): string[] {
  * REGLA: template = placeholder determinista (pinta algo: área + icono);
  * backend = dato REAL (`fetchWindCells`) o VACÍO si no hay/falla (nunca inventa).
  */
-export async function fetchCatalogCells(variableId: string): Promise<string[]> {
-  if (USE_BACKEND) {
+// CACHÉ por variable de las capas del mapa (catálogo/símbolos). Los hex de una
+// variable son ESTÁTICOS entre ingestas de la máster, así que se piden UNA vez por
+// sesión en vez de re-consultar el país entero cada vez que se recomputan las capas
+// (era el "pide res8 cada vez que satura de peticiones"). No se cachean resultados
+// vacíos (fallo/backend caído) → se reintenta la próxima vez.
+const _catalogCellsCache = new Map<string, Promise<string[]>>();
+const _mapLayerCellsCache = new Map<string, Promise<MapLayerCell[]>>();
+
+export async function fetchCatalogCells(
+  variableId: string,
+  res: number = 7,
+): Promise<string[]> {
+  if (!USE_BACKEND) return placeholderCatalogCells(variableId);
+  // Clave por (variable, res): a zoom bajo se pide una res gruesa (padres) → el
+  // backend agrega y devuelve pocos hex; se cachea por nivel de resumen, no se
+  // re-pide el país entero cada vez (patrón del heat, commit 9e4d654).
+  const key = `${variableId}:${res}`;
+  let p = _catalogCellsCache.get(key);
+  if (!p) {
     // Capa de ÁREA/interconectado: solo se necesita la PRESENCIA (keys), no el
-    // valor. Se pide agregado a res 7 (padre) para acotar payload/render de una
-    // variable muy extendida; el backend además hace stream (memoria acotada).
-    const m = await fetchWindCells(variableId, undefined, 7);
-    return m ? [...m.keys()] : [];
+    // valor. Se pide agregado al padre `res` del zoom para acotar payload/render.
+    p = fetchWindCells(variableId, undefined, res).then((m) => {
+      const keys = m ? [...m.keys()] : [];
+      if (keys.length === 0) _catalogCellsCache.delete(key); // no cachear vacío
+      return keys;
+    });
+    _catalogCellsCache.set(key, p);
   }
-  return placeholderCatalogCells(variableId);
+  return p;
 }
 
 export interface MapLayerCell {
@@ -221,31 +260,43 @@ function placeholderCells(s: MapSymbol): MapLayerCell[] {
  */
 export async function fetchMapLayerCells(
   s: MapSymbol,
+  res: number = MAP_LAYER_RES,
 ): Promise<MapLayerCell[]> {
-  if (USE_BACKEND) {
-    // Modo backend: los hex (con su símbolo/color) son FIELES a la máster. Si el
-    // backend no entrega la capa, vacío — NUNCA el placeholder arbitrario.
-    try {
-      const res = await fetch(`/api/tiles/variable`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: masterIdFor(s.variableId),
-          res: MAP_LAYER_RES,
-          subtemplate: SUBTEMPLATE_VARS.has(s.variableId),
-        }),
-      });
-      if (res.ok) {
-        const rows = (await res.json()) as { h3_index: string; value: number }[];
-        return rows.map((r) => ({ h: r.h3_index, value: r.value }));
-      }
-    } catch {
-      /* backend sin dato → vacío (abajo), no placeholder */
-    }
-    return [];
-  }
   // Modo template (demo): placeholder de cobertura.
-  return placeholderCells(s);
+  if (!USE_BACKEND) return placeholderCells(s);
+  // CACHÉ por (variable, res): la capa se pide a la res del zoom (resumen de
+  // padres → payload chico a zoom bajo) y se cachea por nivel de resumen, en vez
+  // de traer el país entero a res8 en cada recompute (patrón del heat, 9e4d654).
+  const key = `${s.variableId}:${res}`;
+  let p = _mapLayerCellsCache.get(key);
+  if (!p) {
+    p = (async () => {
+      // Si el backend no entrega la capa, vacío — NUNCA el placeholder arbitrario.
+      try {
+        const resp = await fetch(`/api/tiles/variable`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code: masterIdFor(s.variableId),
+            res,
+            subtemplate: SUBTEMPLATE_VARS.has(s.variableId),
+          }),
+        });
+        if (resp.ok) {
+          const rows = (await resp.json()) as { h3_index: string; value: number }[];
+          return rows.map((r) => ({ h: r.h3_index, value: r.value }));
+        }
+      } catch {
+        /* backend sin dato → vacío */
+      }
+      return [] as MapLayerCell[];
+    })().then((cells) => {
+      if (cells.length === 0) _mapLayerCellsCache.delete(key); // no cachear vacío
+      return cells;
+    });
+    _mapLayerCellsCache.set(key, p);
+  }
+  return p;
 }
 
 /** Metadatos de capa (kind/color) sin cargar los hex. */
