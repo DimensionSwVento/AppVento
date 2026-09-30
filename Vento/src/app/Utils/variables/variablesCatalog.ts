@@ -578,6 +578,12 @@ export function mapKindForVariable(id: string): MapKind {
   return "area";
 }
 
+/** True si la variable se representa como MAPA DE CALOR (viento/WPD). Se usa para
+ *  que solo haya UN heatmap activo a la vez: al prender uno, se apagan los demás. */
+export function isHeatVariable(id: string): boolean {
+  return (getVariableById(id)?.mapKind ?? mapKindForVariable(id)) === "calor";
+}
+
 /**
  * Variables del modelo con `enMapa` activo → candidatas a mostrarse como mapa de
  * calor por variable en el desplegable "Visualización en el mapa". El consumidor
