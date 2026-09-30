@@ -13,6 +13,7 @@ import {
 } from "../../Utils/report/reportData";
 import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
+import { svg2pdf } from "svg2pdf.js"; // Fase 1 PDF nativo: charts SVG → vector
 import { useIsAdmin } from "../../Utils/useIsAdmin";
 import { fetchMasterStatus, fetchEscenarios, fetchNormas, fetchVariableRanges, fetchReportCalcText, fetchReportContent, type AdminEscenario } from "../../Utils/admin/catalogApi";
 import { dbField, AuditDataLabel } from "../../Utils/audit";
@@ -1600,42 +1601,91 @@ export default function Report() {
       // tick al event loop para que el GC reclame antes de la siguiente hoja → el
       // pico se acota a ~1 canvas, no a todos a la vez.
       const CAPTURE_SCALE = 1.5;
+      const SLICE_EPS_MM = 2; // franja mínima sobrante: no añade página casi vacía
+
+      // Rasteriza una hoja a JPEG y LIBERA el canvas. `hideCharts` = oculta los
+      // charts SVG (visibility) para dejar su hueco en blanco y pintarlos luego
+      // como vector encima (Fase 1 PDF nativo). Devuelve el dataURL + dimensiones.
+      const rasterSheet = async (el: HTMLElement, hideCharts: SVGSVGElement[]) => {
+        const prev = hideCharts.map((c) => c.style.visibility);
+        hideCharts.forEach((c) => (c.style.visibility = "hidden"));
+        try {
+          const canvas = await html2canvas(el, {
+            scale: CAPTURE_SCALE,
+            backgroundColor: "#ffffff",
+            imageTimeout: 5000,
+            ignoreElements: (n) =>
+              (n as HTMLElement).getAttribute?.("data-pdf-ignore") === "true",
+          });
+          const data = canvas.toDataURL("image/jpeg", 0.9);
+          const w = canvas.width;
+          const h = canvas.height;
+          canvas.width = 0; // libera YA: evita acumular canvases en RAM
+          canvas.height = 0;
+          return { data, w, h };
+        } finally {
+          hideCharts.forEach((c, k) => (c.style.visibility = prev[k]));
+        }
+      };
+
       for (let i = 0; i < sheetEls.length; i++) {
+        const el = sheetEls[i];
         setExportMsg(`Hoja ${i + 1} de ${sheetEls.length}…`);
         setExportPct(Math.round((i / sheetEls.length) * 100));
         // deja pintar el overlay/progreso antes del trabajo pesado (bloqueante).
         await new Promise((r) => setTimeout(r, 0));
-
-        const canvas = await html2canvas(sheetEls[i], {
-          scale: CAPTURE_SCALE,
-          backgroundColor: "#ffffff",
-          imageTimeout: 5000,
-          ignoreElements: (el) =>
-            el.getAttribute("data-pdf-ignore") === "true",
-        });
-        const imgData = canvas.toDataURL("image/jpeg", 0.9);
-        // Escala la hoja al ANCHO A4; si queda MÁS ALTA que una página, se reparte
-        // en varias páginas (slicing por offset vertical) para no recortar el
-        // contenido (#1). Antes se hacía "contain" a 1 sola página → cortaba.
-        const imgW = pageW;
-        const imgH = (canvas.height * pageW) / canvas.width;
-        // Libera el canvas YA (antes de seguir): evita que se acumulen en RAM.
-        canvas.width = 0;
-        canvas.height = 0;
         if (i > 0) pdf.addPage();
-        let position = 0;
-        let heightLeft = imgH;
-        pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
-        heightLeft -= pageH;
-        // Umbral: no añadir una página de continuación si lo que resta es una
-        // franja mínima (sobrante de redondeo del render) → evita hojas casi
-        // vacías. 2 mm ≈ 7 px @96dpi, menos que cualquier fila de tabla.
-        const SLICE_EPS_MM = 2;
-        while (heightLeft > SLICE_EPS_MM) {
-          position -= pageH;
-          pdf.addPage();
-          pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
+
+        const sheetRect = el.getBoundingClientRect();
+        const pxToMm = pageW / sheetRect.width; // hoja escalada al ANCHO A4
+        const sheetHmm = sheetRect.height * pxToMm;
+        const charts = Array.from(
+          el.querySelectorAll<SVGSVGElement>('svg[role="img"]'),
+        );
+
+        // RUTA VECTOR (Fase 1): solo si hay charts y la hoja cabe en 1 página
+        // (el vector sobre hojas multipágina requiere repartir por página → se
+        // deja para una fase posterior). Raster sin charts + charts vectoriales
+        // encima, posicionados por su rect real. Si algo falla, cae a raster.
+        let done = false;
+        if (charts.length && sheetHmm <= pageH + SLICE_EPS_MM) {
+          try {
+            const { data, w, h } = await rasterSheet(el, charts);
+            pdf.addImage(data, "JPEG", 0, 0, pageW, (h * pageW) / w);
+            for (const svg of charts) {
+              const r = svg.getBoundingClientRect();
+              await svg2pdf(svg, pdf, {
+                x: (r.left - sheetRect.left) * pxToMm,
+                y: (r.top - sheetRect.top) * pxToMm,
+                width: r.width * pxToMm,
+                height: r.height * pxToMm,
+              });
+            }
+            done = true;
+          } catch (err) {
+            console.warn(
+              "[pdfExport] charts vectoriales fallaron, cae a raster:",
+              err,
+            );
+          }
+        }
+
+        // RUTA RASTER (fallback / hojas altas): foto con charts + slicing a
+        // varias páginas por offset vertical para no recortar (comportamiento
+        // previo, intacto).
+        if (!done) {
+          const { data, w, h } = await rasterSheet(el, []);
+          const imgH = (h * pageW) / w;
+          let position = 0;
+          let heightLeft = imgH;
+          pdf.addImage(data, "JPEG", 0, position, pageW, imgH);
           heightLeft -= pageH;
+          while (heightLeft > SLICE_EPS_MM) {
+            position -= pageH;
+            pdf.addPage();
+            pdf.addImage(data, "JPEG", 0, position, pageW, imgH);
+            heightLeft -= pageH;
+          }
         }
       }
 
