@@ -199,20 +199,29 @@ function placeholderCatalogCells(variableId: string): string[] {
 const _catalogCellsCache = new Map<string, Promise<string[]>>();
 const _mapLayerCellsCache = new Map<string, Promise<MapLayerCell[]>>();
 
+type BBox = { west: number; south: number; east: number; north: number };
+
+/** Clave de caché por bbox redondeado a ~0.5° (paneos chicos reusan la misma). */
+function bboxKey(bbox?: BBox): string {
+  if (!bbox) return "all";
+  const r = (n: number) => Math.round(n * 2) / 2;
+  return `${r(bbox.west)},${r(bbox.south)},${r(bbox.east)},${r(bbox.north)}`;
+}
+
 export async function fetchCatalogCells(
   variableId: string,
   res: number = 7,
+  bbox?: BBox,
 ): Promise<string[]> {
   if (!USE_BACKEND) return placeholderCatalogCells(variableId);
-  // Clave por (variable, res): a zoom bajo se pide una res gruesa (padres) → el
-  // backend agrega y devuelve pocos hex; se cachea por nivel de resumen, no se
-  // re-pide el país entero cada vez (patrón del heat, commit 9e4d654).
-  const key = `${variableId}:${res}`;
+  // Clave por (variable, res, bbox): se pide SOLO el bbox del viewport a la res del
+  // zoom → el backend escanea lo visible, no el país (era el scan de 5 min). Se
+  // cachea por nivel de resumen y zona; sin bbox = país (fallback, no debería pasar).
+  const key = `${variableId}:${res}:${bboxKey(bbox)}`;
   let p = _catalogCellsCache.get(key);
   if (!p) {
-    // Capa de ÁREA/interconectado: solo se necesita la PRESENCIA (keys), no el
-    // valor. Se pide agregado al padre `res` del zoom para acotar payload/render.
-    p = fetchWindCells(variableId, undefined, res).then((m) => {
+    // Capa de ÁREA/interconectado: solo se necesita la PRESENCIA (keys), no el valor.
+    p = fetchWindCells(variableId, bbox, res).then((m) => {
       const keys = m ? [...m.keys()] : [];
       if (keys.length === 0) _catalogCellsCache.delete(key); // no cachear vacío
       return keys;
@@ -261,13 +270,14 @@ function placeholderCells(s: MapSymbol): MapLayerCell[] {
 export async function fetchMapLayerCells(
   s: MapSymbol,
   res: number = MAP_LAYER_RES,
+  bbox?: BBox,
 ): Promise<MapLayerCell[]> {
   // Modo template (demo): placeholder de cobertura.
   if (!USE_BACKEND) return placeholderCells(s);
-  // CACHÉ por (variable, res): la capa se pide a la res del zoom (resumen de
-  // padres → payload chico a zoom bajo) y se cachea por nivel de resumen, en vez
-  // de traer el país entero a res8 en cada recompute (patrón del heat, 9e4d654).
-  const key = `${s.variableId}:${res}`;
+  // CACHÉ por (variable, res, bbox): se pide SOLO el bbox del viewport a la res del
+  // zoom → el backend escanea lo visible, no el país entero a res8 (era el scan de
+  // ~5 min que apilaba los hilos). Cacheado por zona/nivel de resumen.
+  const key = `${s.variableId}:${res}:${bboxKey(bbox)}`;
   let p = _mapLayerCellsCache.get(key);
   if (!p) {
     p = (async () => {
@@ -279,6 +289,7 @@ export async function fetchMapLayerCells(
           body: JSON.stringify({
             code: masterIdFor(s.variableId),
             res,
+            ...(bbox ? { bbox } : {}),
             subtemplate: SUBTEMPLATE_VARS.has(s.variableId),
           }),
         });
