@@ -100,6 +100,17 @@ function hexToRgb(hex: string): [number, number, number] {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
+// Ninguna variable puede ser NEGRA (ni casi): si el color es muy oscuro, se
+// sustituye por un azul de paleta. Evita capas negras en el mapa.
+function safeColor(hex: string): string {
+  const [r, g, b] = hexToRgb(hex);
+  return r + g + b < 60 ? "#2563eb" : hex;
+}
+
+// Máx de capas que PINTAN hexágonos a la vez (área/conexión). El resto de las
+// activas solo muestran su icono. El calor es aparte (máx 1, colorea la rejilla).
+const MAX_PAINTING_LAYERS = 3;
+
 /**
  * Aristas de RED para capas `interconectado`: conecta cada punto con el MÁS
  * CERCANO (grafo vecino-más-cercano, deduplicado). O(n²), pero n es pequeño (≤12).
@@ -810,7 +821,9 @@ export default function MapView() {
   // luego catálogo) → cada una un ANILLO concéntrico (coverage decreciente). Así, en
   // un mismo hex, varias variables se ven como bordes anidados de su color en vez de
   // rellenos semitransparentes apilados que ennegrecen. El excluido queda como el
-  // borde exterior del hex (grid). Si se desactiva una, su anillo desaparece.
+  // ORDEN GLOBAL de las variables que PINTAN el hexágono (zonas de símbolo primero,
+  // luego catálogo). Solo las primeras MAX_PAINTING_LAYERS pintan; el resto activas
+  // solo muestran icono. Al desactivar una, las demás corren su turno.
   const activeZoneIds = useMemo(
     () =>
       MAP_SYMBOLS.filter(
@@ -821,12 +834,6 @@ export default function MapView() {
           variableAppliesToNatureById(s.variableId, mapNature),
       ).map((s) => s.variableId),
     [effectiveSymbols, mapDisabledIds, mapNature],
-  );
-  // coverage por posición: 0.88, 0.72, 0.56… (borde exterior = excluido/grid; los
-  // anillos de variable van HACIA ADENTRO). Mínimo 0.3 para que se sigan viendo.
-  const ringCoverage = useCallback(
-    (index: number) => Math.max(0.3, 0.88 - Math.max(0, index) * 0.16),
-    [],
   );
 
   const symbolLayers = useMemo(() => {
@@ -840,29 +847,31 @@ export default function MapView() {
     // relleno SUAVE del color de la variable. (El viento NO va aquí: es un mapa
     // de calor que colorea los hex del grid — ver `getFillColor` de gridTileLayer.)
     const polys = active
-      .filter((s) => s.kind === "zone")
+      // Solo las PRIMERAS 3 (orden global: zonas de símbolo primero) PINTAN el
+      // hexágono; las demás activas solo muestran su icono (ver bloque de iconos).
+      .filter(
+        (s) =>
+          s.kind === "zone" &&
+          activeZoneIds.indexOf(s.variableId) < MAX_PAINTING_LAYERS,
+      )
       .map((s) => {
         const cells = symbolCells[s.variableId] ?? [];
-        const [br, bg, bb] = hexToRgb(s.color);
-        const cov = ringCoverage(activeZoneIds.indexOf(s.variableId));
+        const [br, bg, bb] = hexToRgb(safeColor(s.color));
+        // Relleno SEMI-transparente (como el heatmap) + borde. El área pinta el hex.
         return new H3HexagonLayer<MapLayerCell>({
           id: `map-hexlayer-${s.variableId}`,
           data: cells,
           getHexagon: (d) => d.h,
           extruded: false,
-          // BANDA concéntrica RELLENA del color de la variable. Opaca + `coverage`
-          // decreciente + orden de fuera hacia dentro → cada capa ocupa su anillo
-          // con su color (sin apilar alpha → no ennegrece). Borde del mismo color.
           stroked: true,
           filled: true,
-          coverage: cov,
-          getFillColor: () => [br, bg, bb, 255],
-          getLineColor: () => [br, bg, bb, 255],
+          getFillColor: () => [br, bg, bb, 51],
+          getLineColor: () => [br, bg, bb, 180],
           getLineWidth: 1,
           lineWidthUnits: "pixels",
           lineWidthMinPixels: 1,
           pickable: false,
-          updateTriggers: { getFillColor: [s.color], getLineColor: [s.color], coverage: [cov] },
+          updateTriggers: { getFillColor: [s.color], getLineColor: [s.color] },
         });
       });
     // Redes de puntos: conecta los puntos de cada capa `point` con una línea.
@@ -914,7 +923,7 @@ export default function MapView() {
     // bands (hex + redes) e icons por separado → los iconos se dibujan encima de
     // TODAS las bandas (evita que las bandas opacas de otras capas los tapen).
     return { bands: [...polys, ...paths], icons };
-  }, [effectiveSymbols, mapDisabledIds, symbolCells, blinkOn, mapNature, activeZoneIds, ringCoverage]);
+  }, [effectiveSymbols, mapDisabledIds, symbolCells, blinkOn, mapNature, activeZoneIds]);
 
   // ── N1a-mapa 2b: capas GENÉRICAS de catálogo ────────────────────────────────
   // Variables enMapa (área/interconectado, NO calor) que NO están en la lista
@@ -1046,38 +1055,42 @@ export default function MapView() {
     const icons: IconLayer<{ lng: number; lat: number }>[] = [];
     // Índice de anillo del catálogo: va DESPUÉS de las zonas de símbolo para que
     // los anillos concéntricos no colisionen entre ambos grupos.
-    let catRingIdx = 0;
+    // Índice de "pintado" del catálogo: va DESPUÉS de las zonas de símbolo. Solo
+    // los primeros (junto con las zonas) hasta MAX_PAINTING_LAYERS pintan hexágono.
+    let catPaintIdx = 0;
     for (const { id, kind } of extraMapVars) {
       const cells = extraCells[id] ?? [];
       if (cells.length === 0) continue;
-      const color = colorForVariable(id);
+      const color = safeColor(colorForVariable(id));
       const [r, g, b] = hexToRgb(color);
 
       // CALOR: NO se pinta aquí. Colorea la REJILLA del grid (`gridTileLayer`,
       // resumen de padres por zoom) con `viridis` → ver `activeHeatVarId`.
       if (kind === "calor") continue;
 
-      // ÁREA / INTERCONECTADO: BANDA concéntrica RELLENA del color de la variable
-      // (opaca + coverage decreciente = banda interna) + icono. Sin apilar alpha.
-      const cov = ringCoverage(activeZoneIds.length + catRingIdx);
-      catRingIdx += 1;
-      bands.push(
-        new H3HexagonLayer<{ h: string }>({
-          id: `catalog-hex-${id}`,
-          data: cells.map((h) => ({ h })),
-          getHexagon: (d) => d.h,
-          extruded: false,
-          stroked: true,
-          filled: true,
-          coverage: cov,
-          getFillColor: () => [r, g, b, 255],
-          getLineColor: () => [r, g, b, 255],
-          getLineWidth: 1,
-          lineWidthUnits: "pixels",
-          lineWidthMinPixels: 1,
-          pickable: false,
-        }),
-      );
+      // ÁREA / INTERCONECTADO: el área PINTA el hexágono (relleno SEMI + borde),
+      // pero solo si cabe en el cupo global de MAX_PAINTING_LAYERS (zonas primero).
+      // Si no cabe, la variable solo mostrará su icono (abajo), no pinta.
+      const paints = activeZoneIds.length + catPaintIdx < MAX_PAINTING_LAYERS;
+      catPaintIdx += 1;
+      if (paints) {
+        bands.push(
+          new H3HexagonLayer<{ h: string }>({
+            id: `catalog-hex-${id}`,
+            data: cells.map((h) => ({ h })),
+            getHexagon: (d) => d.h,
+            extruded: false,
+            stroked: true,
+            filled: true,
+            getFillColor: () => [r, g, b, 51],
+            getLineColor: () => [r, g, b, 180],
+            getLineWidth: 1,
+            lineWidthUnits: "pixels",
+            lineWidthMinPixels: 1,
+            pickable: false,
+          }),
+        );
+      }
       // Icono (asignado en admin) en una MUESTRA de hexes (≤12) para no saturar.
       const iconKey = getVariableById(id)?.iconKey ?? "lucide:MapPin";
       const iconUrl = iconKeyToDataUri(iconKey, color);
@@ -1111,7 +1124,7 @@ export default function MapView() {
       );
       // `interconectado`: red vecino-más-cercano entre los puntos + una línea
       // desde el CENTRO del área seleccionada a cada punto (petición cliente).
-      if (kind === "interconectado" && points.length >= 2) {
+      if (paints && kind === "interconectado" && points.length >= 2) {
         const edges = nearestNeighborEdges(points);
         if (selectionCenter) {
           for (const p of points) {
@@ -1140,7 +1153,7 @@ export default function MapView() {
       }
     }
     return { bands, icons };
-  }, [extraMapVars, extraCells, selectionCenter, blinkOn, activeZoneIds, ringCoverage]);
+  }, [extraMapVars, extraCells, selectionCenter, blinkOn, activeZoneIds]);
 
   // Dibujo del POLÍGONO en curso (US03-04): vértices (puntos) + contorno. Se
   // materializa en hexágonos al "Aplicar" (ver `applyPolygon`).
