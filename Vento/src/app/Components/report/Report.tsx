@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Maximize2 } from "lucide-react";
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
 import { calcAreaKm2 } from "../../Utils/report/areaCalc";
@@ -12,6 +13,7 @@ import {
 } from "../../Utils/report/reportData";
 import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
+import { svg2pdf } from "svg2pdf.js"; // Fase 1 PDF nativo: charts SVG → vector
 import { useIsAdmin } from "../../Utils/useIsAdmin";
 import { fetchMasterStatus, fetchEscenarios, fetchNormas, fetchVariableRanges, fetchReportCalcText, fetchReportContent, type AdminEscenario } from "../../Utils/admin/catalogApi";
 import { dbField, AuditDataLabel } from "../../Utils/audit";
@@ -287,6 +289,8 @@ export default function Report() {
   const isAdmin = useIsAdmin();
   const reportRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState("");        // "Hoja 2 de 8…"
+  const [exportPct, setExportPct] = useState<number | null>(null); // 0–100 real
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1538,13 +1542,21 @@ export default function Report() {
       `el score de cada dimensión resulta de aplicarles los pesos del modelo.</div>`;
     document.body.appendChild(wrap);
     setIsExporting(true);
+    setExportMsg(`Rasterizando ${hexes.length} hexágonos…`);
     try {
+      // MEMORIA: una tabla de miles de filas a scale 2 llevaba el navegador a
+      // varios GB. Escala adaptativa: 1 si el área es grande (>500 hex), 2 para
+      // áreas pequeñas donde la nitidez importa y el costo es bajo.
+      const scale = hexes.length > 500 ? 1 : 2;
       const canvas = await html2canvas(wrap, {
-        scale: 2,
+        scale,
         backgroundColor: "#ffffff",
       });
+      const url = canvas.toDataURL("image/png");
+      canvas.width = 0; // libera el canvas antes de disparar la descarga
+      canvas.height = 0;
       const a = document.createElement("a");
-      a.href = canvas.toDataURL("image/png");
+      a.href = url;
       a.download = `datos-hex-${Date.now()}.png`;
       a.click();
       toast.success("Tabla de datos por hexágono descargada");
@@ -1554,6 +1566,7 @@ export default function Report() {
     } finally {
       document.body.removeChild(wrap);
       setIsExporting(false);
+      setExportMsg("");
     }
   };
 
@@ -1578,41 +1591,228 @@ export default function Report() {
         orientation: "portrait",
         unit: "mm",
         format: "a4",
+        compress: true, // deflate del stream → PDF más liviano (Fase 4)
       });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
 
-      for (let i = 0; i < sheetEls.length; i++) {
-        const canvas = await html2canvas(sheetEls[i], {
-          scale: 2,
-          backgroundColor: "#ffffff",
-          imageTimeout: 5000,
-          ignoreElements: (el) =>
-            el.getAttribute("data-pdf-ignore") === "true",
+      // Metadatos del documento (Fase 4): título/autor/asunto → buscable e
+      // identificable en gestores de archivos y visores de PDF.
+      try {
+        pdf.setProperties({
+          title: `Informe de idoneidad eólica${region ? ` — ${region}` : ""}`,
+          subject: "Evaluación multicriterio de idoneidad para energía eólica",
+          author: "Vento",
+          creator: "Vento",
+          keywords: "eólica, idoneidad, MCDM, SIG, informe",
         });
-        const imgData = canvas.toDataURL("image/jpeg", 0.95);
-        // Escala la hoja al ANCHO A4; si queda MÁS ALTA que una página, se reparte
-        // en varias páginas (slicing por offset vertical) para no recortar el
-        // contenido (#1). Antes se hacía "contain" a 1 sola página → cortaba.
-        const imgW = pageW;
-        const imgH = (canvas.height * pageW) / canvas.width;
+      } catch (err) {
+        console.warn("[pdfExport] setProperties falló:", err);
+      }
+
+      // MEMORIA: html2canvas a scale 2 rasteriza 4× píxeles por hoja; sobre muchas
+      // hojas el navegador llegaba a ~4 GB. Bajamos a 1.5 (nítido para A4) y, tras
+      // convertir cada canvas a JPEG, lo LIBERAMOS (width/height=0) + cedemos un
+      // tick al event loop para que el GC reclame antes de la siguiente hoja → el
+      // pico se acota a ~1 canvas, no a todos a la vez.
+      const CAPTURE_SCALE = 1.5;
+      const SLICE_EPS_MM = 2; // franja mínima sobrante: no añade página casi vacía
+
+      // Rasteriza una hoja a JPEG y LIBERA el canvas. `hideCharts` = oculta los
+      // charts SVG (visibility) para dejar su hueco en blanco y pintarlos luego
+      // como vector encima (Fase 1 PDF nativo). Devuelve el dataURL + dimensiones.
+      const rasterSheet = async (el: HTMLElement, hideCharts: SVGSVGElement[]) => {
+        const prev = hideCharts.map((c) => c.style.visibility);
+        hideCharts.forEach((c) => (c.style.visibility = "hidden"));
+        try {
+          const canvas = await html2canvas(el, {
+            scale: CAPTURE_SCALE,
+            backgroundColor: "#ffffff",
+            imageTimeout: 5000,
+            ignoreElements: (n) =>
+              (n as HTMLElement).getAttribute?.("data-pdf-ignore") === "true",
+          });
+          const data = canvas.toDataURL("image/jpeg", 0.9);
+          const w = canvas.width;
+          const h = canvas.height;
+          canvas.width = 0; // libera YA: evita acumular canvases en RAM
+          canvas.height = 0;
+          return { data, w, h };
+        } finally {
+          hideCharts.forEach((c, k) => (c.style.visibility = prev[k]));
+        }
+      };
+
+      // Capa de TEXTO SELECCIONABLE/BUSCABLE (Fase 3): dibuja texto INVISIBLE
+      // (renderingMode "invisible") encima del raster, en la posición real de cada
+      // nodo de texto (Range.getBoundingClientRect). Así el PDF es copiable/buscable
+      // sin tocar lo que se ve — si algo se desalinea, es invisible (cero regresión
+      // visual). Se salta texto dentro de charts (ya va vectorial) y de zonas
+      // marcadas data-pdf-ignore. Best-effort: cualquier fallo se ignora.
+      const PT_PER_MM = 72 / 25.4; // px→mm→pt para setFontSize
+      const addTextLayer = (
+        el: HTMLElement,
+        sheetRect: DOMRect,
+        pxToMm: number,
+        basePage: number,
+      ) => {
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+          acceptNode(n) {
+            if (!n.nodeValue || !n.nodeValue.trim())
+              return NodeFilter.FILTER_REJECT;
+            const p = n.parentElement;
+            if (!p || p.closest('svg,[data-pdf-ignore="true"]'))
+              return NodeFilter.FILTER_REJECT;
+            return NodeFilter.FILTER_ACCEPT;
+          },
+        });
+        let node: Node | null;
+        let count = 0;
+        while ((node = walker.nextNode()) && count < 6000) {
+          const txt = node.nodeValue!.replace(/\s+/g, " ").trim();
+          if (!txt) continue;
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          const rect = range.getBoundingClientRect();
+          if (!rect.width || !rect.height) continue;
+          const topMm = (rect.top - sheetRect.top) * pxToMm;
+          const pageIdx = Math.max(0, Math.floor(topMm / pageH));
+          const x = (rect.left - sheetRect.left) * pxToMm;
+          const cs = window.getComputedStyle(node.parentElement!);
+          const fsPx = parseFloat(cs.fontSize) || 10;
+          // baseline ≈ borde inferior menos un pequeño descenso; y relativo a su página.
+          const y =
+            (rect.bottom - sheetRect.top) * pxToMm -
+            pageIdx * pageH -
+            fsPx * pxToMm * 0.2;
+          pdf.setPage(Math.min(basePage + pageIdx, pdf.getNumberOfPages()));
+          pdf.setFontSize(fsPx * pxToMm * PT_PER_MM);
+          pdf.text(txt, x, y, {
+            renderingMode: "invisible",
+            baseline: "alphabetic",
+          });
+          count++;
+        }
+      };
+
+      for (let i = 0; i < sheetEls.length; i++) {
+        const el = sheetEls[i];
+        setExportMsg(`Hoja ${i + 1} de ${sheetEls.length}…`);
+        setExportPct(Math.round((i / sheetEls.length) * 100));
+        // deja pintar el overlay/progreso antes del trabajo pesado (bloqueante).
+        await new Promise((r) => setTimeout(r, 0));
         if (i > 0) pdf.addPage();
-        let position = 0;
-        let heightLeft = imgH;
-        pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
-        heightLeft -= pageH;
-        // Umbral: no añadir una página de continuación si lo que resta es una
-        // franja mínima (sobrante de redondeo del render) → evita hojas casi
-        // vacías. 2 mm ≈ 7 px @96dpi, menos que cualquier fila de tabla.
-        const SLICE_EPS_MM = 2;
-        while (heightLeft > SLICE_EPS_MM) {
-          position -= pageH;
-          pdf.addPage();
-          pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
+
+        const basePage = pdf.getNumberOfPages(); // 1ª página de ESTA hoja
+
+        // Bookmark/índice navegable (Fase 4): una entrada por hoja apuntando a su
+        // 1ª página. Toma el 1er encabezado del DOM como etiqueta, si no "Hoja N".
+        // `outline` es un plugin de jsPDF sin tipos → acceso acotado + try/catch.
+        try {
+          const heading = el
+            .querySelector("h1,h2,h3,[data-sheet-title]")
+            ?.textContent?.trim();
+          const label = (heading || `Hoja ${i + 1}`).slice(0, 80);
+          const outline = (
+            pdf as unknown as {
+              outline?: {
+                add: (
+                  parent: unknown,
+                  title: string,
+                  options: { pageNumber: number },
+                ) => unknown;
+              };
+            }
+          ).outline;
+          outline?.add(null, label, { pageNumber: basePage });
+        } catch (err) {
+          console.warn("[pdfExport] bookmark de hoja falló:", err);
+        }
+
+        const sheetRect = el.getBoundingClientRect();
+        const pxToMm = pageW / sheetRect.width; // hoja escalada al ANCHO A4
+        const charts = Array.from(
+          el.querySelectorAll<SVGSVGElement>('svg[role="img"]'),
+        );
+
+        // Pinta un raster (dataURL) repartido en páginas por offset vertical si
+        // es más alto que A4 (slicing) — no recorta contenido alto (#1).
+        const addSlicedRaster = (data: string, w: number, h: number) => {
+          const imgH = (h * pageW) / w;
+          let position = 0;
+          let heightLeft = imgH;
+          pdf.addImage(data, "JPEG", 0, position, pageW, imgH);
           heightLeft -= pageH;
+          // 2 mm ≈ 7 px @96dpi: no añade una página por una franja de redondeo.
+          while (heightLeft > SLICE_EPS_MM) {
+            position -= pageH;
+            pdf.addPage();
+            pdf.addImage(data, "JPEG", 0, position, pageW, imgH);
+            heightLeft -= pageH;
+          }
+        };
+
+        try {
+          // RUTA VECTOR (Fase 2): funciona a CUALQUIER altura. Rasteriza la hoja
+          // con los charts ocultos (slicing multipágina) y luego pinta cada chart
+          // como VECTOR sobre la página que le toca (por su offset vertical).
+          const { data, w, h } = await rasterSheet(el, charts);
+          addSlicedRaster(data, w, h);
+
+          for (const svg of charts) {
+            const r = svg.getBoundingClientRect();
+            const yGlobal = (r.top - sheetRect.top) * pxToMm;
+            const pageIdx = Math.max(0, Math.floor(yGlobal / pageH));
+            const x = (r.left - sheetRect.left) * pxToMm;
+            const y = yGlobal - pageIdx * pageH; // offset dentro de su página
+            const wmm = r.width * pxToMm;
+            const hmm = r.height * pxToMm;
+            // clamp: por redondeo el índice podría exceder las páginas creadas.
+            pdf.setPage(Math.min(basePage + pageIdx, pdf.getNumberOfPages()));
+            try {
+              await svg2pdf(svg, pdf, { x, y, width: wmm, height: hmm });
+            } catch (err) {
+              // Fallo puntual de un chart → lo rasterizo SOLO a él (sin abortar
+              // la hoja): evita el hueco en blanco donde iría el gráfico. Este
+              // fallback NUNCA debe propagar: si también fallara, se deja el hueco
+              // (propagar aquí haría que el catch externo re-rasterice la hoja y
+              // DUPLIQUE las páginas ya añadidas).
+              console.warn("[pdfExport] chart vector falló, raster puntual:", err);
+              try {
+                const c = await html2canvas(svg as unknown as HTMLElement, {
+                  scale: CAPTURE_SCALE,
+                  backgroundColor: null,
+                });
+                pdf.addImage(c.toDataURL("image/png"), "PNG", x, y, wmm, hmm);
+                c.width = 0;
+                c.height = 0;
+              } catch (err2) {
+                console.warn("[pdfExport] raster puntual del chart también falló:", err2);
+              }
+            }
+          }
+          pdf.setPage(pdf.getNumberOfPages()); // vuelve a la última antes de seguir
+        } catch (err) {
+          // Fallo del raster base (raro) → foto con charts incluidos + slicing,
+          // comportamiento previo. Se hace sobre la(s) misma(s) página(s) ya
+          // creada(s) para esta hoja (aún vacías).
+          console.warn("[pdfExport] raster de hoja falló, fallback con charts:", err);
+          pdf.setPage(basePage);
+          const { data, w, h } = await rasterSheet(el, []);
+          addSlicedRaster(data, w, h);
+        }
+
+        // Capa de texto seleccionable encima (best-effort; no rompe si falla).
+        try {
+          addTextLayer(el, sheetRect, pxToMm, basePage);
+          pdf.setPage(pdf.getNumberOfPages());
+        } catch (err) {
+          console.warn("[pdfExport] capa de texto seleccionable falló:", err);
         }
       }
 
+      setExportMsg("Guardando el PDF…");
+      setExportPct(100);
       pdf.save(`informe-vento-${Date.now()}.pdf`);
       toast.success("Informe descargado correctamente");
     } catch (e) {
@@ -1623,6 +1823,8 @@ export default function Report() {
     } finally {
       setCapturing(false);
       setIsExporting(false);
+      setExportMsg("");
+      setExportPct(null);
     }
   };
 
@@ -1770,25 +1972,33 @@ export default function Report() {
       )}
 
       {/* Overlay de carga durante la descarga del PDF: da feedback claro (antes
-          "parecía no descargar nunca" porque html2canvas sobre varias hojas tarda). */}
-      {isExporting && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm"
-          role="status"
-          aria-live="polite"
-        >
-          <div className="flex w-72 flex-col items-center gap-3 rounded-2xl bg-white px-8 py-6 shadow-xl">
-            <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-[#165170ff] border-t-transparent" />
-            <p className="text-sm font-medium text-gray-700">Generando el informe PDF…</p>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-              <div className="h-full w-1/2 animate-pulse rounded-full bg-[#165170ff]" />
+          "parecía no descargar nunca" porque html2canvas sobre varias hojas tarda).
+          Va por PORTAL a <body>: si se renderiza dentro del árbol del informe, un
+          ancestro con transform/filter ancla el `fixed` a la subpágina y el overlay
+          queda "encerrado" en vez de cubrir toda la pantalla. */}
+      {isExporting && typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex w-72 flex-col items-center gap-3 rounded-2xl bg-white px-8 py-6 shadow-xl">
+              <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-[#165170ff] border-t-transparent" />
+              <p className="text-sm font-medium text-gray-700">Generando el informe PDF…</p>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                <div
+                  className="h-full rounded-full bg-[#165170ff] transition-all duration-300"
+                  style={{ width: exportPct != null ? `${exportPct}%` : "50%" }}
+                />
+              </div>
+              <p className="text-center text-[11px] text-gray-400">
+                {exportMsg || "Puede tardar unos segundos según el número de hojas."} No cierres la página.
+              </p>
             </div>
-            <p className="text-center text-[11px] text-gray-400">
-              Puede tardar unos segundos según el número de hojas. No cierres la página.
-            </p>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
