@@ -1772,34 +1772,18 @@ export default function Report() {
             try {
               await svg2pdf(svg, pdf, { x, y, width: wmm, height: hmm });
             } catch (err) {
-              // Fallo puntual de un chart → lo rasterizo SOLO a él (sin abortar
-              // la hoja): evita el hueco en blanco donde iría el gráfico. Este
-              // fallback NUNCA debe propagar: si también fallara, se deja el hueco
-              // (propagar aquí haría que el catch externo re-rasterice la hoja y
-              // DUPLIQUE las páginas ya añadidas).
-              console.warn("[pdfExport] chart vector falló, raster puntual:", err);
-              try {
-                const c = await html2canvas(svg as unknown as HTMLElement, {
-                  scale: CAPTURE_SCALE,
-                  backgroundColor: null,
-                });
-                pdf.addImage(c.toDataURL("image/png"), "PNG", x, y, wmm, hmm);
-                c.width = 0;
-                c.height = 0;
-              } catch (err2) {
-                console.warn("[pdfExport] raster puntual del chart también falló:", err2);
-              }
+              // SIN fallback a html2canvas (es el motor lento que revienta prod):
+              // si un chart falla en vector, se deja el hueco y se sigue. Se
+              // prioriza descarga rápida y estable sobre rescatar un gráfico suelto.
+              console.warn("[pdfExport] chart vector falló, se omite (sin fallback raster):", err);
             }
           }
           pdf.setPage(pdf.getNumberOfPages()); // vuelve a la última antes de seguir
         } catch (err) {
-          // Fallo del raster base (raro) → foto con charts incluidos + slicing,
-          // comportamiento previo. Se hace sobre la(s) misma(s) página(s) ya
-          // creada(s) para esta hoja (aún vacías).
-          console.warn("[pdfExport] raster de hoja falló, fallback con charts:", err);
-          pdf.setPage(basePage);
-          const { data, w, h } = await rasterSheet(el, []);
-          addSlicedRaster(data, w, h);
+          // SIN reintento: si el raster base de la hoja falla, se registra y se
+          // sigue (no reintentamos con html2canvas — es lo que ralentiza y
+          // revienta prod). La hoja puede quedar vacía; se prioriza estabilidad.
+          console.warn("[pdfExport] raster de hoja falló, se omite la hoja:", err);
         }
 
         // Capa de texto seleccionable encima (best-effort; no rompe si falla).

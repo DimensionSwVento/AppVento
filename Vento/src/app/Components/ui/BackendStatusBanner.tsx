@@ -16,9 +16,19 @@ export default function BackendStatusBanner() {
     if (!USE_BACKEND) return;
     let alive = true;
     let fails = 0;
+    let inFlight = false; // GUARDIA: no apilar sondeos si el back va lento
     const check = async () => {
+      // Si el sondeo anterior sigue vivo, NO dispares otro (antes se apilaban
+      // ~25 requests colgados que saturaban el pool y colgaban las tiles).
+      if (inFlight) return;
+      inFlight = true;
+      // Corta el sondeo a los 8 s: un back saturado no debe dejar el request vivo.
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), 8000);
       try {
-        const res = await fetch("/api/tiles/warmup", { cache: "no-store" });
+        // `/api/health` es BARATO (is_ready = SELECT ... LIMIT 1). Antes se pegaba
+        // a `/warmup`, que hace count() de TODA la tabla → carga innecesaria cada 15 s.
+        const res = await fetch("/api/health", { cache: "no-store", signal: ctrl.signal });
         if (!res.ok) throw new Error(String(res.status));
         fails = 0;
         if (alive) setDown(false);
@@ -26,10 +36,13 @@ export default function BackendStatusBanner() {
         fails += 1;
         // 2 fallos seguidos → caído (evita parpadeo por un blip puntual).
         if (alive && fails >= 2) setDown(true);
+      } finally {
+        clearTimeout(to);
+        inFlight = false;
       }
     };
     check();
-    const t = setInterval(check, 15000);
+    const t = setInterval(check, 30000); // 30 s: menos carga; con la guardia no se apila
     return () => {
       alive = false;
       clearInterval(t);

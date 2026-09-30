@@ -9,6 +9,7 @@
  * Contrato de endpoints (para implementar en backend): ver docs/api/admin-catalog.md
  */
 import { USE_BACKEND, AEROGENERADORES } from "../projectData";
+import { cached, invalidate } from "./apiCache";
 import {
   DIMENSIONS,
   OPTIONAL_VARIABLES,
@@ -178,8 +179,10 @@ let calcTextStore: CalcSummaryText = { ...CALC_SUMMARY_DEFAULTS };
 /** Texto del "Resumen del cálculo" (override de BD fusionado sobre los defaults). */
 export async function fetchReportCalcText(): Promise<CalcSummaryText> {
   if (USE_BACKEND) {
-    const raw = await api<Partial<CalcSummaryText>>(`/config/${CALC_TEXT_KEY}`);
-    return { ...CALC_SUMMARY_DEFAULTS, ...(raw ?? {}) };
+    return cached("reportCalc", async () => {
+      const raw = await api<Partial<CalcSummaryText>>(`/config/${CALC_TEXT_KEY}`);
+      return { ...CALC_SUMMARY_DEFAULTS, ...(raw ?? {}) };
+    });
   }
   return { ...calcTextStore };
 }
@@ -193,6 +196,7 @@ export async function updateReportCalcText(
       method: "PATCH",
       body: JSON.stringify(text),
     });
+    invalidate("reportCalc");
     return { ...CALC_SUMMARY_DEFAULTS, ...(raw ?? {}) };
   }
   calcTextStore = { ...text };
@@ -206,16 +210,18 @@ let reportContentStore: ReportContentText = { ...REPORT_CONTENT_DEFAULTS };
 /** Disclaimer + incentivos del informe (override de BD sobre los defaults). */
 export async function fetchReportContent(): Promise<ReportContentText> {
   if (USE_BACKEND) {
-    const raw = await api<Partial<ReportContentText>>(`/config/${REPORT_CONTENT_KEY}`);
-    return {
-      ...REPORT_CONTENT_DEFAULTS,
-      ...(raw ?? {}),
-      // `incentivos` es array: si el override no lo trae, conserva el default.
-      incentivos:
-        raw?.incentivos && raw.incentivos.length > 0
-          ? raw.incentivos
-          : REPORT_CONTENT_DEFAULTS.incentivos,
-    };
+    return cached("reportContent", async () => {
+      const raw = await api<Partial<ReportContentText>>(`/config/${REPORT_CONTENT_KEY}`);
+      return {
+        ...REPORT_CONTENT_DEFAULTS,
+        ...(raw ?? {}),
+        // `incentivos` es array: si el override no lo trae, conserva el default.
+        incentivos:
+          raw?.incentivos && raw.incentivos.length > 0
+            ? raw.incentivos
+            : REPORT_CONTENT_DEFAULTS.incentivos,
+      };
+    });
   }
   return { ...reportContentStore };
 }
@@ -229,6 +235,7 @@ export async function updateReportContent(
       method: "PATCH",
       body: JSON.stringify(content),
     });
+    invalidate("reportContent");
     return {
       ...REPORT_CONTENT_DEFAULTS,
       ...(raw ?? {}),
@@ -630,25 +637,34 @@ export async function updateDataset(
 
 // ── NORMAS (US08-02) ─────────────────────────────────────────────────────────
 export async function fetchNormas(): Promise<Norma[]> {
-  if (USE_BACKEND) return api<Norma[]>(`/normas`);
+  // Cacheado: la lista de normas se pide en cada render del informe; se refresca
+  // sola al editar (invalidate abajo) o a los 5 min.
+  if (USE_BACKEND) return cached("normas", () => api<Norma[]>(`/normas`));
   return [...normasStore];
 }
 export async function createNorma(payload: Omit<Norma, "id">): Promise<Norma> {
-  if (USE_BACKEND)
-    return api<Norma>(`/normas`, { method: "POST", body: JSON.stringify(payload) });
+  if (USE_BACKEND) {
+    const r = await api<Norma>(`/normas`, { method: "POST", body: JSON.stringify(payload) });
+    invalidate("normas");
+    return r;
+  }
   const nueva: Norma = { id: `norma-${Date.now()}`, ...payload };
   normasStore = [nueva, ...normasStore];
   return nueva;
 }
 export async function updateNorma(id: string, patch: Partial<Norma>): Promise<Norma> {
-  if (USE_BACKEND)
-    return api<Norma>(`/normas/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+  if (USE_BACKEND) {
+    const r = await api<Norma>(`/normas/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+    invalidate("normas");
+    return r;
+  }
   normasStore = normasStore.map((n) => (n.id === id ? { ...n, ...patch } : n));
   return normasStore.find((n) => n.id === id)!;
 }
 export async function deleteNorma(id: string): Promise<void> {
   if (USE_BACKEND) {
     await api(`/normas/${id}`, { method: "DELETE" });
+    invalidate("normas");
     return;
   }
   normasStore = normasStore.filter((n) => n.id !== id);
@@ -656,17 +672,20 @@ export async function deleteNorma(id: string): Promise<void> {
 
 // ── ESCENARIOS (US08-03) ─────────────────────────────────────────────────────
 export async function fetchEscenarios(): Promise<AdminEscenario[]> {
-  if (USE_BACKEND) return api<AdminEscenario[]>(`/escenarios`);
+  if (USE_BACKEND) return cached("escenarios", () => api<AdminEscenario[]>(`/escenarios`));
   return [...escenariosStore];
 }
 export async function createEscenario(
   payload: Omit<AdminEscenario, "id">,
 ): Promise<AdminEscenario> {
-  if (USE_BACKEND)
-    return api<AdminEscenario>(`/escenarios`, {
+  if (USE_BACKEND) {
+    const r = await api<AdminEscenario>(`/escenarios`, {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    invalidate("escenarios");
+    return r;
+  }
   const nuevo: AdminEscenario = { id: `esc-${Date.now()}`, ...payload };
   escenariosStore = [nuevo, ...escenariosStore];
   return nuevo;
@@ -675,17 +694,21 @@ export async function updateEscenario(
   id: string,
   patch: Partial<AdminEscenario>,
 ): Promise<AdminEscenario> {
-  if (USE_BACKEND)
-    return api<AdminEscenario>(`/escenarios/${id}`, {
+  if (USE_BACKEND) {
+    const r = await api<AdminEscenario>(`/escenarios/${id}`, {
       method: "PATCH",
       body: JSON.stringify(patch),
     });
+    invalidate("escenarios");
+    return r;
+  }
   escenariosStore = escenariosStore.map((s) => (s.id === id ? { ...s, ...patch } : s));
   return escenariosStore.find((s) => s.id === id)!;
 }
 export async function deleteEscenario(id: string): Promise<void> {
   if (USE_BACKEND) {
     await api(`/escenarios/${id}`, { method: "DELETE" });
+    invalidate("escenarios");
     return;
   }
   escenariosStore = escenariosStore.filter((s) => s.id !== id);
@@ -777,19 +800,23 @@ export async function fetchVariableRanges(): Promise<
   Record<string, { min: number; max: number }>
 > {
   if (!USE_BACKEND) return {};
-  try {
-    const res = await fetch(`/api/tiles/variables`);
-    const data = await res.json();
-    const out: Record<string, { min: number; max: number }> = {};
-    for (const v of data?.variables ?? []) {
-      if (v?.name && v?.range && typeof v.range.min === "number") {
-        out[v.name] = { min: v.range.min, max: v.range.max };
+  // Cacheado: los rangos vienen de `hexagon_meta` (estáticos entre ingestas); el
+  // informe y el mapa los piden seguido. Se refrescan a los 5 min (o al recargar).
+  return cached("varRanges", async () => {
+    try {
+      const res = await fetch(`/api/tiles/variables`);
+      const data = await res.json();
+      const out: Record<string, { min: number; max: number }> = {};
+      for (const v of data?.variables ?? []) {
+        if (v?.name && v?.range && typeof v.range.min === "number") {
+          out[v.name] = { min: v.range.min, max: v.range.max };
+        }
       }
+      return out;
+    } catch {
+      return {};
     }
-    return out;
-  } catch {
-    return {};
-  }
+  });
 }
 
 // ── ACTUALIZAR MASTER (US04-03 · admin) ──────────────────────────────────────
