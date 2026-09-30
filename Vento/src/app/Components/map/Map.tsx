@@ -589,12 +589,12 @@ export default function MapView() {
   // "persiste" al cambiar de escala). NO toca el grid (rendimiento intacto) ni el
   // set real `selectedHexes` (la consulta al backend sigue igual): solo el relleno.
   const displayRes = Math.max(0, Math.min(15, zoomToH3Res(viewState.zoom)));
-  // Res de las CAPAS de variable (símbolos/catálogo): la del zoom, TOPE 7 (nunca
-  // res8-país, que traía millones — era el "pide res8 cada vez"). Entero → solo
-  // cambia al cruzar un nivel de zoom (los effects no re-piden en cada píxel). A
-  // zoom bajo baja a 5–6 → el backend agrega a padres y devuelve pocos hex (patrón
-  // del heat, 9e4d654). Follow-up: bbox del viewport a zoom alto para afinar más.
-  const layerRes = Math.min(7, displayRes);
+  // Res de las CAPAS de variable (símbolos/catálogo) y del heatmap del informe: la
+  // MISMA que usa el grid (zoomToH3Res, tope 8 = res del dato) → todas las capas se
+  // resumen igual por zoom y quedan ALINEADAS (antes, capadas a 7 mientras el grid
+  // iba a 8, se veía desfase/"rendija"). El bbox del viewport ya acota el res8, así
+  // que no vuelve el escaneo país. Entero → los effects solo re-piden al cruzar nivel.
+  const layerRes = Math.min(8, displayRes);
   // Bbox del VIEWPORT (debounced) para acotar las capas de variable a lo VISIBLE →
   // el backend escanea el viewport, no el país entero (mató los scans de ~5 min que
   // apilaban los hilos). Se actualiza 400ms tras asentarse el paneo/zoom; las capas
@@ -661,6 +661,7 @@ export default function MapView() {
     heatmapActive,
     selectedHexes,
     activeDimension,
+    layerRes, // MISMA res que grid/capas → el heatmap se resume por zoom (no fijo res8)
   );
 
   // Datos reales por hex del backend (mismo fetch cacheado que el heatmap) para

@@ -31,7 +31,10 @@ export function useInformeHeatmapLayer(
   heatmapActive: boolean,
   selectedHexes: Set<string>,
   activeDimension: string | null,
+  res: number = 8, // resolución del zoom (misma que grid/capas) → se resume por zoom
 ) {
+  // La malla del heatmap se pinta a esta res (tope 8 = res del dato); antes fija en 8.
+  const heatRes = Math.max(1, Math.min(8, Math.round(res)));
   // Datos reales por hex (compartidos con el informe). Fallback: placeholder.
   const areaData = useAreaHexData(selectedHexes, heatmapActive);
 
@@ -76,13 +79,13 @@ export function useInformeHeatmapLayer(
       const m = 0.05;
       bbox = { west: w - m, south: s - m, east: e + m, north: n + m };
     }
-    fetchWindCells(windId, bbox, 8)
+    fetchWindCells(windId, bbox, heatRes)
       .then((m) => alive && setWindCells(m))
       .catch(() => alive && setWindCells(null));
     return () => {
       alive = false;
     };
-  }, [windId, selectedHexes]);
+  }, [windId, selectedHexes, heatRes]);
 
   const data = useMemo<{ h: string; baseScore: number }[]>(() => {
     if (!heatmapActive || selectedHexes.size === 0) return [];
@@ -100,19 +103,24 @@ export function useInformeHeatmapLayer(
 
     // 2) Normalización a EXACTAMENTE res 8 + distancia de cada celda al centroide.
     // El heatmap y el popup responden siempre a res 8 (ni más fino ni más grueso),
-    // independientemente de la resolución guardada/seleccionada:
-    //   - res > 8  → celda padre res 8 (varias caen en la misma → dedup).
-    //   - res == 8 → tal cual.
-    //   - res < 8  → hijos res 8 (aquí caen las celdas compactadas res 6/7).
-    // Así la compactación al guardar (celdas más gruesas) NO cambia el render.
+    // La malla se normaliza a `heatRes` (la res del ZOOM, tope 8) para que el
+    // heatmap se RESUMA por zoom igual que el grid/capas (antes fijo en res 8 → se
+    // veía desfasado). Según la res guardada de cada celda:
+    //   - hres > heatRes  → celda padre a heatRes (varias caen en una → dedup).
+    //   - hres == heatRes → tal cual.
+    //   - hres < heatRes  → hijos a heatRes.
     const cells: { h: string; dist: number }[] = [];
     const seen = new Set<string>();
     let maxDist = 0;
     for (const h of selectedHexes) {
-      const res = getResolution(h);
-      const cells8 =
-        res > 8 ? [cellToParent(h, 8)] : res === 8 ? [h] : cellToChildren(h, 8);
-      for (const c of cells8) {
+      const hres = getResolution(h);
+      const cellsR =
+        hres > heatRes
+          ? [cellToParent(h, heatRes)]
+          : hres === heatRes
+            ? [h]
+            : cellToChildren(h, heatRes);
+      for (const c of cellsR) {
         if (seen.has(c)) continue;
         seen.add(c);
         const [lat, lng] = cellToLatLng(c);
@@ -125,7 +133,7 @@ export function useInformeHeatmapLayer(
     // 3) Normaliza a [0, 1] e INVIERTE (centro = 1, borde = 0).
     const denom = maxDist > 0 ? maxDist : 1;
     return cells.map((c) => ({ h: c.h, baseScore: 1 - c.dist / denom }));
-  }, [heatmapActive, selectedHexes]);
+  }, [heatmapActive, selectedHexes, heatRes]);
 
   return useMemo(() => {
     // NUNCA devolvemos null: la capa siempre existe y solo togglea `visible`.
