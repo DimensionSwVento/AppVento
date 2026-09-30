@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Maximize2 } from "lucide-react";
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
 import { calcAreaKm2 } from "../../Utils/report/areaCalc";
@@ -287,6 +288,8 @@ export default function Report() {
   const isAdmin = useIsAdmin();
   const reportRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState("");        // "Hoja 2 de 8…"
+  const [exportPct, setExportPct] = useState<number | null>(null); // 0–100 real
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1538,13 +1541,21 @@ export default function Report() {
       `el score de cada dimensión resulta de aplicarles los pesos del modelo.</div>`;
     document.body.appendChild(wrap);
     setIsExporting(true);
+    setExportMsg(`Rasterizando ${hexes.length} hexágonos…`);
     try {
+      // MEMORIA: una tabla de miles de filas a scale 2 llevaba el navegador a
+      // varios GB. Escala adaptativa: 1 si el área es grande (>500 hex), 2 para
+      // áreas pequeñas donde la nitidez importa y el costo es bajo.
+      const scale = hexes.length > 500 ? 1 : 2;
       const canvas = await html2canvas(wrap, {
-        scale: 2,
+        scale,
         backgroundColor: "#ffffff",
       });
+      const url = canvas.toDataURL("image/png");
+      canvas.width = 0; // libera el canvas antes de disparar la descarga
+      canvas.height = 0;
       const a = document.createElement("a");
-      a.href = canvas.toDataURL("image/png");
+      a.href = url;
       a.download = `datos-hex-${Date.now()}.png`;
       a.click();
       toast.success("Tabla de datos por hexágono descargada");
@@ -1554,6 +1565,7 @@ export default function Report() {
     } finally {
       document.body.removeChild(wrap);
       setIsExporting(false);
+      setExportMsg("");
     }
   };
 
@@ -1582,20 +1594,34 @@ export default function Report() {
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
 
+      // MEMORIA: html2canvas a scale 2 rasteriza 4× píxeles por hoja; sobre muchas
+      // hojas el navegador llegaba a ~4 GB. Bajamos a 1.5 (nítido para A4) y, tras
+      // convertir cada canvas a JPEG, lo LIBERAMOS (width/height=0) + cedemos un
+      // tick al event loop para que el GC reclame antes de la siguiente hoja → el
+      // pico se acota a ~1 canvas, no a todos a la vez.
+      const CAPTURE_SCALE = 1.5;
       for (let i = 0; i < sheetEls.length; i++) {
+        setExportMsg(`Hoja ${i + 1} de ${sheetEls.length}…`);
+        setExportPct(Math.round((i / sheetEls.length) * 100));
+        // deja pintar el overlay/progreso antes del trabajo pesado (bloqueante).
+        await new Promise((r) => setTimeout(r, 0));
+
         const canvas = await html2canvas(sheetEls[i], {
-          scale: 2,
+          scale: CAPTURE_SCALE,
           backgroundColor: "#ffffff",
           imageTimeout: 5000,
           ignoreElements: (el) =>
             el.getAttribute("data-pdf-ignore") === "true",
         });
-        const imgData = canvas.toDataURL("image/jpeg", 0.95);
+        const imgData = canvas.toDataURL("image/jpeg", 0.9);
         // Escala la hoja al ANCHO A4; si queda MÁS ALTA que una página, se reparte
         // en varias páginas (slicing por offset vertical) para no recortar el
         // contenido (#1). Antes se hacía "contain" a 1 sola página → cortaba.
         const imgW = pageW;
         const imgH = (canvas.height * pageW) / canvas.width;
+        // Libera el canvas YA (antes de seguir): evita que se acumulen en RAM.
+        canvas.width = 0;
+        canvas.height = 0;
         if (i > 0) pdf.addPage();
         let position = 0;
         let heightLeft = imgH;
@@ -1613,6 +1639,8 @@ export default function Report() {
         }
       }
 
+      setExportMsg("Guardando el PDF…");
+      setExportPct(100);
       pdf.save(`informe-vento-${Date.now()}.pdf`);
       toast.success("Informe descargado correctamente");
     } catch (e) {
@@ -1623,6 +1651,8 @@ export default function Report() {
     } finally {
       setCapturing(false);
       setIsExporting(false);
+      setExportMsg("");
+      setExportPct(null);
     }
   };
 
@@ -1770,25 +1800,33 @@ export default function Report() {
       )}
 
       {/* Overlay de carga durante la descarga del PDF: da feedback claro (antes
-          "parecía no descargar nunca" porque html2canvas sobre varias hojas tarda). */}
-      {isExporting && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm"
-          role="status"
-          aria-live="polite"
-        >
-          <div className="flex w-72 flex-col items-center gap-3 rounded-2xl bg-white px-8 py-6 shadow-xl">
-            <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-[#165170ff] border-t-transparent" />
-            <p className="text-sm font-medium text-gray-700">Generando el informe PDF…</p>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-              <div className="h-full w-1/2 animate-pulse rounded-full bg-[#165170ff]" />
+          "parecía no descargar nunca" porque html2canvas sobre varias hojas tarda).
+          Va por PORTAL a <body>: si se renderiza dentro del árbol del informe, un
+          ancestro con transform/filter ancla el `fixed` a la subpágina y el overlay
+          queda "encerrado" en vez de cubrir toda la pantalla. */}
+      {isExporting && typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex w-72 flex-col items-center gap-3 rounded-2xl bg-white px-8 py-6 shadow-xl">
+              <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-[#165170ff] border-t-transparent" />
+              <p className="text-sm font-medium text-gray-700">Generando el informe PDF…</p>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                <div
+                  className="h-full rounded-full bg-[#165170ff] transition-all duration-300"
+                  style={{ width: exportPct != null ? `${exportPct}%` : "50%" }}
+                />
+              </div>
+              <p className="text-center text-[11px] text-gray-400">
+                {exportMsg || "Puede tardar unos segundos según el número de hojas."} No cierres la página.
+              </p>
             </div>
-            <p className="text-center text-[11px] text-gray-400">
-              Puede tardar unos segundos según el número de hojas. No cierres la página.
-            </p>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
