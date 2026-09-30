@@ -51,6 +51,7 @@ import { dimensionScore } from "../../Utils/report/heatmapPalette";
 import { useAreaScores } from "../../Utils/report/useAreaScores";
 import {
   areaVariableAverage,
+  normCode,
   useAreaHexData,
 } from "../../Utils/report/useAreaHexData";
 import {
@@ -1424,9 +1425,13 @@ export default function Report() {
       masterId: string,
     ): number | null => {
       if (!vars || masterId === "NA") return null;
-      if (masterId in vars) return vars[masterId];
-      const norm = masterId.replace(/-/g, "_").replace(/_[A-Z]+$/, "");
-      return norm in vars ? vars[norm] : null;
+      // Match UNIVERSAL por código normalizado (ignora - _ y mayúsculas): casa la
+      // clave del JSONB sea AMB_012_A, AMB-012-A, etc. (igual que hexVariableValue).
+      const target = normCode(masterId);
+      for (const key of Object.keys(vars)) {
+        if (typeof vars[key] === "number" && normCode(key) === target) return vars[key];
+      }
+      return null;
     };
     const esc = (s: string) =>
       s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

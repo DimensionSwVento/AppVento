@@ -60,6 +60,7 @@ import {
   fetchMapLayerCells,
   fetchCatalogCells,
   fetchVariableCellsBBox,
+  fetchVariableLayersBulk,
   fetchExcludedCells,
   windValueForHex,
   WIND_THRESHOLD,
@@ -166,10 +167,10 @@ function aggregateValuesToRes(
   for (const [cell, { s, n }] of acc) out.set(cell, s / n);
   return out;
 }
-// Zonas EXCLUIDAS / inviables — no seleccionables. Color viridis(0) (morado
-// oscuro), coherente con la paleta de idoneidad. Fuentes: score global −1 del
-// backend (tipo_celda="excluida", vía bannedStore) o el placeholder local.
-const BANNED_FILL: [number, number, number, number] = [68, 1, 84, 205];
+// Zonas EXCLUIDAS / inviables — no seleccionables. Se marcan SOLO con el BORDE
+// (morado viridis(0)), sin relleno, para que los anillos de variable se vean en el
+// centro sin apilar alpha. Fuentes: score global −1 (tipo_celda="excluida", vía
+// bannedStore) o el placeholder local.
 const BANNED_BORDER: [number, number, number, number] = [59, 1, 74, 230];
 interface HexCell { h: string; banned?: boolean; owned?: boolean; value?: number; }
 
@@ -515,7 +516,7 @@ export default function MapView() {
         // alpha en las costuras ("pilares" oscuros). Rellenamos solo los owned.
         const owned = lat >= south && lat < north && lng >= west && lng < east;
         // `banned` = excluido por dato (bannedStore, ya incluye los del backend)
-        // o placeholder local. Morado (BANNED_FILL = viridis(0)), no seleccionable.
+        // o placeholder local. Se pinta con BORDE morado (BANNED_BORDER), no seleccionable.
         const banned = isHexBanned(h);
         let value: number | undefined;
         if (heatVar) {
@@ -540,7 +541,9 @@ export default function MapView() {
         // solo los `owned` para no duplicar alpha en las costuras; el resto sin
         // relleno (el BORDE es la malla normal). Ver `activeHeatVarId`.
         getFillColor: (d) => {
-          if (d.banned) return BANNED_FILL;
+          // Excluido: SIN relleno → solo su BORDE (abajo). Así los anillos de las
+          // variables se ven "en el centro" y no se apilan rellenos que ennegrecen.
+          if (d.banned) return [0, 0, 0, 0];
           if (d.value != null && d.owned) {
             const c = viridis(Math.max(0, Math.min(1, d.value)));
             return [c[0], c[1], c[2], 51];
@@ -548,7 +551,9 @@ export default function MapView() {
           return [0, 0, 0, 0];
         },
         getLineColor: (d) => (d.banned ? BANNED_BORDER : GRID_BORDER),
-        getLineWidth: 1,
+        // Borde del excluido más grueso (antes tenía relleno; ahora es su única
+        // señal) para que las zonas vetadas sigan siendo claras.
+        getLineWidth: (d) => (d.banned ? 2 : 1),
         lineWidthMinPixels: 1,
         filled: true,
         stroked: true,
@@ -598,19 +603,30 @@ export default function MapView() {
   const [viewBox, setViewBox] = useState<
     { west: number; south: number; east: number; north: number } | null
   >(null);
+  const lastBoxKeyRef = useRef(""); // dedupe: evita re-render si el bbox redondeado no cambió
   useEffect(() => {
     const t = setTimeout(() => {
       const b = mapRef.current?.getMap?.()?.getBounds?.();
       if (!b) return;
-      setViewBox({
+      const box = {
         west: b.getWest(),
         south: b.getSouth(),
         east: b.getEast(),
         north: b.getNorth(),
-      });
+      };
+      // Redondea a ~0.5°: paneos pequeños NO disparan refetch/re-render (mata el
+      // parpadeo de re-renderizado constante de las capas al mover el mapa).
+      const r = (n: number) => Math.round(n * 2);
+      const k = `${r(box.west)},${r(box.south)},${r(box.east)},${r(box.north)}`;
+      if (k === lastBoxKeyRef.current) return;
+      lastBoxKeyRef.current = k;
+      setViewBox(box);
     }, 400);
     return () => clearTimeout(t);
   }, [viewState]);
+  // Contador de cargas de capas en vuelo → pill "Cargando capas del mapa…" (no
+  // bloquea la vista, solo avisa arriba). >0 = hay un fetch de capas activo.
+  const [layersLoading, setLayersLoading] = useState(0);
   const selectedArr = useMemo<HexCell[]>(() => {
     const norm = new Set<string>();
     for (const h of selectedHexes) {
@@ -750,20 +766,70 @@ export default function MapView() {
         !mapDisabledIds.has(s.variableId) &&
         variableAppliesToNatureById(s.variableId, mapNature), // filtro mar/tierra
     );
-    Promise.all(
-      wanted.map(
-        async (s) =>
-          [s.variableId, await fetchMapLayerCells(s, layerRes, viewBox ?? undefined)] as const,
-      ),
-    )
-      .then((pairs) => {
-        if (alive) setSymbolCells(Object.fromEntries(pairs));
-      })
-      .catch(() => {});
+    if (wanted.length === 0) {
+      setSymbolCells({});
+      return () => {
+        alive = false;
+      };
+    }
+    setLayersLoading((n) => n + 1);
+    const done = () => {
+      if (alive) setLayersLoading((n) => Math.max(0, n - 1));
+    };
+    if (USE_BACKEND) {
+      // BULK: una sola petición para TODAS las variables de símbolo (1 scan) →
+      // acota el bbox y no apila peticiones (era el cuello). Mantiene lo previo si
+      // falla (out vacío → cells []).
+      fetchVariableLayersBulk(wanted.map((s) => s.variableId), layerRes, viewBox ?? undefined)
+        .then((m) => {
+          if (!alive) return;
+          const obj: Record<string, MapLayerCell[]> = {};
+          for (const s of wanted) {
+            const cm = m.get(s.variableId);
+            obj[s.variableId] = cm ? Array.from(cm, ([h, value]) => ({ h, value })) : [];
+          }
+          setSymbolCells(obj);
+        })
+        .catch(() => {})
+        .finally(done);
+    } else {
+      // Template: placeholder por variable (síncrono, sin servidor).
+      Promise.all(
+        wanted.map(async (s) => [s.variableId, await fetchMapLayerCells(s)] as const),
+      )
+        .then((pairs) => {
+          if (alive) setSymbolCells(Object.fromEntries(pairs));
+        })
+        .catch(() => {})
+        .finally(done);
+    }
     return () => {
       alive = false;
     };
   }, [effectiveSymbols, mapDisabledIds, mapNature, layerRes, viewBox]);
+
+  // Orden GLOBAL de las capas de variable que pintan hex (zonas de símbolo primero,
+  // luego catálogo) → cada una un ANILLO concéntrico (coverage decreciente). Así, en
+  // un mismo hex, varias variables se ven como bordes anidados de su color en vez de
+  // rellenos semitransparentes apilados que ennegrecen. El excluido queda como el
+  // borde exterior del hex (grid). Si se desactiva una, su anillo desaparece.
+  const activeZoneIds = useMemo(
+    () =>
+      MAP_SYMBOLS.filter(
+        (s) =>
+          s.kind === "zone" &&
+          effectiveSymbols.has(s.variableId) &&
+          !mapDisabledIds.has(s.variableId) &&
+          variableAppliesToNatureById(s.variableId, mapNature),
+      ).map((s) => s.variableId),
+    [effectiveSymbols, mapDisabledIds, mapNature],
+  );
+  // coverage por posición: 0.88, 0.72, 0.56… (borde exterior = excluido/grid; los
+  // anillos de variable van HACIA ADENTRO). Mínimo 0.3 para que se sigan viendo.
+  const ringCoverage = useCallback(
+    (index: number) => Math.max(0.3, 0.88 - Math.max(0, index) * 0.16),
+    [],
+  );
 
   const symbolLayers = useMemo(() => {
     const active = MAP_SYMBOLS.filter(
@@ -780,21 +846,23 @@ export default function MapView() {
       .map((s) => {
         const cells = symbolCells[s.variableId] ?? [];
         const [br, bg, bb] = hexToRgb(s.color);
+        const cov = ringCoverage(activeZoneIds.indexOf(s.variableId));
         return new H3HexagonLayer<MapLayerCell>({
           id: `map-hexlayer-${s.variableId}`,
           data: cells,
           getHexagon: (d) => d.h,
           extruded: false,
+          // ANILLO: solo borde (sin relleno → no apila alpha ni ennegrece). `coverage`
+          // lo dibuja más pequeño según su orden → anillos concéntricos por capa.
           stroked: true,
-          filled: true,
-          // Superpuestas: relleno 20% (alpha 51) + borde 100% del color.
-          getFillColor: () => [br, bg, bb, 51],
+          filled: false,
+          coverage: cov,
           getLineColor: () => [br, bg, bb, 255],
-          getLineWidth: 1,
+          getLineWidth: 2,
           lineWidthUnits: "pixels",
-          lineWidthMinPixels: 1,
+          lineWidthMinPixels: 2,
           pickable: false,
-          updateTriggers: { getFillColor: [s.color], getLineColor: [s.color] },
+          updateTriggers: { getLineColor: [s.color], coverage: [cov] },
         });
       });
     // Redes de puntos: conecta los puntos de cada capa `point` con una línea.
@@ -844,7 +912,7 @@ export default function MapView() {
       );
     });
     return [...polys, ...paths, ...icons];
-  }, [effectiveSymbols, mapDisabledIds, symbolCells, blinkOn, mapNature]);
+  }, [effectiveSymbols, mapDisabledIds, symbolCells, blinkOn, mapNature, activeZoneIds, ringCoverage]);
 
   // ── N1a-mapa 2b: capas GENÉRICAS de catálogo ────────────────────────────────
   // Variables enMapa (área/interconectado, NO calor) que NO están en la lista
@@ -870,22 +938,74 @@ export default function MapView() {
     let alive = true;
     // En backend, espera al bbox del viewport (no pedir el país entero en la 1ª carga).
     if (USE_BACKEND && !viewBox) return;
-    Promise.all(
-      // Regla: template = placeholder (pinta algo); backend = real o vacío.
-      // `calor` no usa celdas de área (colorea la rejilla) → no se fetchea aquí.
-      extraMapVars
-        .filter((x) => x.kind !== "calor")
-        .map(
-          async (x) =>
-            [x.id, await fetchCatalogCells(x.id, layerRes, viewBox ?? undefined)] as const,
-        ),
-    )
-      .then((pairs) => alive && setExtraCells(Object.fromEntries(pairs)))
-      .catch(() => {});
+    // `calor` no usa celdas de área (colorea la rejilla) → no se fetchea aquí.
+    const vars = extraMapVars.filter((x) => x.kind !== "calor");
+    if (vars.length === 0) {
+      setExtraCells({});
+      return () => {
+        alive = false;
+      };
+    }
+    setLayersLoading((n) => n + 1);
+    const done = () => {
+      if (alive) setLayersLoading((n) => Math.max(0, n - 1));
+    };
+    if (USE_BACKEND) {
+      // BULK: una sola petición para todas las capas de catálogo (1 scan del bbox).
+      fetchVariableLayersBulk(vars.map((x) => x.id), layerRes, viewBox ?? undefined)
+        .then((m) => {
+          if (!alive) return;
+          const obj: Record<string, string[]> = {};
+          for (const x of vars) obj[x.id] = [...(m.get(x.id)?.keys() ?? [])];
+          setExtraCells(obj);
+        })
+        .catch(() => {})
+        .finally(done);
+    } else {
+      // Template: placeholder por variable.
+      Promise.all(vars.map(async (x) => [x.id, await fetchCatalogCells(x.id)] as const))
+        .then((pairs) => alive && setExtraCells(Object.fromEntries(pairs)))
+        .catch(() => {})
+        .finally(done);
+    }
     return () => {
       alive = false;
     };
   }, [extraMapVars, layerRes, viewBox]);
+
+  // Sets de hex por variable activa (símbolos + catálogo) para lookup O(1) en el
+  // hover → tooltip de variable (nombre+descripción). Se recalcula solo al cambiar
+  // las celdas (no en cada hover).
+  const layerHexSets = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const [id, cells] of Object.entries(symbolCells)) {
+      m.set(id, new Set(cells.map((c) => c.h)));
+    }
+    for (const [id, cells] of Object.entries(extraCells)) {
+      const s = m.get(id) ?? new Set<string>();
+      for (const h of cells) s.add(h);
+      m.set(id, s);
+    }
+    return m;
+  }, [symbolCells, extraCells]);
+
+  // Variables activas que cubren un hex (para el tooltip de hover). Las celdas están
+  // a `layerRes` (resumen de padres) → si el hex es más fino, se compara su padre.
+  const variablesAtHex = useCallback(
+    (hex: string | null): { id: string; label: string; description: string }[] => {
+      if (!hex) return [];
+      const parent = getResolution(hex) > layerRes ? cellToParent(hex, layerRes) : hex;
+      const out: { id: string; label: string; description: string }[] = [];
+      for (const [id, set] of layerHexSets) {
+        if (set.has(hex) || set.has(parent)) {
+          const v = getVariableById(id);
+          if (v) out.push({ id, label: v.label, description: v.description });
+        }
+      }
+      return out;
+    },
+    [layerHexSets, layerRes],
+  );
 
   // Variable de CALOR activa (la primera): su valor por hex COLOREA la rejilla del
   // grid como heatmap viridis (resumen de padres por zoom, `gridTileLayer`). El
@@ -922,6 +1042,9 @@ export default function MapView() {
       | IconLayer<{ lng: number; lat: number }>
       | PathLayer<{ path: [number, number][] }>
     )[] = [];
+    // Índice de anillo del catálogo: va DESPUÉS de las zonas de símbolo para que
+    // los anillos concéntricos no colisionen entre ambos grupos.
+    let catRingIdx = 0;
     for (const { id, kind } of extraMapVars) {
       const cells = extraCells[id] ?? [];
       if (cells.length === 0) continue;
@@ -932,7 +1055,10 @@ export default function MapView() {
       // resumen de padres por zoom) con `viridis` → ver `activeHeatVarId`.
       if (kind === "calor") continue;
 
-      // ÁREA / INTERCONECTADO: hexes del color de la variable + icono.
+      // ÁREA / INTERCONECTADO: ANILLO del color de la variable (solo borde, sin
+      // relleno → no apila alpha) + icono. `coverage` decreciente = anillo interno.
+      const cov = ringCoverage(activeZoneIds.length + catRingIdx);
+      catRingIdx += 1;
       out.push(
         new H3HexagonLayer<{ h: string }>({
           id: `catalog-hex-${id}`,
@@ -940,12 +1066,12 @@ export default function MapView() {
           getHexagon: (d) => d.h,
           extruded: false,
           stroked: true,
-          filled: true,
-          getFillColor: () => [r, g, b, 51],
-          getLineColor: () => [r, g, b, 200],
-          getLineWidth: 1,
+          filled: false,
+          coverage: cov,
+          getLineColor: () => [r, g, b, 255],
+          getLineWidth: 2,
           lineWidthUnits: "pixels",
-          lineWidthMinPixels: 1,
+          lineWidthMinPixels: 2,
           pickable: false,
         }),
       );
@@ -1011,7 +1137,7 @@ export default function MapView() {
       }
     }
     return out;
-  }, [extraMapVars, extraCells, selectionCenter, blinkOn]);
+  }, [extraMapVars, extraCells, selectionCenter, blinkOn, activeZoneIds, ringCoverage]);
 
   // Dibujo del POLÍGONO en curso (US03-04): vértices (puntos) + contorno. Se
   // materializa en hexágonos al "Aplicar" (ver `applyPolygon`).
@@ -1248,6 +1374,21 @@ export default function MapView() {
         </div>
       )}
 
+      {/* Pill NO bloqueante "cargando capas del mapa": avisa arriba mientras las
+          capas de variable/cobertura cargan (no tapa el mapa, se puede seguir
+          navegando). Se oculta solo cuando terminan (layersLoading vuelve a 0). */}
+      {mapReady && layersLoading > 0 && !selectionZoomTooFar && (
+        <div className="pointer-events-none absolute left-1/2 top-3 z-20 -translate-x-1/2">
+          <div className="flex items-center gap-2 rounded-full bg-white/95 px-3.5 py-1.5 shadow-md ring-1 ring-black/5">
+            <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 animate-spin text-[#165170ff]">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
+              <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+            <span className="text-xs font-medium text-[#165170ff]">Cargando capas del mapa…</span>
+          </div>
+        </div>
+      )}
+
       {/* Aviso "acércate para seleccionar": aparece en fase de selección
           cuando el zoom es demasiado lejano (hexes solo-visualización) y
           desaparece solo al acercarse a la resolución seleccionable. */}
@@ -1442,31 +1583,46 @@ export default function MapView() {
         />
       )}
 
-      {/* Leyenda de zona excluida (sprint 3): al pasar el cursor sobre un hex
-          vetado (fuera del heatmap del informe), muestra el motivo de exclusión.
-          Motivo por template hasta tener el campo real del dataset. */}
-      {!isMobile &&
-        !heatmapActive &&
-        hoverPos &&
-        hoveredHex &&
-        isHexBanned(hoveredHex) && (
+      {/* Tooltip de hover (fuera del heatmap del informe): muestra el motivo de
+          EXCLUSIÓN (si el hex está vetado) y/o las VARIABLES del mapa que lo cubren
+          (nombre + descripción), como pidió el cliente. Ambos pueden convivir (un
+          humedal excluido con capas activas encima). */}
+      {(() => {
+        if (isMobile || heatmapActive || !hoverPos || !hoveredHex) return null;
+        const banned = isHexBanned(hoveredHex);
+        const vars = variablesAtHex(hoveredHex);
+        if (!banned && vars.length === 0) return null;
+        return (
           <div
             role="tooltip"
-            aria-label="Motivo de exclusión"
+            aria-label="Detalle del hexágono"
             style={{ left: hoverPos.x + 12, top: hoverPos.y + 12 }}
-            className="pointer-events-none absolute z-20 max-w-[210px] rounded-md border border-[#e2d3ee] bg-white px-2.5 py-1.5 shadow-lg"
+            className="pointer-events-none absolute z-20 max-w-[230px] rounded-md border border-[#e2d3ee] bg-white px-2.5 py-1.5 shadow-lg"
           >
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-[#5b2a86]">
-              Zona excluida
-            </p>
-            <p className="mt-0.5 text-[11px] font-medium text-gray-700">
-              {bannedReason(hoveredHex)}
-            </p>
-            <p className="mt-0.5 text-[10px] text-gray-400">
-              0% idoneidad · no seleccionable
-            </p>
+            {banned && (
+              <>
+                <p className="text-[9px] font-semibold uppercase tracking-wide text-[#5b2a86]">
+                  Zona excluida
+                </p>
+                <p className="mt-0.5 text-[11px] font-medium text-gray-700">
+                  {bannedReason(hoveredHex)}
+                </p>
+                <p className="mt-0.5 text-[10px] text-gray-400">
+                  0% idoneidad · no seleccionable
+                </p>
+              </>
+            )}
+            {vars.map((v, i) => (
+              <div key={v.id} className={banned || i > 0 ? "mt-1.5 border-t border-gray-100 pt-1.5" : ""}>
+                <p className="text-[11px] font-semibold text-gray-800">{v.label}</p>
+                {v.description && (
+                  <p className="mt-0.5 text-[10px] leading-snug text-gray-500">{v.description}</p>
+                )}
+              </div>
+            ))}
           </div>
-        )}
+        );
+      })()}
 
       {accion === "dimensiones" && activeVariables.size > 0 && (
         <SelectedVariablesChips />
