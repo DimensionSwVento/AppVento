@@ -101,20 +101,37 @@ export function hexVariableValue(
   masterId: string,
 ): number | undefined {
   const vars = info?.variables;
-  if (!vars) return undefined;
-  const key = backendVarCode(masterId);
-  const v = vars[key];
-  if (typeof v === "number") return v;
-  let s = 0;
-  let k = 0;
-  for (const vk of Object.keys(vars)) {
-    const sv = vars[vk];
-    if (vk.startsWith(`${key}_sv`) && typeof sv === "number") {
-      s += sv;
-      k += 1;
-    }
+  if (!vars || !masterId || masterId === "NA") return undefined;
+  // El formato EXACTO de la clave del JSONB varía (guion/guion_bajo/sufijo). Los
+  // del modelo casan con `backendVarCode` (p.ej. TEC_004), pero las informativas a
+  // veces vienen con otra variante → probamos varias formas antes de rendirnos.
+  // Esto es por qué el popup (itera claves crudas) SÍ las ve y las tablas no.
+  const candidates = Array.from(
+    new Set([
+      backendVarCode(masterId), // AMB-012-A → AMB_012 (quita sufijo)
+      masterId.replace(/-/g, "_"), // AMB-012-A → AMB_012_A (conserva sufijo)
+      masterId, // AMB-012-A tal cual
+    ]),
+  );
+  // 1) match directo por cualquiera de las variantes
+  for (const key of candidates) {
+    const v = vars[key];
+    if (typeof v === "number") return v;
   }
-  return k > 0 ? s / k : undefined;
+  // 2) subvariables `code_svNNN` (p.ej. WPD por altura): promedio, por variante
+  for (const key of candidates) {
+    let s = 0;
+    let k = 0;
+    for (const vk of Object.keys(vars)) {
+      const sv = vars[vk];
+      if (vk.startsWith(`${key}_sv`) && typeof sv === "number") {
+        s += sv;
+        k += 1;
+      }
+    }
+    if (k > 0) return s / k;
+  }
+  return undefined;
 }
 
 /** Promedio del valor crudo de una variable sobre el área (o `null`). */
