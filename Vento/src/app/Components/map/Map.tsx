@@ -204,6 +204,17 @@ export default function MapView() {
   // bumpea al cambiarla para remontar el TileLayer y refetchear los tiles.
   const activeHeatRef = useRef<string | null>(null);
   const [heatVersion, setHeatVersion] = useState(0);
+  // DECOPLE malla↔backend (directiva): la rejilla se pinta con geometría de
+  // cliente sin esperar al backend. Los datos de backend se aplican sin bloquear:
+  //  - `heatCacheRef`: valores de calor por tile `${var}:${z}/${x}/${y}` → color.
+  //  - `heatInflightRef`: evita disparar el mismo fetch de calor dos veces.
+  //  - `heatBumpTimerRef`: un ÚNICO re-render diferido cuando llega el calor
+  //    (evita cascada de remounts por cada tile que termina).
+  //  - `excludedDoneRef`: excluidos se piden una sola vez por tile (no por remount).
+  const heatCacheRef = useRef<Map<string, Map<string, number>>>(new Map());
+  const heatInflightRef = useRef<Set<string>>(new Set());
+  const heatBumpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const excludedDoneRef = useRef<Set<string>>(new Set());
 
   // Detecta mobile (< 768px = md breakpoint de Tailwind)
   useEffect(() => {
@@ -422,7 +433,7 @@ export default function MapView() {
       if (isFlyingRef.current) return;
       setIsTilesLoading(false);
     },
-    getTileData: async (tile) => {
+    getTileData: (tile) => {
       const { x, y, z } = tile.index;
       const res = zoomToH3Res(z);
       const [west, south, east, north] = tileToBBox(z, x, y);
@@ -438,51 +449,59 @@ export default function MapView() {
         [west - lngMargin, north + latMargin],
         [west - lngMargin, south - latMargin],
       ];
-      // Excluidos REALES del backend para este tile: el `global` −1 se traduce a
-      // `tipo_celda="excluida"` (F1). La cuadrícula es geometría de cliente, así
-      // que sin esto la exclusión solo aparecía al SELECCIONAR un área; aquí se
-      // pide el tile y se marcan `banned` los hexes excluidos en TODO el mapa.
-      // Con `USE_BACKEND=false` (template) se omite y manda el placeholder local.
-      let excludedFromApi: Set<string> | null = null;
-      if (USE_BACKEND) {
-        try {
-          const r = await fetch(`/api/tiles/${z}/${x}/${y}`);
-          if (r.ok) {
-            const hexes = (await r.json()) as { h: string; t: string }[];
-            excludedFromApi = new Set(
-              hexes.filter((hx) => hx.t === "excluida").map((hx) => hx.h),
-            );
-            // Alimenta el store de excluidos ANTES de pintar: `isHexBanned` (que
-            // usa la SELECCIÓN en useMapSelection) los verá → no seleccionables.
-            // Sin esto solo se pintarían, pero seguirían siendo seleccionables.
-            if (excludedFromApi.size > 0) {
-              setBannedData([...excludedFromApi].map((h) => [h, true] as [string, boolean]));
-            }
-          }
-        } catch {
-          // Red caída → cae al placeholder local (isHexBanned), sin romper la grid.
-        }
+      const tileKey = `${z}/${x}/${y}`;
+      // EXCLUIDOS (backend): SIN await → no bloquea la malla. Una sola vez por tile
+      // (no por remount). Alimenta el bannedStore; `isHexBanned` los verá en este y
+      // próximos renders. Si la red cae, la malla igual se pinta (placeholder local).
+      if (USE_BACKEND && !excludedDoneRef.current.has(tileKey)) {
+        excludedDoneRef.current.add(tileKey);
+        fetch(`/api/tiles/${z}/${x}/${y}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((hexes: { h: string; t: string }[] | null) => {
+            if (!Array.isArray(hexes)) return;
+            const ex = hexes.filter((hx) => hx.t === "excluida").map((hx) => hx.h);
+            if (ex.length > 0) setBannedData(ex.map((h) => [h, true] as [string, boolean]));
+          })
+          .catch(() => {
+            // Falla sola: reintentable en el próximo paneo (se limpia el flag).
+            excludedDoneRef.current.delete(tileKey);
+          });
       }
-      // CALOR: si hay una variable de calor activa, se colorea ESTA rejilla con su
-      // valor (viridis), usando el mismo resumen de padres por zoom. Backend: los
-      // valores res8 del bbox se AGREGAN a `res`. Template: `windValueForHex` (campo
-      // determinista, sirve a cualquier resolución) → no necesita fetch.
+      // CALOR (backend): capa de datos APARTE de la malla. Lee de caché (sync); si
+      // no está, dispara el fetch en 2º plano (1 vez por tile) y programa UN solo
+      // re-render diferido para colorear. Si el fetch falla, el calor "falla solo":
+      // la malla ya quedó pintada. Template: `windValueForHex` (sin fetch).
       const heatVar = activeHeatRef.current;
       let heatByCell: Map<string, number> | null = null;
       if (heatVar && USE_BACKEND) {
-        // `res` del zoom → el backend AGREGA al padre y devuelve pocas filas
-        // (memoria acotada). `aggregateValuesToRes` queda como no-op salvo res>8.
-        const real = await fetchVariableCellsBBox(
-          heatVar,
-          {
-            west: west - lngMargin,
-            south: south - latMargin,
-            east: east + lngMargin,
-            north: north + latMargin,
-          },
-          res,
-        );
-        if (real) heatByCell = aggregateValuesToRes(real, res);
+        const ck = `${heatVar}:${tileKey}`;
+        const cached = heatCacheRef.current.get(ck);
+        if (cached) {
+          heatByCell = cached;
+        } else if (!heatInflightRef.current.has(ck)) {
+          heatInflightRef.current.add(ck);
+          fetchVariableCellsBBox(
+            heatVar,
+            {
+              west: west - lngMargin,
+              south: south - latMargin,
+              east: east + lngMargin,
+              north: north + latMargin,
+            },
+            res,
+          )
+            .then((real) => {
+              if (real) heatCacheRef.current.set(ck, aggregateValuesToRes(real, res));
+            })
+            .catch(() => {}) // el calor falla solo; no rompe la malla
+            .finally(() => {
+              heatInflightRef.current.delete(ck);
+              // UN solo re-render diferido: colorea los tiles ya pintados sin una
+              // cascada de remounts (cada tile que termina reprograma el timer).
+              if (heatBumpTimerRef.current) clearTimeout(heatBumpTimerRef.current);
+              heatBumpTimerRef.current = setTimeout(() => setHeatVersion((v) => v + 1), 300);
+            });
+        }
       }
       const tileCells = polygonToCells(tilePolygon, res, true);
       const result: HexCell[] = [];
