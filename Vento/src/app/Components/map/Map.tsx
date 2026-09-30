@@ -584,6 +584,12 @@ export default function MapView() {
   // "persiste" al cambiar de escala). NO toca el grid (rendimiento intacto) ni el
   // set real `selectedHexes` (la consulta al backend sigue igual): solo el relleno.
   const displayRes = Math.max(0, Math.min(15, zoomToH3Res(viewState.zoom)));
+  // Res de las CAPAS de variable (símbolos/catálogo): la del zoom, TOPE 7 (nunca
+  // res8-país, que traía millones — era el "pide res8 cada vez"). Entero → solo
+  // cambia al cruzar un nivel de zoom (los effects no re-piden en cada píxel). A
+  // zoom bajo baja a 5–6 → el backend agrega a padres y devuelve pocos hex (patrón
+  // del heat, 9e4d654). Follow-up: bbox del viewport a zoom alto para afinar más.
+  const layerRes = Math.min(7, displayRes);
   const selectedArr = useMemo<HexCell[]>(() => {
     const norm = new Set<string>();
     for (const h of selectedHexes) {
@@ -721,7 +727,7 @@ export default function MapView() {
         variableAppliesToNatureById(s.variableId, mapNature), // filtro mar/tierra
     );
     Promise.all(
-      wanted.map(async (s) => [s.variableId, await fetchMapLayerCells(s)] as const),
+      wanted.map(async (s) => [s.variableId, await fetchMapLayerCells(s, layerRes)] as const),
     )
       .then((pairs) => {
         if (alive) setSymbolCells(Object.fromEntries(pairs));
@@ -730,7 +736,7 @@ export default function MapView() {
     return () => {
       alive = false;
     };
-  }, [effectiveSymbols, mapDisabledIds, mapNature]);
+  }, [effectiveSymbols, mapDisabledIds, mapNature, layerRes]);
 
   const symbolLayers = useMemo(() => {
     const active = MAP_SYMBOLS.filter(
@@ -840,14 +846,14 @@ export default function MapView() {
       // `calor` no usa celdas de área (colorea la rejilla) → no se fetchea aquí.
       extraMapVars
         .filter((x) => x.kind !== "calor")
-        .map(async (x) => [x.id, await fetchCatalogCells(x.id)] as const),
+        .map(async (x) => [x.id, await fetchCatalogCells(x.id, layerRes)] as const),
     )
       .then((pairs) => alive && setExtraCells(Object.fromEntries(pairs)))
       .catch(() => {});
     return () => {
       alive = false;
     };
-  }, [extraMapVars]);
+  }, [extraMapVars, layerRes]);
 
   // Variable de CALOR activa (la primera): su valor por hex COLOREA la rejilla del
   // grid como heatmap viridis (resumen de padres por zoom, `gridTileLayer`). El
