@@ -1636,56 +1636,78 @@ export default function Report() {
         await new Promise((r) => setTimeout(r, 0));
         if (i > 0) pdf.addPage();
 
+        const basePage = pdf.getNumberOfPages(); // 1ª página de ESTA hoja
         const sheetRect = el.getBoundingClientRect();
         const pxToMm = pageW / sheetRect.width; // hoja escalada al ANCHO A4
-        const sheetHmm = sheetRect.height * pxToMm;
         const charts = Array.from(
           el.querySelectorAll<SVGSVGElement>('svg[role="img"]'),
         );
 
-        // RUTA VECTOR (Fase 1): solo si hay charts y la hoja cabe en 1 página
-        // (el vector sobre hojas multipágina requiere repartir por página → se
-        // deja para una fase posterior). Raster sin charts + charts vectoriales
-        // encima, posicionados por su rect real. Si algo falla, cae a raster.
-        let done = false;
-        if (charts.length && sheetHmm <= pageH + SLICE_EPS_MM) {
-          try {
-            const { data, w, h } = await rasterSheet(el, charts);
-            pdf.addImage(data, "JPEG", 0, 0, pageW, (h * pageW) / w);
-            for (const svg of charts) {
-              const r = svg.getBoundingClientRect();
-              await svg2pdf(svg, pdf, {
-                x: (r.left - sheetRect.left) * pxToMm,
-                y: (r.top - sheetRect.top) * pxToMm,
-                width: r.width * pxToMm,
-                height: r.height * pxToMm,
-              });
-            }
-            done = true;
-          } catch (err) {
-            console.warn(
-              "[pdfExport] charts vectoriales fallaron, cae a raster:",
-              err,
-            );
-          }
-        }
-
-        // RUTA RASTER (fallback / hojas altas): foto con charts + slicing a
-        // varias páginas por offset vertical para no recortar (comportamiento
-        // previo, intacto).
-        if (!done) {
-          const { data, w, h } = await rasterSheet(el, []);
+        // Pinta un raster (dataURL) repartido en páginas por offset vertical si
+        // es más alto que A4 (slicing) — no recorta contenido alto (#1).
+        const addSlicedRaster = (data: string, w: number, h: number) => {
           const imgH = (h * pageW) / w;
           let position = 0;
           let heightLeft = imgH;
           pdf.addImage(data, "JPEG", 0, position, pageW, imgH);
           heightLeft -= pageH;
+          // 2 mm ≈ 7 px @96dpi: no añade una página por una franja de redondeo.
           while (heightLeft > SLICE_EPS_MM) {
             position -= pageH;
             pdf.addPage();
             pdf.addImage(data, "JPEG", 0, position, pageW, imgH);
             heightLeft -= pageH;
           }
+        };
+
+        try {
+          // RUTA VECTOR (Fase 2): funciona a CUALQUIER altura. Rasteriza la hoja
+          // con los charts ocultos (slicing multipágina) y luego pinta cada chart
+          // como VECTOR sobre la página que le toca (por su offset vertical).
+          const { data, w, h } = await rasterSheet(el, charts);
+          addSlicedRaster(data, w, h);
+
+          for (const svg of charts) {
+            const r = svg.getBoundingClientRect();
+            const yGlobal = (r.top - sheetRect.top) * pxToMm;
+            const pageIdx = Math.max(0, Math.floor(yGlobal / pageH));
+            const x = (r.left - sheetRect.left) * pxToMm;
+            const y = yGlobal - pageIdx * pageH; // offset dentro de su página
+            const wmm = r.width * pxToMm;
+            const hmm = r.height * pxToMm;
+            // clamp: por redondeo el índice podría exceder las páginas creadas.
+            pdf.setPage(Math.min(basePage + pageIdx, pdf.getNumberOfPages()));
+            try {
+              await svg2pdf(svg, pdf, { x, y, width: wmm, height: hmm });
+            } catch (err) {
+              // Fallo puntual de un chart → lo rasterizo SOLO a él (sin abortar
+              // la hoja): evita el hueco en blanco donde iría el gráfico. Este
+              // fallback NUNCA debe propagar: si también fallara, se deja el hueco
+              // (propagar aquí haría que el catch externo re-rasterice la hoja y
+              // DUPLIQUE las páginas ya añadidas).
+              console.warn("[pdfExport] chart vector falló, raster puntual:", err);
+              try {
+                const c = await html2canvas(svg as unknown as HTMLElement, {
+                  scale: CAPTURE_SCALE,
+                  backgroundColor: null,
+                });
+                pdf.addImage(c.toDataURL("image/png"), "PNG", x, y, wmm, hmm);
+                c.width = 0;
+                c.height = 0;
+              } catch (err2) {
+                console.warn("[pdfExport] raster puntual del chart también falló:", err2);
+              }
+            }
+          }
+          pdf.setPage(pdf.getNumberOfPages()); // vuelve a la última antes de seguir
+        } catch (err) {
+          // Fallo del raster base (raro) → foto con charts incluidos + slicing,
+          // comportamiento previo. Se hace sobre la(s) misma(s) página(s) ya
+          // creada(s) para esta hoja (aún vacías).
+          console.warn("[pdfExport] raster de hoja falló, fallback con charts:", err);
+          pdf.setPage(basePage);
+          const { data, w, h } = await rasterSheet(el, []);
+          addSlicedRaster(data, w, h);
         }
       }
 
