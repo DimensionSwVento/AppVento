@@ -96,42 +96,44 @@ export function backendVarCode(masterId: string): string {
  * backend parte la variable en subvariables `code_svNNN` (p.ej. WPD por altura),
  * promedia las disponibles. `undefined` si no hay dato.
  */
+/** Normaliza un código: quita TODO separador (- _ espacios, etc.) y pasa a
+ *  mayúsculas → `AMB-012-A`, `AMB_012_A`, `amb012a` son el MISMO código. Universal:
+ *  no depende del formato exacto de guiones/guion_bajo/mayúsculas del JSONB. */
+export function normCode(s: string): string {
+  return s.replace(/[^a-z0-9]/gi, "").toUpperCase();
+}
+
 export function hexVariableValue(
   info: AreaHexInfo | undefined,
   masterId: string,
 ): number | undefined {
   const vars = info?.variables;
   if (!vars || !masterId || masterId === "NA") return undefined;
-  // El formato EXACTO de la clave del JSONB varía (guion/guion_bajo/sufijo). Los
-  // del modelo casan con `backendVarCode` (p.ej. TEC_004), pero las informativas a
-  // veces vienen con otra variante → probamos varias formas antes de rendirnos.
-  // Esto es por qué el popup (itera claves crudas) SÍ las ve y las tablas no.
-  const candidates = Array.from(
-    new Set([
-      masterId.replace(/-/g, "_"), // AMB-012-A → AMB_012_A  ← formato REAL del JSONB (con sufijo)
-      backendVarCode(masterId), // AMB-012-A → AMB_012 (sin sufijo; para _sv del modelo)
-      masterId, // AMB-012-A tal cual (por si acaso)
-    ]),
-  );
-  // 1) match directo por cualquiera de las variantes
-  for (const key of candidates) {
-    const v = vars[key];
-    if (typeof v === "number") return v;
-  }
-  // 2) subvariables `code_svNNN` (p.ej. WPD por altura): promedio, por variante
-  for (const key of candidates) {
-    let s = 0;
-    let k = 0;
-    for (const vk of Object.keys(vars)) {
-      const sv = vars[vk];
-      if (vk.startsWith(`${key}_sv`) && typeof sv === "number") {
-        s += sv;
-        k += 1;
-      }
+  const target = normCode(masterId); // p.ej. AMB012A
+  // 1) Match directo por código NORMALIZADO (ignora - _ y mayúsculas). Así casa
+  //    la clave del JSONB sea AMB_012_A, AMB-012-A, etc. Por eso el popup (claves
+  //    crudas) las veía y las tablas no: antes se comparaba el string exacto.
+  for (const key of Object.keys(vars)) {
+    if (typeof vars[key] === "number" && normCode(key) === target) {
+      return vars[key] as number;
     }
-    if (k > 0) return s / k;
   }
-  return undefined;
+  // 2) Subvariables `code_svNNN` (el modelo parte una variable por altura, p.ej.
+  //    WPD): promedio de las claves cuyo código base (sin la cola svNNN) coincide
+  //    con el target o con el target sin su sufijo de letras final.
+  const base = target.replace(/[A-Z]+$/, ""); // AMB012A → AMB012
+  let sum = 0;
+  let n = 0;
+  for (const key of Object.keys(vars)) {
+    const v = vars[key];
+    if (typeof v !== "number") continue;
+    const nk = normCode(key).replace(/SV\d+$/, ""); // TEC004SV001 → TEC004
+    if (nk === target || nk === base) {
+      sum += v;
+      n += 1;
+    }
+  }
+  return n > 0 ? sum / n : undefined;
 }
 
 /** Promedio del valor crudo de una variable sobre el área (o `null`). */

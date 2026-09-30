@@ -51,6 +51,7 @@ import { dimensionScore } from "../../Utils/report/heatmapPalette";
 import { useAreaScores } from "../../Utils/report/useAreaScores";
 import {
   areaVariableAverage,
+  normCode,
   useAreaHexData,
 } from "../../Utils/report/useAreaHexData";
 import {
@@ -1424,13 +1425,13 @@ export default function Report() {
       masterId: string,
     ): number | null => {
       if (!vars || masterId === "NA") return null;
-      // El JSONB usa guion_bajo CON sufijo (AMB_012_A). Prueba esa forma primero,
-      // luego el crudo y por último sin sufijo (mismo criterio que hexVariableValue).
-      const full = masterId.replace(/-/g, "_"); // AMB-012-A → AMB_012_A
-      if (full in vars) return vars[full];
-      if (masterId in vars) return vars[masterId];
-      const norm = full.replace(/_[A-Z]+$/, ""); // AMB_012 (sin sufijo)
-      return norm in vars ? vars[norm] : null;
+      // Match UNIVERSAL por código normalizado (ignora - _ y mayúsculas): casa la
+      // clave del JSONB sea AMB_012_A, AMB-012-A, etc. (igual que hexVariableValue).
+      const target = normCode(masterId);
+      for (const key of Object.keys(vars)) {
+        if (typeof vars[key] === "number" && normCode(key) === target) return vars[key];
+      }
+      return null;
     };
     const esc = (s: string) =>
       s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
