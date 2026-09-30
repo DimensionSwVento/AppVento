@@ -310,6 +310,67 @@ export async function fetchMapLayerCells(
   return p;
 }
 
+const _bulkCache = new Map<string, Promise<Map<string, Map<string, number>>>>();
+
+/**
+ * BULK: valores de VARIAS variables en UNA sola petición (`POST /tiles/variables-bulk`)
+ * → el backend escanea el bbox UNA vez y resuelve todos los códigos (antes: una
+ * petición y un scan por variable → N scans que apilaban los hilos). Devuelve
+ * `Map<variableId, Map<h3, valor>>`. Cacheado por (res, bbox, set de variables).
+ * `null`/vacío si no hay backend o falla (no se cachea el fallo).
+ */
+export async function fetchVariableLayersBulk(
+  variableIds: string[],
+  res?: number,
+  bbox?: BBox,
+): Promise<Map<string, Map<string, number>>> {
+  if (!USE_BACKEND || variableIds.length === 0) return new Map();
+  const ids = [...new Set(variableIds)].sort();
+  const key = `bulk:${res ?? "-"}:${bboxKey(bbox)}:${ids.join(",")}`;
+  let p = _bulkCache.get(key);
+  if (!p) {
+    p = (async () => {
+      // code → variableIds (la respuesta viene por code; puede haber varios ids
+      // que mapeen al mismo code).
+      const codeToIds = new Map<string, string[]>();
+      for (const id of ids) {
+        const code = masterIdFor(id);
+        const arr = codeToIds.get(code);
+        if (arr) arr.push(id);
+        else codeToIds.set(code, [id]);
+      }
+      const out = new Map<string, Map<string, number>>();
+      try {
+        const resp = await fetch(`/api/tiles/variables-bulk`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            codes: [...codeToIds.keys()],
+            ...(bbox ? { bbox } : {}),
+            ...(res != null ? { res } : {}),
+          }),
+        });
+        if (resp.ok) {
+          const data = (await resp.json()) as Record<
+            string,
+            { h3_index: string; value: number }[]
+          >;
+          for (const [code, rows] of Object.entries(data)) {
+            const cellMap = new Map(rows.map((r) => [r.h3_index, r.value]));
+            for (const id of codeToIds.get(code) ?? [code]) out.set(id, cellMap);
+          }
+        }
+      } catch {
+        /* backend caído → vacío */
+      }
+      if (out.size === 0) _bulkCache.delete(key); // no cachear fallo total
+      return out;
+    })();
+    _bulkCache.set(key, p);
+  }
+  return p;
+}
+
 /** Metadatos de capa (kind/color) sin cargar los hex. */
 export function mapLayerMeta(variableId: string): {
   kind: MapSymbolKind;

@@ -60,6 +60,7 @@ import {
   fetchMapLayerCells,
   fetchCatalogCells,
   fetchVariableCellsBBox,
+  fetchVariableLayersBulk,
   fetchExcludedCells,
   windValueForHex,
   WIND_THRESHOLD,
@@ -619,6 +620,9 @@ export default function MapView() {
     }, 400);
     return () => clearTimeout(t);
   }, [viewState]);
+  // Contador de cargas de capas en vuelo → pill "Cargando capas del mapa…" (no
+  // bloquea la vista, solo avisa arriba). >0 = hay un fetch de capas activo.
+  const [layersLoading, setLayersLoading] = useState(0);
   const selectedArr = useMemo<HexCell[]>(() => {
     const norm = new Set<string>();
     for (const h of selectedHexes) {
@@ -758,16 +762,43 @@ export default function MapView() {
         !mapDisabledIds.has(s.variableId) &&
         variableAppliesToNatureById(s.variableId, mapNature), // filtro mar/tierra
     );
-    Promise.all(
-      wanted.map(
-        async (s) =>
-          [s.variableId, await fetchMapLayerCells(s, layerRes, viewBox ?? undefined)] as const,
-      ),
-    )
-      .then((pairs) => {
-        if (alive) setSymbolCells(Object.fromEntries(pairs));
-      })
-      .catch(() => {});
+    if (wanted.length === 0) {
+      setSymbolCells({});
+      return () => {
+        alive = false;
+      };
+    }
+    setLayersLoading((n) => n + 1);
+    const done = () => {
+      if (alive) setLayersLoading((n) => Math.max(0, n - 1));
+    };
+    if (USE_BACKEND) {
+      // BULK: una sola petición para TODAS las variables de símbolo (1 scan) →
+      // acota el bbox y no apila peticiones (era el cuello). Mantiene lo previo si
+      // falla (out vacío → cells []).
+      fetchVariableLayersBulk(wanted.map((s) => s.variableId), layerRes, viewBox ?? undefined)
+        .then((m) => {
+          if (!alive) return;
+          const obj: Record<string, MapLayerCell[]> = {};
+          for (const s of wanted) {
+            const cm = m.get(s.variableId);
+            obj[s.variableId] = cm ? Array.from(cm, ([h, value]) => ({ h, value })) : [];
+          }
+          setSymbolCells(obj);
+        })
+        .catch(() => {})
+        .finally(done);
+    } else {
+      // Template: placeholder por variable (síncrono, sin servidor).
+      Promise.all(
+        wanted.map(async (s) => [s.variableId, await fetchMapLayerCells(s)] as const),
+      )
+        .then((pairs) => {
+          if (alive) setSymbolCells(Object.fromEntries(pairs));
+        })
+        .catch(() => {})
+        .finally(done);
+    }
     return () => {
       alive = false;
     };
@@ -878,18 +909,36 @@ export default function MapView() {
     let alive = true;
     // En backend, espera al bbox del viewport (no pedir el país entero en la 1ª carga).
     if (USE_BACKEND && !viewBox) return;
-    Promise.all(
-      // Regla: template = placeholder (pinta algo); backend = real o vacío.
-      // `calor` no usa celdas de área (colorea la rejilla) → no se fetchea aquí.
-      extraMapVars
-        .filter((x) => x.kind !== "calor")
-        .map(
-          async (x) =>
-            [x.id, await fetchCatalogCells(x.id, layerRes, viewBox ?? undefined)] as const,
-        ),
-    )
-      .then((pairs) => alive && setExtraCells(Object.fromEntries(pairs)))
-      .catch(() => {});
+    // `calor` no usa celdas de área (colorea la rejilla) → no se fetchea aquí.
+    const vars = extraMapVars.filter((x) => x.kind !== "calor");
+    if (vars.length === 0) {
+      setExtraCells({});
+      return () => {
+        alive = false;
+      };
+    }
+    setLayersLoading((n) => n + 1);
+    const done = () => {
+      if (alive) setLayersLoading((n) => Math.max(0, n - 1));
+    };
+    if (USE_BACKEND) {
+      // BULK: una sola petición para todas las capas de catálogo (1 scan del bbox).
+      fetchVariableLayersBulk(vars.map((x) => x.id), layerRes, viewBox ?? undefined)
+        .then((m) => {
+          if (!alive) return;
+          const obj: Record<string, string[]> = {};
+          for (const x of vars) obj[x.id] = [...(m.get(x.id)?.keys() ?? [])];
+          setExtraCells(obj);
+        })
+        .catch(() => {})
+        .finally(done);
+    } else {
+      // Template: placeholder por variable.
+      Promise.all(vars.map(async (x) => [x.id, await fetchCatalogCells(x.id)] as const))
+        .then((pairs) => alive && setExtraCells(Object.fromEntries(pairs)))
+        .catch(() => {})
+        .finally(done);
+    }
     return () => {
       alive = false;
     };
@@ -1252,6 +1301,21 @@ export default function MapView() {
               <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
             </svg>
             <span className="text-sm font-medium text-[#165170ff]">Buscando ubicación…</span>
+          </div>
+        </div>
+      )}
+
+      {/* Pill NO bloqueante "cargando capas del mapa": avisa arriba mientras las
+          capas de variable/cobertura cargan (no tapa el mapa, se puede seguir
+          navegando). Se oculta solo cuando terminan (layersLoading vuelve a 0). */}
+      {mapReady && layersLoading > 0 && !selectionZoomTooFar && (
+        <div className="pointer-events-none absolute left-1/2 top-3 z-20 -translate-x-1/2">
+          <div className="flex items-center gap-2 rounded-full bg-white/95 px-3.5 py-1.5 shadow-md ring-1 ring-black/5">
+            <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 animate-spin text-[#165170ff]">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
+              <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+            <span className="text-xs font-medium text-[#165170ff]">Cargando capas del mapa…</span>
           </div>
         </div>
       )}
