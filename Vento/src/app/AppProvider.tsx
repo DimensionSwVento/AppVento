@@ -10,6 +10,7 @@ import { RegulatoryProvider } from "./Utils/contexts/RegulatoryContext";
 import { HistorialProvider } from "./Utils/historial/HistorialContext";
 import { ToastProvider } from "./Components/ui/Toast";
 import SessionGuard from "./Components/auth/SessionGuard";
+import BackendStatusBanner from "./Components/ui/BackendStatusBanner";
 import { ProviderComposer, type WrapperComponent } from "./Utils/ProviderComposer";
 
 // Orden = de MÁS EXTERNO a MÁS INTERNO (idéntico al anidamiento anterior).
@@ -29,5 +30,10 @@ const PROVIDERS: WrapperComponent[] = [
 ];
 
 export default function AppProvider({ children }: { children: React.ReactNode }) {
-  return <ProviderComposer providers={PROVIDERS}>{children}</ProviderComposer>;
+  return (
+    <ProviderComposer providers={PROVIDERS}>
+      <BackendStatusBanner />
+      {children}
+    </ProviderComposer>
+  );
 }

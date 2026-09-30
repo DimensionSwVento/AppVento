@@ -1768,6 +1768,27 @@ export default function Report() {
           isExporting={isExporting}
         />
       )}
+
+      {/* Overlay de carga durante la descarga del PDF: da feedback claro (antes
+          "parecía no descargar nunca" porque html2canvas sobre varias hojas tarda). */}
+      {isExporting && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex w-72 flex-col items-center gap-3 rounded-2xl bg-white px-8 py-6 shadow-xl">
+            <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-[#165170ff] border-t-transparent" />
+            <p className="text-sm font-medium text-gray-700">Generando el informe PDF…</p>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+              <div className="h-full w-1/2 animate-pulse rounded-full bg-[#165170ff]" />
+            </div>
+            <p className="text-center text-[11px] text-gray-400">
+              Puede tardar unos segundos según el número de hojas. No cierres la página.
+            </p>
+          </div>
+        </div>
+      )}
     </>
   );
 }
