@@ -769,7 +769,8 @@ export default function MapView() {
     // Sin setState SÍNCRONO en el effect (regla React Compiler): el caso vacío se
     // resuelve por el camino async (bulk con [] → vacío → setSymbolCells({})).
     const hasWork = wanted.length > 0;
-    if (hasWork) setLayersLoading((n) => n + 1);
+    // setState fuera del cuerpo del effect (regla React Compiler): en un microtask.
+    if (hasWork) queueMicrotask(() => alive && setLayersLoading((n) => n + 1));
     const done = () => {
       if (alive && hasWork) setLayersLoading((n) => Math.max(0, n - 1));
     };
@@ -939,7 +940,8 @@ export default function MapView() {
     // Sin setState SÍNCRONO (regla React Compiler): el caso vacío se resuelve por el
     // camino async (bulk con [] → vacío → setExtraCells({})).
     const hasWork = vars.length > 0;
-    if (hasWork) setLayersLoading((n) => n + 1);
+    // setState fuera del cuerpo del effect (regla React Compiler): en un microtask.
+    if (hasWork) queueMicrotask(() => alive && setLayersLoading((n) => n + 1));
     const done = () => {
       if (alive && hasWork) setLayersLoading((n) => Math.max(0, n - 1));
     };
