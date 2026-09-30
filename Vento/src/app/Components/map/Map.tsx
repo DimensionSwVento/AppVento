@@ -167,10 +167,10 @@ function aggregateValuesToRes(
   for (const [cell, { s, n }] of acc) out.set(cell, s / n);
   return out;
 }
-// Zonas EXCLUIDAS / inviables — no seleccionables. Color viridis(0) (morado
-// oscuro), coherente con la paleta de idoneidad. Fuentes: score global −1 del
-// backend (tipo_celda="excluida", vía bannedStore) o el placeholder local.
-const BANNED_FILL: [number, number, number, number] = [68, 1, 84, 205];
+// Zonas EXCLUIDAS / inviables — no seleccionables. Se marcan SOLO con el BORDE
+// (morado viridis(0)), sin relleno, para que los anillos de variable se vean en el
+// centro sin apilar alpha. Fuentes: score global −1 (tipo_celda="excluida", vía
+// bannedStore) o el placeholder local.
 const BANNED_BORDER: [number, number, number, number] = [59, 1, 74, 230];
 interface HexCell { h: string; banned?: boolean; owned?: boolean; value?: number; }
 
@@ -516,7 +516,7 @@ export default function MapView() {
         // alpha en las costuras ("pilares" oscuros). Rellenamos solo los owned.
         const owned = lat >= south && lat < north && lng >= west && lng < east;
         // `banned` = excluido por dato (bannedStore, ya incluye los del backend)
-        // o placeholder local. Morado (BANNED_FILL = viridis(0)), no seleccionable.
+        // o placeholder local. Se pinta con BORDE morado (BANNED_BORDER), no seleccionable.
         const banned = isHexBanned(h);
         let value: number | undefined;
         if (heatVar) {
@@ -541,7 +541,9 @@ export default function MapView() {
         // solo los `owned` para no duplicar alpha en las costuras; el resto sin
         // relleno (el BORDE es la malla normal). Ver `activeHeatVarId`.
         getFillColor: (d) => {
-          if (d.banned) return BANNED_FILL;
+          // Excluido: SIN relleno → solo su BORDE (abajo). Así los anillos de las
+          // variables se ven "en el centro" y no se apilan rellenos que ennegrecen.
+          if (d.banned) return [0, 0, 0, 0];
           if (d.value != null && d.owned) {
             const c = viridis(Math.max(0, Math.min(1, d.value)));
             return [c[0], c[1], c[2], 51];
@@ -549,7 +551,9 @@ export default function MapView() {
           return [0, 0, 0, 0];
         },
         getLineColor: (d) => (d.banned ? BANNED_BORDER : GRID_BORDER),
-        getLineWidth: 1,
+        // Borde del excluido más grueso (antes tenía relleno; ahora es su única
+        // señal) para que las zonas vetadas sigan siendo claras.
+        getLineWidth: (d) => (d.banned ? 2 : 1),
         lineWidthMinPixels: 1,
         filled: true,
         stroked: true,
@@ -804,6 +808,29 @@ export default function MapView() {
     };
   }, [effectiveSymbols, mapDisabledIds, mapNature, layerRes, viewBox]);
 
+  // Orden GLOBAL de las capas de variable que pintan hex (zonas de símbolo primero,
+  // luego catálogo) → cada una un ANILLO concéntrico (coverage decreciente). Así, en
+  // un mismo hex, varias variables se ven como bordes anidados de su color en vez de
+  // rellenos semitransparentes apilados que ennegrecen. El excluido queda como el
+  // borde exterior del hex (grid). Si se desactiva una, su anillo desaparece.
+  const activeZoneIds = useMemo(
+    () =>
+      MAP_SYMBOLS.filter(
+        (s) =>
+          s.kind === "zone" &&
+          effectiveSymbols.has(s.variableId) &&
+          !mapDisabledIds.has(s.variableId) &&
+          variableAppliesToNatureById(s.variableId, mapNature),
+      ).map((s) => s.variableId),
+    [effectiveSymbols, mapDisabledIds, mapNature],
+  );
+  // coverage por posición: 0.88, 0.72, 0.56… (borde exterior = excluido/grid; los
+  // anillos de variable van HACIA ADENTRO). Mínimo 0.3 para que se sigan viendo.
+  const ringCoverage = useCallback(
+    (index: number) => Math.max(0.3, 0.88 - Math.max(0, index) * 0.16),
+    [],
+  );
+
   const symbolLayers = useMemo(() => {
     const active = MAP_SYMBOLS.filter(
       (s) =>
@@ -819,21 +846,23 @@ export default function MapView() {
       .map((s) => {
         const cells = symbolCells[s.variableId] ?? [];
         const [br, bg, bb] = hexToRgb(s.color);
+        const cov = ringCoverage(activeZoneIds.indexOf(s.variableId));
         return new H3HexagonLayer<MapLayerCell>({
           id: `map-hexlayer-${s.variableId}`,
           data: cells,
           getHexagon: (d) => d.h,
           extruded: false,
+          // ANILLO: solo borde (sin relleno → no apila alpha ni ennegrece). `coverage`
+          // lo dibuja más pequeño según su orden → anillos concéntricos por capa.
           stroked: true,
-          filled: true,
-          // Superpuestas: relleno 20% (alpha 51) + borde 100% del color.
-          getFillColor: () => [br, bg, bb, 51],
+          filled: false,
+          coverage: cov,
           getLineColor: () => [br, bg, bb, 255],
-          getLineWidth: 1,
+          getLineWidth: 2,
           lineWidthUnits: "pixels",
-          lineWidthMinPixels: 1,
+          lineWidthMinPixels: 2,
           pickable: false,
-          updateTriggers: { getFillColor: [s.color], getLineColor: [s.color] },
+          updateTriggers: { getLineColor: [s.color], coverage: [cov] },
         });
       });
     // Redes de puntos: conecta los puntos de cada capa `point` con una línea.
@@ -883,7 +912,7 @@ export default function MapView() {
       );
     });
     return [...polys, ...paths, ...icons];
-  }, [effectiveSymbols, mapDisabledIds, symbolCells, blinkOn, mapNature]);
+  }, [effectiveSymbols, mapDisabledIds, symbolCells, blinkOn, mapNature, activeZoneIds, ringCoverage]);
 
   // ── N1a-mapa 2b: capas GENÉRICAS de catálogo ────────────────────────────────
   // Variables enMapa (área/interconectado, NO calor) que NO están en la lista
@@ -1013,6 +1042,9 @@ export default function MapView() {
       | IconLayer<{ lng: number; lat: number }>
       | PathLayer<{ path: [number, number][] }>
     )[] = [];
+    // Índice de anillo del catálogo: va DESPUÉS de las zonas de símbolo para que
+    // los anillos concéntricos no colisionen entre ambos grupos.
+    let catRingIdx = 0;
     for (const { id, kind } of extraMapVars) {
       const cells = extraCells[id] ?? [];
       if (cells.length === 0) continue;
@@ -1023,7 +1055,10 @@ export default function MapView() {
       // resumen de padres por zoom) con `viridis` → ver `activeHeatVarId`.
       if (kind === "calor") continue;
 
-      // ÁREA / INTERCONECTADO: hexes del color de la variable + icono.
+      // ÁREA / INTERCONECTADO: ANILLO del color de la variable (solo borde, sin
+      // relleno → no apila alpha) + icono. `coverage` decreciente = anillo interno.
+      const cov = ringCoverage(activeZoneIds.length + catRingIdx);
+      catRingIdx += 1;
       out.push(
         new H3HexagonLayer<{ h: string }>({
           id: `catalog-hex-${id}`,
@@ -1031,12 +1066,12 @@ export default function MapView() {
           getHexagon: (d) => d.h,
           extruded: false,
           stroked: true,
-          filled: true,
-          getFillColor: () => [r, g, b, 51],
-          getLineColor: () => [r, g, b, 200],
-          getLineWidth: 1,
+          filled: false,
+          coverage: cov,
+          getLineColor: () => [r, g, b, 255],
+          getLineWidth: 2,
           lineWidthUnits: "pixels",
-          lineWidthMinPixels: 1,
+          lineWidthMinPixels: 2,
           pickable: false,
         }),
       );
@@ -1102,7 +1137,7 @@ export default function MapView() {
       }
     }
     return out;
-  }, [extraMapVars, extraCells, selectionCenter, blinkOn]);
+  }, [extraMapVars, extraCells, selectionCenter, blinkOn, activeZoneIds, ringCoverage]);
 
   // Dibujo del POLÍGONO en curso (US03-04): vértices (puntos) + contorno. Se
   // materializa en hexágonos al "Aplicar" (ver `applyPolygon`).
