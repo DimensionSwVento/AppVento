@@ -590,6 +590,27 @@ export default function MapView() {
   // zoom bajo baja a 5–6 → el backend agrega a padres y devuelve pocos hex (patrón
   // del heat, 9e4d654). Follow-up: bbox del viewport a zoom alto para afinar más.
   const layerRes = Math.min(7, displayRes);
+  // Bbox del VIEWPORT (debounced) para acotar las capas de variable a lo VISIBLE →
+  // el backend escanea el viewport, no el país entero (mató los scans de ~5 min que
+  // apilaban los hilos). Se actualiza 400ms tras asentarse el paneo/zoom; las capas
+  // refetchean con el nuevo bbox (y la caché por bbox redondeado evita refetch en
+  // paneos chicos).
+  const [viewBox, setViewBox] = useState<
+    { west: number; south: number; east: number; north: number } | null
+  >(null);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const b = mapRef.current?.getMap?.()?.getBounds?.();
+      if (!b) return;
+      setViewBox({
+        west: b.getWest(),
+        south: b.getSouth(),
+        east: b.getEast(),
+        north: b.getNorth(),
+      });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [viewState]);
   const selectedArr = useMemo<HexCell[]>(() => {
     const norm = new Set<string>();
     for (const h of selectedHexes) {
@@ -717,6 +738,9 @@ export default function MapView() {
   );
   useEffect(() => {
     let alive = true;
+    // En backend, espera a tener el bbox del viewport antes de pedir (si no, la 1ª
+    // carga pediría el país entero → el scan de 5 min que estamos matando).
+    if (USE_BACKEND && !viewBox) return;
     // Solo las variables de ÁREA cargan hex de cobertura; el viento (`heat`) es
     // un mapa de calor que colorea los hex del grid (no un set propio).
     const wanted = MAP_SYMBOLS.filter(
@@ -727,7 +751,10 @@ export default function MapView() {
         variableAppliesToNatureById(s.variableId, mapNature), // filtro mar/tierra
     );
     Promise.all(
-      wanted.map(async (s) => [s.variableId, await fetchMapLayerCells(s, layerRes)] as const),
+      wanted.map(
+        async (s) =>
+          [s.variableId, await fetchMapLayerCells(s, layerRes, viewBox ?? undefined)] as const,
+      ),
     )
       .then((pairs) => {
         if (alive) setSymbolCells(Object.fromEntries(pairs));
@@ -736,7 +763,7 @@ export default function MapView() {
     return () => {
       alive = false;
     };
-  }, [effectiveSymbols, mapDisabledIds, mapNature, layerRes]);
+  }, [effectiveSymbols, mapDisabledIds, mapNature, layerRes, viewBox]);
 
   const symbolLayers = useMemo(() => {
     const active = MAP_SYMBOLS.filter(
@@ -841,19 +868,24 @@ export default function MapView() {
   const [extraCells, setExtraCells] = useState<Record<string, string[]>>({});
   useEffect(() => {
     let alive = true;
+    // En backend, espera al bbox del viewport (no pedir el país entero en la 1ª carga).
+    if (USE_BACKEND && !viewBox) return;
     Promise.all(
       // Regla: template = placeholder (pinta algo); backend = real o vacío.
       // `calor` no usa celdas de área (colorea la rejilla) → no se fetchea aquí.
       extraMapVars
         .filter((x) => x.kind !== "calor")
-        .map(async (x) => [x.id, await fetchCatalogCells(x.id, layerRes)] as const),
+        .map(
+          async (x) =>
+            [x.id, await fetchCatalogCells(x.id, layerRes, viewBox ?? undefined)] as const,
+        ),
     )
       .then((pairs) => alive && setExtraCells(Object.fromEntries(pairs)))
       .catch(() => {});
     return () => {
       alive = false;
     };
-  }, [extraMapVars, layerRes]);
+  }, [extraMapVars, layerRes, viewBox]);
 
   // Variable de CALOR activa (la primera): su valor por hex COLOREA la rejilla del
   // grid como heatmap viridis (resumen de padres por zoom, `gridTileLayer`). El
