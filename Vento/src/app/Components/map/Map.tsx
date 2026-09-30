@@ -598,16 +598,24 @@ export default function MapView() {
   const [viewBox, setViewBox] = useState<
     { west: number; south: number; east: number; north: number } | null
   >(null);
+  const lastBoxKeyRef = useRef(""); // dedupe: evita re-render si el bbox redondeado no cambió
   useEffect(() => {
     const t = setTimeout(() => {
       const b = mapRef.current?.getMap?.()?.getBounds?.();
       if (!b) return;
-      setViewBox({
+      const box = {
         west: b.getWest(),
         south: b.getSouth(),
         east: b.getEast(),
         north: b.getNorth(),
-      });
+      };
+      // Redondea a ~0.5°: paneos pequeños NO disparan refetch/re-render (mata el
+      // parpadeo de re-renderizado constante de las capas al mover el mapa).
+      const r = (n: number) => Math.round(n * 2);
+      const k = `${r(box.west)},${r(box.south)},${r(box.east)},${r(box.north)}`;
+      if (k === lastBoxKeyRef.current) return;
+      lastBoxKeyRef.current = k;
+      setViewBox(box);
     }, 400);
     return () => clearTimeout(t);
   }, [viewState]);
