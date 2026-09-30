@@ -1,4 +1,4 @@
-import { cellToLatLng, cellToParent, getResolution, latLngToCell } from "h3-js";
+import { cellToCenterChild, cellToLatLng, cellToParent, getResolution, latLngToCell } from "h3-js";
 import { LAND_POLYGON_RINGS, SEA_BBOXES, type LngLat } from "./h3Resolution";
 import {
   BANNED_HEXES,
@@ -13,6 +13,10 @@ import {
 // que el gris sea coherente entre niveles de zoom (una zona excluida y todos
 // sus hijos quedan excluidos por igual).
 const EXCLUDED_ZONE_RES = 5;
+
+// Resolución del DATO real de excluidos (la máster está a res 8). Para resumir a
+// padres (malla a zoom bajo) se muestrea el hijo central a esta res.
+const EXCLUDED_DATA_RES = 8;
 
 // SOLO 6 zonas excluidas de demostración en todo el país (template) — el resto
 // NO se excluye, para no saturar el mapa. Definidas por su celda res-5. Cuando
@@ -61,10 +65,19 @@ export function isHexBanned(h: string): boolean {
   // 0) Dato real de la API (por hex o heredado del ancestro a res mínima).
   const fromData = bannedStore.get(h);
   if (fromData !== undefined) return fromData;
+  const r = getResolution(h);
+  // Hijo de un excluido (h más FINO que la res del dato): hereda del ancestro.
   if (
-    getResolution(h) > MIN_SELECTION_H3_RES &&
+    r > MIN_SELECTION_H3_RES &&
     bannedStore.get(cellToParent(h, MIN_SELECTION_H3_RES)) === true
   ) {
+    return true;
+  }
+  // Padre de excluidos (h más GRUESO que el dato res8, p.ej. la malla a zoom
+  // bajo): se RESUME muestreando su hijo central res8. Así los excluidos se ven a
+  // cualquier resolución como las demás capas (antes solo aparecían a res8). Es el
+  // mismo criterio con que el grid ya agregaba `tipo_celda` (tomaba el de un hijo).
+  if (r < EXCLUDED_DATA_RES && bannedStore.get(cellToCenterChild(h, EXCLUDED_DATA_RES)) === true) {
     return true;
   }
   // 1) Datos reales estáticos (cuando existan).
