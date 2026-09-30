@@ -171,6 +171,28 @@ function hashId(s: string): number {
  * variable tiene su propia mancha, distinguible por color/icono). Las `mar` se
  * empujan mar adentro. Solo TEMPLATE (demo); en backend se usa el dato real.
  */
+// TEMPLATE (pruebas de composición de capas): una zona CENTRAL donde TODAS las
+// capas se tocan + zonas de solape PARCIAL elegidas por seed (algunas comparten).
+// Solo afecta al placeholder (modo template) → para ver bandas concéntricas.
+const _TPL_ALL_TOUCH: [number, number] = [4.6, -74.1]; // centro (Cundinamarca)
+const _TPL_OVERLAP_ZONES: [number, number][] = [
+  [6.2, -75.6], // Antioquia
+  [10.9, -74.8], // Caribe
+  [3.4, -76.5], // Valle
+  [7.9, -72.5], // Norte de Santander
+];
+function templateOverlapCells(seed: number, radius: number): string[] {
+  const out: string[] = [];
+  const c0 = latLngToCell(_TPL_ALL_TOUCH[0], _TPL_ALL_TOUCH[1], MAP_LAYER_RES);
+  for (const h of gridDisk(c0, radius)) out.push(h); // zona "todas se tocan"
+  for (let k = 0; k < 2; k++) {
+    const z = _TPL_OVERLAP_ZONES[(seed + k) % _TPL_OVERLAP_ZONES.length];
+    const c = latLngToCell(z[0], z[1], MAP_LAYER_RES);
+    for (const h of gridDisk(c, radius)) out.push(h); // solape parcial
+  }
+  return out;
+}
+
 function placeholderCatalogCells(variableId: string): string[] {
   const anchors = MAP_SYMBOLS.flatMap((s) => s.points);
   if (anchors.length === 0) return [];
@@ -183,6 +205,8 @@ function placeholderCatalogCells(variableId: string): string[] {
     const center = latLngToCell(p.lat + seaShift, p.lng - seaShift, MAP_LAYER_RES);
     for (const h of gridDisk(center, 3)) acc.add(h);
   }
+  // TEMPLATE: zonas de solape (central "todas" + parciales) para probar bandas.
+  for (const h of templateOverlapCells(seed, 3)) acc.add(h);
   return [...acc];
 }
 
@@ -260,6 +284,8 @@ function placeholderCells(s: MapSymbol): MapLayerCell[] {
     const center = latLngToCell(p.lat, p.lng, MAP_LAYER_RES);
     for (const h of gridDisk(center, 4)) acc.set(h, 0.85);
   }
+  // TEMPLATE: zonas de solape (central "todas" + parciales) para probar bandas.
+  for (const h of templateOverlapCells(hashId(s.variableId), 4)) acc.set(h, 0.85);
   return Array.from(acc, ([h, value]) => ({ h, value }));
 }
 
