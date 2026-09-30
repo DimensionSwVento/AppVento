@@ -12,6 +12,7 @@ import {
   DimensionId,
   OPTIONAL_VARIABLES,
   getVariableById,
+  isHeatVariable,
   modelVariableIds,
   requiredVariableIds,
   optionalVariablesByDimension,
@@ -101,8 +102,19 @@ export function VariablesProvider({ children }: { children: React.ReactNode }) {
     if (v?.required) return;
     setActiveVariables((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        // UN solo mapa de calor a la vez: al activar una variable de calor, apaga
+        // las otras de calor (mantiene las de área/interconectado). Las demás se
+        // acumulan normal.
+        if (isHeatVariable(id)) {
+          for (const other of [...next]) {
+            if (other !== id && isHeatVariable(other)) next.delete(other);
+          }
+        }
+        next.add(id);
+      }
       return next;
     });
   }, []);
