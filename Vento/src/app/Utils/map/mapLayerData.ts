@@ -191,15 +191,29 @@ function placeholderCatalogCells(variableId: string): string[] {
  * REGLA: template = placeholder determinista (pinta algo: área + icono);
  * backend = dato REAL (`fetchWindCells`) o VACÍO si no hay/falla (nunca inventa).
  */
+// CACHÉ por variable de las capas del mapa (catálogo/símbolos). Los hex de una
+// variable son ESTÁTICOS entre ingestas de la máster, así que se piden UNA vez por
+// sesión en vez de re-consultar el país entero cada vez que se recomputan las capas
+// (era el "pide res8 cada vez que satura de peticiones"). No se cachean resultados
+// vacíos (fallo/backend caído) → se reintenta la próxima vez.
+const _catalogCellsCache = new Map<string, Promise<string[]>>();
+const _mapLayerCellsCache = new Map<string, Promise<MapLayerCell[]>>();
+
 export async function fetchCatalogCells(variableId: string): Promise<string[]> {
-  if (USE_BACKEND) {
+  if (!USE_BACKEND) return placeholderCatalogCells(variableId);
+  let p = _catalogCellsCache.get(variableId);
+  if (!p) {
     // Capa de ÁREA/interconectado: solo se necesita la PRESENCIA (keys), no el
-    // valor. Se pide agregado a res 7 (padre) para acotar payload/render de una
-    // variable muy extendida; el backend además hace stream (memoria acotada).
-    const m = await fetchWindCells(variableId, undefined, 7);
-    return m ? [...m.keys()] : [];
+    // valor. Se pide agregado a res 7 (padre) para acotar payload/render; el
+    // backend además hace stream (memoria acotada).
+    p = fetchWindCells(variableId, undefined, 7).then((m) => {
+      const keys = m ? [...m.keys()] : [];
+      if (keys.length === 0) _catalogCellsCache.delete(variableId); // no cachear vacío
+      return keys;
+    });
+    _catalogCellsCache.set(variableId, p);
   }
-  return placeholderCatalogCells(variableId);
+  return p;
 }
 
 export interface MapLayerCell {
@@ -241,30 +255,39 @@ function placeholderCells(s: MapSymbol): MapLayerCell[] {
 export async function fetchMapLayerCells(
   s: MapSymbol,
 ): Promise<MapLayerCell[]> {
-  if (USE_BACKEND) {
-    // Modo backend: los hex (con su símbolo/color) son FIELES a la máster. Si el
-    // backend no entrega la capa, vacío — NUNCA el placeholder arbitrario.
-    try {
-      const res = await fetch(`/api/tiles/variable`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: masterIdFor(s.variableId),
-          res: MAP_LAYER_RES,
-          subtemplate: SUBTEMPLATE_VARS.has(s.variableId),
-        }),
-      });
-      if (res.ok) {
-        const rows = (await res.json()) as { h3_index: string; value: number }[];
-        return rows.map((r) => ({ h: r.h3_index, value: r.value }));
-      }
-    } catch {
-      /* backend sin dato → vacío (abajo), no placeholder */
-    }
-    return [];
-  }
   // Modo template (demo): placeholder de cobertura.
-  return placeholderCells(s);
+  if (!USE_BACKEND) return placeholderCells(s);
+  // CACHÉ por variable: los hex de la capa son fieles a la máster (estáticos entre
+  // ingestas) → se piden UNA vez por sesión, no en cada recompute de las capas.
+  let p = _mapLayerCellsCache.get(s.variableId);
+  if (!p) {
+    p = (async () => {
+      // Si el backend no entrega la capa, vacío — NUNCA el placeholder arbitrario.
+      try {
+        const res = await fetch(`/api/tiles/variable`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code: masterIdFor(s.variableId),
+            res: MAP_LAYER_RES,
+            subtemplate: SUBTEMPLATE_VARS.has(s.variableId),
+          }),
+        });
+        if (res.ok) {
+          const rows = (await res.json()) as { h3_index: string; value: number }[];
+          return rows.map((r) => ({ h: r.h3_index, value: r.value }));
+        }
+      } catch {
+        /* backend sin dato → vacío */
+      }
+      return [] as MapLayerCell[];
+    })().then((cells) => {
+      if (cells.length === 0) _mapLayerCellsCache.delete(s.variableId); // no cachear vacío
+      return cells;
+    });
+    _mapLayerCellsCache.set(s.variableId, p);
+  }
+  return p;
 }
 
 /** Metadatos de capa (kind/color) sin cargar los hex. */
