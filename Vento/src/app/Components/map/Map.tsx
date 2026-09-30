@@ -910,7 +910,9 @@ export default function MapView() {
         })
       );
     });
-    return [...polys, ...paths, ...icons];
+    // bands (hex + redes) e icons por separado → los iconos se dibujan encima de
+    // TODAS las bandas (evita que las bandas opacas de otras capas los tapen).
+    return { bands: [...polys, ...paths], icons };
   }, [effectiveSymbols, mapDisabledIds, symbolCells, blinkOn, mapNature, activeZoneIds, ringCoverage]);
 
   // ── N1a-mapa 2b: capas GENÉRICAS de catálogo ────────────────────────────────
@@ -1034,11 +1036,13 @@ export default function MapView() {
   }, [selectedHexes]);
 
   const catalogLayers = useMemo(() => {
-    const out: (
+    // Bandas (hex + redes) e ICONOS por separado: los iconos se dibujan DESPUÉS de
+    // TODAS las bandas (opacas) para que no queden tapados (bug del icono perdido).
+    const bands: (
       | H3HexagonLayer<{ h: string }>
-      | IconLayer<{ lng: number; lat: number }>
       | PathLayer<{ path: [number, number][] }>
     )[] = [];
+    const icons: IconLayer<{ lng: number; lat: number }>[] = [];
     // Índice de anillo del catálogo: va DESPUÉS de las zonas de símbolo para que
     // los anillos concéntricos no colisionen entre ambos grupos.
     let catRingIdx = 0;
@@ -1056,7 +1060,7 @@ export default function MapView() {
       // (opaca + coverage decreciente = banda interna) + icono. Sin apilar alpha.
       const cov = ringCoverage(activeZoneIds.length + catRingIdx);
       catRingIdx += 1;
-      out.push(
+      bands.push(
         new H3HexagonLayer<{ h: string }>({
           id: `catalog-hex-${id}`,
           data: cells.map((h) => ({ h })),
@@ -1084,7 +1088,7 @@ export default function MapView() {
           const [lat, lng] = cellToLatLng(h);
           return { lng, lat };
         });
-      out.push(
+      icons.push(
         new IconLayer<{ lng: number; lat: number }>({
           id: `catalog-icon-${id}`,
           data: points,
@@ -1118,7 +1122,7 @@ export default function MapView() {
             });
           }
         }
-        out.push(
+        bands.push(
           new PathLayer<{ path: [number, number][] }>({
             id: `catalog-net-${id}`,
             data: edges,
@@ -1134,7 +1138,7 @@ export default function MapView() {
         );
       }
     }
-    return out;
+    return { bands, icons };
   }, [extraMapVars, extraCells, selectionCenter, blinkOn, activeZoneIds, ringCoverage]);
 
   // Dibujo del POLÍGONO en curso (US03-04): vértices (puntos) + contorno. Se
@@ -1728,7 +1732,7 @@ export default function MapView() {
         // Las capas de símbolo (área/punto) se pintan en Informe Y en Dimensiones
         // (petición cliente): en Informe las controla el menú "Capas del mapa";
         // en Dimensiones, los switches de las cards. En las demás fases no.
-        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer, ...(accion === "informe" || accion === "dimensiones" ? [...symbolLayers, ...catalogLayers] : []), ...polygonDrawLayers]}
+        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer, ...(accion === "informe" || accion === "dimensiones" ? [...symbolLayers.bands, ...catalogLayers.bands, ...symbolLayers.icons, ...catalogLayers.icons] : []), ...polygonDrawLayers]}
         // US-FB3-03 (feedback item 8): nunca "not-allowed". Fuera de la fase de
         // selección el hex NO es inerte — en el informe se consulta con el
         // tooltip —, y el cursor de "prohibido" (muy marcado en Firefox/Windows)
