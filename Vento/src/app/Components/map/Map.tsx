@@ -766,20 +766,16 @@ export default function MapView() {
         !mapDisabledIds.has(s.variableId) &&
         variableAppliesToNatureById(s.variableId, mapNature), // filtro mar/tierra
     );
-    if (wanted.length === 0) {
-      setSymbolCells({});
-      return () => {
-        alive = false;
-      };
-    }
-    setLayersLoading((n) => n + 1);
+    // Sin setState SÍNCRONO en el effect (regla React Compiler): el caso vacío se
+    // resuelve por el camino async (bulk con [] → vacío → setSymbolCells({})).
+    const hasWork = wanted.length > 0;
+    if (hasWork) setLayersLoading((n) => n + 1);
     const done = () => {
-      if (alive) setLayersLoading((n) => Math.max(0, n - 1));
+      if (alive && hasWork) setLayersLoading((n) => Math.max(0, n - 1));
     };
     if (USE_BACKEND) {
       // BULK: una sola petición para TODAS las variables de símbolo (1 scan) →
-      // acota el bbox y no apila peticiones (era el cuello). Mantiene lo previo si
-      // falla (out vacío → cells []).
+      // acota el bbox y no apila peticiones (era el cuello).
       fetchVariableLayersBulk(wanted.map((s) => s.variableId), layerRes, viewBox ?? undefined)
         .then((m) => {
           if (!alive) return;
@@ -940,15 +936,12 @@ export default function MapView() {
     if (USE_BACKEND && !viewBox) return;
     // `calor` no usa celdas de área (colorea la rejilla) → no se fetchea aquí.
     const vars = extraMapVars.filter((x) => x.kind !== "calor");
-    if (vars.length === 0) {
-      setExtraCells({});
-      return () => {
-        alive = false;
-      };
-    }
-    setLayersLoading((n) => n + 1);
+    // Sin setState SÍNCRONO (regla React Compiler): el caso vacío se resuelve por el
+    // camino async (bulk con [] → vacío → setExtraCells({})).
+    const hasWork = vars.length > 0;
+    if (hasWork) setLayersLoading((n) => n + 1);
     const done = () => {
-      if (alive) setLayersLoading((n) => Math.max(0, n - 1));
+      if (alive && hasWork) setLayersLoading((n) => Math.max(0, n - 1));
     };
     if (USE_BACKEND) {
       // BULK: una sola petición para todas las capas de catálogo (1 scan del bbox).
