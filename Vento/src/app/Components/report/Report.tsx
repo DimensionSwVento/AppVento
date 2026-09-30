@@ -1591,9 +1591,24 @@ export default function Report() {
         orientation: "portrait",
         unit: "mm",
         format: "a4",
+        compress: true, // deflate del stream → PDF más liviano (Fase 4)
       });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
+
+      // Metadatos del documento (Fase 4): título/autor/asunto → buscable e
+      // identificable en gestores de archivos y visores de PDF.
+      try {
+        pdf.setProperties({
+          title: `Informe de idoneidad eólica${region ? ` — ${region}` : ""}`,
+          subject: "Evaluación multicriterio de idoneidad para energía eólica",
+          author: "Vento",
+          creator: "Vento",
+          keywords: "eólica, idoneidad, MCDM, SIG, informe",
+        });
+      } catch (err) {
+        console.warn("[pdfExport] setProperties falló:", err);
+      }
 
       // MEMORIA: html2canvas a scale 2 rasteriza 4× píxeles por hoja; sobre muchas
       // hojas el navegador llegaba a ~4 GB. Bajamos a 1.5 (nítido para A4) y, tras
@@ -1689,6 +1704,31 @@ export default function Report() {
         if (i > 0) pdf.addPage();
 
         const basePage = pdf.getNumberOfPages(); // 1ª página de ESTA hoja
+
+        // Bookmark/índice navegable (Fase 4): una entrada por hoja apuntando a su
+        // 1ª página. Toma el 1er encabezado del DOM como etiqueta, si no "Hoja N".
+        // `outline` es un plugin de jsPDF sin tipos → acceso acotado + try/catch.
+        try {
+          const heading = el
+            .querySelector("h1,h2,h3,[data-sheet-title]")
+            ?.textContent?.trim();
+          const label = (heading || `Hoja ${i + 1}`).slice(0, 80);
+          const outline = (
+            pdf as unknown as {
+              outline?: {
+                add: (
+                  parent: unknown,
+                  title: string,
+                  options: { pageNumber: number },
+                ) => unknown;
+              };
+            }
+          ).outline;
+          outline?.add(null, label, { pageNumber: basePage });
+        } catch (err) {
+          console.warn("[pdfExport] bookmark de hoja falló:", err);
+        }
+
         const sheetRect = el.getBoundingClientRect();
         const pxToMm = pageW / sheetRect.width; // hoja escalada al ANCHO A4
         const charts = Array.from(
