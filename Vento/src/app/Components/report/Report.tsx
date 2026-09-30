@@ -1628,6 +1628,58 @@ export default function Report() {
         }
       };
 
+      // Capa de TEXTO SELECCIONABLE/BUSCABLE (Fase 3): dibuja texto INVISIBLE
+      // (renderingMode "invisible") encima del raster, en la posición real de cada
+      // nodo de texto (Range.getBoundingClientRect). Así el PDF es copiable/buscable
+      // sin tocar lo que se ve — si algo se desalinea, es invisible (cero regresión
+      // visual). Se salta texto dentro de charts (ya va vectorial) y de zonas
+      // marcadas data-pdf-ignore. Best-effort: cualquier fallo se ignora.
+      const PT_PER_MM = 72 / 25.4; // px→mm→pt para setFontSize
+      const addTextLayer = (
+        el: HTMLElement,
+        sheetRect: DOMRect,
+        pxToMm: number,
+        basePage: number,
+      ) => {
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+          acceptNode(n) {
+            if (!n.nodeValue || !n.nodeValue.trim())
+              return NodeFilter.FILTER_REJECT;
+            const p = n.parentElement;
+            if (!p || p.closest('svg,[data-pdf-ignore="true"]'))
+              return NodeFilter.FILTER_REJECT;
+            return NodeFilter.FILTER_ACCEPT;
+          },
+        });
+        let node: Node | null;
+        let count = 0;
+        while ((node = walker.nextNode()) && count < 6000) {
+          const txt = node.nodeValue!.replace(/\s+/g, " ").trim();
+          if (!txt) continue;
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          const rect = range.getBoundingClientRect();
+          if (!rect.width || !rect.height) continue;
+          const topMm = (rect.top - sheetRect.top) * pxToMm;
+          const pageIdx = Math.max(0, Math.floor(topMm / pageH));
+          const x = (rect.left - sheetRect.left) * pxToMm;
+          const cs = window.getComputedStyle(node.parentElement!);
+          const fsPx = parseFloat(cs.fontSize) || 10;
+          // baseline ≈ borde inferior menos un pequeño descenso; y relativo a su página.
+          const y =
+            (rect.bottom - sheetRect.top) * pxToMm -
+            pageIdx * pageH -
+            fsPx * pxToMm * 0.2;
+          pdf.setPage(Math.min(basePage + pageIdx, pdf.getNumberOfPages()));
+          pdf.setFontSize(fsPx * pxToMm * PT_PER_MM);
+          pdf.text(txt, x, y, {
+            renderingMode: "invisible",
+            baseline: "alphabetic",
+          });
+          count++;
+        }
+      };
+
       for (let i = 0; i < sheetEls.length; i++) {
         const el = sheetEls[i];
         setExportMsg(`Hoja ${i + 1} de ${sheetEls.length}…`);
@@ -1708,6 +1760,14 @@ export default function Report() {
           pdf.setPage(basePage);
           const { data, w, h } = await rasterSheet(el, []);
           addSlicedRaster(data, w, h);
+        }
+
+        // Capa de texto seleccionable encima (best-effort; no rompe si falla).
+        try {
+          addTextLayer(el, sheetRect, pxToMm, basePage);
+          pdf.setPage(pdf.getNumberOfPages());
+        } catch (err) {
+          console.warn("[pdfExport] capa de texto seleccionable falló:", err);
         }
       }
 
