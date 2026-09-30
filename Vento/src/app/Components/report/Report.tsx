@@ -1424,8 +1424,12 @@ export default function Report() {
       masterId: string,
     ): number | null => {
       if (!vars || masterId === "NA") return null;
+      // El JSONB usa guion_bajo CON sufijo (AMB_012_A). Prueba esa forma primero,
+      // luego el crudo y por último sin sufijo (mismo criterio que hexVariableValue).
+      const full = masterId.replace(/-/g, "_"); // AMB-012-A → AMB_012_A
+      if (full in vars) return vars[full];
       if (masterId in vars) return vars[masterId];
-      const norm = masterId.replace(/-/g, "_").replace(/_[A-Z]+$/, "");
+      const norm = full.replace(/_[A-Z]+$/, ""); // AMB_012 (sin sufijo)
       return norm in vars ? vars[norm] : null;
     };
     const esc = (s: string) =>

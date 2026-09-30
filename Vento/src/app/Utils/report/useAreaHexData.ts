@@ -108,9 +108,9 @@ export function hexVariableValue(
   // Esto es por qué el popup (itera claves crudas) SÍ las ve y las tablas no.
   const candidates = Array.from(
     new Set([
-      backendVarCode(masterId), // AMB-012-A → AMB_012 (quita sufijo)
-      masterId.replace(/-/g, "_"), // AMB-012-A → AMB_012_A (conserva sufijo)
-      masterId, // AMB-012-A tal cual
+      masterId.replace(/-/g, "_"), // AMB-012-A → AMB_012_A  ← formato REAL del JSONB (con sufijo)
+      backendVarCode(masterId), // AMB-012-A → AMB_012 (sin sufijo; para _sv del modelo)
+      masterId, // AMB-012-A tal cual (por si acaso)
     ]),
   );
   // 1) match directo por cualquiera de las variantes
