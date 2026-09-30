@@ -944,6 +944,40 @@ export default function MapView() {
     };
   }, [extraMapVars, layerRes, viewBox]);
 
+  // Sets de hex por variable activa (símbolos + catálogo) para lookup O(1) en el
+  // hover → tooltip de variable (nombre+descripción). Se recalcula solo al cambiar
+  // las celdas (no en cada hover).
+  const layerHexSets = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const [id, cells] of Object.entries(symbolCells)) {
+      m.set(id, new Set(cells.map((c) => c.h)));
+    }
+    for (const [id, cells] of Object.entries(extraCells)) {
+      const s = m.get(id) ?? new Set<string>();
+      for (const h of cells) s.add(h);
+      m.set(id, s);
+    }
+    return m;
+  }, [symbolCells, extraCells]);
+
+  // Variables activas que cubren un hex (para el tooltip de hover). Las celdas están
+  // a `layerRes` (resumen de padres) → si el hex es más fino, se compara su padre.
+  const variablesAtHex = useCallback(
+    (hex: string | null): { id: string; label: string; description: string }[] => {
+      if (!hex) return [];
+      const parent = getResolution(hex) > layerRes ? cellToParent(hex, layerRes) : hex;
+      const out: { id: string; label: string; description: string }[] = [];
+      for (const [id, set] of layerHexSets) {
+        if (set.has(hex) || set.has(parent)) {
+          const v = getVariableById(id);
+          if (v) out.push({ id, label: v.label, description: v.description });
+        }
+      }
+      return out;
+    },
+    [layerHexSets, layerRes],
+  );
+
   // Variable de CALOR activa (la primera): su valor por hex COLOREA la rejilla del
   // grid como heatmap viridis (resumen de padres por zoom, `gridTileLayer`). El
   // heatmap muestra UNA variable a la vez, como el desplegable del informe.
@@ -1514,31 +1548,46 @@ export default function MapView() {
         />
       )}
 
-      {/* Leyenda de zona excluida (sprint 3): al pasar el cursor sobre un hex
-          vetado (fuera del heatmap del informe), muestra el motivo de exclusión.
-          Motivo por template hasta tener el campo real del dataset. */}
-      {!isMobile &&
-        !heatmapActive &&
-        hoverPos &&
-        hoveredHex &&
-        isHexBanned(hoveredHex) && (
+      {/* Tooltip de hover (fuera del heatmap del informe): muestra el motivo de
+          EXCLUSIÓN (si el hex está vetado) y/o las VARIABLES del mapa que lo cubren
+          (nombre + descripción), como pidió el cliente. Ambos pueden convivir (un
+          humedal excluido con capas activas encima). */}
+      {(() => {
+        if (isMobile || heatmapActive || !hoverPos || !hoveredHex) return null;
+        const banned = isHexBanned(hoveredHex);
+        const vars = variablesAtHex(hoveredHex);
+        if (!banned && vars.length === 0) return null;
+        return (
           <div
             role="tooltip"
-            aria-label="Motivo de exclusión"
+            aria-label="Detalle del hexágono"
             style={{ left: hoverPos.x + 12, top: hoverPos.y + 12 }}
-            className="pointer-events-none absolute z-20 max-w-[210px] rounded-md border border-[#e2d3ee] bg-white px-2.5 py-1.5 shadow-lg"
+            className="pointer-events-none absolute z-20 max-w-[230px] rounded-md border border-[#e2d3ee] bg-white px-2.5 py-1.5 shadow-lg"
           >
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-[#5b2a86]">
-              Zona excluida
-            </p>
-            <p className="mt-0.5 text-[11px] font-medium text-gray-700">
-              {bannedReason(hoveredHex)}
-            </p>
-            <p className="mt-0.5 text-[10px] text-gray-400">
-              0% idoneidad · no seleccionable
-            </p>
+            {banned && (
+              <>
+                <p className="text-[9px] font-semibold uppercase tracking-wide text-[#5b2a86]">
+                  Zona excluida
+                </p>
+                <p className="mt-0.5 text-[11px] font-medium text-gray-700">
+                  {bannedReason(hoveredHex)}
+                </p>
+                <p className="mt-0.5 text-[10px] text-gray-400">
+                  0% idoneidad · no seleccionable
+                </p>
+              </>
+            )}
+            {vars.map((v, i) => (
+              <div key={v.id} className={banned || i > 0 ? "mt-1.5 border-t border-gray-100 pt-1.5" : ""}>
+                <p className="text-[11px] font-semibold text-gray-800">{v.label}</p>
+                {v.description && (
+                  <p className="mt-0.5 text-[10px] leading-snug text-gray-500">{v.description}</p>
+                )}
+              </div>
+            ))}
           </div>
-        )}
+        );
+      })()}
 
       {accion === "dimensiones" && activeVariables.size > 0 && (
         <SelectedVariablesChips />
