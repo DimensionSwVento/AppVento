@@ -359,16 +359,9 @@ export async function fetchVariableLayersBulk(
             const cellMap = new Map(rows.map((r) => [r.h3_index, r.value]));
             for (const id of codeToIds.get(code) ?? [code]) out.set(id, cellMap);
           }
-        } else if (resp.status === 404) {
-          // El backend aún no tiene el endpoint bulk (despliegue viejo) → FALLBACK a
-          // per-variable (fetchWindCells) para no dejar el mapa sin capas.
-          await Promise.all(
-            ids.map(async (id) => {
-              const m = await fetchWindCells(id, bbox, res);
-              if (m && m.size > 0) out.set(id, m);
-            }),
-          );
         }
+        // Sin fallback: en backend es bulk o VACÍO (nunca valores falsos). El modo
+        // template ya pinta su placeholder aparte.
       } catch {
         /* backend caído → vacío */
       }
