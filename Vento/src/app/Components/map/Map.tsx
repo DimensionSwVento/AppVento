@@ -60,6 +60,7 @@ import {
   fetchMapLayerCells,
   fetchCatalogCells,
   fetchVariableCellsBBox,
+  fetchExcludedCells,
   windValueForHex,
   WIND_THRESHOLD,
   type MapLayerCell,
@@ -210,11 +211,9 @@ export default function MapView() {
   //  - `heatInflightRef`: evita disparar el mismo fetch de calor dos veces.
   //  - `heatBumpTimerRef`: un ÚNICO re-render diferido cuando llega el calor
   //    (evita cascada de remounts por cada tile que termina).
-  //  - `excludedDoneRef`: excluidos se piden una sola vez por tile (no por remount).
   const heatCacheRef = useRef<Map<string, Map<string, number>>>(new Map());
   const heatInflightRef = useRef<Set<string>>(new Set());
   const heatBumpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const excludedDoneRef = useRef<Set<string>>(new Set());
 
   // Detecta mobile (< 768px = md breakpoint de Tailwind)
   useEffect(() => {
@@ -222,6 +221,21 @@ export default function MapView() {
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // Capa de EXCLUIDOS en UNA sola petición al montar (no por tile). Alimenta el
+  // bannedStore → `isHexBanned` los marca en toda la malla, sin pedir `get_tile`
+  // por cada tile. Si falla, cae al placeholder local sin romper el mapa.
+  useEffect(() => {
+    let alive = true;
+    fetchExcludedCells().then((cells) => {
+      if (alive && cells.length > 0) {
+        setBannedData(cells.map((h) => [h, true] as [string, boolean]));
+      }
+    });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const clampViewState = useCallback((vs: typeof INITIAL_VIEW_STATE) => {
@@ -450,23 +464,10 @@ export default function MapView() {
         [west - lngMargin, south - latMargin],
       ];
       const tileKey = `${z}/${x}/${y}`;
-      // EXCLUIDOS (backend): SIN await → no bloquea la malla. Una sola vez por tile
-      // (no por remount). Alimenta el bannedStore; `isHexBanned` los verá en este y
-      // próximos renders. Si la red cae, la malla igual se pinta (placeholder local).
-      if (USE_BACKEND && !excludedDoneRef.current.has(tileKey)) {
-        excludedDoneRef.current.add(tileKey);
-        fetch(`/api/tiles/${z}/${x}/${y}`)
-          .then((r) => (r.ok ? r.json() : null))
-          .then((hexes: { h: string; t: string }[] | null) => {
-            if (!Array.isArray(hexes)) return;
-            const ex = hexes.filter((hx) => hx.t === "excluida").map((hx) => hx.h);
-            if (ex.length > 0) setBannedData(ex.map((h) => [h, true] as [string, boolean]));
-          })
-          .catch(() => {
-            // Falla sola: reintentable en el próximo paneo (se limpia el flag).
-            excludedDoneRef.current.delete(tileKey);
-          });
-      }
+      // EXCLUIDOS: ya NO se piden por tile con `get_tile` (ese endpoint, a zoom bajo,
+      // barría millones de filas por cada tile). Ahora la capa COMPLETA de excluidos
+      // llega en UNA sola petición al montar el mapa (`fetchExcludedCells` →
+      // bannedStore); aquí solo se lee con `isHexBanned`, sin tocar el backend.
       // CALOR (backend): capa de datos APARTE de la malla. Lee de caché (sync); si
       // no está, dispara el fetch en 2º plano (1 vez por tile) y programa UN solo
       // re-render diferido para colorear. Si el fetch falla, el calor "falla solo":

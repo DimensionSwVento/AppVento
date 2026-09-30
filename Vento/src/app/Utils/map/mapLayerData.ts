@@ -106,6 +106,25 @@ export async function fetchWindCells(
 }
 
 /**
+ * Capa COMPLETA de excluidos en UNA sola petición (`GET /api/tiles/excluded`).
+ * El front la pide una vez al montar el mapa y la cachea (bannedStore), en vez de
+ * pedir `get_tile` por cada tile solo para marcar zonas no seleccionables (ese
+ * endpoint, a zoom bajo, barría millones de filas por tile → saturaba los hilos).
+ * `[]` si no hay backend o falla → cae al placeholder local, sin romper la malla.
+ */
+export async function fetchExcludedCells(): Promise<string[]> {
+  if (!USE_BACKEND) return [];
+  try {
+    const resp = await fetch(`/api/tiles/excluded`);
+    if (!resp.ok) return [];
+    const data = (await resp.json()) as { cells?: string[] };
+    return Array.isArray(data?.cells) ? data.cells : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Valores (0–1) de una variable ACOTADOS a un bbox — para colorear la rejilla del
  * mapa como heatmap por zoom. Pasa `resolution` (zoom→res) para que el backend
  * AGREGUE al hexágono padre (respuesta pequeña, memoria acotada, sin OOM).
