@@ -51,20 +51,28 @@ export default function BackendStatusBanner() {
 
   if (!down) return null;
 
+  // Aviso NO alarmante (#23): pastilla ámbar pálida semitransparente, compacta y
+  // centrada arriba, con spinner de "reconectando" (no una franja roja a lo ancho).
+  // `role=status`/`polite` para no gritar. No bloquea clics (pointer-events-none en
+  // el contenedor). La cancelación de peticiones en vuelo la hace el mapa (#24).
   return (
     <div
-      role="alert"
-      aria-live="assertive"
-      className="fixed inset-x-0 top-0 z-[200] flex items-center justify-center gap-2 bg-red-600 px-4 py-2 text-center text-sm font-medium text-white shadow-md"
+      role="status"
+      aria-live="polite"
+      className="pointer-events-none fixed inset-x-0 top-0 z-[200] flex justify-center px-4 pt-2"
     >
-      <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0" aria-hidden="true">
-        <path
-          fillRule="evenodd"
-          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-          clipRule="evenodd"
-        />
-      </svg>
-      Sin conexión con el servidor. Reintentando… Algunos datos pueden no cargar.
+      <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-amber-300 bg-amber-100/85 px-3 py-1.5 text-xs font-medium text-amber-900 shadow-sm backdrop-blur-sm">
+        <svg
+          viewBox="0 0 24 24"
+          className="h-3.5 w-3.5 shrink-0 animate-spin text-amber-700"
+          fill="none"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" className="opacity-25" />
+          <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        </svg>
+        Reconectando con el servidor…
+      </div>
     </div>
   );
 }
