@@ -1,6 +1,7 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Manuales Vento</title><style>@page{size:A4;margin:18mm 16mm;} *{box-sizing:border-box;} body{font-family:'Segoe UI',Arial,sans-serif;color:#1f2937;line-height:1.5;max-width:900px;margin:0 auto;padding:24px;} h1{color:#0f3547;border-bottom:3px solid #165170;padding-bottom:6px;page-break-before:always;} h1:first-of-type{page-break-before:avoid;} h2{color:#165170;margin-top:1.4em;} h3{color:#1f2937;} table{border-collapse:collapse;width:100%;margin:10px 0;font-size:12px;} th,td{border:1px solid #cbd5e1;padding:6px 8px;text-align:left;vertical-align:top;} th{background:#165170;color:#fff;} tr:nth-child(even) td{background:#f3f6f8;} code{background:#eef2f5;padding:1px 4px;border-radius:3px;font-size:12px;} pre{background:#0f3547;color:#e8f1f6;padding:12px;border-radius:8px;overflow:auto;font-size:11.5px;} pre code{background:none;color:inherit;} blockquote{border-left:4px solid #165170;margin:10px 0;padding:4px 12px;background:#f0f6f9;color:#374151;} @media print{pre,table,blockquote{page-break-inside:avoid;} a{color:#165170;text-decoration:none;}}</style></head><body><h1 id="manual-tecnico-vento-plataforma-de-idoneidad-eolica">Manual Técnico — Vento (Plataforma de idoneidad eólica)</h1>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Manuales Vento</title><style>@page{size:A4;margin:18mm 16mm;} *{box-sizing:border-box;} body{font-family:'Segoe UI',Arial,sans-serif;color:#1f2937;line-height:1.5;max-width:900px;margin:0 auto;padding:24px;} h1{color:#0f3547;border-bottom:3px solid #165170;padding-bottom:6px;page-break-before:always;} h1:first-of-type{page-break-before:avoid;} h2{color:#165170;margin-top:1.4em;} h3{color:#1f2937;} table{border-collapse:collapse;width:100%;margin:10px 0;font-size:11.5px;} th,td{border:1px solid #cbd5e1;padding:5px 7px;text-align:left;vertical-align:top;} th{background:#165170;color:#fff;} tr:nth-child(even) td{background:#f3f6f8;} code{background:#eef2f5;padding:1px 4px;border-radius:3px;font-size:12px;} pre{background:#0f3547;color:#e8f1f6;padding:12px;border-radius:8px;overflow:auto;font-size:11px;} pre code{background:none;color:inherit;} blockquote{border-left:4px solid #165170;margin:10px 0;padding:4px 12px;background:#f0f6f9;color:#374151;} @media print{pre,table,blockquote{page-break-inside:avoid;} a{color:#165170;text-decoration:none;}}</style></head><body><h1 id="manual-tecnico-vento-plataforma-de-idoneidad-eolica">Manual Técnico — Vento (Plataforma de idoneidad eólica)</h1>
 <blockquote>
-<p>Arquitectura, stack, comportamiento, configuración y operación.
+<p>Arquitectura, comportamiento, datos, seguridad, configuración y operación.
+Escrito a partir de una lectura completa del código (front + backend).
 Audiencia: equipo de desarrollo / on-call. No es el manual de usuario.
 Fecha: 2026-10-01 · Autor: Mavalan Software</p>
 </blockquote>
@@ -12,36 +13,32 @@ Colombia sobre una malla de hexágonos <strong>H3 (resolución 8)</strong>. El u
 genera un <strong>informe PDF</strong> configurable. El admin gestiona variables, datasets, normas,
 escenarios económicos y usuarios.</p>
 <ul>
-<li><strong>Modelo:</strong> multicriterio (WLC/AHP) en escala 1–5 (−1 = excluida), normalizado a 0–1
-  con <code>(raw−1)/4</code>. El <code>global</code> y los scores por dimensión vienen <strong>precalculados</strong> en la
-  máster (parquet); la app <strong>no recalcula</strong> el modelo: solo agrega y formatea.</li>
-<li><strong>Dimensiones:</strong> Técnica, Ambiental, Social (puntuables) + Económica y Regulatoria
+<li><strong>Modelo (clave):</strong> todo va en escala <strong>1–5</strong> (−1 = excluida). La <strong>normalización a
+  [0,1] se hace en LECTURA</strong> (<code>(raw−1)/4</code>), <strong>nunca en ingesta</strong>. El <code>global</code> y los scores
+  vienen <strong>precalculados</strong> en la máster; la app agrega/formatea, no recalcula el modelo.</li>
+<li><strong>Dimensiones:</strong> Técnica, Ambiental, Social (<strong>puntuables</strong>) + Económica y Regulatoria
   (<strong>informativas</strong>, no puntúan).</li>
 </ul>
 <hr />
 <h2 id="2-arquitectura">2. Arquitectura</h2>
-<pre><code>Navegador ──HTTPS──▶ Front Next.js (BFF)
-                       │  rutas /api/*  (Next route handlers)
-                       │    · validan la sesión de Keycloak (Auth.js)
-                       │    · reenvían al backend con INTERNAL_API_SECRET + identidad
-                       ▼
-                   Backend FastAPI (Docker)  ──SQLAlchemy──▶ PostgreSQL
-                       │                                        hexagon (1.6M filas), hexagon_meta,
-                       │                                        hexagon_variables_pon, catalog_*,
-                       └── Keycloak (OIDC/JWT)                   parquet_column, app_config, informe
+<pre><code>Navegador ──HTTPS──▶ Front Next.js 16 (App Router)  ── BFF: rutas /api/* ──▶ Backend FastAPI (Docker)
+   Auth.js (NextAuth v5)      │  backendProxy.ts: await auth() → exige sesión;             │  gunicorn -w 2
+   cookie __Secure-authjs…    │  añade X-Internal-Secret + X-User-Sub + X-User-Roles       │  (stateless)
+                              │  (NO relaya access tokens)                                 ▼
+                              │                                                        PostgreSQL
+                              └── Keycloak (OIDC) ◀── el backend VERIFICA el JWT (JWKS)   (hexagon 1.6M, catalog_*, …)
 </code></pre>
 <ul>
-<li><strong>BFF (Backend-for-Frontend):</strong> el navegador <strong>no</strong> habla con el backend directo.
-  Las rutas <code>/api/*</code> del front son <em>route handlers</em> que: (1) exigen sesión válida de
-  Keycloak, (2) reenvían al backend privado (<code>BACKEND_URL</code>) con un <strong>secreto compartido</strong>
-  (<code>INTERNAL_API_SECRET</code>) y la identidad del usuario (<code>sub</code> + roles). Así el backend puede
-  ser privado en la red.</li>
-<li><strong>Backend stateless:</strong> nada se carga a RAM al arrancar; cada request consulta Postgres
-  en <strong>streaming</strong> (anti-OOM). Clean architecture: <code>api/</code> (routers) · <code>application/</code>
-  (servicios) · <code>domain/</code> (modelo/consulta) · <code>infrastructure/</code> (BD, auth, datos).</li>
-<li><strong>Auth:</strong> Auth.js (NextAuth v5) en el front (cookies <code>__Secure-authjs.session-token</code>);
-  Keycloak como IdP (OIDC). El backend <strong>verifica</strong> el JWT (JWKS de Keycloak) — no emite
-  tokens. Roles <code>admin</code> / <code>analista</code>.</li>
+<li><strong>BFF (Backend-for-Frontend):</strong> el navegador <strong>no</strong> habla con el backend. Las rutas
+  <code>/api/*</code> del front (<code>Utils/apis/backendProxy.ts</code>) validan la sesión de Keycloak y
+  reenvían al backend privado (<code>BACKEND_URL</code>) con <strong><code>X-Internal-Secret</code> (=
+  <code>INTERNAL_API_SECRET</code>)</strong> + identidad (<code>X-User-Sub</code>, <code>X-User-Roles</code>). <code>cache: no-store</code>;
+  502 si el backend no responde. <strong>Nunca</strong> se mandan access tokens al cliente (cookie &lt;4KB).</li>
+<li><strong>Backend stateless:</strong> nada se carga a RAM al arrancar; cada request consulta Postgres en
+  <strong>streaming</strong> (anti-OOM). Clean architecture: <code>api/</code> (routers) · <code>application/</code> (servicios)
+  · <code>domain/</code> (motor de consulta/modelo) · <code>infrastructure/</code> (BD, auth, datos).</li>
+<li><strong>Identidad:</strong> Keycloak como IdP (OIDC). El front usa Auth.js (NextAuth v5, provider
+  Keycloak <strong>custom</strong>); el backend <strong>solo verifica</strong> el JWT (no emite).</li>
 </ul>
 <hr />
 <h2 id="3-stack-lenguajes">3. Stack / lenguajes</h2>
@@ -49,17 +46,17 @@ escenarios económicos y usuarios.</p>
 <thead>
 <tr>
 <th>Capa</th>
-<th>Tecnologías</th>
+<th>Tecnologías (versión real)</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><strong>Front</strong></td>
-<td>TypeScript · <strong>Next.js 16</strong> (App Router) · React · <strong>deck.gl 9.2</strong> + MapLibre · <strong>h3-js 4</strong> · Tailwind CSS v4 · Auth.js (NextAuth v5) · jsPDF + svg2pdf + html2canvas-pro (PDF) · SendGrid (correo)</td>
+<td>TypeScript · <strong>Next.js 16</strong> (App Router, React Compiler) · React 19 · <strong>deck.gl 9.2</strong> + luma.gl + MapLibre/react-map-gl (mapa) · <strong>h3-js 4</strong> · Tailwind CSS v4 · <strong>Auth.js / NextAuth v5-beta</strong> · <strong>jsPDF 4 + html2canvas-pro 2</strong> (PDF) · jose (JWT) · SendGrid (correo)</td>
 </tr>
 <tr>
 <td><strong>Backend</strong></td>
-<td><strong>Python 3.12</strong> · <strong>FastAPI</strong> · Uvicorn + <strong>Gunicorn</strong> (prod, <code>-w 2</code>) · <strong>SQLAlchemy 2</strong> · <strong>Alembic</strong> · <strong>psycopg 3</strong> · pandas + pyarrow (parquet) · <strong>h3</strong> · anyio (threadpool) · python-dotenv (dev)</td>
+<td><strong>Python 3.12</strong> · <strong>FastAPI</strong> · Uvicorn + <strong>Gunicorn</strong> (<code>-w 2</code>) · <strong>SQLAlchemy 2</strong> · <strong>Alembic</strong> · <strong>psycopg 3</strong> · pandas + pyarrow + openpyxl (parquet/xlsx) · <strong>h3</strong> · PyJWT[crypto] · anyio (threadpool) · python-dotenv (dev)</td>
 </tr>
 <tr>
 <td><strong>BD</strong></td>
@@ -71,148 +68,347 @@ escenarios económicos y usuarios.</p>
 </tr>
 <tr>
 <td><strong>Infra</strong></td>
-<td>Front en AccuWeb (runtime Node) · Backend en <strong>Docker</strong> (<code>python:3.12-slim</code>)</td>
+<td>Front en AccuWeb (Node ≥20) · Backend <strong>Docker</strong> (<code>python:3.12-slim</code>) · <code>docker-compose</code> (db + keycloak + app) para dev</td>
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p>No se usa <code>svg2pdf</code>. El PDF se genera con <strong>html2canvas-pro + jsPDF</strong> (ver §7).</p>
+</blockquote>
 <hr />
-<h2 id="4-modo-template-vs-backend-clave">4. Modo TEMPLATE vs BACKEND (clave)</h2>
-<p>El front opera en <strong>uno de dos modos</strong>, según <code>NEXT_PUBLIC_USE_BACKEND</code>. Al arrancar se
-loguea <code>[VENTO] MODO: BACKEND (API real...)</code> o <code>TEMPLATE (demo, sin backend)</code>.</p>
+<h2 id="4-flujo-del-usuario">4. Flujo del usuario</h2>
+<p>Orden canónico en <code>Utils/usePhaseNav.ts</code>:
+<code>seleccion-area → dimensiones → características → informe</code> (+ <code>histórico</code>). El estado de
+fase (<code>accion</code>) vive en <code>AccionPrincipalContext</code>; <code>dashboard/page.tsx</code> monta siempre
+<code>SideBar</code> + <code>MapView</code> y conmuta la subpágina según <code>accion</code>. El <code>SideBar</code> es un stepper con
+habilitación progresiva (retroceso libre; avance hasta <code>maxFaseIdx</code>; selección→dimensiones
+exige <code>selectedHexes.size&gt;0</code>).</p>
 <table>
 <thead>
 <tr>
-<th></th>
-<th><code>NEXT_PUBLIC_USE_BACKEND=false</code> → <strong>TEMPLATE</strong></th>
-<th><code>=true</code> → <strong>BACKEND</strong></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Fuente de datos</td>
-<td>placeholders <strong>deterministas</strong> (demo, sin API)</td>
-<td>API real (<code>/api/*</code> → backend → Postgres)</td>
-</tr>
-<tr>
-<td>Fallback</td>
-<td><code>USE_PLACEHOLDER_FALLBACK = true</code>: todo cae a placeholder</td>
-<td><code>false</code>: <strong>dato real o VACÍO</strong>, nunca cifras falsas</td>
-</tr>
-<tr>
-<td>Excluidas</td>
-<td><code>SHOW_PLACEHOLDER_EXCLUDED</code>: 6 zonas demo</td>
-<td>capa real (<code>/tiles/excluded</code>)</td>
-</tr>
-<tr>
-<td>Uso</td>
-<td>demos/QA sin backend</td>
-<td>producción</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Regla de oro:</strong> en modo backend el sistema <strong>nunca inventa valores</strong>. Si una variable
-no tiene dato (p.ej. no se ingirió), se muestra "—" / vacío. Los placeholders solo existen
-en modo template. (Backend: real o vacío; nunca placeholder.)</p>
-<hr />
-<h2 id="5-ingesta-de-datos-comportamiento">5. Ingesta de datos (comportamiento)</h2>
-<p>La ingesta es <strong>destructiva por dataset</strong> (reemplaza todo) y se dispara desde Admin
-(subir máster / metadatos) o por tool.</p>
-<h3 id="51-hexagonos-master-h3parquet">5.1 Hexágonos (máster <code>*.h3.parquet</code>)</h3>
-<p><code>update_from_parquet</code> → según <code>HEXAGON_INGEST</code>:
-- <strong><code>copy</code> (por defecto):</strong> vía <code>COPY</code> de Postgres. <strong>Atómico</strong>: <code>TRUNCATE hexagon</code> + <code>COPY</code>
-  en <strong>una sola transacción</strong> (si el proceso muere a mitad, no deja datos a medias).
-  <strong>Streaming</strong> <code>dict → tupla → COPY</code> (no materializa el dataset en RAM) → máximo rendimiento.
-- <strong><code>orm</code> (fallback portable):</strong> <code>DELETE</code> + inserción por lotes vía ORM (entornos sin COPY,
-  p.ej. tests). Más lento, no requiere Postgres-COPY.
-- En la <strong>misma transacción</strong> se recalcula <strong><code>hexagon_meta</code></strong> (min/max por variable) para la
-  normalización. Los valores del parquet se <strong>sanean</strong> a tipos JSON nativos (<code>_clean_variables</code>:
-  pandas/numpy → JSON) antes de persistir en <code>hexagon.variables</code> (JSONB).
-- <code>INGEST_MEM_CAP_MB</code> acota el pico de memoria del proceso de ingesta.</p>
-<h3 id="52-catalogo-metadatos-infovariables-normas-escenarios-turbinas">5.2 Catálogo / metadatos (InfoVariables, normas, escenarios, turbinas)</h3>
-<p>Servicios dedicados, también destructivos por tabla:
-- <strong><code>metadata_ingest</code></strong> — InfoVariables.xlsx → <code>catalog_variable</code> (label, dimensión,
-  criterio/subcriterio, fuente, licencia, método de cálculo, <code>icon_key</code>, <code>enMapa</code>, pesos).
-  Registra las columnas del documento en <code>parquet_column</code> (nombre ↔ <code>base_code</code>).
-- <strong><code>catalog_ingest</code></strong> — normas regulatorias → <code>catalog_norma</code>.
-- <strong><code>economic_ingest</code></strong> — escenarios/series macro → <code>catalog_escenario</code> / <code>economic_*</code>.
-- <strong><code>bundle_service</code> / <code>master_service</code></strong> — subida del <em>bundle</em> de máster (drag-and-drop en
-  Admin) y estado/versión de la máster (<code>master_version</code>).</p>
-<h3 id="53-despues-de-ingerir-obligatorio">5.3 Después de ingerir (obligatorio)</h3>
-<ol>
-<li><code>VACUUM ANALYZE hexagon;</code> → mantiene <code>reltuples</code> (usado por <code>warmup</code>) y el <em>visibility map</em>.</li>
-<li>Verificar con <strong><code>GET /api/admin/db/overview</code></strong> (solo admin): columnas por tabla + la
-   <strong>tríada</strong> de códigos de variable en <strong>h3</strong> (<code>hexagon_meta</code>) vs <strong>catálogo</strong>
-   (<code>catalog_variable</code>) vs <strong>máster</strong> (<code>parquet_column</code>), con el diff de qué falta/sobra.</li>
-</ol>
-<hr />
-<h2 id="6-backend-endpoints">6. Backend — endpoints</h2>
-<p>Router <code>/api/tiles/*</code> (datos del mapa) · <code>/api/admin/*</code> (gestión) · <code>/api/historico</code>
-· <code>/api/health</code> · <code>/api/_debug/*</code>.</p>
-<table>
-<thead>
-<tr>
-<th>Endpoint</th>
+<th>Fase</th>
+<th>Componente</th>
 <th>Qué hace</th>
-<th>Coste típico</th>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>Selección de área</td>
+<td><code>Map.tsx</code> (<code>canSelect</code>)</td>
+<td>selección de hexes (click/pincel/polígono) + buscador (Nominatim)</td>
+</tr>
+<tr>
+<td>Dimensiones</td>
+<td><code>dimensions/Dimensions.tsx</code></td>
+<td>tarjetas por dimensión, filtro mar/tierra, modales económico y regulatorio</td>
+</tr>
+<tr>
+<td>Características</td>
+<td><code>caracteristicas/Caracteristicas.tsx</code></td>
+<td>emplazamiento (auto), capacidad MW, categoría S/M/L, nº aerogeneradores, aviso área-vs-capacidad</td>
+</tr>
+<tr>
+<td>Informe</td>
+<td><code>report/Report.tsx</code></td>
+<td>preconfiguración + previsualización + export PDF</td>
+</tr>
+<tr>
+<td>Histórico</td>
+<td><code>historial/HistorialList.tsx</code></td>
+<td>lista por recencia; restaura selección+variables+config</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Contextos globales</strong> (<code>Utils/contexts/*</code>): <code>AccionPrincipal</code> (fase, <code>selectedHexes</code>,
+<code>focusNonce</code>, config restaurada), <code>Variables</code> (<code>activeVariables</code>; obligatorias siempre
+activas; hidrata catálogo de BD), <code>HeatmapDimension</code> (dimensión activa del heatmap, mutex),
+<code>Caracteristicas</code>, <code>Regulatory</code> (incluir sección), <code>Economic</code> (escenario/horizonte),
+<code>Historial</code> (repo BD o localStorage según modo).</p>
+<hr />
+<h2 id="5-modo-template-vs-backend">5. Modo TEMPLATE vs BACKEND</h2>
+<p>Interruptor: <strong><code>NEXT_PUBLIC_USE_BACKEND</code></strong>. Al arrancar se loguea <code>[VENTO] MODO: …</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Flag (derivado)</th>
+<th>Efecto</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>USE_BACKEND = (NEXT_PUBLIC_USE_BACKEND==="true")</code></td>
+<td>"sin mixtura": en backend las lecturas NO caen a template (dato real o vacío). Afecta histórico, <code>useAreaHexData</code>, capas del mapa, catálogo/bundle, hidratación.</td>
+</tr>
+<tr>
+<td><code>USE_PLACEHOLDER_FALLBACK = !USE_BACKEND</code></td>
+<td>enciende scores/heatmap/informativas <strong>placeholder</strong> (solo demo).</td>
+</tr>
+<tr>
+<td><code>SHOW_PLACEHOLDER_EXCLUDED = true</code> (<strong>forzado</strong>)</td>
+<td>muestra 6 zonas excluidas demo (aún no hay máster de excluidas por dato real completa).</td>
+</tr>
+<tr>
+<td><code>USE_API_EMPLAZAMIENTO = true</code></td>
+<td>mar/tierra por dato + regla de no mezclar en la selección.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Regla de oro:</strong> en modo backend el sistema <strong>nunca inventa valores</strong> (real o vacío). Los
+placeholders solo existen en modo template.</p>
+<hr />
+<h2 id="6-mapa-deckgl">6. Mapa (deck.gl)</h2>
+<p><code>Map.tsx</code> usa <code>react-map-gl/maplibre</code> (basemap CartoDB) + <code>DeckGL</code>. Capas principales:
+- <strong>gridTileLayer</strong> (<code>TileLayer</code>): calcula celdas H3 del bbox del tile a la <strong>resolución del
+  zoom</strong> (<code>zoomToH3Res</code>) y filtra "solo lo visible" dentro de Colombia (ADR-014). Pinta viento
+  (viridis) o gris (excluidas). Visible/pickable solo fuera del heatmap del informe.
+- <strong>informeHeatmapLayer</strong> (<code>useInformeHeatmapLayer</code>): malla <strong>res-8</strong> del área con color por
+  <code>backendScore</code> real (o placeholder/transparente según modo); se normaliza cualquier res a 8.
+- <strong>selección / bordes / hover / símbolos (zona, punto, iconos) / dibujo de polígono.</strong>
+- <strong>Capas de variable:</strong> se piden por <strong>bbox</strong> (<code>/api/tiles/variable[s-bulk]</code>), con <strong>caché</strong>
+  y <strong>cancelación de las peticiones en vuelo</strong> al cambiar de capas o salir (evita apilar
+  scans que saturan el backend). Ocultar una capa no vuelve a pedir datos.
+- <strong>Excluidas:</strong> se cargan como <strong>capa completa en una sola petición</strong> (<code>/tiles/excluded</code>) y se
+  marcan con <code>isHexBanned</code> (sin pedir tile-por-tile). El emplazamiento (mar/tierra) y la
+  exclusión por dato se alimentan desde <code>/tiles/area</code> (<code>setBannedData</code>/<code>setEsOffshoreData</code>).</p>
+<hr />
+<h2 id="7-informe-pdf">7. Informe / PDF</h2>
+<p><code>Report.tsx</code> arma <strong>"hojas" A4</strong> (794×1123 @96dpi, <code>ReportSheet</code>) según la configuración:
+índice + resumen ejecutivo (índice <code>Gauge</code>, gráfico por dimensión, top-influencers
+<code>DivergingBars</code>, snapshot del mapa) · una hoja por dimensión puntuable (score, peso,
+tabla paginada, excluyentes, resumen del cálculo) · económica (<code>LineChart</code>) · regulatoria
+(semáforo + normas + autoridades) · informativas · fuentes · disclaimer. Los gráficos son
+<strong>SVG puro</strong> (sin librería) para capturarse limpios.</p>
+<p><strong>Pipeline de exportación PDF:</strong>
+1. Escala las hojas a 1 y espera a que rendericen (rAF + delay).
+2. Recorre cada <code>[data-report-sheet]</code> — <strong>una hoja = una página A4</strong>.
+3. <code>html2canvas-pro(sheet, {scale: 2, jpeg 0.95})</code> → <code>jsPDF.addImage</code> (ajuste "contain" a A4).
+4. <strong>Chunking:</strong> las tablas largas (variables consideradas, intervalos de ponderación,
+   normas, fuentes) se parten en varias hojas para que <strong>nunca</strong> se corten a mitad; el
+   resto de secciones también respeta el A4.
+5. <code>pdf.save(...)</code>.
+El snapshot del mapa se compone de los <code>&lt;canvas&gt;</code> (basemap + deck) y se cachea; el informe
+lo lee como <code>&lt;img&gt;</code>.</p>
+<hr />
+<h2 id="8-ingesta-de-datos-comportamiento">8. Ingesta de datos (comportamiento)</h2>
+<p>La normalización 1–5→[0,1] se hace en LECTURA; la ingesta guarda el dato crudo. Hay <strong>cuatro
+caminos</strong> (según el caso) + los ingestores de catálogo:</p>
+<table>
+<thead>
+<tr>
+<th>Camino</th>
+<th>Dónde</th>
+<th>Comportamiento</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>copy</code></strong> (default máster)</td>
+<td><code>hexagon_repository.copy_ingest</code></td>
+<td><strong>COPY</strong> de Postgres, <strong>atómico</strong> (<code>TRUNCATE</code>+<code>COPY</code>+<code>hexagon_meta</code> en una transacción), streaming <code>dict→tupla→COPY</code>. Máximo rendimiento.</td>
+</tr>
+<tr>
+<td><strong><code>orm</code></strong> (portable)</td>
+<td><code>replace_all</code></td>
+<td><code>DELETE</code> + lotes de 5000 vía ORM (sin COPY). No atómico (ventana con tabla parcial). Fallback para tests.</td>
+</tr>
+<tr>
+<td><strong><code>upsert_chunk</code></strong> (modular)</td>
+<td><code>upsert_chunk</code></td>
+<td>ingesta por paquete/row-group: <code>ON CONFLICT</code> <strong>fusiona</strong> JSONB (<code>variables</code>/<code>scores</code> con <code>||</code>), refina <code>hexagon_meta</code> con <code>least/greatest</code>. No vacía la tabla.</td>
+</tr>
+<tr>
+<td><strong><code>blue_green</code></strong> (prod segura)</td>
+<td><code>blue_green_replace</code></td>
+<td>carga en <code>hexagon_new</code> y hace <strong>SWAP atómico por rename</strong>; la app lee <code>hexagon</code> durante toda la carga (sin downtime).</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Bundle por clases</strong> (<code>bundle_service</code>): subir máster drag-and-drop → <strong>plan</strong> (lee solo el
+  footer, clasifica columnas contra <code>parquet_column</code>) → <strong>apply</strong> protegido por <strong>advisory
+  lock</strong> <code>pg_try_advisory_lock</code> (single-flight anti-OOM), merge outer por <code>h3_index</code> de a un
+  parquet con <code>malloc_trim</code> (libera RSS), ruteo por clase (<code>global</code>→score_general,
+  <code>criterio/subcriterio</code>→scores, <code>variable_*/alerta</code>→variables, <code>excluyente</code>→tipo_celda). El
+  camino más pesado corre <strong>aislado en subproceso</strong> (<code>apply_detached</code> con <code>RLIMIT_AS</code> =
+  <code>INGEST_MEM_CAP_MB</code>).</li>
+<li><strong>Catálogo</strong> (<code>metadata_ingest</code>): InfoVariables.xlsx → jerarquía <code>dimension→criterio→
+  subcriterio→variable</code>, <strong>concilia cada variable por <code>master_id</code></strong>, rutea filas REG… a
+  <code>catalog_norma</code>. <strong>Económico</strong> (<code>economic_ingest</code>): bundle macro → tabla long
+  <code>economic_series</code> + <code>economic_panel</code>.</li>
+<li><strong>Después de ingerir:</strong> <code>VACUUM ANALYZE hexagon;</code> (para <code>reltuples</code>/visibility map) y
+  verificar con <strong><code>GET /api/admin/db/overview</code></strong> (columnas por tabla + diff h3 ↔ catálogo ↔
+  máster).</li>
+</ul>
+<hr />
+<h2 id="9-backend-endpoints">9. Backend — endpoints</h2>
+<p>Guards: <code>require_user</code> (JWT <strong>o</strong> modo BFF interno), <code>require_admin</code> (rol <code>admin</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Método · Ruta</th>
+<th>Auth</th>
+<th>Qué hace</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/health</code></td>
+<td>—</td>
+<td>estado + <code>index_ready</code></td>
+</tr>
 <tr>
 <td><code>GET /tiles/warmup</code></td>
-<td>metadatos + conteo <strong>estimado</strong> (<code>reltuples</code>, no <code>count(*)</code>)</td>
-<td>µs</td>
+<td>abierto</td>
+<td>metadatos (conteo <strong>estimado</strong> <code>reltuples</code>, no <code>count(*)</code>)</td>
 </tr>
 <tr>
-<td><code>GET /tiles/variables</code></td>
-<td>catálogo (meta + <code>catalog_variable</code>)</td>
-<td>&lt;1 ms</td>
-</tr>
-<tr>
-<td><code>GET /tiles/{z}/{x}/{y}</code></td>
-<td>tile del grid (bbox → agregación por zoom, streaming)</td>
-<td>ms</td>
+<td><code>GET /tiles/variables</code> · <code>/counts</code></td>
+<td>user</td>
+<td>catálogo con etiquetas reales · conteos</td>
 </tr>
 <tr>
 <td><code>GET /tiles/detail/{h3}</code></td>
+<td>user</td>
 <td>detalle de un hex (PK)</td>
-<td>0,1 ms</td>
 </tr>
 <tr>
-<td><code>POST /tiles/area</code></td>
-<td>informe: hexes del área (score/dimensiones/variables + ponderadas)</td>
-<td>ms</td>
-</tr>
-<tr>
-<td><code>POST /tiles/variable</code> · <code>/variables-bulk</code></td>
-<td>capa(s) de variable por bbox (bulk = N códigos en 1 scan)</td>
-<td>el más pesado</td>
+<td><code>GET /tiles/{z}/{x}/{y}</code></td>
+<td>user</td>
+<td>tile XYZ agregado al zoom (<code>Cache-Control 1h</code>)</td>
 </tr>
 <tr>
 <td><code>GET /tiles/excluded</code></td>
+<td>user</td>
 <td>capa completa de excluidos (índice parcial + caché TTL)</td>
-<td>ms</td>
 </tr>
 <tr>
-<td><code>GET /api/admin/db/overview</code></td>
-<td>verificación de ingesta (admin)</td>
-<td>—</td>
+<td><code>POST /tiles/area</code></td>
+<td>user</td>
+<td><strong>informe</strong>: hexes del área con score/dimensiones/variables</td>
 </tr>
 <tr>
-<td><code>GET /api/_debug/stats</code> · <code>/_debug/inflight</code></td>
-<td>RAM/swap/in-flight (gate <code>DEBUG_INFLIGHT=1</code>)</td>
-<td>diagnóstico</td>
+<td><code>POST /tiles/variable</code> · <code>/variables-bulk</code> · <code>/heatmap/area</code></td>
+<td>user</td>
+<td>capa(s) de variable por bbox (bulk = N códigos en 1 scan)</td>
+</tr>
+<tr>
+<td><code>GET/POST/DELETE /historico[/{id}]</code></td>
+<td>user</td>
+<td>histórico del usuario (rotación <code>MAX_HISTORIAL_PER_USER</code>)</td>
+</tr>
+<tr>
+<td><code>/admin/catalog/*</code></td>
+<td>user (lee) / admin (escribe)</td>
+<td>variables, datasets, normas, escenarios, turbinas, jerarquía, metadatos, económico, <code>config/{key}</code></td>
+</tr>
+<tr>
+<td><code>/admin/master/*</code></td>
+<td>admin</td>
+<td>estado / lanzar-programar actualización de máster</td>
+</tr>
+<tr>
+<td><code>/admin/bundle/*</code></td>
+<td>admin</td>
+<td>subir/plan/columns/apply/chunks/finalize de la ingesta por clases</td>
+</tr>
+<tr>
+<td><code>GET /admin/db/overview</code></td>
+<td>admin</td>
+<td>verificación de ingesta (columnas + tríada h3/catálogo/máster)</td>
+</tr>
+<tr>
+<td><code>GET /api/_debug/stats</code> · <code>/inflight</code></td>
+<td>gate <code>DEBUG_INFLIGHT=1</code></td>
+<td>RAM/swap/in-flight (lo consume <code>loadtest.py</code>)</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Anti-OOM / concurrencia:</strong>
-- Streaming (<code>stream_results</code>, <code>yield_per</code>) — la RAM no escala con el dataset.
-- Pool explícito (<code>DB_POOL_SIZE</code>=5 + <code>DB_MAX_OVERFLOW</code>=15 = <strong>20/worker</strong>) + cap de
-  threadpool anyio (<code>APP_THREAD_LIMIT</code>=18). Gunicorn <strong>2 workers</strong>, <code>--timeout 120</code>.
-- Trazabilidad: <code>TRACE_REQUESTS</code>, <code>INFLIGHT_WARN</code>, <code>SLOW_REQUEST_MS</code> (logs de saturación).</p>
+<p><strong>Anti-OOM / concurrencia:</strong> streaming (<code>yield_per=5000</code>) · agregación por <code>res</code> · pool
+explícito (20/worker) · <strong>cap del threadpool anyio</strong> (<code>APP_THREAD_LIMIT=18 ≤ 20</code>) para que
+los endpoints hagan cola en vez de reventar el pool · gunicorn <strong>2 workers</strong> · <code>malloc_trim</code>
+tras lotes · ingesta pesada aislada. Trazabilidad: <code>TRACE_REQUESTS</code>/<code>INFLIGHT_WARN</code>/<code>SLOW_REQUEST_MS</code>.</p>
 <hr />
-<h2 id="7-capacidad-medida-con-toolsloadtestpy">7. Capacidad (medida con <code>tools/loadtest.py</code>)</h2>
-<p>Server 2 workers / ~2 GB. Techo útil ≈ <strong>25 usuarios concurrentes</strong> explorando.
-Evidencia: <code>docs/testing/benchmark-carga-h3-2026-09-30.md</code>.</p>
+<h2 id="10-base-de-datos">10. Base de datos</h2>
+<table>
+<thead>
+<tr>
+<th>Tabla</th>
+<th>Rol</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hexagon</code></td>
+<td>malla res 8: <code>h3_index</code> (PK), <code>score_general</code>, <code>tipo_celda</code>, <code>lat</code>/<code>lng</code> (idx), <code>variables</code> + <code>scores</code> (JSONB), <code>emplazamiento</code> (idx)</td>
+</tr>
+<tr>
+<td><code>hexagon_meta</code></td>
+<td>rango min–max por variable (normalización)</td>
+</tr>
+<tr>
+<td><code>hexagon_variables_pon</code></td>
+<td>ponderadas por hex (score por dimensión del informe)</td>
+</tr>
+<tr>
+<td><code>catalog_variable</code> / <code>_norma</code> / <code>_escenario</code> / <code>_turbine</code></td>
+<td>catálogo editable de admin</td>
+</tr>
+<tr>
+<td><code>catalog_dimension</code> / <code>_criterio</code> / <code>_subcriterio</code></td>
+<td>jerarquía del modelo</td>
+</tr>
+<tr>
+<td><code>parquet_column</code> / <code>column_mapping</code></td>
+<td>registro de columnas de la máster / mapeos de ingesta</td>
+</tr>
+<tr>
+<td><code>economic_panel</code> / <code>economic_series</code></td>
+<td>dimensión económica (tabla long)</td>
+</tr>
+<tr>
+<td><code>app_config</code></td>
+<td>clave→JSON (p.ej. <code>support_email</code>, <code>report_calc_text</code>)</td>
+</tr>
+<tr>
+<td><code>informe</code> / <code>master_version</code> / <code>app_user</code> / <code>data_source</code></td>
+<td>histórico / versiones / usuarios / fuentes</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Consultas</strong> (<code>hexagon_query_repository</code>): por celda (IN sobre PK, streaming), por bbox
+  (btree lat/lng), <code>excluded_cells</code> (<code>tipo_celda='excluida' OR score_general&lt;0</code>), <code>count_estimate</code>
+  (<code>pg_class.reltuples</code>), <code>is_ready</code> (EXISTS O(1)).</li>
+<li><strong>Migraciones:</strong> Alembic <code>0001</code>→<code>0015</code> (ver Manual de Instalación §5). Última:
+  <code>0015_hexagon_excluded_index</code> (índice parcial para <code>/tiles/excluded</code>). En prod <code>alembic
+  upgrade head</code>.</li>
+<li><strong>Fase 2 (propuesta):</strong> rediseño con <strong>h3-pg</strong> (PK <code>h3index</code> BIGINT), partir el JSONB fuera
+  del camino caliente, columnas padre H3 y vistas materializadas por resolución para
+  <code>variables-bulk</code> (sube el cache-hit, hoy ~74 %, y el techo de concurrencia).</li>
+</ul>
+<hr />
+<h2 id="11-seguridad-y-autenticacion">11. Seguridad y autenticación</h2>
+<ul>
+<li><strong>Front (Auth.js / NextAuth v5):</strong> provider Keycloak <strong>custom</strong> (reescritura de issuer para
+  AccuWeb). El <code>jwt</code> callback persiste <code>roles</code> (de <code>realm_access.roles</code>) y refresca el token;
+  el <code>session</code> expone <strong>solo</strong> <code>roles</code>/<code>sub</code>/<code>error</code> (no tokens). <code>SessionGuard</code> cierra sesión
+  si falla el refresh.</li>
+<li><strong>Guard de admin triple:</strong> <code>middleware.ts</code> (redirect) + <code>admin/layout.tsx</code> (server) +
+  rutas BFF admin (403 si no <code>admin</code>). <code>useIsAdmin()</code> es solo UI.</li>
+<li><strong>Registro (ADR-012):</strong> <code>/api/auth/register</code> → Keycloak <code>/registrations</code> con <code>state</code> CSRF;
+  el callback hace token-exchange + logout federado y <strong>nunca</strong> crea sesión NextAuth. <code>kc-logout</code>
+  = logout federado. Gestión de usuarios usa la <strong>Keycloak Admin API</strong> (no FastAPI);
+  "eliminar" = <strong>deshabilitar</strong> (soft). Notificación de promoción a admin vía <strong>SendGrid</strong>.</li>
+<li><strong>Backend (<code>keycloak_guard</code>):</strong> <code>require_user</code> es <strong>dual</strong> — (a) modo BFF: si
+  <code>X-Internal-Secret</code> coincide con <code>INTERNAL_API_SECRET</code>, toma identidad de <code>X-User-*</code> sin
+  validar JWT; (b) si no, valida el <code>Bearer</code> JWT contra el JWKS (firma RS256 + issuer;
+  <code>verify_aud=False</code>). <code>require_admin</code> exige rol. CORS restringido con <code>CORS_ORIGINS</code>.</li>
+<li><strong>Datos:</strong> backend = real o vacío. Credenciales fuera del repo.</li>
+</ul>
+<hr />
+<h2 id="12-capacidad-medida-con-toolsloadtestpy">12. Capacidad (medida con <code>tools/loadtest.py</code>)</h2>
+<p>Server 2 workers / ~2 GB. Techo útil ≈ <strong>25 usuarios concurrentes</strong> explorando (evidencia:
+<code>docs/testing/benchmark-carga-h3-2026-09-30.md</code>).</p>
 <table>
 <thead>
 <tr>
@@ -225,25 +421,11 @@ Evidencia: <code>docs/testing/benchmark-carga-h3-2026-09-30.md</code>.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>detail</code></td>
+<td><code>detail</code> / <code>area</code> / <code>variables</code></td>
 <td>~100</td>
 <td>~50</td>
 <td>app (2 workers)</td>
-<td>1 hex (~0,7 KB)</td>
-</tr>
-<tr>
-<td><code>area</code></td>
-<td>~100</td>
-<td>~50</td>
-<td>app</td>
-<td>20–300 hexes (~0,06–0,22 MB)</td>
-</tr>
-<tr>
-<td><code>variables</code></td>
-<td>~100</td>
-<td>~50</td>
-<td>app</td>
-<td>62 filas meta</td>
+<td>1 hex / 20–300 hexes / meta</td>
 </tr>
 <tr>
 <td><code>warmup</code></td>
@@ -261,109 +443,28 @@ Evidencia: <code>docs/testing/benchmark-carga-h3-2026-09-30.md</code>.</p>
 </tr>
 </tbody>
 </table>
-<p><strong>Regla:</strong> ~1 worker ≈ 18 operaciones de BD concurrentes por cada ~1 GB de RAM.
-<code>variables-bulk</code> es el más caro → el front acota <strong>bbox + resolución</strong>, <strong>cachea de forma
-acumulativa</strong> (ocultar una capa no re-pide) y <strong>aborta</strong> peticiones en vuelo al cambiar de
-capas/salir (evita apilamiento que satura el back).</p>
+<p><strong>Regla:</strong> <code>2 workers × APP_THREAD_LIMIT(18) = 36</code> operaciones de BD concurrentes (de ahí el
+techo). Más capacidad = más workers (necesita RAM) o escalar; respetar
+<code>APP_THREAD_LIMIT ≤ DB_POOL_SIZE+DB_MAX_OVERFLOW</code> y <code>(pool)×workers ≤ max_connections</code>.</p>
 <hr />
-<h2 id="8-base-de-datos">8. Base de datos</h2>
-<table>
-<thead>
-<tr>
-<th>Tabla</th>
-<th>Rol</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>hexagon</code></td>
-<td>malla res 8: <code>h3_index</code> (PK), <code>score_general</code>, <code>tipo_celda</code>, <code>emplazamiento</code>, <code>lat</code>, <code>lng</code>, <code>variables</code> (JSONB)</td>
-</tr>
-<tr>
-<td><code>hexagon_meta</code></td>
-<td>rango min–max por variable (normalización)</td>
-</tr>
-<tr>
-<td><code>hexagon_variables_pon</code></td>
-<td>valores ponderados por hex (para "descargar crudos")</td>
-</tr>
-<tr>
-<td><code>catalog_variable</code> / <code>catalog_norma</code> / <code>catalog_escenario</code> / <code>catalog_turbine</code></td>
-<td>catálogo editable de admin</td>
-</tr>
-<tr>
-<td><code>parquet_column</code></td>
-<td>registro de columnas de la máster (nombre ↔ base_code)</td>
-</tr>
-<tr>
-<td><code>app_config</code></td>
-<td>clave→JSON editable (p.ej. <code>support_email</code>, <code>report_calc_text</code>)</td>
-</tr>
-<tr>
-<td><code>informe</code></td>
-<td>histórico de informes por usuario (<code>MAX_HISTORIAL_PER_USER</code>)</td>
-</tr>
-<tr>
-<td><code>app_user</code> / <code>master_version</code></td>
-<td>usuarios / versiones de la máster</td>
-</tr>
-</tbody>
-</table>
-<ul>
-<li><strong>Migraciones:</strong> Alembic (<code>migrations/versions/</code>). En dev <code>init_db</code> crea tablas; en prod
-  <code>alembic upgrade head</code>. Última: <code>0015_hexagon_excluded_index</code> (índice parcial para
-  <code>/tiles/excluded</code>).</li>
-<li><strong>Rendimiento Fase 1 (hecho):</strong> <code>warmup</code> con estimado <code>reltuples</code>; caché en proceso de
-  excluidos (<code>EXCLUDED_CACHE_TTL</code>); índice parcial.</li>
-<li><strong>Fase 2 (propuesta de rediseño h3-pg):</strong> extensión H3 de Postgres con PK <code>h3index</code>
-  (BIGINT), partir el JSONB fuera del camino caliente, columnas padre H3 y vistas
-  materializadas por resolución para <code>variables-bulk</code>. Objetivo: subir el cache-hit (hoy ~74 %)
-  y el techo de concurrencia.</li>
-</ul>
-<hr />
-<h2 id="9-seguridad">9. Seguridad</h2>
-<ul>
-<li><strong>OIDC/Keycloak:</strong> login en el front (Auth.js); el backend <strong>verifica</strong> el JWT contra el
-  JWKS (<code>KEYCLOAK_JWKS_URL</code>), audiencia (<code>KEYCLOAK_AUDIENCE</code>) y algoritmos (<code>JWT_ALGORITHMS</code>).</li>
-<li><strong>BFF privado:</strong> el backend no es público; solo acepta al front vía <code>INTERNAL_API_SECRET</code>
-  (+ identidad reenviada). CORS restringido con <code>CORS_ORIGINS</code>.</li>
-<li><strong>Roles:</strong> endpoints de datos exigen usuario autenticado; <code>/admin/*</code> exige <code>admin</code>.</li>
-<li><strong>Datos:</strong> backend = real o vacío (nunca placeholder). Credenciales fuera del repo
-  (gestor de secretos).</li>
-</ul>
-<hr />
-<h2 id="10-observabilidad-operacion">10. Observabilidad / operación</h2>
-<ul>
-<li><strong><code>tools/loadtest.py</code></strong> — carga por endpoint + <code>EXPLAIN</code>/salud BD (<code>--db-url</code>).</li>
-<li><strong><code>/api/_debug/stats</code> · <code>/_debug/inflight</code></strong> (<code>DEBUG_INFLIGHT=1</code>) — RAM, swap, in-flight.</li>
-<li><strong>Red de seguridad de memoria:</strong> swap + earlyoom (ver Manual de Instalación §7).</li>
-<li><strong>Runbook de producción</strong> (front AccuWeb): <code>docs/ops/accuweb-runbook.md</code>.</li>
-<li><strong>Documento técnico de comportamiento/config:</strong> <code>docs/ops/documento-tecnico-comportamiento-herramientas-config.md</code>.</li>
-</ul>
-<hr />
-<h2 id="11-configuracion-variables-de-entorno-referencia-de-comportamiento">11. Configuración — variables de entorno (referencia de comportamiento)</h2>
-<p>Qué <strong>cambia en el sistema</strong> cada variable (el <code>.env</code> completo con ejemplos está en
-<code>docs/manual-instalacion.md</code>).</p>
+<h2 id="13-configuracion-variables-de-entorno-efecto-tecnico">13. Configuración — variables de entorno (efecto técnico)</h2>
+<p>El <code>.env</code> completo con ejemplos está en <code>docs/manual-instalacion.md</code>. Aquí, el <strong>efecto</strong>:</p>
 <h3 id="frontend">Frontend</h3>
 <table>
 <thead>
 <tr>
 <th>Variable</th>
-<th>Efecto técnico</th>
+<th>Efecto</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>NEXT_PUBLIC_USE_BACKEND</code></td>
-<td><strong>El interruptor de modo.</strong> <code>true</code> → <code>USE_BACKEND=true</code>, <code>USE_PLACEHOLDER_FALLBACK=false</code> → dato real o vacío. <code>false</code> → template (placeholders deterministas, sin API). Deriva también <code>SHOW_PLACEHOLDER_EXCLUDED</code>.</td>
+<td><strong>interruptor de modo</strong> (backend real vs template).</td>
 </tr>
 <tr>
-<td><code>BACKEND_URL</code></td>
-<td>destino interno del proxy <code>/api/*</code> (servidor Next → FastAPI).</td>
-</tr>
-<tr>
-<td><code>NEXT_PUBLIC_API_URL</code></td>
-<td>URL pública de la API visible al cliente.</td>
+<td><code>BACKEND_URL</code> / <code>NEXT_PUBLIC_API_URL</code></td>
+<td>destino del proxy <code>/api/*</code> (servidor) / URL de API (cliente).</td>
 </tr>
 <tr>
 <td><code>INTERNAL_API_SECRET</code></td>
@@ -371,19 +472,19 @@ capas/salir (evita apilamiento que satura el back).</p>
 </tr>
 <tr>
 <td><code>AUTH_SECRET</code> / <code>AUTH_URL</code> / <code>AUTH_TRUST_HOST</code></td>
-<td>sesión de Auth.js (firma, URL, confianza de host).</td>
+<td>sesión Auth.js.</td>
 </tr>
 <tr>
-<td><code>AUTH_KEYCLOAK_ID</code> / <code>_SECRET</code> / <code>_ISSUER</code></td>
-<td>cliente OIDC (login server-side).</td>
+<td><code>AUTH_KEYCLOAK_ID</code>/<code>_SECRET</code>/<code>_ISSUER</code></td>
+<td>cliente OIDC (servidor).</td>
 </tr>
 <tr>
-<td><code>NEXT_PUBLIC_KEYCLOAK_URL</code> / <code>_REALM</code> / <code>_ISSUER</code></td>
+<td><code>NEXT_PUBLIC_KEYCLOAK_URL</code>/<code>_REALM</code>/<code>_ISSUER</code></td>
 <td>Keycloak visible al cliente (logout/registro).</td>
 </tr>
 <tr>
-<td><code>SENDGRID_API_KEY</code> / <code>_FROM_EMAIL</code></td>
-<td>correos (p.ej. notificar al otorgar admin).</td>
+<td><code>SENDGRID_API_KEY</code>/<code>_FROM_EMAIL</code></td>
+<td>correos (p.ej. promoción a admin).</td>
 </tr>
 </tbody>
 </table>
@@ -393,7 +494,7 @@ capas/salir (evita apilamiento que satura el back).</p>
 <tr>
 <th>Variable</th>
 <th>Def.</th>
-<th>Efecto técnico</th>
+<th>Efecto</th>
 </tr>
 </thead>
 <tbody>
@@ -405,108 +506,85 @@ capas/salir (evita apilamiento que satura el back).</p>
 <tr>
 <td><code>PARQUET_PATH</code></td>
 <td><code>data/…parquet</code></td>
-<td>ubicación del parquet maestro a ingerir.</td>
+<td>parquet maestro a ingerir.</td>
 </tr>
 <tr>
 <td><code>HEXAGON_INGEST</code></td>
 <td><code>copy</code></td>
-<td>método de ingesta: <code>copy</code> (COPY atómico, rápido) | <code>orm</code> (lotes, portable).</td>
+<td>método de ingesta (<code>copy</code>/<code>orm</code>).</td>
 </tr>
 <tr>
 <td><code>INGEST_MEM_CAP_MB</code></td>
 <td>—</td>
-<td>tope de RAM del proceso de ingesta.</td>
+<td><code>RLIMIT_AS</code> de la ingesta aislada (<code>apply_detached</code>).</td>
 </tr>
 <tr>
 <td><code>OFFSHORE_VAR</code></td>
 <td><code>""</code></td>
-<td>columna mar(1)/tierra(0); vacío → el tile no expone <code>off</code>.</td>
+<td>columna mar/tierra; vacío = no se expone <code>off</code>.</td>
 </tr>
 <tr>
-<td><code>KEYCLOAK_ISSUER</code> / <code>_JWKS_URL</code> / <code>_AUDIENCE</code></td>
-<td>— / derivado / <code>account</code></td>
-<td>verificación del JWT (issuer, claves públicas, audiencia).</td>
-</tr>
-<tr>
-<td><code>JWT_ALGORITHMS</code></td>
-<td><code>RS256</code></td>
-<td>algoritmos aceptados del JWT.</td>
+<td><code>KEYCLOAK_ISSUER</code>/<code>_JWKS_URL</code>/<code>_AUDIENCE</code> · <code>JWT_ALGORITHMS</code></td>
+<td>/ derivado / <code>account</code> / <code>RS256</code></td>
+<td>verificación del JWT.</td>
 </tr>
 <tr>
 <td><code>INTERNAL_API_SECRET</code></td>
 <td><code>""</code></td>
-<td>exige el secreto del BFF; vacío = modo interno deshabilitado.</td>
+<td>exige el secreto del BFF; vacío = BFF off.</td>
 </tr>
 <tr>
 <td><code>CORS_ORIGINS</code></td>
 <td><code>localhost:3000</code></td>
-<td>orígenes permitidos (coma-separado).</td>
+<td>orígenes permitidos (CSV).</td>
 </tr>
 <tr>
 <td><code>MAX_HISTORIAL_PER_USER</code></td>
 <td>50</td>
-<td>tope de informes guardados por usuario.</td>
+<td>rotación del histórico.</td>
 </tr>
 <tr>
-<td><code>DB_POOL_SIZE</code> / <code>DB_MAX_OVERFLOW</code></td>
-<td>5 / 15</td>
-<td>conexiones persistentes + ráfaga <strong>por worker</strong> (20 máx).</td>
-</tr>
-<tr>
-<td><code>DB_POOL_TIMEOUT</code> / <code>DB_POOL_RECYCLE</code></td>
-<td>30 / 1800</td>
-<td>espera por conexión / reciclaje (s).</td>
+<td><code>DB_POOL_SIZE</code>/<code>DB_MAX_OVERFLOW</code>/<code>DB_POOL_TIMEOUT</code>/<code>DB_POOL_RECYCLE</code></td>
+<td>5/15/30/1800</td>
+<td>pool por worker.</td>
 </tr>
 <tr>
 <td><code>APP_THREAD_LIMIT</code></td>
 <td>18</td>
-<td>threads anyio por worker = <strong>operaciones de BD concurrentes</strong> (techo de carga).</td>
+<td>threads anyio/worker = ops BD concurrentes (techo).</td>
 </tr>
 <tr>
 <td><code>EXCLUDED_CACHE_TTL</code></td>
 <td>300</td>
-<td>TTL (s) de la caché en proceso de <code>/tiles/excluded</code>.</td>
+<td>TTL caché de <code>/tiles/excluded</code>.</td>
 </tr>
 <tr>
-<td><code>DEBUG_INFLIGHT</code></td>
-<td>off</td>
-<td><code>=1</code> activa <code>/api/_debug/stats</code> e <code>/inflight</code>.</td>
+<td><code>DEBUG_INFLIGHT</code> / <code>TRACE_REQUESTS</code> / <code>INFLIGHT_WARN</code> / <code>SLOW_REQUEST_MS</code></td>
+<td>off/0/12/3000</td>
+<td>diagnóstico.</td>
 </tr>
 <tr>
-<td><code>TRACE_REQUESTS</code></td>
-<td>0</td>
-<td><code>=1</code> loguea cada request (entra/sale + duración).</td>
-</tr>
-<tr>
-<td><code>INFLIGHT_WARN</code></td>
-<td>12</td>
-<td>WARNING si ≥N peticiones en vuelo (detecta apilamiento).</td>
-</tr>
-<tr>
-<td><code>SLOW_REQUEST_MS</code></td>
-<td>3000</td>
-<td>loguea las peticiones más lentas que N ms.</td>
+<td><code>RUN_INGEST</code></td>
+<td>—</td>
+<td>si <code>true</code>, el entrypoint ingiere el parquet al arrancar.</td>
 </tr>
 </tbody>
 </table>
 <blockquote>
-<p><strong>Nota sobre el "use" del backend:</strong> el backend <strong>no tiene</strong> un interruptor
-template/real — siempre sirve dato real o vacío. El modo lo decide el <strong>front</strong> con
-<code>NEXT_PUBLIC_USE_BACKEND</code>. Lo que ajusta el comportamiento del backend es la tabla de
-arriba (pool, threadpool, ingesta, caché, trazas) — no un flag de modo.</p>
+<p>El <strong>backend no tiene</strong> flag template/real: siempre sirve dato real o vacío. El modo lo
+decide el <strong>front</strong> con <code>NEXT_PUBLIC_USE_BACKEND</code>. Proceso: <code>gunicorn -w 2 --timeout 120</code>
+(fijado en el Dockerfile).</p>
 </blockquote>
-<h3 id="gunicorn-proceso-fijado-en-el-dockerfile-no-por-env">Gunicorn / proceso (fijado en el <code>Dockerfile</code>, no por env)</h3>
-<p><code>gunicorn main:app -k uvicorn.workers.UvicornWorker -w 2 -b 0.0.0.0:8000 --timeout 120</code>
-→ <strong>2 workers</strong> × <code>APP_THREAD_LIMIT</code> (18) = <strong>36 operaciones de BD concurrentes</strong> (el techo
-de ~25 usuarios explorando). Para más capacidad: más workers (necesita RAM) o escalar.</p>
 <hr />
-<h2 id="12-referencias">12. Referencias</h2>
+<h2 id="14-observabilidad-referencias">14. Observabilidad / referencias</h2>
 <ul>
-<li>Benchmark de carga: <code>docs/testing/benchmark-carga-h3-2026-09-30.md</code></li>
-<li>Comportamiento/herramientas/config: <code>docs/ops/documento-tecnico-comportamiento-herramientas-config.md</code></li>
-<li>Runbook AccuWeb: <code>docs/ops/accuweb-runbook.md</code></li>
-<li>ADRs: <code>docs/adr/</code></li>
-<li>Instalación y variables de entorno completas: <code>docs/manual-instalacion.md</code></li>
+<li><strong><code>tools/loadtest.py</code></strong> (carga por endpoint + <code>EXPLAIN</code>/salud BD con <code>--db-url</code>) ·
+  <code>tools/ingest_parquet.py</code> · <code>tools/ingest_bundle.py</code> · <code>tools/inspect_parquet(s).py</code>.</li>
+<li><strong><code>/api/_debug/stats</code> · <code>/inflight</code></strong> (<code>DEBUG_INFLIGHT=1</code>).</li>
+<li>Red de seguridad de memoria: swap + earlyoom (Manual de Instalación §7).</li>
+<li>Benchmark: <code>docs/testing/benchmark-carga-h3-2026-09-30.md</code> · Comportamiento/config:
+  <code>docs/ops/documento-tecnico-comportamiento-herramientas-config.md</code> · Runbook AccuWeb:
+  <code>docs/ops/accuweb-runbook.md</code> · Instalación y <code>.env</code>: <code>docs/manual-instalacion.md</code> · ADRs: <code>docs/adr/</code>.</li>
 </ul><hr><h1 id="manual-de-instalacion-vento">Manual de Instalación — Vento</h1>
 <blockquote>
 <p>Puesta en marcha de <strong>frontend</strong>, <strong>backend</strong>, <strong>base de datos</strong> e <strong>identidad</strong>,
@@ -548,6 +626,14 @@ Fecha: 2026-10-01 · Autor: Mavalan Software</p>
 </tbody>
 </table>
 <p>Orden recomendado: <strong>BD → Keycloak → Backend (+ ingesta) → Frontend</strong>.</p>
+<h3 id="opcion-rapida-docker-compose-dev-todo-en-uno">Opción rápida — <code>docker-compose</code> (dev, todo en uno)</h3>
+<p>El backend trae un <code>docker-compose.yml</code> que levanta <strong>Postgres + Keycloak + backend</strong>:</p>
+<pre><code class="language-bash">cd backend/AppVento---Backend
+docker compose up -d        # db (postgres:16), keycloak (26.1, importa deploy/keycloak/), app (:8000)
+# el realm se importa desde deploy/keycloak/vento-realm.json; la BD queda en el volumen pgdata
+</code></pre>
+<p>Para producción, sigue las secciones 1–8 (servicios separados). Artefactos de despliegue:
+<code>deploy/vento-backend.service</code> (systemd), <code>deploy/keycloak/</code> (realm), <code>DEPLOY.md</code>.</p>
 <hr />
 <h2 id="1-base-de-datos-postgresql">1. Base de datos (PostgreSQL)</h2>
 <pre><code class="language-bash">createdb NOMBRE_BD
@@ -605,6 +691,9 @@ DB_POOL_RECYCLE=1800      # recicla conexiones viejas (s)
 # ── Concurrencia / caché ──
 APP_THREAD_LIMIT=18       # threads anyio por worker (consultas BD concurrentes)
 EXCLUDED_CACHE_TTL=300    # TTL (s) de la caché de /tiles/excluded
+
+# ── Ingesta al arrancar (entrypoint) ──
+RUN_INGEST=              # =true → el docker-entrypoint.sh ejecuta tools.ingest_parquet (ingesta destructiva) antes de gunicorn
 
 # ── Observabilidad (diagnóstico; dejar off en prod salvo incidente) ──
 DEBUG_INFLIGHT=           # =1 activa /api/_debug/stats e /inflight
@@ -691,6 +780,14 @@ npm run build &amp;&amp; npm start  # producción
 <code>NEXT_PUBLIC_USE_BACKEND</code>). Despliegue en AccuWeb: ver <code>docs/ops/accuweb-runbook.md</code>.</p>
 <hr />
 <h2 id="5-migraciones-alembic">5. Migraciones (Alembic)</h2>
+<p>Historial (<code>migrations/versions/</code>): <code>0001</code> esquema inicial (app_user, hexagon, informe) ·
+<code>0002</code> hexagon_meta + índices geo · <code>0003</code> catálogo (variables/normas/escenarios) ·
+<code>0004</code> master_version · <code>0005</code> campos reales de catalog_variable · <code>0006</code> económico +
+turbinas · <code>0007</code> data_source · <code>0008</code> ingesta por clases (parquet_column + scores/
+emplazamiento) · <code>0009</code> jerarquía (dimension/criterio/subcriterio) + column_mapping ·
+<code>0010</code> hexagon_variables_pon · <code>0011</code> economic_series/panel · <code>0012</code> campos InfoVariables ·
+<code>0013</code> app_config · <code>0014</code> catalog_variable.metodo_calculo · <strong><code>0015</code> índice parcial
+ix_hexagon_excluded</strong>.</p>
 <pre><code class="language-bash">cd backend/AppVento---Backend
 alembic upgrade head        # aplica todas (incluye 0015 índice parcial de excluidos)
 # Cero-downtime sobre tabla ya cargada (opcional): crear el índice CONCURRENTLY a mano
@@ -725,7 +822,20 @@ sudo systemctl enable --now earlyoom
 (Fase 2) + más RAM/workers.</p>
 </blockquote>
 <hr />
-<h2 id="8-ramas-despliegue">8. Ramas / despliegue</h2>
+<h2 id="8-herramientas-ingesta-diagnostico">8. Herramientas (ingesta / diagnóstico)</h2>
+<p>Desde <code>backend/AppVento---Backend/</code>:</p>
+<pre><code class="language-bash">python -m tools.ingest_parquet [ruta.parquet]   # ingesta DESTRUCTIVA del parquet → hexagon
+python -m tools.ingest_bundle --plan            # plan de ingesta del bundle (clasifica columnas)
+python -m tools.ingest_bundle                   # ingesta destructiva del bundle (blue-green)
+python -m tools.ingest_docs --list              # fuentes registradas (master/escenarios…)
+python -m tools.inspect_parquet  ruta.parquet   # estructura de UN .h3.parquet
+python -m tools.inspect_parquets carpeta/       # árbol + esquema de un bundle (solo footer)
+python tools/loadtest.py --base https://TU_DOMINIO --cookie &quot;…&quot; [--db-url &quot;…&quot;]  # carga + EXPLAIN
+</code></pre>
+<p>La reingesta controlada es por consola (no hay endpoint que reingiera seeds y pise datos
+curados). El bundle pesado corre aislado (<code>apply_detached</code>, <code>RLIMIT_AS = INGEST_MEM_CAP_MB</code>).</p>
+<hr />
+<h2 id="9-ramas-despliegue">9. Ramas / despliegue</h2>
 <table>
 <thead>
 <tr>

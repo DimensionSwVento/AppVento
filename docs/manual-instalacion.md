@@ -20,6 +20,16 @@
 
 Orden recomendado: **BD → Keycloak → Backend (+ ingesta) → Frontend**.
 
+### Opción rápida — `docker-compose` (dev, todo en uno)
+El backend trae un `docker-compose.yml` que levanta **Postgres + Keycloak + backend**:
+```bash
+cd backend/AppVento---Backend
+docker compose up -d        # db (postgres:16), keycloak (26.1, importa deploy/keycloak/), app (:8000)
+# el realm se importa desde deploy/keycloak/vento-realm.json; la BD queda en el volumen pgdata
+```
+Para producción, sigue las secciones 1–8 (servicios separados). Artefactos de despliegue:
+`deploy/vento-backend.service` (systemd), `deploy/keycloak/` (realm), `DEPLOY.md`.
+
 ---
 
 ## 1. Base de datos (PostgreSQL)
@@ -84,6 +94,9 @@ DB_POOL_RECYCLE=1800      # recicla conexiones viejas (s)
 # ── Concurrencia / caché ──
 APP_THREAD_LIMIT=18       # threads anyio por worker (consultas BD concurrentes)
 EXCLUDED_CACHE_TTL=300    # TTL (s) de la caché de /tiles/excluded
+
+# ── Ingesta al arrancar (entrypoint) ──
+RUN_INGEST=              # =true → el docker-entrypoint.sh ejecuta tools.ingest_parquet (ingesta destructiva) antes de gunicorn
 
 # ── Observabilidad (diagnóstico; dejar off en prod salvo incidente) ──
 DEBUG_INFLIGHT=           # =1 activa /api/_debug/stats e /inflight
@@ -179,6 +192,16 @@ Al cargar, la consola loguea `[VENTO] MODO: BACKEND` o `TEMPLATE` (según
 ---
 
 ## 5. Migraciones (Alembic)
+
+Historial (`migrations/versions/`): `0001` esquema inicial (app_user, hexagon, informe) ·
+`0002` hexagon_meta + índices geo · `0003` catálogo (variables/normas/escenarios) ·
+`0004` master_version · `0005` campos reales de catalog_variable · `0006` económico +
+turbinas · `0007` data_source · `0008` ingesta por clases (parquet_column + scores/
+emplazamiento) · `0009` jerarquía (dimension/criterio/subcriterio) + column_mapping ·
+`0010` hexagon_variables_pon · `0011` economic_series/panel · `0012` campos InfoVariables ·
+`0013` app_config · `0014` catalog_variable.metodo_calculo · **`0015` índice parcial
+ix_hexagon_excluded**.
+
 ```bash
 cd backend/AppVento---Backend
 alembic upgrade head        # aplica todas (incluye 0015 índice parcial de excluidos)
@@ -220,7 +243,24 @@ sudo systemctl enable --now earlyoom
 
 ---
 
-## 8. Ramas / despliegue
+## 8. Herramientas (ingesta / diagnóstico)
+
+Desde `backend/AppVento---Backend/`:
+```bash
+python -m tools.ingest_parquet [ruta.parquet]   # ingesta DESTRUCTIVA del parquet → hexagon
+python -m tools.ingest_bundle --plan            # plan de ingesta del bundle (clasifica columnas)
+python -m tools.ingest_bundle                   # ingesta destructiva del bundle (blue-green)
+python -m tools.ingest_docs --list              # fuentes registradas (master/escenarios…)
+python -m tools.inspect_parquet  ruta.parquet   # estructura de UN .h3.parquet
+python -m tools.inspect_parquets carpeta/       # árbol + esquema de un bundle (solo footer)
+python tools/loadtest.py --base https://TU_DOMINIO --cookie "…" [--db-url "…"]  # carga + EXPLAIN
+```
+La reingesta controlada es por consola (no hay endpoint que reingiera seeds y pise datos
+curados). El bundle pesado corre aislado (`apply_detached`, `RLIMIT_AS = INGEST_MEM_CAP_MB`).
+
+---
+
+## 9. Ramas / despliegue
 | Repo | Trabajo | Producción |
 |------|---------|------------|
 | Front (`Vento`) | `Sprint_4--report_preconig` / `develop` | `deploy-prod` |
