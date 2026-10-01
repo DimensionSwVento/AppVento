@@ -766,6 +766,7 @@ export default function MapView() {
   );
   useEffect(() => {
     let alive = true;
+    const ctrl = new AbortController(); // aborta el bulk en vuelo al cambiar capas / salir (#24)
     // En backend, espera a tener el bbox del viewport antes de pedir (si no, la 1ª
     // carga pediría el país entero → el scan de 5 min que estamos matando).
     if (USE_BACKEND && !viewBox) return;
@@ -789,7 +790,7 @@ export default function MapView() {
     if (USE_BACKEND) {
       // BULK: una sola petición para TODAS las variables de símbolo (1 scan) →
       // acota el bbox y no apila peticiones (era el cuello).
-      fetchVariableLayersBulk(wanted.map((s) => s.variableId), layerRes, viewBox ?? undefined)
+      fetchVariableLayersBulk(wanted.map((s) => s.variableId), layerRes, viewBox ?? undefined, ctrl.signal)
         .then((m) => {
           if (!alive) return;
           const obj: Record<string, MapLayerCell[]> = {};
@@ -814,6 +815,7 @@ export default function MapView() {
     }
     return () => {
       alive = false;
+      ctrl.abort(); // mata el bulk en vuelo (no apilar scans; respiro al back)
     };
   }, [effectiveSymbols, mapDisabledIds, mapNature, layerRes, viewBox]);
 
@@ -947,6 +949,7 @@ export default function MapView() {
   const [extraCells, setExtraCells] = useState<Record<string, string[]>>({});
   useEffect(() => {
     let alive = true;
+    const ctrl = new AbortController(); // aborta el bulk en vuelo al cambiar capas / salir (#24)
     // En backend, espera al bbox del viewport (no pedir el país entero en la 1ª carga).
     if (USE_BACKEND && !viewBox) return;
     // `calor` no usa celdas de área (colorea la rejilla) → no se fetchea aquí.
@@ -961,7 +964,7 @@ export default function MapView() {
     };
     if (USE_BACKEND) {
       // BULK: una sola petición para todas las capas de catálogo (1 scan del bbox).
-      fetchVariableLayersBulk(vars.map((x) => x.id), layerRes, viewBox ?? undefined)
+      fetchVariableLayersBulk(vars.map((x) => x.id), layerRes, viewBox ?? undefined, ctrl.signal)
         .then((m) => {
           if (!alive) return;
           const obj: Record<string, string[]> = {};
@@ -979,6 +982,7 @@ export default function MapView() {
     }
     return () => {
       alive = false;
+      ctrl.abort(); // mata el bulk en vuelo (no apilar scans; respiro al back)
     };
   }, [extraMapVars, layerRes, viewBox]);
 
