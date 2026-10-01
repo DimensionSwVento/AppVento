@@ -142,6 +142,27 @@ export function useInformeHeatmapLayer(
     // reused" → mapa despintado). Mismo patrón que `selectedLayer`.
     const active = heatmapActive && data.length > 0;
     const dim = (activeDimension ?? "general") as string;
+    // #1: score por celda de la MALLA (a la res del zoom). `areaData` viene a res8;
+    // si la malla es más gruesa (zoom alejado), hay que PROMEDIAR las celdas res8
+    // que caen bajo cada celda — antes se hacía `areaData.get(celdaPadre)` y fallaba
+    // → el heatmap se DESPINTABA al alejar. Se calcula una vez por render iterando
+    // `areaData` (acotado a la selección) y agrupando por el padre a la res de malla.
+    const meshRes = data.length ? getResolution(data[0].h) : 8;
+    const scoreByCell = new Map<string, { s: number; n: number }>();
+    if (areaData && !windId) {
+      for (const [h, info] of areaData) {
+        const sc = backendScore(info, dim);
+        if (typeof sc !== "number") continue;
+        const key = getResolution(h) > meshRes ? cellToParent(h, meshRes) : h;
+        const acc = scoreByCell.get(key);
+        if (acc) {
+          acc.s += sc;
+          acc.n += 1;
+        } else {
+          scoreByCell.set(key, { s: sc, n: 1 });
+        }
+      }
+    }
     // Color viridis del hex (o null = transparente). Relleno translúcido (20%),
     // SIN borde (el informe usa solo relleno; el borde se veía como una malla
     // azul sobre el heatmap).
@@ -153,7 +174,8 @@ export function useInformeHeatmapLayer(
         if (v == null || v < WIND_THRESHOLD) return null;
         return viridis(Math.max(0, Math.min(1, v)));
       }
-      const real = backendScore(areaData?.get(d.h), dim);
+      const acc = scoreByCell.get(d.h);
+      const real = acc ? acc.s / acc.n : undefined;
       let t: number;
       if (typeof real === "number") {
         t = real; // score real del backend (0..1): general→score_general, dim→scores[cat]

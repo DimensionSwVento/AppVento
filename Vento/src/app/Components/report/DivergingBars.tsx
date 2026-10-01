@@ -33,13 +33,16 @@ export default function DivergingBars({
     <svg
       viewBox={`0 0 ${width} ${height}`}
       className={className}
+      /* #4: hereda la fuente del informe (el texto SVG sin fontFamily usaba la
+         fuente por defecto del navegador → se veía en "otra fuente"). */
+      style={{ fontFamily: "inherit" }}
       role="img"
       aria-label={`Variables que más influyen: ${bars
         .map((b) => `${b.label} ${b.sube ? "suma" : "resta"}`)
         .join(", ")}`}
     >
       {/* Eje central */}
-      <line x1={cx} y1={padY} x2={cx} y2={height - padY} stroke="#d1d5db" strokeWidth={1} />
+      <line x1={cx} y1={padY} x2={cx} y2={height - padY} stroke="#94a3b8" strokeWidth={1} />
       {bars.map((b, i) => {
         const y = padY + i * (rowH + gap);
         const mid = y + rowH / 2;
@@ -67,17 +70,19 @@ export default function DivergingBars({
             >
               <title>{`${b.label}: ${b.sube ? "suma" : "resta"} idoneidad`}</title>
             </rect>
-            <text
-              x={b.sube ? cx + w + 3 : cx - w - 3}
-              y={mid}
-              fontSize={8}
-              fontWeight={700}
-              fill={color}
-              textAnchor={b.sube ? "start" : "end"}
-              dominantBaseline="middle"
-            >
-              {b.sube ? "↑" : "↓"}
-            </text>
+            {/* #9: triángulo SVG (no el carácter ↑/↓, que en el PDF salía como
+                "punto abstracto" si la fuente no tiene el glifo). */}
+            {b.sube ? (
+              <polygon
+                points={`${cx + w + 7},${mid - 4} ${cx + w + 3},${mid + 3} ${cx + w + 11},${mid + 3}`}
+                fill={color}
+              />
+            ) : (
+              <polygon
+                points={`${cx - w - 7},${mid + 4} ${cx - w - 11},${mid - 3} ${cx - w - 3},${mid - 3}`}
+                fill={color}
+              />
+            )}
           </g>
         );
       })}
