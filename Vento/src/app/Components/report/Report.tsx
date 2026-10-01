@@ -116,8 +116,11 @@ const RADAR_DIMS: HeatmapDimensionId[] = [
 // del cálculo" y las informativas → por eso los cupos son CONSERVADORES, para que
 // ninguna hoja exceda el A4 (1123px) y el export no corte a mitad de fila. Si aún
 // se corta, bajar más estos números (el precio es más hojas, no cortes).
-const FIRST_SHEET_ROWS = 6;
-const CONT_SHEET_ROWS = 11;
+// #3: bajados (6→4, 11→9) porque la 1ª hoja (radar+influyentes+tabla) y la última
+// (resumen+informativas) excedían A4 → el export rebanaba a mitad de fila. Más
+// hojas, pero ninguna tabla cortada.
+const FIRST_SHEET_ROWS = 4;
+const CONT_SHEET_ROWS = 9;
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
