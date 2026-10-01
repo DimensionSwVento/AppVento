@@ -897,8 +897,13 @@ export default function MapView() {
       // Icono ASIGNADO EN ADMIN (iconKey del catálogo, hidratado de BD) renderizado
       // a data-URI con el color de la variable. Fallback al icono estático de
       // `MAP_SYMBOLS` si el catálogo no tiene iconKey.
-      const iconKey = getVariableById(s.variableId)?.iconKey;
-      const iconUrl = iconKey ? iconKeyToDataUri(iconKey, s.color) : s.icon;
+      // #16: SIEMPRE por iconKeyToDataUri (círculo blanco + BORDE GRUESO del color).
+      // Antes, si la variable no tenía `icon_key` ingerido (modo backend), caía a
+      // `s.icon` (circleIcon) que lleva borde BLANCO → el icono salía sin el borde de
+      // color (le pasaba a resguardos indígenas y a toda var sin icon_key en BD). El
+      // fallback de iconKeyToDataUri también pinta el borde de color.
+      const iconKey = getVariableById(s.variableId)?.iconKey || "lucide:MapPin";
+      const iconUrl = iconKeyToDataUri(iconKey, s.color);
       return (
         new IconLayer<MapSymbolPoint>({
           id: `map-symbol-${s.variableId}`,
