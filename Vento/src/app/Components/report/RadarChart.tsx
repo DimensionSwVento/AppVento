@@ -53,7 +53,7 @@ export default function RadarChart({
           key={lv}
           points={polyPoints(() => R * lv)}
           fill="none"
-          stroke="#e5e7eb"
+          stroke="#475569"
           strokeWidth={1}
         />
       ))}
@@ -61,7 +61,7 @@ export default function RadarChart({
       {/* Ejes radiales */}
       {axes.map((_, i) => {
         const [x, y] = point(i, R);
-        return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="#e5e7eb" strokeWidth={1} />;
+        return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="#475569" strokeWidth={1} />;
       })}
 
       {/* Polígono de datos */}
