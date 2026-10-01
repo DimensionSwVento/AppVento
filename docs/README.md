@@ -77,7 +77,7 @@ Leyenda: 🟢 cerrado · 🔨 en curso (Sprint 3) · 🟡 parcial · 🟠 en pro
 | 1 | **Modelo definitivo** (datos + pesos + ecuación) en `.h3.parquet` no entregado | Externo (investigación) | Scores, heatmap, "variables que más influyen" y zonas excluidas siguen en **modo template** (marcadores deterministas) | [entrega-3 §3](../Reportes_Entregas/entrega-3/scope-3-entregado.md) |
 | 2 | **Texto oficial del disclaimer** (aviso legal) | Externo (Secretaría General) | Hoy hay texto template en el modal de inicio y en el informe/PDF | [reportTemplates.ts](../Vento/src/app/Utils/report/reportTemplates.ts) |
 | 3 | **Servidor SMTP / MailerSend** | Externo (cliente) | Bloquea notificación email + recovery password | [ADR-009](adr/ADR-009-notificaciones-email-pendientes-smtp.md) |
-| 4 | **Formato del manual de usuario** sin decidir | Definición conjunta (Mavalan enviará ejemplos) | El manual arranca cuando se decida (walkthrough externo vs. recorrido in-app) | [manual-usuario.md](manual-usuario.md) |
+| 4 | **Formato del manual de usuario** sin decidir | Definición conjunta (Mavalan enviará ejemplos) | El manual arranca cuando se decida (walkthrough externo vs. recorrido in-app) | [manual-usuario.md](manuales/manual-usuario.md) |
 | 5 | **Ambiente de test** caído por migración de dominios/certificados | Infra (proveedor) | Mavalan reconfigura subdominio propio; pruebas mientras tanto en producción | [accuweb-runbook](ops/accuweb-runbook.md) |
 | 6 | **CI GitHub Actions** inestable en ramas de desarrollo | Interno | Deploys vía CI confiables tras llegar a `main`; deploy manual en `develop` | [accuweb-runbook §8](ops/accuweb-runbook.md#8-pipeline-ci--estado-y-troubleshooting) |
 
@@ -106,13 +106,15 @@ Técnicas usadas en la tercera entrega que conviene conocer antes de tocar el c�
 |-----|----------|
 | [Spec_doc.md](Spec_doc.md) | Visión, problema, objetivos, flujo de usuario, dimensiones (3 puntuables + económica y Regulatoria informativas), tipos de variables |
 | [project-status.md](project-status.md) | Tabla de estado del proyecto, índice maestro de docs, actividades hechas y pendientes |
-| [manual-usuario.md](manual-usuario.md) | Guía paso a paso para el **usuario final** del software |
+| [manual-usuario.md](manuales/manual-usuario.md) | Guía paso a paso para el **usuario final** del software |
 | Este archivo (`docs/README.md`) | Punto de entrada general — qué es Vento y dónde mirar |
 
 ### Para gestión del proyecto y stakeholders técnicos
 
 | Doc | Para qué |
 |-----|----------|
+| [entregas/sprint4-resumen-commits.md](entregas/sprint4-resumen-commits.md) | Resumen del Sprint 4: cambios por tema, tiempos y decisiones clave (+ infografía `.svg`) |
+| [entregas/sprint5-estimaciones.svg](entregas/sprint5-estimaciones.svg) | Estimaciones del Sprint 5 (tareas, días, re-benchmark tras Fase 2) |
 | [scope-primera-entrega.md](stories/scope-primera-entrega.md) | 20 historias contractuales de la primera entrega (US01, US03, US08, etc.) |
 | [scope-segunda-entrega.md](stories/scope-segunda-entrega.md) | Sub-historias de la segunda entrega (US03P2, US04, US05, US06) — ✅ cerrado (2026-06-01) |
 | [scope-tercera-entrega.md](stories/scope-tercera-entrega.md) | Historias de la tercera entrega (feedback v2 + catálogo definitivo) — ✅ entregado en modo template |
@@ -124,6 +126,8 @@ Técnicas usadas en la tercera entrega que conviene conocer antes de tocar el c�
 
 | Doc | Para qué |
 |-----|----------|
+| [manuales/manual-tecnico.md](manuales/manual-tecnico.md) | Manual técnico: arquitectura, stack, modos, ingesta, endpoints, seguridad, capacidad (+ `.svg`/`.html` imprimible) |
+| [manuales/manual-instalacion.md](manuales/manual-instalacion.md) | Manual de instalación: orden, `.env` completo front+back, migraciones, ingesta, verificación (+ `.svg`/`.html`) |
 | [tech-stack-validation.md](architecture/tech-stack-validation.md) | Qué tecnologías se usan y por qué — retrospectiva práctica del stack |
 | [frontend-backend-integration.md](architecture/frontend-backend-integration.md) | Cómo Next.js se conecta a FastAPI (rewrites, proxy, dónde van los handlers locales vs proxy) |
 | [backend-api.md](architecture/backend-api.md) | Referencia técnica del backend FastAPI: endpoints, modelo de datos, scoring, ingesta |

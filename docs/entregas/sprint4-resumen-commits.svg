@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="1020" viewBox="0 0 1160 1020" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <linearGradient id="hdr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0f3547"/><stop offset="1" stop-color="#165170"/></linearGradient>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#165170"/></marker>
+  </defs>
+  <rect width="1160" height="1020" fill="#f7f9fb"/>
+
+  <!-- Header -->
+  <rect width="1160" height="92" fill="url(#hdr)"/>
+  <text x="40" y="44" fill="#fff" font-size="25" font-weight="800">Vento — Sprint 4 · Entregado, tiempos y decisiones</text>
+  <text x="40" y="72" fill="#cfe3ee" font-size="14">~40 commits front · ~15 backend · ~5 docs · feedback del cliente (26 ítems)</text>
+  <text x="1120" y="52" fill="#fff" font-size="13" text-anchor="end" opacity="0.85">2026-10-01</text>
+
+  <!-- Timeline -->
+  <text x="40" y="124" fill="#165170" font-size="16" font-weight="800">Timeline (tiempos)</text>
+  <g font-size="11.5">
+    <line x1="40" y1="172" x2="1120" y2="172" stroke="#cbd5e1" stroke-width="2"/>
+    <!-- 5 fases -->
+    <g>
+      <rect x="40" y="140" width="196" height="64" rx="9" fill="#fff" stroke="#165170"/>
+      <text x="138" y="162" text-anchor="middle" fill="#0f3547" font-weight="700">1 · Front + deploy test</text>
+      <text x="138" y="182" text-anchor="middle" fill="#6b7280">2–10 sep</text>
+      <text x="138" y="196" text-anchor="middle" fill="#6b7280" font-size="10.5">Ola 3, fixes, deploy a test</text>
+    </g>
+    <g>
+      <rect x="261" y="140" width="196" height="64" rx="9" fill="#fff" stroke="#165170"/>
+      <text x="359" y="162" text-anchor="middle" fill="#0f3547" font-weight="700">2 · Backend</text>
+      <text x="359" y="182" text-anchor="middle" fill="#6b7280">10–17 sep</text>
+      <text x="359" y="196" text-anchor="middle" fill="#6b7280" font-size="10.5">contra el contrato + datos</text>
+    </g>
+    <g>
+      <rect x="482" y="140" width="196" height="64" rx="9" fill="#fff" stroke="#165170"/>
+      <text x="580" y="162" text-anchor="middle" fill="#0f3547" font-weight="700">3 · Feedback (cliente)</text>
+      <text x="580" y="182" text-anchor="middle" fill="#6b7280">17–23 sep</text>
+      <text x="580" y="196" text-anchor="middle" fill="#6b7280" font-size="10.5">pruebas + hotfixes</text>
+    </g>
+    <g>
+      <rect x="703" y="140" width="196" height="64" rx="9" fill="#e8f1f6" stroke="#165170"/>
+      <text x="801" y="162" text-anchor="middle" fill="#0f3547" font-weight="700">4 · Aplicar feedback</text>
+      <text x="801" y="182" text-anchor="middle" fill="#6b7280">23–30 sep</text>
+      <text x="801" y="196" text-anchor="middle" fill="#6b7280" font-size="10.5">26 ítems + perf + manuales</text>
+    </g>
+    <g>
+      <rect x="924" y="140" width="196" height="64" rx="9" fill="#0f3547"/>
+      <text x="1022" y="162" text-anchor="middle" fill="#fff" font-weight="700">5 · Revisión / cierre</text>
+      <text x="1022" y="182" text-anchor="middle" fill="#cfe3ee">1 oct</text>
+      <text x="1022" y="196" text-anchor="middle" fill="#9fc3d6" font-size="10.5">QA + CI + docs</text>
+    </g>
+  </g>
+
+  <!-- Entregado por tema -->
+  <text x="40" y="238" fill="#165170" font-size="16" font-weight="800">Entregado por tema</text>
+  <g font-size="12">
+    <g transform="translate(40,250)"><rect width="352" height="84" rx="10" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="84" fill="#165170" rx="3"/>
+      <text x="18" y="26" fill="#0f3547" font-weight="700">Informe / PDF</text><text x="334" y="26" text-anchor="end" fill="#165170" font-weight="800" font-size="18">10</text>
+      <text x="18" y="48" fill="#6b7280" font-size="11">preconfig, gráficos, nitidez, tablas sin cortes,</text>
+      <text x="18" y="64" fill="#6b7280" font-size="11">aviso datos-por-hex, PDF nativo.</text></g>
+    <g transform="translate(404,250)"><rect width="352" height="84" rx="10" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="84" fill="#2563eb" rx="3"/>
+      <text x="18" y="26" fill="#0f3547" font-weight="700">Mapa / capas / heatmap</text><text x="334" y="26" text-anchor="end" fill="#165170" font-weight="800" font-size="18">12</text>
+      <text x="18" y="48" fill="#6b7280" font-size="11">res por zoom, color por variable, excluidas,</text>
+      <text x="18" y="64" fill="#6b7280" font-size="11">leyenda viridis, capas off, no re-pedir bulk.</text></g>
+    <g transform="translate(768,250)"><rect width="352" height="84" rx="10" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="84" fill="#7c3aed" rx="3"/>
+      <text x="18" y="26" fill="#0f3547" font-weight="700">Admin / usuarios / soporte</text><text x="334" y="26" text-anchor="end" fill="#165170" font-weight="800" font-size="18">8</text>
+      <text x="18" y="48" fill="#6b7280" font-size="11">modales (portal), confirmar admin, sin tildes,</text>
+      <text x="18" y="64" fill="#6b7280" font-size="11">barra de carga, nav, correo de soporte en BD.</text></g>
+    <g transform="translate(40,344)"><rect width="352" height="84" rx="10" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="84" fill="#16a34a" rx="3"/>
+      <text x="18" y="26" fill="#0f3547" font-weight="700">Rendimiento backend</text><text x="334" y="26" text-anchor="end" fill="#165170" font-weight="800" font-size="18">9</text>
+      <text x="18" y="48" fill="#6b7280" font-size="11">pool+threadpool, streaming, bulk 1-scan,</text>
+      <text x="18" y="64" fill="#6b7280" font-size="11">warmup reltuples, índice parcial, loadtest.</text></g>
+    <g transform="translate(404,344)"><rect width="352" height="84" rx="10" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="84" fill="#d97706" rx="3"/>
+      <text x="18" y="26" fill="#0f3547" font-weight="700">Datos / catálogo / modo</text><text x="334" y="26" text-anchor="end" fill="#165170" font-weight="800" font-size="18">6</text>
+      <text x="18" y="48" fill="#6b7280" font-size="11">catálogo desde BD, modo backend|template,</text>
+      <text x="18" y="64" fill="#6b7280" font-size="11">subir master drag-and-drop, valores reales.</text></g>
+    <g transform="translate(768,344)"><rect width="352" height="84" rx="10" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="84" fill="#0891b2" rx="3"/>
+      <text x="18" y="26" fill="#0f3547" font-weight="700">Docs / arquitectura</text><text x="334" y="26" text-anchor="end" fill="#165170" font-weight="800" font-size="18">5</text>
+      <text x="18" y="48" fill="#6b7280" font-size="11">benchmark, arquitectura h3-pg, documento</text>
+      <text x="18" y="64" fill="#6b7280" font-size="11">técnico, READMEs, manuales.</text></g>
+  </g>
+
+  <!-- Decisiones clave -->
+  <g transform="translate(40,448)">
+    <rect width="700" height="330" rx="12" fill="#fff" stroke="#e5e7eb"/>
+    <text x="20" y="30" fill="#165170" font-size="16" font-weight="800">Decisiones clave</text>
+    <g font-size="12" fill="#374151">
+      <text x="20" y="58">1. <tspan font-weight="700">Modo sin mixtura</tspan>: backend = dato real o VACÍO; template = placeholders. Nunca cifras falsas.</text>
+      <text x="20" y="82">2. <tspan font-weight="700">Normalización 1–5→[0,1] en LECTURA</tspan>, no en ingesta (−1 = zona excluida).</text>
+      <text x="20" y="106">3. Capas: <tspan font-weight="700">área pinta hexágonos</tspan> (revert de bandas) + máx 3 pintan; 1 solo calor a la vez.</text>
+      <text x="20" y="130">4. Rendimiento <tspan font-weight="700">por fases</tspan>: Fase 1 code-only (reltuples, caché+índice, bulk 1-scan,</text>
+      <text x="36" y="148">pool+threadpool, streaming anti-OOM); Fase 2 h3-pg diferida (mayor retorno).</text>
+      <text x="20" y="172">5. <tspan font-weight="700">Caché acumulativa de capas + AbortController</tspan>: ocultar no re-pide; salir aborta.</text>
+      <text x="20" y="196">6. <tspan font-weight="700">Catálogo desde BD</tspan> (no hardcode) + subir master drag-and-drop (ingesta por clases, blue-green).</text>
+      <text x="20" y="220">7. <tspan font-weight="700">Regulatoria y Económica = informativas</tspan>: fuera de scoring, selector de calor y tooltip.</text>
+      <text x="20" y="244">8. PDF: <tspan font-weight="700">html2canvas-pro + jsPDF por hoja</tspan> + chunking (tablas no se cortan). Sin svg2pdf.</text>
+      <text x="20" y="268">9. <tspan font-weight="700">BFF privado</tspan> con INTERNAL_API_SECRET; el backend verifica el JWT (JWKS), no emite.</text>
+      <text x="20" y="292">10. Histórico: compact/uncompact de hexes + filtrar excluidas al restaurar.</text>
+      <text x="20" y="316">11. Capas de variable <tspan font-weight="700">apagadas por default</tspan>; color del punto/icono/hex = color de la variable.</text>
+    </g>
+  </g>
+
+  <!-- Resultados / capacidad -->
+  <g transform="translate(760,448)">
+    <rect width="360" height="330" rx="12" fill="#0f3547"/>
+    <text x="22" y="30" fill="#fff" font-size="16" font-weight="700">Resultados</text>
+    <text x="22" y="58" fill="#cfe3ee" font-size="12.5">Benchmark con loadtest + EXPLAIN:</text>
+    <text x="22" y="80" fill="#fff" font-size="13" font-weight="800">Techo útil ≈ 25 usuarios</text>
+    <text x="22" y="98" fill="#9fc3d6" font-size="11.5">2 workers × 18 hilos = 36 ops BD</text>
+    <text x="22" y="124" fill="#cfe3ee" font-size="12.5">Cuello #1: variables-bulk</text>
+    <text x="22" y="142" fill="#9fc3d6" font-size="11.5">~165 MB/req · cache-hit BD ~74%</text>
+    <text x="22" y="168" fill="#cfe3ee" font-size="12.5">Fase 1 (hecha): warmup reltuples,</text>
+    <text x="22" y="186" fill="#9fc3d6" font-size="11.5">caché+índice excluidos, bulk 1-scan</text>
+    <rect x="18" y="200" width="324" height="56" rx="8" fill="#13425a"/>
+    <text x="30" y="220" fill="#fff" font-size="12" font-weight="800">Estimado tras Fase 2:</text>
+    <text x="30" y="238" fill="#cfe3ee" font-size="11.5">~50–80 users · bulk &lt;100 ms · cache &gt;95%</text>
+    <text x="30" y="252" fill="#9fc3d6" font-size="10.5">(a validar con re-benchmark en Sprint 5)</text>
+    <text x="22" y="282" fill="#cfe3ee" font-size="12.5" font-weight="700">Despliegue:</text>
+    <text x="22" y="300" fill="#9fc3d6" font-size="11.5">push → main / deploy-prod · alembic</text>
+    <text x="22" y="316" fill="#9fc3d6" font-size="11.5">upgrade head · VACUUM ANALYZE · build</text>
+  </g>
+
+  <!-- Velocidad -->
+  <g transform="translate(40,790)">
+    <rect width="1080" height="170" rx="12" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="20" y="30" fill="#165170" font-size="16" font-weight="800">Velocidad y verificación</text>
+    <text x="20" y="58" fill="#374151" font-size="12.5">• Cierre del sprint (fase 4): <tspan font-weight="700">~35 commits/fixes</tspan> aplicados a buen ritmo (los 26 ítems de feedback + perf + manuales).</text>
+    <text x="20" y="82" fill="#374151" font-size="12.5">• Verificación: <tspan font-weight="700">CI de GitHub</tspan> (lint + build + test en cada PR) + QA manual (no se puede dejar VS abierto en el entorno seguro).</text>
+    <text x="20" y="106" fill="#374151" font-size="12.5">• Trabajo en 3 repos/ramas: front (develop → deploy-prod) · backend (develop → main) · docs.</text>
+    <text x="20" y="130" fill="#374151" font-size="12.5">• Entregables de cierre: manuales técnico e instalación (con diagramas), benchmark, arquitectura y plan de Sprint 5.</text>
+    <text x="20" y="154" fill="#6b7280" font-size="11">Detalle completo de commits en docs/entregas/sprint4-resumen-commits.md</text>
+  </g>
+
+  <text x="40" y="1000" fill="#6b7280" font-size="11">Vento · Mavalan Software · resumen del Sprint 4 (entregado, tiempos y decisiones)</text>
+</svg>

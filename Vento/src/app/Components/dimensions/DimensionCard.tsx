@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import VariableSwitch from "./VariableSwitch";
 import { useVariables } from "../../Utils/contexts/VariablesContext";
 import { dimensionBaseColor } from "../../Utils/variables/dimensionColors";

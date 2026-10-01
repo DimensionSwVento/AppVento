@@ -1005,86 +1005,100 @@ export default function Report() {
     // Si NO hay ninguna norma activa, no se agrega la hoja (antes salía el semáforo
     // con 0s). Mismo patrón de guarda de vacío que las informativas (#6).
     if (activeNormas.length > 0)
-    addSection("Dimensión regulatoria (Inf.)", (n) => [
-      <div key="reg" className="text-[10px]">
-        <div className="flex items-center gap-2">
-          <h3 className="text-base font-bold text-[#165170ff]">
-            {n}. Dimensión regulatoria
-          </h3>
-          <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gray-600">
-            Informativa · no puntúa
-          </span>
-        </div>
-        <p className="mt-1 text-[11px] text-gray-600">
-          Marco normativo nacional aplicable al proyecto eólico.
-        </p>
-        <p className="mt-1 text-[9px] italic text-gray-500">
-          El estado de cada norma no es una evaluación jurídica del proyecto; la
-          verificación normativa vinculante la realiza la autoridad competente.
-        </p>
-        <div className="mt-3 grid grid-cols-4 gap-2">
-          {(["aplica", "tramite", "verificacion", "no-aplica"] as const).map(
-            (k) => {
-              const m = NORMA_ESTADO_META[k];
+    // #3: semáforo + lista de normas + autoridades NO siempre caben en una hoja →
+    // se CHUNKEA la lista (semáforo en la 1ª; autoridades en la última) para que el
+    // PDF no corte a mitad.
+    const regPages = chunkFirstThen(activeNormas, 5, 11);
+    addSection("Dimensión regulatoria (Inf.)", (n) =>
+      (regPages.length ? regPages : [[]]).map((pageNormas, pi, arr) => (
+        <div key={`reg-${pi}`} className="text-[10px]">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-bold text-[#165170ff]">
+              {n}. Dimensión regulatoria{pi > 0 ? " (cont.)" : ""}
+            </h3>
+            <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gray-600">
+              Informativa · no puntúa
+            </span>
+          </div>
+          {pi === 0 && (
+            <>
+              <p className="mt-1 text-[11px] text-gray-600">
+                Marco normativo nacional aplicable al proyecto eólico.
+              </p>
+              <p className="mt-1 text-[9px] italic text-gray-500">
+                El estado de cada norma no es una evaluación jurídica del proyecto; la
+                verificación normativa vinculante la realiza la autoridad competente.
+              </p>
+              <div className="mt-3 grid grid-cols-4 gap-2">
+                {(["aplica", "tramite", "verificacion", "no-aplica"] as const).map(
+                  (k) => {
+                    const m = NORMA_ESTADO_META[k];
+                    return (
+                      <div
+                        key={k}
+                        className="rounded-lg border border-gray-100 p-2 text-center"
+                        style={{ backgroundColor: m.bg }}
+                      >
+                        <p className="text-lg font-bold" style={{ color: m.color }}>
+                          {sem[k]}
+                        </p>
+                        <p
+                          className="text-[8px] font-semibold"
+                          style={{ color: m.color }}
+                        >
+                          {m.label}
+                        </p>
+                      </div>
+                    );
+                  },
+                )}
+              </div>
+            </>
+          )}
+          <h4 className="mt-4 text-[9px] font-bold uppercase tracking-wide text-gray-500">
+            Normas aplicables al proyecto{arr.length > 1 ? ` (${pi + 1}/${arr.length})` : ""}
+          </h4>
+          <ul className="mt-1 flex flex-col gap-1">
+            {pageNormas.map((no) => {
+              const m = NORMA_ESTADO_META[no.estado];
               return (
-                <div
-                  key={k}
-                  className="rounded-lg border border-gray-100 p-2 text-center"
-                  style={{ backgroundColor: m.bg }}
+                <li
+                  key={no.id}
+                  className="flex items-start justify-between gap-2 border-b border-gray-100 pb-1"
                 >
-                  <p className="text-lg font-bold" style={{ color: m.color }}>
-                    {sem[k]}
-                  </p>
-                  <p
-                    className="text-[8px] font-semibold"
-                    style={{ color: m.color }}
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-700">{dbField(no.nombre)}</p>
+                    <p className="text-[9px] leading-snug text-gray-500">
+                      {dbField(no.descripcion)}
+                    </p>
+                  </div>
+                  <span
+                    className="shrink-0 rounded px-1.5 py-0.5 text-[8px] font-semibold"
+                    style={{ backgroundColor: m.bg, color: m.color }}
                   >
                     {m.label}
-                  </p>
-                </div>
+                  </span>
+                </li>
               );
-            },
+            })}
+          </ul>
+          {pi === arr.length - 1 && (
+            <>
+              <h4 className="mt-3 text-[9px] font-bold uppercase tracking-wide text-gray-500">
+                Autoridades competentes
+              </h4>
+              <ul className="mt-1 grid grid-cols-2 gap-1">
+                {REGULATORY_AUTHORITIES.map((a) => (
+                  <li key={a.sigla} className="text-[9px] text-gray-600">
+                    <b>{dbField(a.sigla)}</b> — {dbField(a.nombre)}
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </div>
-        <h4 className="mt-4 text-[9px] font-bold uppercase tracking-wide text-gray-500">
-          Normas aplicables al proyecto
-        </h4>
-        <ul className="mt-1 flex flex-col gap-1">
-          {activeNormas.map((no) => {
-            const m = NORMA_ESTADO_META[no.estado];
-            return (
-              <li
-                key={no.id}
-                className="flex items-start justify-between gap-2 border-b border-gray-100 pb-1"
-              >
-                <div className="min-w-0">
-                  <p className="font-semibold text-gray-700">{dbField(no.nombre)}</p>
-                  <p className="text-[9px] leading-snug text-gray-500">
-                    {dbField(no.descripcion)}
-                  </p>
-                </div>
-                <span
-                  className="shrink-0 rounded px-1.5 py-0.5 text-[8px] font-semibold"
-                  style={{ backgroundColor: m.bg, color: m.color }}
-                >
-                  {m.label}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-        <h4 className="mt-3 text-[9px] font-bold uppercase tracking-wide text-gray-500">
-          Autoridades competentes
-        </h4>
-        <ul className="mt-1 grid grid-cols-2 gap-1">
-          {REGULATORY_AUTHORITIES.map((a) => (
-            <li key={a.sigla} className="text-[9px] text-gray-600">
-              <b>{dbField(a.sigla)}</b> — {dbField(a.nombre)}
-            </li>
-          ))}
-        </ul>
-      </div>,
-    ]);
+      )),
+    );
   }
 
   // Hoja(s) de variables informativas seleccionadas que NO cuelgan de una
@@ -1130,45 +1144,56 @@ export default function Report() {
   // Hoja de fuentes de datos: tabla con versión + enlace, y el detalle por
   // dimensión (como antes).
   if (config.showSources) {
+    // #3: la tabla de fuentes + los extras no caben en una hoja → se CHUNKEA la
+    // tabla y los extras (fuentes por dim, metodología, trazabilidad) van en su
+    // propia hoja final, para que el PDF no corte a mitad.
+    const srcPages = chunk(sourceRows, 20);
     addSection("Fuentes de datos", (n) => [
-      <div key="src" className="text-[10px]">
-        <h3 className="text-base font-bold text-[#165170ff]">
-          {n}. Fuentes de datos
-        </h3>
-        <div className="mt-2 overflow-hidden rounded-lg border border-gray-200">
-          <table className="w-full border-collapse text-[9px]">
-            <thead>
-              <tr className="bg-[#165170ff] text-left text-white">
-                <th className="px-2 py-1 font-semibold">Fuente</th>
-                <th className="px-2 py-1 font-semibold">Versión</th>
-                <th className="px-2 py-1 font-semibold">Enlace</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sourceRows.map((s) => (
-                <tr
-                  key={s.fuente}
-                  className="border-t border-gray-100 align-top even:bg-gray-50/60"
-                >
-                  <td className="px-2 py-1 font-medium text-gray-700">
-                    {dbField(s.fuente)}
-                  </td>
-                  <td className="px-2 py-1 text-gray-600">{dbField(s.version)}</td>
-                  <td className="px-2 py-1">
-                    <a
-                      href={s.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="break-all text-[#165170ff] underline"
-                    >
-                      {dbField(s.url)}
-                    </a>
-                  </td>
+      ...(srcPages.length ? srcPages : [[]]).map((pageRows, pi, arr) => (
+        <div key={`src-${pi}`} className="text-[10px]">
+          <h3 className="text-base font-bold text-[#165170ff]">
+            {n}. Fuentes de datos{arr.length > 1 ? ` (${pi + 1}/${arr.length})` : ""}
+          </h3>
+          <div className="mt-2 overflow-hidden rounded-lg border border-gray-200">
+            <table className="w-full border-collapse text-[9px]">
+              <thead>
+                <tr className="bg-[#165170ff] text-left text-white">
+                  <th className="px-2 py-1 font-semibold">Fuente</th>
+                  <th className="px-2 py-1 font-semibold">Versión</th>
+                  <th className="px-2 py-1 font-semibold">Enlace</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pageRows.map((s) => (
+                  <tr
+                    key={s.fuente}
+                    className="border-t border-gray-100 align-top even:bg-gray-50/60"
+                  >
+                    <td className="px-2 py-1 font-medium text-gray-700">
+                      {dbField(s.fuente)}
+                    </td>
+                    <td className="px-2 py-1 text-gray-600">{dbField(s.version)}</td>
+                    <td className="px-2 py-1">
+                      <a
+                        href={s.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="break-all text-[#165170ff] underline"
+                      >
+                        {dbField(s.url)}
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
+      )),
+      <div key="src-extra" className="text-[10px]">
+        <h3 className="text-base font-bold text-[#165170ff]">
+          {n}. Fuentes de datos — verificación
+        </h3>
 
         {sourcesByDim.length > 0 && (
           <>
@@ -1244,29 +1269,37 @@ export default function Report() {
         rangeText(v.masterId),
       ];
     });
-    addSection("Ponderación (verificación admin)", (n) => [
-      <div key="wr" className="text-[10px]">
-        <div className="flex items-center gap-2">
-          <h3 className="text-base font-bold text-[#165170ff]">
-            {n}. Intervalos de ponderación
-          </h3>
-          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
-            Solo admin · verificación
-          </span>
+    // #3: ~60 variables NO caben en una hoja → se CHUNKEAN (una hoja por bloque),
+    // igual que la tabla de dimensión, para que el PDF no corte la tabla a mitad.
+    const wrPages = chunk(rows, 24);
+    addSection("Ponderación (verificación admin)", (n) =>
+      wrPages.map((pageRows, pi) => (
+        <div key={`wr-${pi}`} className="text-[10px]">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-bold text-[#165170ff]">
+              {n}. Intervalos de ponderación
+              {wrPages.length > 1 ? ` (${pi + 1}/${wrPages.length})` : ""}
+            </h3>
+            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
+              Solo admin · verificación
+            </span>
+          </div>
+          {pi === 0 && (
+            <p className="mt-1 text-[9px] leading-snug text-gray-600">
+              Peso (con signo), polaridad y rango de medición (min–max) por variable
+              ponderada, para verificar la normalización y el cálculo. El rango es el
+              REAL de la master ({varRanges && Object.keys(varRanges).length > 0
+                ? "backend · hexagon_meta"
+                : "sin backend → s/d"}); el peso viene de BD en modo backend.
+            </p>
+          )}
+          <MiniTable
+            columns={["Código", "Variable", "Peso", "Polaridad", "Intervalo (min–max)"]}
+            rows={pageRows}
+          />
         </div>
-        <p className="mt-1 text-[9px] leading-snug text-gray-600">
-          Peso (con signo), polaridad y rango de medición (min–max) por variable
-          ponderada, para verificar la normalización y el cálculo. El rango es el
-          REAL de la master ({varRanges && Object.keys(varRanges).length > 0
-            ? "backend · hexagon_meta"
-            : "sin backend → s/d"}); el peso viene de BD en modo backend.
-        </p>
-        <MiniTable
-          columns={["Código", "Variable", "Peso", "Polaridad", "Intervalo (min–max)"]}
-          rows={rows}
-        />
-      </div>,
-    ]);
+      )),
+    );
   }
 
   // Hoja de disclaimer.

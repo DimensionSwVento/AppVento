@@ -1,0 +1,207 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1360" viewBox="0 0 1200 1360" font-family="Segoe UI, Arial, sans-serif">
+  <defs><linearGradient id="hdr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0f3547"/><stop offset="1" stop-color="#165170"/></linearGradient></defs>
+  <rect width="1200" height="1360" fill="#f7f9fb"/>
+
+  <!-- Header -->
+  <rect width="1200" height="92" fill="url(#hdr)"/>
+  <text x="40" y="42" fill="#fff" font-size="25" font-weight="800">Vento — Sprint 5 · Estimación de pendientes</text>
+  <text x="40" y="70" fill="#cfe3ee" font-size="14">Estimaciones ajustadas a la velocidad real de desarrollo (ritmo de commits del Sprint 4). min = minutos · d = días</text>
+  <text x="1160" y="52" fill="#fff" font-size="13" text-anchor="end" opacity="0.85">2026-10-01</text>
+
+  <!-- Cabeceras de columna -->
+  <g transform="translate(20,104)">
+    <rect width="1160" height="26" rx="5" fill="#165170"/>
+    <text x="14" y="18" fill="#fff" font-size="12.5" font-weight="700">Tarea</text>
+    <text x="806" y="18" fill="#fff" font-size="12.5" font-weight="700" text-anchor="middle">Estimación</text>
+    <text x="900" y="18" fill="#fff" font-size="12.5" font-weight="700">Estado</text>
+  </g>
+
+  <!-- ===== MAYORES / ÉPICAS ===== -->
+  <g transform="translate(20,136)">
+    <rect width="1160" height="24" fill="#0f3547"/><text x="12" y="17" fill="#fff" font-size="12.5" font-weight="700">Mayores / Épicas</text>
+    <g font-size="12">
+      <rect y="24" width="1160" height="26" fill="#fff" stroke="#eef2f5"/>
+      <text x="14" y="41" fill="#1f2937">#26 Turbinas: campos (potencia, D, H, elegibilidad, turbinas/hex) + migración + UI + recálculo</text>
+      <text x="806" y="41" fill="#165170" font-weight="700" text-anchor="middle">~1 d</text>
+      <circle cx="896" cy="37" r="5" fill="#dc2626"/><text x="908" y="41" fill="#374151">Alta · cliente</text>
+
+      <rect y="50" width="1160" height="26" fill="#f3f6f8" stroke="#eef2f5"/>
+      <text x="14" y="67" fill="#1f2937">Fase 2 rendimiento: empezar por MV de variables-bulk; PK h3index y split, incremental por fases</text>
+      <text x="806" y="67" fill="#165170" font-weight="700" text-anchor="middle">~2–3 d</text>
+      <circle cx="896" cy="63" r="5" fill="#dc2626"/><text x="908" y="67" fill="#374151">Alta · por fases</text>
+
+      <rect y="76" width="1160" height="26" fill="#fff" stroke="#eef2f5"/>
+      <text x="14" y="93" fill="#1f2937">#21 Pruebas E2E de flujos admin (crear variable de cero → ingerir → datos/pesos/icono)</text>
+      <text x="806" y="93" fill="#165170" font-weight="700" text-anchor="middle">~1–2 d</text>
+      <circle cx="896" cy="89" r="5" fill="#d97706"/><text x="908" y="93" fill="#374151">Media</text>
+
+      <rect y="102" width="1160" height="26" fill="#f3f6f8" stroke="#eef2f5"/>
+      <text x="14" y="119" fill="#1f2937">Carga de polígonos externos (Shapefile / GeoJSON / KML): parseo+validación back + capa en mapa</text>
+      <text x="806" y="119" fill="#165170" font-weight="700" text-anchor="middle">2–4 d</text>
+      <circle cx="896" cy="115" r="5" fill="#16a34a"/><text x="908" y="119" fill="#374151">Épica · diseño</text>
+
+      <rect y="128" width="1160" height="26" fill="#fff" stroke="#eef2f5"/>
+      <text x="14" y="145" fill="#1f2937">Borrado real de usuario sincronizado con Keycloak Admin API (Rama B)</text>
+      <text x="806" y="145" fill="#165170" font-weight="700" text-anchor="middle">s/estimar</text>
+      <circle cx="896" cy="141" r="5" fill="#16a34a"/><text x="908" y="145" fill="#374151">Diseño Keycloak</text>
+
+      <rect y="154" width="1160" height="26" fill="#f3f6f8" stroke="#eef2f5"/>
+      <text x="14" y="171" fill="#1f2937">Selector de mapas base (satélite / vial / topografía estilo Google)</text>
+      <text x="806" y="171" fill="#165170" font-weight="700" text-anchor="middle">180 min</text>
+      <circle cx="896" cy="167" r="5" fill="#d97706"/><text x="908" y="171" fill="#374151">Validar proveedor</text>
+
+      <rect y="180" width="1160" height="26" fill="#fff" stroke="#eef2f5"/>
+      <text x="14" y="197" fill="#1f2937">Datos reales: OFFSHORE_VAR (mar/tierra) + máster real de zonas excluidas</text>
+      <text x="806" y="197" fill="#165170" font-weight="700" text-anchor="middle">~2 d</text>
+      <circle cx="896" cy="193" r="5" fill="#d97706"/><text x="908" y="197" fill="#374151">Depende máster</text>
+
+      <rect y="206" width="1160" height="26" fill="#f3f6f8" stroke="#eef2f5"/>
+      <text x="14" y="223" fill="#1f2937">Manual de usuario (video corto + versión detallada)</text>
+      <text x="806" y="223" fill="#165170" font-weight="700" text-anchor="middle">~1 d</text>
+      <circle cx="896" cy="219" r="5" fill="#d97706"/><text x="908" y="223" fill="#374151">Media</text>
+    </g>
+  </g>
+
+  <!-- ===== MAPA Y SELECCIÓN ===== -->
+  <g transform="translate(20,380)">
+    <rect width="1160" height="24" fill="#0f3547"/><text x="12" y="17" fill="#fff" font-size="12.5" font-weight="700">Mapa y Selección</text>
+    <g font-size="12">
+      <rect y="24" width="1160" height="26" fill="#fff" stroke="#eef2f5"/>
+      <text x="14" y="41" fill="#1f2937">Variables no georreferenciadas (precio spot) al PDF + sincronizar capas informativas en pantalla final</text>
+      <text x="806" y="41" fill="#165170" font-weight="700" text-anchor="middle">60 min</text>
+      <circle cx="896" cy="37" r="5" fill="#dc2626"/><text x="908" y="41" fill="#374151">Listo p/ sprint</text>
+
+      <rect y="50" width="1160" height="26" fill="#f3f6f8" stroke="#eef2f5"/>
+      <text x="14" y="67" fill="#1f2937">Botón "Eliminar toda la selección" + fix bug de deselección de hexágonos grandes</text>
+      <text x="806" y="67" fill="#165170" font-weight="700" text-anchor="middle">45 min</text>
+      <circle cx="896" cy="63" r="5" fill="#dc2626"/><text x="908" y="67" fill="#374151">Listo p/ sprint</text>
+
+      <rect y="76" width="1160" height="26" fill="#fff" stroke="#eef2f5"/>
+      <text x="14" y="93" fill="#1f2937">Escala de distancias en el mapa (visualizar la restricción de 50 km)</text>
+      <text x="806" y="93" fill="#165170" font-weight="700" text-anchor="middle">20 min</text>
+      <circle cx="896" cy="89" r="5" fill="#d97706"/><text x="908" y="93" fill="#374151">Listo p/ sprint</text>
+
+      <rect y="102" width="1160" height="26" fill="#f3f6f8" stroke="#eef2f5"/>
+      <text x="14" y="119" fill="#1f2937">Tooltips + leyenda descriptiva por capa (vial = 3 puntos; velocidad vs densidad del viento)</text>
+      <text x="806" y="119" fill="#165170" font-weight="700" text-anchor="middle">45 min</text>
+      <circle cx="896" cy="115" r="5" fill="#d97706"/><text x="908" y="119" fill="#374151">Listo p/ sprint</text>
+
+      <rect y="128" width="1160" height="26" fill="#fff" stroke="#eef2f5"/>
+      <text x="14" y="145" fill="#1f2937">Mostrar coordenadas (lat/lng) del cursor / área seleccionada</text>
+      <text x="806" y="145" fill="#165170" font-weight="700" text-anchor="middle">20 min</text>
+      <circle cx="896" cy="141" r="5" fill="#d97706"/><text x="908" y="145" fill="#374151">Listo p/ sprint</text>
+    </g>
+  </g>
+
+  <!-- ===== MODELADO Y VARIABLES ===== -->
+  <g transform="translate(20,562)">
+    <rect width="1160" height="24" fill="#0f3547"/><text x="12" y="17" fill="#fff" font-size="12.5" font-weight="700">Modelado y Variables</text>
+    <g font-size="12">
+      <rect y="24" width="1160" height="26" fill="#fff" stroke="#eef2f5"/>
+      <text x="14" y="41" fill="#1f2937">Botón / checkbox "Seleccionar todas las variables"</text>
+      <text x="806" y="41" fill="#165170" font-weight="700" text-anchor="middle">30 min</text>
+      <circle cx="896" cy="37" r="5" fill="#d97706"/><text x="908" y="41" fill="#374151">Listo p/ sprint</text>
+
+      <rect y="50" width="1160" height="26" fill="#f3f6f8" stroke="#eef2f5"/>
+      <text x="14" y="67" fill="#1f2937">Copy visible: "las variables informativas no alteran el puntaje MCDA"</text>
+      <text x="806" y="67" fill="#165170" font-weight="700" text-anchor="middle">10 min</text>
+      <circle cx="896" cy="63" r="5" fill="#16a34a"/><text x="908" y="67" fill="#374151">Listo p/ sprint</text>
+    </g>
+  </g>
+
+  <!-- ===== INFORMES Y PDF ===== -->
+  <g transform="translate(20,666)">
+    <rect width="1160" height="24" fill="#0f3547"/><text x="12" y="17" fill="#fff" font-size="12.5" font-weight="700">Informes y PDF</text>
+    <g font-size="12">
+      <rect y="24" width="1160" height="26" fill="#fff" stroke="#eef2f5"/>
+      <text x="14" y="41" fill="#1f2937">Disclaimer en PDF: el informe sale con el área recortada seleccionada</text>
+      <text x="806" y="41" fill="#165170" font-weight="700" text-anchor="middle">15 min</text><circle cx="896" cy="37" r="5" fill="#16a34a"/><text x="908" y="41" fill="#374151">Listo p/ sprint</text>
+
+      <rect y="50" width="1160" height="26" fill="#f3f6f8" stroke="#eef2f5"/>
+      <text x="14" y="67" fill="#1f2937">Ordenar las variables del PDF por dimensión (y/o alfabético)</text>
+      <text x="806" y="67" fill="#165170" font-weight="700" text-anchor="middle">15 min</text><circle cx="896" cy="63" r="5" fill="#d97706"/><text x="908" y="67" fill="#374151">Listo p/ sprint</text>
+
+      <rect y="76" width="1160" height="26" fill="#fff" stroke="#eef2f5"/>
+      <text x="14" y="93" fill="#1f2937">Editar/personalizar el nombre del informe (UI + endpoint + columna BD)</text>
+      <text x="806" y="93" fill="#165170" font-weight="700" text-anchor="middle">45 min</text><circle cx="896" cy="89" r="5" fill="#d97706"/><text x="908" y="93" fill="#374151">Listo p/ sprint</text>
+
+      <rect y="102" width="1160" height="26" fill="#f3f6f8" stroke="#eef2f5"/>
+      <text x="14" y="119" fill="#1f2937">Nombre autogenerado con localidad + fecha/hora (no genérico)</text>
+      <text x="806" y="119" fill="#165170" font-weight="700" text-anchor="middle">20 min</text><circle cx="896" cy="115" r="5" fill="#16a34a"/><text x="908" y="119" fill="#374151">Listo p/ sprint</text>
+
+      <rect y="128" width="1160" height="26" fill="#fff" stroke="#eef2f5"/>
+      <text x="14" y="145" fill="#1f2937">Etiquetar la dimensión en cada variable listada del informe</text>
+      <text x="806" y="145" fill="#165170" font-weight="700" text-anchor="middle">20 min</text><circle cx="896" cy="141" r="5" fill="#d97706"/><text x="908" y="145" fill="#374151">Listo p/ sprint</text>
+
+      <rect y="154" width="1160" height="26" fill="#f3f6f8" stroke="#eef2f5"/>
+      <text x="14" y="171" fill="#1f2937">Indicar escala y unidad en las barras de puntaje por dimensión</text>
+      <text x="806" y="171" fill="#165170" font-weight="700" text-anchor="middle">20 min</text><circle cx="896" cy="167" r="5" fill="#d97706"/><text x="908" y="171" fill="#374151">Listo p/ sprint</text>
+
+      <rect y="180" width="1160" height="26" fill="#fff" stroke="#eef2f5"/>
+      <text x="14" y="197" fill="#1f2937">Reordenar: resumen ejecutivo primero, desglose detallado después</text>
+      <text x="806" y="197" fill="#165170" font-weight="700" text-anchor="middle">30 min</text><circle cx="896" cy="193" r="5" fill="#d97706"/><text x="908" y="197" fill="#374151">Listo p/ sprint</text>
+
+      <rect y="206" width="1160" height="26" fill="#f3f6f8" stroke="#eef2f5"/>
+      <text x="14" y="223" fill="#1f2937">Subir los botones "Descargar/Guardar" a la cabecera del informe</text>
+      <text x="806" y="223" fill="#165170" font-weight="700" text-anchor="middle">10 min</text><circle cx="896" cy="219" r="5" fill="#16a34a"/><text x="908" y="223" fill="#374151">Listo p/ sprint</text>
+
+      <rect y="232" width="1160" height="26" fill="#fff" stroke="#eef2f5"/>
+      <text x="14" y="249" fill="#1f2937">Mostrar rango de idoneidad (mín/máx del área) junto al puntaje global</text>
+      <text x="806" y="249" fill="#165170" font-weight="700" text-anchor="middle">30 min</text><circle cx="896" cy="245" r="5" fill="#d97706"/><text x="908" y="249" fill="#374151">Listo p/ sprint</text>
+
+      <rect y="258" width="1160" height="26" fill="#f3f6f8" stroke="#eef2f5"/>
+      <text x="14" y="275" fill="#1f2937">Desglosar el radar por subvariables de cada dimensión (interacción)</text>
+      <text x="806" y="275" fill="#165170" font-weight="700" text-anchor="middle">45 min</text><circle cx="896" cy="271" r="5" fill="#16a34a"/><text x="908" y="275" fill="#374151">Depende de datos</text>
+    </g>
+  </g>
+
+  <!-- ===== GESTIÓN USUARIOS ===== -->
+  <g transform="translate(20,952)">
+    <rect width="1160" height="24" fill="#0f3547"/><text x="12" y="17" fill="#fff" font-size="12.5" font-weight="700">Gestión de Usuarios</text>
+    <g font-size="12">
+      <rect y="24" width="1160" height="26" fill="#fff" stroke="#eef2f5"/>
+      <text x="14" y="41" fill="#1f2937">Filtros por rol y estado (activo/inactivo) en la tabla de usuarios</text>
+      <text x="806" y="41" fill="#165170" font-weight="700" text-anchor="middle">60 min</text><circle cx="896" cy="37" r="5" fill="#d97706"/><text x="908" y="41" fill="#374151">Listo p/ sprint</text>
+    </g>
+  </g>
+
+  <!-- ===== PRUEBAS / BENCHMARK ===== -->
+  <g transform="translate(20,1010)">
+    <rect width="1160" height="24" fill="#0f3547"/><text x="12" y="17" fill="#fff" font-size="12.5" font-weight="700">Pruebas / Benchmark</text>
+    <g font-size="12">
+      <rect y="24" width="1160" height="26" fill="#fff" stroke="#eef2f5"/>
+      <text x="14" y="41" fill="#1f2937">Re-benchmark tras Fase 2 (loadtest --db-url) → meta estimada: techo ~50–80 users · bulk &lt;100 ms · cache &gt;95%</text>
+      <text x="806" y="41" fill="#165170" font-weight="700" text-anchor="middle">~1 d</text><circle cx="896" cy="37" r="5" fill="#dc2626"/><text x="908" y="41" fill="#374151">Valida Fase 2</text>
+
+      <rect y="50" width="1160" height="26" fill="#f3f6f8" stroke="#eef2f5"/>
+      <text x="14" y="67" fill="#1f2937">Benchmark de ingesta (tiempo de máster) y de generación de PDF con muchos hexágonos</text>
+      <text x="806" y="67" fill="#165170" font-weight="700" text-anchor="middle">~0,5 d</text><circle cx="896" cy="63" r="5" fill="#d97706"/><text x="908" y="67" fill="#374151">Media</text>
+    </g>
+  </g>
+
+  <!-- ===== RESUMEN ===== -->
+  <g transform="translate(20,1114)">
+    <rect width="720" height="212" rx="12" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="22" y="30" fill="#165170" font-size="15" font-weight="800">Resumen en días</text>
+    <text x="22" y="54" fill="#374151" font-size="12.5">• HU pequeñas (minutos, ~18): <tspan font-weight="700" fill="#165170">~9–12 h ≈ 1,5–2 d</tspan></text>
+    <text x="22" y="74" fill="#374151" font-size="12.5">• Mayores: #26 (~1) + Fase 2 (~2–3) + E2E (~1–2) + datos reales (~2) + manual (~1) = <tspan font-weight="700" fill="#165170">~7–9 d</tspan></text>
+    <text x="22" y="94" fill="#374151" font-size="12.5">• Pruebas / benchmark: <tspan font-weight="700" fill="#165170">~1,5 d</tspan></text>
+    <text x="22" y="114" fill="#374151" font-size="12.5">• Épicas aparte: polígonos externos (2–4 d) + borrado Keycloak (sin estimar)</text>
+    <rect x="18" y="126" width="684" height="34" rx="6" fill="#cce1ee"/>
+    <text x="30" y="148" fill="#0f3547" font-size="13" font-weight="800">TOTAL núcleo ≈ 11–13 días (≈ 2–2,5 sem · 1 pers · o ~1–1,5 sem · 2 pers)</text>
+    <text x="22" y="182" fill="#374151" font-size="11.5" font-weight="700">Velocidad histórica:</text>
+    <text x="22" y="200" fill="#374151" font-size="11.5">S4 cerró ~35 commits/fixes a buen ritmo → las HU de 10–60 min son muy asumibles.</text>
+  </g>
+  <g transform="translate(760,1114)">
+    <rect width="420" height="180" rx="12" fill="#0f3547"/>
+    <text x="22" y="32" fill="#fff" font-size="15" font-weight="700">Sprint 5 sugerido</text>
+    <text x="22" y="60" fill="#cfe3ee" font-size="12.5">1. #26 Turbinas (alta, cliente)</text>
+    <text x="22" y="82" fill="#cfe3ee" font-size="12.5">2. Fase 2 (MV variables-bulk primero)</text>
+    <text x="22" y="104" fill="#cfe3ee" font-size="12.5">3. Bloque de HU pequeñas (mapa/PDF/usuarios)</text>
+    <text x="22" y="126" fill="#cfe3ee" font-size="12.5">4. E2E admin + datos reales</text>
+    <text x="22" y="152" fill="#9fc3d6" font-size="11.5">Backlog/validar: polígonos externos, borrado</text>
+    <text x="22" y="170" fill="#9fc3d6" font-size="11.5">Keycloak, selector de mapas base, disclaimer EAFIT.</text>
+  </g>
+
+  <text x="20" y="1348" fill="#6b7280" font-size="11">Vento · Mavalan Software · estimaciones orientativas (a confirmar en planning de Sprint 5)</text>
+</svg>

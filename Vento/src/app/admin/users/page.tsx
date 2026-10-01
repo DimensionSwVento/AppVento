@@ -308,8 +308,19 @@ export default function AdminUsersPage() {
               </div>
 
               {loading ? (
-                <div className="flex justify-center p-12">
-                  <div className="w-7 h-7 rounded-full border-[3px] border-[#1B4F6A] border-t-transparent animate-spin"></div>
+                /* #5: barra de carga (no spinner circular) — el lote de usuarios
+                   tarda; una barra comunica mejor la espera. */
+                <div className="p-10">
+                  <p className="mb-3 text-center text-sm text-gray-500">
+                    Cargando usuarios…
+                  </p>
+                  <div className="mx-auto h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-gray-200">
+                    <div
+                      className="h-full w-1/3 rounded-full bg-[#1B4F6A]"
+                      style={{ animation: "ventoUsersBar 1.1s ease-in-out infinite" }}
+                    />
+                  </div>
+                  <style>{`@keyframes ventoUsersBar { 0% { transform: translateX(-120%); } 100% { transform: translateX(380%); } }`}</style>
                 </div>
               ) : filtered.length === 0 ? (
                 <p className="py-10 text-center text-sm text-gray-500">
