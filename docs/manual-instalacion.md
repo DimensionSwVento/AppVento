@@ -263,8 +263,11 @@ curados). El bundle pesado corre aislado (`apply_detached`, `RLIMIT_AS = INGEST_
 ## 9. Ramas / despliegue
 | Repo | Trabajo | Producción |
 |------|---------|------------|
-| Front (`Vento`) | `Sprint_4--report_preconig` / `develop` | `deploy-prod` |
+| Front (`Vento`) | `develop` | `deploy-prod` |
 | Backend | `develop` | `main` |
+
+> Las ramas de feature/sprint son **efímeras**: se integran a `develop` y se borran. No
+> dependas de su nombre. Permanentes: `develop` (trabajo) · `main` / `deploy-prod` (producción).
 
 Backend prod consume **`main`**. Tras merge a prod: `alembic upgrade head` +
 `VACUUM ANALYZE hexagon` + build del front.

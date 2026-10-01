@@ -1,34 +1,17 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><title>Vento — Manual Técnico</title><style>
 @page { size: A4; margin: 16mm 15mm; }
-*{box-sizing:border-box;}
-body{font-family:'Segoe UI',Arial,sans-serif;color:#1f2937;line-height:1.5;max-width:920px;margin:0 auto;padding:0;}
-.cover{height:245mm;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:0 10mm;
-       background:linear-gradient(135deg,#0f3547,#165170);color:#fff;page-break-after:always;}
-.cover h1{border:0;color:#fff;font-size:42px;margin:0 0 8px;page-break-before:avoid;}
-.cover .sub{color:#cfe3ee;font-size:18px;} .cover .meta{color:#9fc3d6;font-size:14px;margin-top:28px;}
-.cover .logo{font-size:15px;letter-spacing:3px;color:#9fc3d6;margin-bottom:16px;}
-h1{color:#0f3547;border-bottom:3px solid #165170;padding-bottom:6px;page-break-before:always;font-size:25px;}
-h2{color:#165170;margin-top:1.4em;} h3{color:#1f2937;}
-table{border-collapse:collapse;width:100%;margin:10px 0;font-size:11.5px;}
-th,td{border:1px solid #cbd5e1;padding:5px 7px;text-align:left;vertical-align:top;}
-th{background:#165170;color:#fff;} tr:nth-child(even) td{background:#f3f6f8;}
-code{background:#eef2f5;padding:1px 4px;border-radius:3px;font-size:12px;}
-pre{background:#0f3547;color:#e8f1f6;padding:12px;border-radius:8px;overflow:auto;font-size:11px;} pre code{background:none;color:inherit;}
+*{box-sizing:border-box;} body{font-family:'Segoe UI',Arial,sans-serif;color:#1f2937;line-height:1.5;max-width:920px;margin:0 auto;padding:0;}
+.cover{height:245mm;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:0 10mm;background:linear-gradient(135deg,#0f3547,#165170);color:#fff;page-break-after:always;}
+.cover h1{border:0;color:#fff;font-size:42px;margin:0 0 8px;page-break-before:avoid;} .cover .sub{color:#cfe3ee;font-size:18px;} .cover .meta{color:#9fc3d6;font-size:14px;margin-top:28px;} .cover .logo{font-size:15px;letter-spacing:3px;color:#9fc3d6;margin-bottom:16px;}
+h1{color:#0f3547;border-bottom:3px solid #165170;padding-bottom:6px;page-break-before:always;font-size:25px;} h2{color:#165170;margin-top:1.4em;} h3{color:#1f2937;}
+table{border-collapse:collapse;width:100%;margin:10px 0;font-size:11.5px;} th,td{border:1px solid #cbd5e1;padding:5px 7px;text-align:left;vertical-align:top;} th{background:#165170;color:#fff;} tr:nth-child(even) td{background:#f3f6f8;}
+code{background:#eef2f5;padding:1px 4px;border-radius:3px;font-size:12px;} pre{background:#0f3547;color:#e8f1f6;padding:12px;border-radius:8px;overflow:auto;font-size:11px;} pre code{background:none;color:inherit;}
 blockquote{border-left:4px solid #165170;margin:10px 0;padding:4px 12px;background:#f0f6f9;color:#374151;}
-figure.diagram{margin:0;padding:10px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;page-break-after:always;}
-figure.diagram svg{width:100%;height:auto;display:block;}
-figure.diagram figcaption{color:#6b7280;font-size:11px;text-align:center;margin-top:8px;}
-.section{padding:0 10mm;}
-@media print{pre,table,blockquote{page-break-inside:avoid;} a{color:#165170;text-decoration:none;}}
+figure.diagram{margin:0;padding:10px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;page-break-after:always;} figure.diagram svg{width:100%;height:auto;display:block;} figure.diagram figcaption{color:#6b7280;font-size:11px;text-align:center;margin-top:8px;}
+.section{padding:0 10mm;} @media print{pre,table,blockquote{page-break-inside:avoid;} a{color:#165170;text-decoration:none;}}
 </style></head><body>
-<section class="cover">
-  <div class="logo">⟟ VENTO · MAVALAN SOFTWARE</div>
-  <h1>Manual Técnico</h1>
-  <div class="sub">Vento — Plataforma de idoneidad eólica (SIG / MCDM · hexágonos H3)</div>
-  <div class="meta">2026-10-01 · Audiencia: equipo de desarrollo / on-call</div>
-</section>
-<div class="section">
-  <figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 940" font-family="Segoe UI, Arial, sans-serif">
+<section class="cover"><div class="logo">⟟ VENTO · MAVALAN SOFTWARE</div><h1>Manual Técnico</h1><div class="sub">Vento — Plataforma de idoneidad eólica (SIG / MCDM · hexágonos H3)</div><div class="meta">2026-10-01 · Audiencia: equipo de desarrollo / on-call</div></section>
+<div class="section"><figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 940" font-family="Segoe UI, Arial, sans-serif">
   <defs>
     <linearGradient id="hdr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0f3547"/><stop offset="1" stop-color="#165170"/></linearGradient>
     <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#165170"/></marker>
@@ -145,8 +128,7 @@ figure.diagram figcaption{color:#6b7280;font-size:11px;text-align:center;margin-
   </g>
 
   <text x="40" y="916" fill="#6b7280" font-size="11">Vento · Mavalan Software · resumen visual del Manual Técnico (docs/manual-tecnico.md)</text>
-</svg><figcaption>Resumen visual: arquitectura, stack, ingesta, capacidad.</figcaption></figure>
-  <h1 id="manual-tecnico-vento-plataforma-de-idoneidad-eolica">Manual Técnico — Vento (Plataforma de idoneidad eólica)</h1>
+</svg><figcaption>Resumen visual: arquitectura, stack, ingesta, capacidad.</figcaption></figure><h1 id="manual-tecnico-vento-plataforma-de-idoneidad-eolica">Manual Técnico — Vento (Plataforma de idoneidad eólica)</h1>
 <blockquote>
 <p>Arquitectura, comportamiento, datos, seguridad, configuración y operación.
 Escrito a partir de una lectura completa del código (front + backend).
@@ -734,5 +716,4 @@ decide el <strong>front</strong> con <code>NEXT_PUBLIC_USE_BACKEND</code>. Proce
   <code>docs/ops/documento-tecnico-comportamiento-herramientas-config.md</code> · Runbook AccuWeb:
   <code>docs/ops/accuweb-runbook.md</code> · Instalación y <code>.env</code>: <code>docs/manual-instalacion.md</code> · ADRs: <code>docs/adr/</code>.</li>
 </ul>
-  <p style="margin-top:40px;color:#6b7280;font-size:12px">Vento · Mavalan Software · 2026-10-01 — imprime con Ctrl+P → Guardar como PDF (A4).</p>
-</div></body></html>
+<p style="margin-top:40px;color:#6b7280;font-size:12px">Vento · Mavalan Software · 2026-10-01 — Ctrl+P → Guardar como PDF (A4).</p></div></body></html>

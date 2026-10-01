@@ -1,34 +1,17 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><title>Vento — Manual de Instalación</title><style>
 @page { size: A4; margin: 16mm 15mm; }
-*{box-sizing:border-box;}
-body{font-family:'Segoe UI',Arial,sans-serif;color:#1f2937;line-height:1.5;max-width:920px;margin:0 auto;padding:0;}
-.cover{height:245mm;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:0 10mm;
-       background:linear-gradient(135deg,#0f3547,#165170);color:#fff;page-break-after:always;}
-.cover h1{border:0;color:#fff;font-size:42px;margin:0 0 8px;page-break-before:avoid;}
-.cover .sub{color:#cfe3ee;font-size:18px;} .cover .meta{color:#9fc3d6;font-size:14px;margin-top:28px;}
-.cover .logo{font-size:15px;letter-spacing:3px;color:#9fc3d6;margin-bottom:16px;}
-h1{color:#0f3547;border-bottom:3px solid #165170;padding-bottom:6px;page-break-before:always;font-size:25px;}
-h2{color:#165170;margin-top:1.4em;} h3{color:#1f2937;}
-table{border-collapse:collapse;width:100%;margin:10px 0;font-size:11.5px;}
-th,td{border:1px solid #cbd5e1;padding:5px 7px;text-align:left;vertical-align:top;}
-th{background:#165170;color:#fff;} tr:nth-child(even) td{background:#f3f6f8;}
-code{background:#eef2f5;padding:1px 4px;border-radius:3px;font-size:12px;}
-pre{background:#0f3547;color:#e8f1f6;padding:12px;border-radius:8px;overflow:auto;font-size:11px;} pre code{background:none;color:inherit;}
+*{box-sizing:border-box;} body{font-family:'Segoe UI',Arial,sans-serif;color:#1f2937;line-height:1.5;max-width:920px;margin:0 auto;padding:0;}
+.cover{height:245mm;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:0 10mm;background:linear-gradient(135deg,#0f3547,#165170);color:#fff;page-break-after:always;}
+.cover h1{border:0;color:#fff;font-size:42px;margin:0 0 8px;page-break-before:avoid;} .cover .sub{color:#cfe3ee;font-size:18px;} .cover .meta{color:#9fc3d6;font-size:14px;margin-top:28px;} .cover .logo{font-size:15px;letter-spacing:3px;color:#9fc3d6;margin-bottom:16px;}
+h1{color:#0f3547;border-bottom:3px solid #165170;padding-bottom:6px;page-break-before:always;font-size:25px;} h2{color:#165170;margin-top:1.4em;} h3{color:#1f2937;}
+table{border-collapse:collapse;width:100%;margin:10px 0;font-size:11.5px;} th,td{border:1px solid #cbd5e1;padding:5px 7px;text-align:left;vertical-align:top;} th{background:#165170;color:#fff;} tr:nth-child(even) td{background:#f3f6f8;}
+code{background:#eef2f5;padding:1px 4px;border-radius:3px;font-size:12px;} pre{background:#0f3547;color:#e8f1f6;padding:12px;border-radius:8px;overflow:auto;font-size:11px;} pre code{background:none;color:inherit;}
 blockquote{border-left:4px solid #165170;margin:10px 0;padding:4px 12px;background:#f0f6f9;color:#374151;}
-figure.diagram{margin:0;padding:10px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;page-break-after:always;}
-figure.diagram svg{width:100%;height:auto;display:block;}
-figure.diagram figcaption{color:#6b7280;font-size:11px;text-align:center;margin-top:8px;}
-.section{padding:0 10mm;}
-@media print{pre,table,blockquote{page-break-inside:avoid;} a{color:#165170;text-decoration:none;}}
+figure.diagram{margin:0;padding:10px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;page-break-after:always;} figure.diagram svg{width:100%;height:auto;display:block;} figure.diagram figcaption{color:#6b7280;font-size:11px;text-align:center;margin-top:8px;}
+.section{padding:0 10mm;} @media print{pre,table,blockquote{page-break-inside:avoid;} a{color:#165170;text-decoration:none;}}
 </style></head><body>
-<section class="cover">
-  <div class="logo">⟟ VENTO · MAVALAN SOFTWARE</div>
-  <h1>Manual de Instalación</h1>
-  <div class="sub">Vento — Puesta en marcha de front, backend, BD e identidad</div>
-  <div class="meta">2026-10-01 · Audiencia: equipo de desarrollo / on-call</div>
-</section>
-<div class="section">
-  <figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 980" font-family="Segoe UI, Arial, sans-serif">
+<section class="cover"><div class="logo">⟟ VENTO · MAVALAN SOFTWARE</div><h1>Manual de Instalación</h1><div class="sub">Vento — Puesta en marcha de front, backend, BD e identidad</div><div class="meta">2026-10-01 · Audiencia: equipo de desarrollo / on-call</div></section>
+<div class="section"><figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 980" font-family="Segoe UI, Arial, sans-serif">
   <defs>
     <linearGradient id="hdr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0f3547"/><stop offset="1" stop-color="#165170"/></linearGradient>
     <marker id="ar2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#165170"/></marker>
@@ -142,16 +125,15 @@ figure.diagram figcaption{color:#6b7280;font-size:11px;text-align:center;margin-
   <g transform="translate(40,764)">
     <rect width="1120" height="150" rx="12" fill="#fff" stroke="#e5e7eb"/>
     <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">Ramas / despliegue</text>
-    <text x="20" y="54" fill="#374151" font-size="12.5">Front (repo Vento): trabajo <tspan font-weight="700">Sprint_4--report_preconig / develop</tspan> → producción <tspan font-weight="700">deploy-prod</tspan></text>
-    <text x="20" y="76" fill="#374151" font-size="12.5">Backend: trabajo <tspan font-weight="700">develop</tspan> → producción <tspan font-weight="700">main</tspan> (prod consume main, no develop)</text>
+    <text x="20" y="54" fill="#374151" font-size="12.5">Front (repo Vento): trabajo <tspan font-weight="700">develop</tspan> → producción <tspan font-weight="700">deploy-prod</tspan></text>
+    <text x="20" y="76" fill="#374151" font-size="12.5">Backend: trabajo <tspan font-weight="700">develop</tspan> → producción <tspan font-weight="700">main</tspan>. Las ramas de feature/sprint son efímeras.</text>
     <text x="20" y="102" fill="#1f2937" font-size="12.5" font-weight="700">Tras merge a prod:</text>
     <text x="150" y="102" fill="#374151" font-size="12.5">alembic upgrade head · VACUUM ANALYZE hexagon · build del front.</text>
     <text x="20" y="128" fill="#6b7280" font-size="11.5">Docker (prod): entrypoint aplica migraciones (y opcional RUN_INGEST) y arranca gunicorn -w 2 --timeout 120.</text>
   </g>
 
   <text x="40" y="952" fill="#6b7280" font-size="11">Vento · Mavalan Software · resumen visual del Manual de Instalación (docs/manual-instalacion.md)</text>
-</svg><figcaption>Resumen visual: pasos, .env, migraciones, verificación.</figcaption></figure>
-  <h1 id="manual-de-instalacion-vento">Manual de Instalación — Vento</h1>
+</svg><figcaption>Resumen visual: pasos, .env, migraciones, verificación.</figcaption></figure><h1 id="manual-de-instalacion-vento">Manual de Instalación — Vento</h1>
 <blockquote>
 <p>Puesta en marcha de <strong>frontend</strong>, <strong>backend</strong>, <strong>base de datos</strong> e <strong>identidad</strong>,
 con el <strong>detalle completo de las variables de entorno</strong> y de la <strong>ingesta de datos</strong>.
@@ -413,7 +395,7 @@ curados). El bundle pesado corre aislado (<code>apply_detached</code>, <code>RLI
 <tbody>
 <tr>
 <td>Front (<code>Vento</code>)</td>
-<td><code>Sprint_4--report_preconig</code> / <code>develop</code></td>
+<td><code>develop</code></td>
 <td><code>deploy-prod</code></td>
 </tr>
 <tr>
@@ -423,7 +405,10 @@ curados). El bundle pesado corre aislado (<code>apply_detached</code>, <code>RLI
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p>Las ramas de feature/sprint son <strong>efímeras</strong>: se integran a <code>develop</code> y se borran. No
+dependas de su nombre. Permanentes: <code>develop</code> (trabajo) · <code>main</code> / <code>deploy-prod</code> (producción).</p>
+</blockquote>
 <p>Backend prod consume <strong><code>main</code></strong>. Tras merge a prod: <code>alembic upgrade head</code> +
 <code>VACUUM ANALYZE hexagon</code> + build del front.</p>
-  <p style="margin-top:40px;color:#6b7280;font-size:12px">Vento · Mavalan Software · 2026-10-01 — imprime con Ctrl+P → Guardar como PDF (A4).</p>
-</div></body></html>
+<p style="margin-top:40px;color:#6b7280;font-size:12px">Vento · Mavalan Software · 2026-10-01 — Ctrl+P → Guardar como PDF (A4).</p></div></body></html>
