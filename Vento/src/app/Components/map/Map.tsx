@@ -219,6 +219,9 @@ export default function MapView() {
   // bumpea al cambiarla para remontar el TileLayer y refetchear los tiles.
   const activeHeatRef = useRef<string | null>(null);
   const [heatVersion, setHeatVersion] = useState(0);
+  // #6: al togglear calor el grid REMONTA (parpadeo). No desacoplamos el fetch;
+  // mostramos el pill "cargando mapa" durante el remonte para que se lea como carga.
+  const [heatLoading, setHeatLoading] = useState(false);
   // DECOPLE malla↔backend (directiva): la rejilla se pinta con geometría de
   // cliente sin esperar al backend. Los datos de backend se aplican sin bloquear:
   //  - `heatCacheRef`: valores de calor por tile `${var}:${z}/${x}/${y}` → color.
@@ -456,6 +459,7 @@ export default function MapView() {
     maxRequests: 4,
     refinementStrategy: "best-available",
     onViewportLoad: () => {
+      setHeatLoading(false); // #6: terminó el remonte por toggle de calor
       // Durante el slide del search, mantener el overlay visible hasta el
       // final del slide; el handler lo baja al terminar la fase 3.
       if (isFlyingRef.current) return;
@@ -1077,6 +1081,7 @@ export default function MapView() {
     if (activeHeatRef.current === activeHeatVarId) return;
     activeHeatRef.current = activeHeatVarId;
     setHeatVersion((n) => n + 1);
+    setHeatLoading(true); // #6: pill "cargando mapa" mientras el grid remonta
   }, [activeHeatVarId]);
 
   // Centroide del área seleccionada — para que las capas `interconectado` tracen
@@ -1441,7 +1446,7 @@ export default function MapView() {
       {/* Pill NO bloqueante "cargando capas del mapa": avisa arriba mientras las
           capas de variable/cobertura cargan (no tapa el mapa, se puede seguir
           navegando). Se oculta solo cuando terminan (layersLoading vuelve a 0). */}
-      {mapReady && layersLoading > 0 && !selectionZoomTooFar && (
+      {mapReady && (layersLoading > 0 || heatLoading) && !selectionZoomTooFar && (
         <div className="pointer-events-none absolute left-1/2 top-3 z-20 -translate-x-1/2">
           <div className="flex items-center gap-2 rounded-full bg-white/95 px-3.5 py-1.5 shadow-md ring-1 ring-black/5">
             <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 animate-spin text-[#165170ff]">
