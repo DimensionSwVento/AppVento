@@ -1759,7 +1759,9 @@ export default function MapView() {
       {/* #19: leyenda viridis también en DIMENSIONES cuando hay un mapa de calor de
           variable activo (ahí es el valor de la variable, no idoneidad → sin muesca). */}
       {accion === "dimensiones" && activeHeatVarId && (
-        <div className="absolute top-3 left-3 z-10">
+        // #2: abajo-izquierda — el control "Capas del mapa" (MapSymbolsLegend) ya
+        // ocupa arriba-izquierda; antes se superponían.
+        <div className="absolute bottom-3 left-3 z-10">
           <HeatmapLegend title="Valor (%)" />
         </div>
       )}
