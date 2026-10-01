@@ -779,9 +779,20 @@ export default function MapView() {
     // resuelve por el camino async (bulk con [] → vacío → setSymbolCells({})).
     const hasWork = wanted.length > 0;
     // setState fuera del cuerpo del effect (regla React Compiler): en un microtask.
-    if (hasWork) queueMicrotask(() => alive && setLayersLoading((n) => n + 1));
+    // #19: el contador de "cargando capas" se desbalanceaba (incrementaba pero al
+    // abortar/cambiar deps NO decrementaba por el guard `alive`) → el pill de
+    // "cargando mapa" se quedaba pegado aunque todo hubiera resuelto. Ahora inc/dec
+    // se atan a `counted`: si llegó a incrementar, SIEMPRE decrementa al terminar.
+    let counted = false;
+    if (hasWork)
+      queueMicrotask(() => {
+        if (alive) {
+          counted = true;
+          setLayersLoading((n) => n + 1);
+        }
+      });
     const done = () => {
-      if (alive && hasWork) setLayersLoading((n) => Math.max(0, n - 1));
+      if (counted) setLayersLoading((n) => Math.max(0, n - 1));
     };
     if (USE_BACKEND) {
       // BULK: una sola petición para TODAS las variables de símbolo (1 scan) →
@@ -959,9 +970,20 @@ export default function MapView() {
     // camino async (bulk con [] → vacío → setExtraCells({})).
     const hasWork = vars.length > 0;
     // setState fuera del cuerpo del effect (regla React Compiler): en un microtask.
-    if (hasWork) queueMicrotask(() => alive && setLayersLoading((n) => n + 1));
+    // #19: el contador de "cargando capas" se desbalanceaba (incrementaba pero al
+    // abortar/cambiar deps NO decrementaba por el guard `alive`) → el pill de
+    // "cargando mapa" se quedaba pegado aunque todo hubiera resuelto. Ahora inc/dec
+    // se atan a `counted`: si llegó a incrementar, SIEMPRE decrementa al terminar.
+    let counted = false;
+    if (hasWork)
+      queueMicrotask(() => {
+        if (alive) {
+          counted = true;
+          setLayersLoading((n) => n + 1);
+        }
+      });
     const done = () => {
-      if (alive && hasWork) setLayersLoading((n) => Math.max(0, n - 1));
+      if (counted) setLayersLoading((n) => Math.max(0, n - 1));
     };
     if (USE_BACKEND) {
       // BULK: una sola petición para todas las capas de catálogo (1 scan del bbox).
