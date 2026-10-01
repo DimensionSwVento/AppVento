@@ -1632,12 +1632,13 @@ export default function Report() {
         console.warn("[pdfExport] setProperties falló:", err);
       }
 
-      // MEMORIA: html2canvas a scale 2 rasteriza 4× píxeles por hoja; sobre muchas
-      // hojas el navegador llegaba a ~4 GB. Bajamos a 1.5 (nítido para A4) y, tras
-      // convertir cada canvas a JPEG, lo LIBERAMOS (width/height=0) + cedemos un
-      // tick al event loop para que el GC reclame antes de la siguiente hoja → el
-      // pico se acota a ~1 canvas, no a todos a la vez.
-      const CAPTURE_SCALE = 1.5;
+      // NITIDEZ vs MEMORIA (#5): a scale 1.5 el A4 salía borroso ("imagen
+      // estirada"). html2canvas a scale 2 rasteriza 4× píxeles/hoja (antes el
+      // navegador llegaba a ~4 GB con muchas hojas). Como cada canvas se LIBERA
+      // (width/height=0) + se cede un tick antes de la siguiente, el pico es de ~1
+      // canvas → podemos subir a 2 para informes normales (≤12 hojas) y solo caer a
+      // 1.5 en informes muy largos (defensa de memoria).
+      const CAPTURE_SCALE = totalSheets <= 12 ? 2 : 1.5;
       const SLICE_EPS_MM = 2; // franja mínima sobrante: no añade página casi vacía
 
       // Rasteriza una hoja a JPEG y LIBERA el canvas. `hideCharts` = oculta los
@@ -1654,7 +1655,7 @@ export default function Report() {
             ignoreElements: (n) =>
               (n as HTMLElement).getAttribute?.("data-pdf-ignore") === "true",
           });
-          const data = canvas.toDataURL("image/jpeg", 0.9);
+          const data = canvas.toDataURL("image/jpeg", 0.95);
           const w = canvas.width;
           const h = canvas.height;
           canvas.width = 0; // libera YA: evita acumular canvases en RAM
