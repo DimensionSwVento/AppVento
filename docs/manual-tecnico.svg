@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="940" viewBox="0 0 1200 940" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <linearGradient id="hdr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0f3547"/><stop offset="1" stop-color="#165170"/></linearGradient>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#165170"/></marker>
+  </defs>
+  <rect width="1200" height="940" fill="#f7f9fb"/>
+
+  <!-- Header -->
+  <rect width="1200" height="92" fill="url(#hdr)"/>
+  <text x="40" y="42" fill="#fff" font-size="25" font-weight="800">Vento — Manual Técnico (resumen)</text>
+  <text x="40" y="70" fill="#cfe3ee" font-size="14">Arquitectura · stack · modos · ingesta · capacidad · seguridad. Detalle completo en docs/manual-tecnico.md</text>
+  <text x="1160" y="52" fill="#fff" font-size="13" text-anchor="end" opacity="0.85">2026-10-01</text>
+
+  <!-- Arquitectura (diagrama) -->
+  <text x="40" y="128" fill="#165170" font-size="16" font-weight="800">Arquitectura</text>
+  <g font-size="12.5">
+    <rect x="40" y="140" width="190" height="78" rx="10" fill="#fff" stroke="#cbd5e1"/>
+    <text x="135" y="172" text-anchor="middle" fill="#1f2937" font-weight="700">Navegador</text>
+    <text x="135" y="192" text-anchor="middle" fill="#6b7280" font-size="11">Auth.js (cookie)</text>
+
+    <rect x="290" y="140" width="250" height="78" rx="10" fill="#e8f1f6" stroke="#165170"/>
+    <text x="415" y="166" text-anchor="middle" fill="#0f3547" font-weight="700">Front Next.js 16 — BFF</text>
+    <text x="415" y="186" text-anchor="middle" fill="#374151" font-size="11">/api/* valida sesión y reenvía con</text>
+    <text x="415" y="202" text-anchor="middle" fill="#374151" font-size="11">X-Internal-Secret · X-User-Sub · X-User-Roles</text>
+
+    <rect x="600" y="140" width="240" height="78" rx="10" fill="#e8f1f6" stroke="#165170"/>
+    <text x="720" y="166" text-anchor="middle" fill="#0f3547" font-weight="700">Backend FastAPI (Docker)</text>
+    <text x="720" y="186" text-anchor="middle" fill="#374151" font-size="11">stateless · gunicorn -w 2</text>
+    <text x="720" y="202" text-anchor="middle" fill="#374151" font-size="11">streaming anti-OOM</text>
+
+    <rect x="900" y="140" width="260" height="78" rx="10" fill="#fff" stroke="#cbd5e1"/>
+    <text x="1030" y="166" text-anchor="middle" fill="#1f2937" font-weight="700">PostgreSQL</text>
+    <text x="1030" y="186" text-anchor="middle" fill="#6b7280" font-size="11">hexagon (1.6M) · hexagon_meta</text>
+    <text x="1030" y="202" text-anchor="middle" fill="#6b7280" font-size="11">catalog_* · app_config · informe</text>
+
+    <line x1="230" y1="179" x2="288" y2="179" stroke="#165170" stroke-width="2" marker-end="url(#ar)"/>
+    <line x1="540" y1="179" x2="598" y2="179" stroke="#165170" stroke-width="2" marker-end="url(#ar)"/>
+    <line x1="840" y1="179" x2="898" y2="179" stroke="#165170" stroke-width="2" marker-end="url(#ar)"/>
+
+    <rect x="600" y="236" width="240" height="40" rx="10" fill="#0f3547"/>
+    <text x="720" y="261" text-anchor="middle" fill="#fff" font-size="12">Keycloak (OIDC) — el backend VERIFICA el JWT</text>
+    <line x1="720" y1="236" x2="720" y2="220" stroke="#165170" stroke-width="2" marker-end="url(#ar)"/>
+  </g>
+
+  <!-- Tarjetas -->
+  <!-- Stack -->
+  <g transform="translate(40,300)">
+    <rect width="360" height="150" rx="12" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="150" fill="#165170" rx="3"/>
+    <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">Stack</text>
+    <text x="20" y="52" fill="#374151" font-size="12">Front: Next.js 16 · React 19 · deck.gl 9.2 +</text>
+    <text x="20" y="70" fill="#374151" font-size="12">MapLibre · h3-js 4 · Tailwind v4 · Auth.js v5 ·</text>
+    <text x="20" y="88" fill="#374151" font-size="12">jsPDF + html2canvas-pro (PDF, sin svg2pdf)</text>
+    <text x="20" y="112" fill="#374151" font-size="12">Back: Python 3.12 · FastAPI · gunicorn · SQLAlchemy 2</text>
+    <text x="20" y="130" fill="#374151" font-size="12">· Alembic · psycopg3 · pandas/pyarrow · h3 · Keycloak</text>
+  </g>
+  <!-- Modos -->
+  <g transform="translate(420,300)">
+    <rect width="360" height="150" rx="12" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="150" fill="#2563eb" rx="3"/>
+    <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">Modo TEMPLATE vs BACKEND</text>
+    <text x="20" y="52" fill="#374151" font-size="12">Interruptor: NEXT_PUBLIC_USE_BACKEND</text>
+    <text x="20" y="74" fill="#374151" font-size="12">• true → API real: <tspan font-weight="700">dato real o VACÍO</tspan></text>
+    <text x="20" y="92" fill="#374151" font-size="12">  (nunca cifras falsas)</text>
+    <text x="20" y="114" fill="#374151" font-size="12">• false → template/demo (placeholders)</text>
+    <text x="20" y="136" fill="#6b7280" font-size="11">El backend no tiene flag de modo (lo decide el front)</text>
+  </g>
+  <!-- Seguridad -->
+  <g transform="translate(800,300)">
+    <rect width="360" height="150" rx="12" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="150" fill="#7c3aed" rx="3"/>
+    <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">Seguridad / Auth</text>
+    <text x="20" y="52" fill="#374151" font-size="12">NextAuth v5 (provider Keycloak custom)</text>
+    <text x="20" y="70" fill="#374151" font-size="12">Triple guard admin (middleware+layout+BFF)</text>
+    <text x="20" y="88" fill="#374151" font-size="12">Backend: require_user DUAL (secreto BFF o JWT)</text>
+    <text x="20" y="106" fill="#374151" font-size="12">Registro ADR-012 · Keycloak Admin para usuarios</text>
+    <text x="20" y="124" fill="#374151" font-size="12">Roles admin/analista · CORS · sin tokens al cliente</text>
+  </g>
+
+  <!-- Ingesta -->
+  <g transform="translate(40,470)">
+    <rect width="720" height="190" rx="12" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="190" fill="#16a34a" rx="3"/>
+    <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">Ingesta de datos (normalización 1–5→[0,1] en LECTURA, no en ingesta)</text>
+    <text x="20" y="54" fill="#374151" font-size="12"><tspan font-weight="700">copy</tspan> (default): COPY atómico TRUNCATE+COPY+meta en una transacción (streaming).</text>
+    <text x="20" y="76" fill="#374151" font-size="12"><tspan font-weight="700">orm</tspan>: fallback portable (DELETE + lotes), no atómico.</text>
+    <text x="20" y="98" fill="#374151" font-size="12"><tspan font-weight="700">upsert_chunk</tspan>: modular por paquete, fusiona JSONB (|| ), refina meta.</text>
+    <text x="20" y="120" fill="#374151" font-size="12"><tspan font-weight="700">blue_green</tspan>: carga en hexagon_new + SWAP por rename (sin downtime).</text>
+    <text x="20" y="144" fill="#374151" font-size="12">Bundle por clases: advisory lock single-flight + malloc_trim + apply-detached (RLIMIT_AS).</text>
+    <text x="20" y="166" fill="#374151" font-size="12">Catálogo: metadata_ingest (InfoVariables→jerarquía, concilia por master_id) · economic_ingest.</text>
+    <text x="20" y="184" fill="#6b7280" font-size="11">Tras ingerir: VACUUM ANALYZE + verificar con GET /api/admin/db/overview.</text>
+  </g>
+
+  <!-- Capacidad -->
+  <g transform="translate(780,470)">
+    <rect width="380" height="190" rx="12" fill="#0f3547"/>
+    <text x="20" y="28" fill="#fff" font-size="14" font-weight="700">Capacidad (benchmark)</text>
+    <text x="20" y="54" fill="#cfe3ee" font-size="12.5">Techo útil ≈ <tspan font-weight="800" fill="#fff">25 usuarios</tspan> concurrentes</text>
+    <text x="20" y="74" fill="#9fc3d6" font-size="11.5">2 workers × APP_THREAD_LIMIT 18 = 36 ops BD</text>
+    <text x="20" y="100" fill="#cfe3ee" font-size="12.5">Cuello: variables-bulk (~165 MB/req)</text>
+    <text x="20" y="120" fill="#cfe3ee" font-size="12.5">cache-hit BD ~74% → Fase 2 h3-pg</text>
+    <text x="20" y="146" fill="#9fc3d6" font-size="11.5">Regla: ~1 worker ≈ 18 ops BD por ~1 GB RAM;</text>
+    <text x="20" y="164" fill="#9fc3d6" font-size="11.5">APP_THREAD_LIMIT ≤ pool(20) × workers ≤ max_conn.</text>
+    <text x="20" y="184" fill="#9fc3d6" font-size="11">Medido con tools/loadtest.py (--db-url: EXPLAIN+salud BD)</text>
+  </g>
+
+  <!-- Endpoints / flujo -->
+  <g transform="translate(40,680)">
+    <rect width="1120" height="200" rx="12" fill="#fff" stroke="#e5e7eb"/>
+    <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">Flujo y endpoints</text>
+    <text x="20" y="52" fill="#374151" font-size="12.5">Flujo: selección de área → dimensiones → características → informe (+ histórico). Estado en AccionPrincipalContext.</text>
+    <text x="20" y="78" fill="#1f2937" font-size="12" font-weight="700">Backend (FastAPI, /api):</text>
+    <text x="20" y="98" fill="#374151" font-size="12">GET /tiles/warmup (conteo estimado) · /variables · /detail/{h3} · /{z}/{x}/{y} · /excluded (índice+caché)</text>
+    <text x="20" y="116" fill="#374151" font-size="12">POST /tiles/area (informe) · /variable · /variables-bulk · /heatmap/area</text>
+    <text x="20" y="134" fill="#374151" font-size="12">/historico · /admin/catalog · /admin/master · /admin/bundle · GET /admin/db/overview (verificación ingesta)</text>
+    <text x="20" y="152" fill="#374151" font-size="12">GET /api/_debug/stats · /inflight (gate DEBUG_INFLIGHT=1) · GET /api/health</text>
+    <text x="20" y="178" fill="#1f2937" font-size="12" font-weight="700">PDF:</text>
+    <text x="78" y="178" fill="#374151" font-size="12">html2canvas-pro + jsPDF, una hoja A4 = una página; tablas largas chunkeadas (no se cortan).</text>
+  </g>
+
+  <text x="40" y="916" fill="#6b7280" font-size="11">Vento · Mavalan Software · resumen visual del Manual Técnico (docs/manual-tecnico.md)</text>
+</svg>
