@@ -745,12 +745,8 @@ export default function MapView() {
   // GATE en `mapReady`: la causa del crash anterior era actualizar el IconLayer
   // antes de que el device (GPU) estuviera listo (`device.limits undefined`);
   // arrancar el intervalo solo tras `mapReady` lo evita. Solo con capas visibles.
-  const [blinkOn, setBlinkOn] = useState(true);
-  useEffect(() => {
-    if (!mapReady || (accion !== "informe" && accion !== "dimensiones")) return;
-    const t = setInterval(() => setBlinkOn((b) => !b), 800);
-    return () => clearInterval(t);
-  }, [mapReady, accion]);
+  // #6: se eliminó el blink de iconos (parpadeo a 800 ms) — en la fase de baja
+  // opacidad los iconos se veían "negros". Ahora opacidad constante (ver IconLayer).
   // Capas de variable EFECTIVAS (las que se pintan):
   //  - Informe: las controla el menú "Capas del mapa" (`activeSymbols`).
   //  - Dimensiones: las manda el SWITCH de la card (`activeVariables`), MENOS las
@@ -766,6 +762,7 @@ export default function MapView() {
   );
   useEffect(() => {
     let alive = true;
+    const ctrl = new AbortController(); // aborta el bulk en vuelo al cambiar capas / salir (#24)
     // En backend, espera a tener el bbox del viewport antes de pedir (si no, la 1ª
     // carga pediría el país entero → el scan de 5 min que estamos matando).
     if (USE_BACKEND && !viewBox) return;
@@ -789,7 +786,7 @@ export default function MapView() {
     if (USE_BACKEND) {
       // BULK: una sola petición para TODAS las variables de símbolo (1 scan) →
       // acota el bbox y no apila peticiones (era el cuello).
-      fetchVariableLayersBulk(wanted.map((s) => s.variableId), layerRes, viewBox ?? undefined)
+      fetchVariableLayersBulk(wanted.map((s) => s.variableId), layerRes, viewBox ?? undefined, ctrl.signal)
         .then((m) => {
           if (!alive) return;
           const obj: Record<string, MapLayerCell[]> = {};
@@ -814,6 +811,7 @@ export default function MapView() {
     }
     return () => {
       alive = false;
+      ctrl.abort(); // mata el bulk en vuelo (no apilar scans; respiro al back)
     };
   }, [effectiveSymbols, mapDisabledIds, mapNature, layerRes, viewBox]);
 
@@ -899,8 +897,13 @@ export default function MapView() {
       // Icono ASIGNADO EN ADMIN (iconKey del catálogo, hidratado de BD) renderizado
       // a data-URI con el color de la variable. Fallback al icono estático de
       // `MAP_SYMBOLS` si el catálogo no tiene iconKey.
-      const iconKey = getVariableById(s.variableId)?.iconKey;
-      const iconUrl = iconKey ? iconKeyToDataUri(iconKey, s.color) : s.icon;
+      // #16: SIEMPRE por iconKeyToDataUri (círculo blanco + BORDE GRUESO del color).
+      // Antes, si la variable no tenía `icon_key` ingerido (modo backend), caía a
+      // `s.icon` (circleIcon) que lleva borde BLANCO → el icono salía sin el borde de
+      // color (le pasaba a resguardos indígenas y a toda var sin icon_key en BD). El
+      // fallback de iconKeyToDataUri también pinta el borde de color.
+      const iconKey = getVariableById(s.variableId)?.iconKey || "lucide:MapPin";
+      const iconUrl = iconKeyToDataUri(iconKey, s.color);
       return (
         new IconLayer<MapSymbolPoint>({
           id: `map-symbol-${s.variableId}`,
@@ -911,7 +914,7 @@ export default function MapView() {
           getIcon: () => ({ id: `${s.variableId}|${iconKey ?? "static"}`, url: iconUrl, width: 48, height: 48, anchorY: 24, mask: false }),
           getSize: 30,
           sizeUnits: "pixels",
-          opacity: blinkOn ? 1 : 0.45, // blink
+          opacity: 1, // #6: sin blink (el parpadeo hacía ver los iconos "negros")
           pickable: false,
           // Los polígonos (zonas/heat) escriben profundidad a z=0 y ocultarían el
           // icono que cae encima. `depthCompare: "always"` (luma.gl v9) hace que
@@ -923,7 +926,7 @@ export default function MapView() {
     // bands (hex + redes) e icons por separado → los iconos se dibujan encima de
     // TODAS las bandas (evita que las bandas opacas de otras capas los tapen).
     return { bands: [...polys, ...paths], icons };
-  }, [effectiveSymbols, mapDisabledIds, symbolCells, blinkOn, mapNature, activeZoneIds]);
+  }, [effectiveSymbols, mapDisabledIds, symbolCells, mapNature, activeZoneIds]);
 
   // ── N1a-mapa 2b: capas GENÉRICAS de catálogo ────────────────────────────────
   // Variables enMapa (área/interconectado, NO calor) que NO están en la lista
@@ -947,6 +950,7 @@ export default function MapView() {
   const [extraCells, setExtraCells] = useState<Record<string, string[]>>({});
   useEffect(() => {
     let alive = true;
+    const ctrl = new AbortController(); // aborta el bulk en vuelo al cambiar capas / salir (#24)
     // En backend, espera al bbox del viewport (no pedir el país entero en la 1ª carga).
     if (USE_BACKEND && !viewBox) return;
     // `calor` no usa celdas de área (colorea la rejilla) → no se fetchea aquí.
@@ -961,7 +965,7 @@ export default function MapView() {
     };
     if (USE_BACKEND) {
       // BULK: una sola petición para todas las capas de catálogo (1 scan del bbox).
-      fetchVariableLayersBulk(vars.map((x) => x.id), layerRes, viewBox ?? undefined)
+      fetchVariableLayersBulk(vars.map((x) => x.id), layerRes, viewBox ?? undefined, ctrl.signal)
         .then((m) => {
           if (!alive) return;
           const obj: Record<string, string[]> = {};
@@ -979,6 +983,7 @@ export default function MapView() {
     }
     return () => {
       alive = false;
+      ctrl.abort(); // mata el bulk en vuelo (no apilar scans; respiro al back)
     };
   }, [extraMapVars, layerRes, viewBox]);
 
@@ -1117,7 +1122,7 @@ export default function MapView() {
           }),
           getSize: 26,
           sizeUnits: "pixels",
-          opacity: blinkOn ? 1 : 0.45, // blink
+          opacity: 1, // #6: sin blink (el parpadeo hacía ver los iconos "negros")
           pickable: false,
           parameters: { depthCompare: "always" },
         }),
@@ -1153,7 +1158,7 @@ export default function MapView() {
       }
     }
     return { bands, icons };
-  }, [extraMapVars, extraCells, selectionCenter, blinkOn, activeZoneIds]);
+  }, [extraMapVars, extraCells, selectionCenter, activeZoneIds]);
 
   // Dibujo del POLÍGONO en curso (US03-04): vértices (puntos) + contorno. Se
   // materializa en hexágonos al "Aplicar" (ver `applyPolygon`).
