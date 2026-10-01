@@ -720,7 +720,12 @@ export default function MapView() {
   // estado de la variable: apagar una capa la oculta del mapa pero NUNCA apaga su
   // switch (las de modelo son obligatorias y no deben romperse). Set de capas
   // ocultas (override de visibilidad); vacío = todas las activas se ven.
-  const [hiddenLayers, setHiddenLayers] = useState<Set<string>>(new Set());
+  // #7: las capas de variable arrancan APAGADAS en dimensiones (o se amontonan).
+  // Se siembra `hiddenLayers` con las capas curadas no-calor; el usuario las
+  // enciende desde "Capas del mapa". (Informe ya arranca off vía `activeSymbols`.)
+  const [hiddenLayers, setHiddenLayers] = useState<Set<string>>(
+    () => new Set(MAP_SYMBOLS.filter((s) => s.kind !== "heat").map((s) => s.variableId)),
+  );
   const toggleDimLayer = useCallback((id: string) => {
     setHiddenLayers((prev) => {
       const next = new Set(prev);
