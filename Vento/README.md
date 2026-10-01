@@ -107,3 +107,21 @@ Para que el panel de administración de usuarios (ruta `/admin/users`) funcione 
    - Buscar el cliente `realm-management` y asignarle el rol **`manage-users`**.
 
 Adicionalmente, se recomienda que existan dos Realm Roles configurados llamados exactamente `"admin"` y `"analista"`.
+
+## Capacidad del backend por endpoint (para el front)
+
+Qué aguanta la API que consume este front, medido con `tools/loadtest.py` en el
+server de **2 workers / ~2 GB**. Techo = usuarios concurrentes antes de degradar;
+"por GB" ≈ 18 operaciones de BD concurrentes por cada ~1 GB de RAM.
+
+| Endpoint que llama el front | Techo (2 GB) | ≈ por GB | Datos movidos / request |
+|---|---|---|---|
+| `GET /tiles/detail` (popup hex) | ~100 | ~50 | 1 hex (~0,7 KB) |
+| `POST /tiles/area` (informe) | ~100 | ~50 | 20–300 hexes (~0,06–0,22 MB) |
+| `GET /tiles/variables` (catálogo) | ~100 | ~50 | 62 filas meta (~KB) |
+| `GET /tiles/warmup` (arranque mapa) | ~50 → >100 (fix) | ~25 → >50 | conteo estimado (antes ~954 MB) |
+| `POST /tiles/variables-bulk` (capas) | **~10** | ~5 | hasta ~165 MB leídos (scan bbox) |
+
+→ `variables-bulk` es el más caro: el front ya acota **bbox + resolución** por zoom;
+evitar pedir muchas capas a la vez a zoom lejano. Detalle y configuración:
+**[docs/ops/documento-tecnico-comportamiento-herramientas-config.md](../docs/ops/documento-tecnico-comportamiento-herramientas-config.md)**.
