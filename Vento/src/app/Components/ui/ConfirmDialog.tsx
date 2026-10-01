@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 export type ConfirmVariant = "default" | "danger";
 
@@ -41,8 +42,11 @@ export default function ConfirmDialog({
   }, [onCancel, loading]);
 
   const danger = variant === "danger";
+  // #1: portal a <body> — si no, un ancestro con transform/filter (subpágina,
+  // overlay del informe) ancla el `fixed` y el modal sale RECORTADO dentro del panel.
+  if (typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center"
       style={{ backgroundColor: "rgba(180,195,210,0.45)", backdropFilter: "blur(2px)" }}
@@ -93,6 +97,7 @@ export default function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
