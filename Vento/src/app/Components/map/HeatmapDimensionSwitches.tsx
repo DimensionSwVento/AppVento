@@ -94,13 +94,9 @@ export default function HeatmapDimensionSwitches() {
               </option>
             ))}
           </optgroup>
-          <optgroup label="Informativa">
-            {HEATMAP_DIMENSIONS.filter((d) => !d.scorable).map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.label}
-              </option>
-            ))}
-          </optgroup>
+          {/* #7: Regulatoria y Económica (informativas, no puntúan) YA NO se
+              ofrecen como mapa de calor — no tienen score que pintar. Su dato vive
+              en "Variables informativas" y en el informe. */}
           {/* Viento (velocidad/densidad): solo las SELECCIONADAS en Dimensiones.
               Al elegirlas, el heatmap se pinta sobre el área seleccionada con el
               valor real del backend (placeholder de corredores en template). */}
