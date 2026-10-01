@@ -325,7 +325,13 @@ export default function SideBar({
             )}
             <button
               type="button"
-              onClick={() => setAccion("historico")}
+              onClick={() => {
+                // #20: desde una página /admin hay que VOLVER al dashboard (donde
+                // vive el historial de informes), no solo cambiar el contexto —
+                // si no, se quedaba en admin y "no dejaba ir al historial".
+                setAccion("historico");
+                if (isAdminPage) router.push("/dashboard");
+              }}
               className={`${secondaryItemBase} w-full text-left ${!isAdminPage && accion === "historico" ? activeNavItem : ""}`}
             >
               <Image src="/hist.png" alt="" width={15} height={15} className={iconCls} />
