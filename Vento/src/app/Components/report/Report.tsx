@@ -45,6 +45,7 @@ import {
 } from "../../Utils/report/reportConfig";
 import AreaMiniMap from "./AreaMiniMap";
 import { useCachedImage } from "../../Utils/useCachedImage";
+import ConfirmDialog from "../ui/ConfirmDialog";
 import { SNAPSHOT_KEY } from "../../Utils/h3/h3Resolution";
 import { selectionNature } from "../../Utils/h3/hexClassification";
 import { dimensionScore } from "../../Utils/report/heatmapPalette";
@@ -289,6 +290,9 @@ export default function Report() {
   // Rol admin: habilita la exportación de datos crudos por hexágono.
   const isAdmin = useIsAdmin();
   const reportRef = useRef<HTMLDivElement>(null);
+  // #18: aviso previo a exportar "datos por hexágono" (nº hex × columnas; con
+  // muchos hexágonos la imagen sale muy pesada → se recomienda con pocos).
+  const [hexExportWarn, setHexExportWarn] = useState<{ n: number; c: number } | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportMsg, setExportMsg] = useState("");        // "Hoja 2 de 8…"
   const [exportPct, setExportPct] = useState<number | null>(null); // 0–100 real
@@ -1412,6 +1416,19 @@ export default function Report() {
   const previewScale = capturing ? 1 : 0.42;
 
   // ── PDF: una HOJA = una PÁGINA A4 (captura por hoja) ───────────────────
+  // #18: al pulsar "datos por hexágono" se muestra primero un aviso con el tamaño
+  // (nº hex × columnas); con muchos hexágonos la imagen sale muy pesada. El export
+  // real (handleDownloadHexTable) se dispara al confirmar.
+  const requestHexTable = () => {
+    const n = areaData?.size ?? 0;
+    if (n === 0) {
+      toast.error("No hay datos por hexágono para exportar (requiere backend).");
+      return;
+    }
+    const c = VARIABLES.filter((v) => v.masterId !== "NA").length;
+    setHexExportWarn({ n, c });
+  };
+
   // Exportación ADMIN: imagen (PNG) de una tabla con una fila por hexId y los
   // datos de cada variable del modelo (columna = masterId). Requiere datos por
   // hex del backend (`areaData`). Aparece solo para admin en el informe final.
@@ -1920,7 +1937,7 @@ export default function Report() {
         {isAdmin && (
           <button
             type="button"
-            onClick={handleDownloadHexTable}
+            onClick={requestHexTable}
             disabled={isExporting}
             title="Descargar imagen de la tabla de datos por hexágono (todas las variables)"
             className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 px-4 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
@@ -1930,6 +1947,25 @@ export default function Report() {
             </svg>
             Datos por hex (admin)
           </button>
+        )}
+        {hexExportWarn && (
+          <ConfirmDialog
+            title="Exportar datos por hexágono"
+            confirmLabel="Generar imagen"
+            message={
+              <>
+                La selección tiene <b>{hexExportWarn.n.toLocaleString("es-CO")}</b>{" "}
+                hexágonos × <b>~{hexExportWarn.c}</b> columnas. Con muchos hexágonos
+                la imagen puede salir <b>muy pesada</b> y tardar; se recomienda
+                exportar con <b>pocos hexágonos</b>. ¿Generar la imagen?
+              </>
+            }
+            onConfirm={() => {
+              setHexExportWarn(null);
+              void handleDownloadHexTable();
+            }}
+            onCancel={() => setHexExportWarn(null)}
+          />
         )}
       </div>
       {error && (
