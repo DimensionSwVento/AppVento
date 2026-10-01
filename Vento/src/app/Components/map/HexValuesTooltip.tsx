@@ -152,24 +152,9 @@ export default function HexValuesTooltip({
         })}
       </ul>
 
-      {/* Regulatoria — informativa, al lado de los puntajes puntuables.
-          No cuenta para el score (US-FB3-05 / feedback item 11). */}
-      {HEATMAP_DIMENSIONS.filter((d) => !d.scorable).map((d) => (
-        <div
-          key={d.id}
-          className="mx-2.5 mb-1.5 flex items-baseline justify-between gap-2 rounded border border-dashed border-gray-200 px-1.5 py-1"
-        >
-          <span className="flex items-center gap-1 text-[10px] text-gray-600">
-            <span>{d.label}</span>
-            <span className="rounded bg-gray-100 px-1 text-[8px] font-semibold uppercase tracking-wide text-gray-500">
-              informativa
-            </span>
-          </span>
-          <span className="font-mono text-[10px] font-semibold text-gray-500">
-            {scores[d.id] == null ? "—" : ((scores[d.id] as number) * 100).toFixed(1)}
-          </span>
-        </div>
-      ))}
+      {/* #17: Regulatoria y Económica (informativas) YA NO se muestran en el
+          tooltip — su valor vive en la sección "Variables informativas" y en el
+          informe, no entre los puntajes de idoneidad del hex. */}
 
       <p className="border-t border-gray-200 px-2.5 pt-1.5 text-[9px] font-semibold uppercase tracking-wide text-gray-500">
         Variables informativas
