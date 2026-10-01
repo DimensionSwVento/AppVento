@@ -139,14 +139,21 @@ export function hexVariableValue(
 /** Promedio del valor crudo de una variable sobre el área (o `null`). */
 export function areaVariableAverage(
   areaData: AreaHexMap | null,
-  hexes: Set<string>,
+  _hexes: Set<string>,
   code: string,
 ): number | null {
   if (!areaData || !code || code === "NA") return null;
   let sum = 0;
   let n = 0;
-  for (const h of hexes) {
-    const v = hexVariableValue(areaData.get(h), code);
+  // Promedia sobre las FILAS que devolvió el backend (`areaData.values()`), NO
+  // iterando `selectedHexes` + `areaData.get(h)`. La selección puede estar a
+  // res7 y el backend expande a res8 → `get(hexSeleccionado)` fallaba para TODAS
+  // las celdas (ese era el bug: el tooltip funcionaba porque lee por hex-hover
+  // res8, pero la lista/tabla daban "—"). `areaData` ya está indexado EXACTAMENTE
+  // por el área seleccionada actual (su caché se llave por la selección), así que
+  // promediar todas sus filas = el promedio del área, sin depender de la res.
+  for (const info of areaData.values()) {
+    const v = hexVariableValue(info, code);
     if (typeof v === "number") {
       sum += v;
       n += 1;
