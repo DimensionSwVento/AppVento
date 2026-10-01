@@ -30,12 +30,21 @@ export default function AdminReportTextPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingContent, setSavingContent] = useState(false);
+  // #25: correo de soporte (app_config/support_email) — lo muestra el modal de
+  // Soporte del SideBar para todos los usuarios.
+  const [supportEmail, setSupportEmail] = useState("");
+  const [savingSupport, setSavingSupport] = useState(false);
 
   useEffect(() => {
     let alive = true;
     Promise.all([
       fetchReportCalcText().then((t) => alive && setForm(t)),
       fetchReportContent().then((c) => alive && setContent(c)),
+      fetch("/api/admin/catalog/config/support_email")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((v) => {
+          if (alive && v && typeof v.email === "string") setSupportEmail(v.email);
+        }),
     ])
       .catch(() => toast.error("No se pudo cargar la configuración del informe"))
       .finally(() => alive && setLoading(false));
@@ -43,6 +52,23 @@ export default function AdminReportTextPage() {
       alive = false;
     };
   }, [toast]);
+
+  const handleSaveSupport = async () => {
+    setSavingSupport(true);
+    try {
+      const res = await fetch("/api/admin/catalog/config/support_email", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: supportEmail.trim() }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      toast.success("Correo de soporte actualizado");
+    } catch {
+      toast.error("No se pudo guardar el correo de soporte");
+    } finally {
+      setSavingSupport(false);
+    }
+  };
 
   const patch = (p: Partial<CalcSummaryText>) =>
     setForm((f) => ({ ...f, ...p }));
@@ -107,6 +133,32 @@ export default function AdminReportTextPage() {
         <div className="mx-auto w-full max-w-4xl px-8 py-10">
           <h1 className="text-2xl font-semibold text-gray-800">Administración</h1>
           <AdminNav />
+
+          {/* #25: correo de soporte (lo muestra el modal "Soporte" del menú). */}
+          <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4">
+            <h2 className="text-lg font-semibold text-gray-800">Correo de soporte</h2>
+            <p className="text-sm text-gray-500">
+              Se muestra en el modal de “Soporte” del menú para todos los usuarios.
+            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                type="email"
+                value={supportEmail}
+                onChange={(e) => setSupportEmail(e.target.value)}
+                placeholder="soporte@tu-dominio.com"
+                className="w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-[#165170] focus:outline-none focus:ring-2 focus:ring-[#165170]/30"
+              />
+              <button
+                type="button"
+                onClick={handleSaveSupport}
+                disabled={savingSupport}
+                className="rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                style={{ backgroundColor: "#165170" }}
+              >
+                {savingSupport ? "Guardando…" : "Guardar"}
+              </button>
+            </div>
+          </div>
 
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-gray-800">
