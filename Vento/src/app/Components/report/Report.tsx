@@ -1004,7 +1004,7 @@ export default function Report() {
     const sem = normasSemaforo(activeNormas);
     // Si NO hay ninguna norma activa, no se agrega la hoja (antes salía el semáforo
     // con 0s). Mismo patrón de guarda de vacío que las informativas (#6).
-    if (activeNormas.length > 0)
+    if (activeNormas.length > 0) {
     // #3: semáforo + lista de normas + autoridades NO siempre caben en una hoja →
     // se CHUNKEA la lista (semáforo en la 1ª; autoridades en la última) para que el
     // PDF no corte a mitad.
@@ -1099,6 +1099,7 @@ export default function Report() {
         </div>
       )),
     );
+    }
   }
 
   // Hoja(s) de variables informativas seleccionadas que NO cuelgan de una
