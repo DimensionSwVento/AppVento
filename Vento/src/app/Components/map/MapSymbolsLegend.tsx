@@ -121,8 +121,18 @@ export default function MapSymbolsLegend({
           <span
             aria-hidden="true"
             className={`h-3.5 w-3.5 shrink-0 rounded-full border ${
-              on ? "border-[#165170ff] bg-[#165170ff]" : "border-gray-300 bg-white"
+              on ? "" : "border-gray-300 bg-white"
             }`}
+            // #11: el punto on/off usa el COLOR ASIGNADO a la variable (no el azul
+            // Vento fijo) → coincide con el icono y con el relleno del hexágono.
+            style={
+              on
+                ? {
+                    backgroundColor: colorForVariable(s.variableId),
+                    borderColor: colorForVariable(s.variableId),
+                  }
+                : undefined
+            }
           />
         </button>
       </li>

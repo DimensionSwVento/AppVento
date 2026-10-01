@@ -745,12 +745,8 @@ export default function MapView() {
   // GATE en `mapReady`: la causa del crash anterior era actualizar el IconLayer
   // antes de que el device (GPU) estuviera listo (`device.limits undefined`);
   // arrancar el intervalo solo tras `mapReady` lo evita. Solo con capas visibles.
-  const [blinkOn, setBlinkOn] = useState(true);
-  useEffect(() => {
-    if (!mapReady || (accion !== "informe" && accion !== "dimensiones")) return;
-    const t = setInterval(() => setBlinkOn((b) => !b), 800);
-    return () => clearInterval(t);
-  }, [mapReady, accion]);
+  // #6: se eliminó el blink de iconos (parpadeo a 800 ms) — en la fase de baja
+  // opacidad los iconos se veían "negros". Ahora opacidad constante (ver IconLayer).
   // Capas de variable EFECTIVAS (las que se pintan):
   //  - Informe: las controla el menú "Capas del mapa" (`activeSymbols`).
   //  - Dimensiones: las manda el SWITCH de la card (`activeVariables`), MENOS las
@@ -913,7 +909,7 @@ export default function MapView() {
           getIcon: () => ({ id: `${s.variableId}|${iconKey ?? "static"}`, url: iconUrl, width: 48, height: 48, anchorY: 24, mask: false }),
           getSize: 30,
           sizeUnits: "pixels",
-          opacity: blinkOn ? 1 : 0.45, // blink
+          opacity: 1, // #6: sin blink (el parpadeo hacía ver los iconos "negros")
           pickable: false,
           // Los polígonos (zonas/heat) escriben profundidad a z=0 y ocultarían el
           // icono que cae encima. `depthCompare: "always"` (luma.gl v9) hace que
@@ -925,7 +921,7 @@ export default function MapView() {
     // bands (hex + redes) e icons por separado → los iconos se dibujan encima de
     // TODAS las bandas (evita que las bandas opacas de otras capas los tapen).
     return { bands: [...polys, ...paths], icons };
-  }, [effectiveSymbols, mapDisabledIds, symbolCells, blinkOn, mapNature, activeZoneIds]);
+  }, [effectiveSymbols, mapDisabledIds, symbolCells, mapNature, activeZoneIds]);
 
   // ── N1a-mapa 2b: capas GENÉRICAS de catálogo ────────────────────────────────
   // Variables enMapa (área/interconectado, NO calor) que NO están en la lista
@@ -1121,7 +1117,7 @@ export default function MapView() {
           }),
           getSize: 26,
           sizeUnits: "pixels",
-          opacity: blinkOn ? 1 : 0.45, // blink
+          opacity: 1, // #6: sin blink (el parpadeo hacía ver los iconos "negros")
           pickable: false,
           parameters: { depthCompare: "always" },
         }),
@@ -1157,7 +1153,7 @@ export default function MapView() {
       }
     }
     return { bands, icons };
-  }, [extraMapVars, extraCells, selectionCenter, blinkOn, activeZoneIds]);
+  }, [extraMapVars, extraCells, selectionCenter, activeZoneIds]);
 
   // Dibujo del POLÍGONO en curso (US03-04): vértices (puntos) + contorno. Se
   // materializa en hexágonos al "Aplicar" (ver `applyPolygon`).
