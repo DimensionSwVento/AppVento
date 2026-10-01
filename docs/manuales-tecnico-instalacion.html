@@ -1,4 +1,154 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Manuales Vento</title><style>@page{size:A4;margin:18mm 16mm;} *{box-sizing:border-box;} body{font-family:'Segoe UI',Arial,sans-serif;color:#1f2937;line-height:1.5;max-width:900px;margin:0 auto;padding:24px;} h1{color:#0f3547;border-bottom:3px solid #165170;padding-bottom:6px;page-break-before:always;} h1:first-of-type{page-break-before:avoid;} h2{color:#165170;margin-top:1.4em;} h3{color:#1f2937;} table{border-collapse:collapse;width:100%;margin:10px 0;font-size:11.5px;} th,td{border:1px solid #cbd5e1;padding:5px 7px;text-align:left;vertical-align:top;} th{background:#165170;color:#fff;} tr:nth-child(even) td{background:#f3f6f8;} code{background:#eef2f5;padding:1px 4px;border-radius:3px;font-size:12px;} pre{background:#0f3547;color:#e8f1f6;padding:12px;border-radius:8px;overflow:auto;font-size:11px;} pre code{background:none;color:inherit;} blockquote{border-left:4px solid #165170;margin:10px 0;padding:4px 12px;background:#f0f6f9;color:#374151;} @media print{pre,table,blockquote{page-break-inside:avoid;} a{color:#165170;text-decoration:none;}}</style></head><body><h1 id="manual-tecnico-vento-plataforma-de-idoneidad-eolica">Manual Técnico — Vento (Plataforma de idoneidad eólica)</h1>
+<!doctype html><html lang="es"><head><meta charset="utf-8">
+<title>Vento — Manuales Técnico e Instalación</title><style>
+@page { size: A4; margin: 16mm 15mm; }
+*{box-sizing:border-box;}
+body{font-family:'Segoe UI',Arial,sans-serif;color:#1f2937;line-height:1.5;max-width:920px;margin:0 auto;padding:0;}
+.cover{height:245mm;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:0 10mm;
+       background:linear-gradient(135deg,#0f3547,#165170);color:#fff;border-radius:0;page-break-after:always;}
+.cover h1{border:0;color:#fff;font-size:40px;margin:0 0 6px;}
+.cover .sub{color:#cfe3ee;font-size:18px;} .cover .meta{color:#9fc3d6;font-size:14px;margin-top:28px;}
+.cover .logo{font-size:15px;letter-spacing:3px;color:#9fc3d6;margin-bottom:14px;}
+h1{color:#0f3547;border-bottom:3px solid #165170;padding-bottom:6px;page-break-before:always;font-size:26px;}
+h2{color:#165170;margin-top:1.4em;} h3{color:#1f2937;}
+table{border-collapse:collapse;width:100%;margin:10px 0;font-size:11.5px;}
+th,td{border:1px solid #cbd5e1;padding:5px 7px;text-align:left;vertical-align:top;}
+th{background:#165170;color:#fff;} tr:nth-child(even) td{background:#f3f6f8;}
+code{background:#eef2f5;padding:1px 4px;border-radius:3px;font-size:12px;}
+pre{background:#0f3547;color:#e8f1f6;padding:12px;border-radius:8px;overflow:auto;font-size:11px;} pre code{background:none;color:inherit;}
+blockquote{border-left:4px solid #165170;margin:10px 0;padding:4px 12px;background:#f0f6f9;color:#374151;}
+figure.diagram{margin:16px 0 24px;padding:10px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;page-break-inside:avoid;page-break-after:always;}
+figure.diagram svg{width:100%;height:auto;display:block;}
+figure.diagram figcaption{color:#6b7280;font-size:11px;text-align:center;margin-top:8px;}
+.section{padding:0 10mm;}
+@media print{pre,table,blockquote{page-break-inside:avoid;} a{color:#165170;text-decoration:none;}}
+</style></head><body>
+<section class="cover">
+  <div class="logo">⟟ VENTO · MAVALAN SOFTWARE</div>
+  <h1>Manuales Técnico<br>e Instalación</h1>
+  <div class="sub">Plataforma de idoneidad eólica — SIG / MCDM sobre hexágonos H3</div>
+  <div class="meta">Documento técnico · 2026-10-01 · Audiencia: equipo de desarrollo / on-call</div>
+</section>
+
+<div class="section">
+  <figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 940" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <linearGradient id="hdr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0f3547"/><stop offset="1" stop-color="#165170"/></linearGradient>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#165170"/></marker>
+  </defs>
+  <rect width="1200" height="940" fill="#f7f9fb"/>
+
+  <!-- Header -->
+  <rect width="1200" height="92" fill="url(#hdr)"/>
+  <text x="40" y="42" fill="#fff" font-size="25" font-weight="800">Vento — Manual Técnico (resumen)</text>
+  <text x="40" y="70" fill="#cfe3ee" font-size="14">Arquitectura · stack · modos · ingesta · capacidad · seguridad. Detalle completo en docs/manual-tecnico.md</text>
+  <text x="1160" y="52" fill="#fff" font-size="13" text-anchor="end" opacity="0.85">2026-10-01</text>
+
+  <!-- Arquitectura (diagrama) -->
+  <text x="40" y="128" fill="#165170" font-size="16" font-weight="800">Arquitectura</text>
+  <g font-size="12.5">
+    <rect x="40" y="140" width="190" height="78" rx="10" fill="#fff" stroke="#cbd5e1"/>
+    <text x="135" y="172" text-anchor="middle" fill="#1f2937" font-weight="700">Navegador</text>
+    <text x="135" y="192" text-anchor="middle" fill="#6b7280" font-size="11">Auth.js (cookie)</text>
+
+    <rect x="290" y="140" width="250" height="78" rx="10" fill="#e8f1f6" stroke="#165170"/>
+    <text x="415" y="166" text-anchor="middle" fill="#0f3547" font-weight="700">Front Next.js 16 — BFF</text>
+    <text x="415" y="186" text-anchor="middle" fill="#374151" font-size="11">/api/* valida sesión y reenvía con</text>
+    <text x="415" y="202" text-anchor="middle" fill="#374151" font-size="11">X-Internal-Secret · X-User-Sub · X-User-Roles</text>
+
+    <rect x="600" y="140" width="240" height="78" rx="10" fill="#e8f1f6" stroke="#165170"/>
+    <text x="720" y="166" text-anchor="middle" fill="#0f3547" font-weight="700">Backend FastAPI (Docker)</text>
+    <text x="720" y="186" text-anchor="middle" fill="#374151" font-size="11">stateless · gunicorn -w 2</text>
+    <text x="720" y="202" text-anchor="middle" fill="#374151" font-size="11">streaming anti-OOM</text>
+
+    <rect x="900" y="140" width="260" height="78" rx="10" fill="#fff" stroke="#cbd5e1"/>
+    <text x="1030" y="166" text-anchor="middle" fill="#1f2937" font-weight="700">PostgreSQL</text>
+    <text x="1030" y="186" text-anchor="middle" fill="#6b7280" font-size="11">hexagon (1.6M) · hexagon_meta</text>
+    <text x="1030" y="202" text-anchor="middle" fill="#6b7280" font-size="11">catalog_* · app_config · informe</text>
+
+    <line x1="230" y1="179" x2="288" y2="179" stroke="#165170" stroke-width="2" marker-end="url(#ar)"/>
+    <line x1="540" y1="179" x2="598" y2="179" stroke="#165170" stroke-width="2" marker-end="url(#ar)"/>
+    <line x1="840" y1="179" x2="898" y2="179" stroke="#165170" stroke-width="2" marker-end="url(#ar)"/>
+
+    <rect x="600" y="236" width="240" height="40" rx="10" fill="#0f3547"/>
+    <text x="720" y="261" text-anchor="middle" fill="#fff" font-size="12">Keycloak (OIDC) — el backend VERIFICA el JWT</text>
+    <line x1="720" y1="236" x2="720" y2="220" stroke="#165170" stroke-width="2" marker-end="url(#ar)"/>
+  </g>
+
+  <!-- Tarjetas -->
+  <!-- Stack -->
+  <g transform="translate(40,300)">
+    <rect width="360" height="150" rx="12" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="150" fill="#165170" rx="3"/>
+    <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">Stack</text>
+    <text x="20" y="52" fill="#374151" font-size="12">Front: Next.js 16 · React 19 · deck.gl 9.2 +</text>
+    <text x="20" y="70" fill="#374151" font-size="12">MapLibre · h3-js 4 · Tailwind v4 · Auth.js v5 ·</text>
+    <text x="20" y="88" fill="#374151" font-size="12">jsPDF + html2canvas-pro (PDF, sin svg2pdf)</text>
+    <text x="20" y="112" fill="#374151" font-size="12">Back: Python 3.12 · FastAPI · gunicorn · SQLAlchemy 2</text>
+    <text x="20" y="130" fill="#374151" font-size="12">· Alembic · psycopg3 · pandas/pyarrow · h3 · Keycloak</text>
+  </g>
+  <!-- Modos -->
+  <g transform="translate(420,300)">
+    <rect width="360" height="150" rx="12" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="150" fill="#2563eb" rx="3"/>
+    <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">Modo TEMPLATE vs BACKEND</text>
+    <text x="20" y="52" fill="#374151" font-size="12">Interruptor: NEXT_PUBLIC_USE_BACKEND</text>
+    <text x="20" y="74" fill="#374151" font-size="12">• true → API real: <tspan font-weight="700">dato real o VACÍO</tspan></text>
+    <text x="20" y="92" fill="#374151" font-size="12">  (nunca cifras falsas)</text>
+    <text x="20" y="114" fill="#374151" font-size="12">• false → template/demo (placeholders)</text>
+    <text x="20" y="136" fill="#6b7280" font-size="11">El backend no tiene flag de modo (lo decide el front)</text>
+  </g>
+  <!-- Seguridad -->
+  <g transform="translate(800,300)">
+    <rect width="360" height="150" rx="12" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="150" fill="#7c3aed" rx="3"/>
+    <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">Seguridad / Auth</text>
+    <text x="20" y="52" fill="#374151" font-size="12">NextAuth v5 (provider Keycloak custom)</text>
+    <text x="20" y="70" fill="#374151" font-size="12">Triple guard admin (middleware+layout+BFF)</text>
+    <text x="20" y="88" fill="#374151" font-size="12">Backend: require_user DUAL (secreto BFF o JWT)</text>
+    <text x="20" y="106" fill="#374151" font-size="12">Registro ADR-012 · Keycloak Admin para usuarios</text>
+    <text x="20" y="124" fill="#374151" font-size="12">Roles admin/analista · CORS · sin tokens al cliente</text>
+  </g>
+
+  <!-- Ingesta -->
+  <g transform="translate(40,470)">
+    <rect width="720" height="190" rx="12" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="190" fill="#16a34a" rx="3"/>
+    <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">Ingesta de datos (normalización 1–5→[0,1] en LECTURA, no en ingesta)</text>
+    <text x="20" y="54" fill="#374151" font-size="12"><tspan font-weight="700">copy</tspan> (default): COPY atómico TRUNCATE+COPY+meta en una transacción (streaming).</text>
+    <text x="20" y="76" fill="#374151" font-size="12"><tspan font-weight="700">orm</tspan>: fallback portable (DELETE + lotes), no atómico.</text>
+    <text x="20" y="98" fill="#374151" font-size="12"><tspan font-weight="700">upsert_chunk</tspan>: modular por paquete, fusiona JSONB (|| ), refina meta.</text>
+    <text x="20" y="120" fill="#374151" font-size="12"><tspan font-weight="700">blue_green</tspan>: carga en hexagon_new + SWAP por rename (sin downtime).</text>
+    <text x="20" y="144" fill="#374151" font-size="12">Bundle por clases: advisory lock single-flight + malloc_trim + apply-detached (RLIMIT_AS).</text>
+    <text x="20" y="166" fill="#374151" font-size="12">Catálogo: metadata_ingest (InfoVariables→jerarquía, concilia por master_id) · economic_ingest.</text>
+    <text x="20" y="184" fill="#6b7280" font-size="11">Tras ingerir: VACUUM ANALYZE + verificar con GET /api/admin/db/overview.</text>
+  </g>
+
+  <!-- Capacidad -->
+  <g transform="translate(780,470)">
+    <rect width="380" height="190" rx="12" fill="#0f3547"/>
+    <text x="20" y="28" fill="#fff" font-size="14" font-weight="700">Capacidad (benchmark)</text>
+    <text x="20" y="54" fill="#cfe3ee" font-size="12.5">Techo útil ≈ <tspan font-weight="800" fill="#fff">25 usuarios</tspan> concurrentes</text>
+    <text x="20" y="74" fill="#9fc3d6" font-size="11.5">2 workers × APP_THREAD_LIMIT 18 = 36 ops BD</text>
+    <text x="20" y="100" fill="#cfe3ee" font-size="12.5">Cuello: variables-bulk (~165 MB/req)</text>
+    <text x="20" y="120" fill="#cfe3ee" font-size="12.5">cache-hit BD ~74% → Fase 2 h3-pg</text>
+    <text x="20" y="146" fill="#9fc3d6" font-size="11.5">Regla: ~1 worker ≈ 18 ops BD por ~1 GB RAM;</text>
+    <text x="20" y="164" fill="#9fc3d6" font-size="11.5">APP_THREAD_LIMIT ≤ pool(20) × workers ≤ max_conn.</text>
+    <text x="20" y="184" fill="#9fc3d6" font-size="11">Medido con tools/loadtest.py (--db-url: EXPLAIN+salud BD)</text>
+  </g>
+
+  <!-- Endpoints / flujo -->
+  <g transform="translate(40,680)">
+    <rect width="1120" height="200" rx="12" fill="#fff" stroke="#e5e7eb"/>
+    <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">Flujo y endpoints</text>
+    <text x="20" y="52" fill="#374151" font-size="12.5">Flujo: selección de área → dimensiones → características → informe (+ histórico). Estado en AccionPrincipalContext.</text>
+    <text x="20" y="78" fill="#1f2937" font-size="12" font-weight="700">Backend (FastAPI, /api):</text>
+    <text x="20" y="98" fill="#374151" font-size="12">GET /tiles/warmup (conteo estimado) · /variables · /detail/{h3} · /{z}/{x}/{y} · /excluded (índice+caché)</text>
+    <text x="20" y="116" fill="#374151" font-size="12">POST /tiles/area (informe) · /variable · /variables-bulk · /heatmap/area</text>
+    <text x="20" y="134" fill="#374151" font-size="12">/historico · /admin/catalog · /admin/master · /admin/bundle · GET /admin/db/overview (verificación ingesta)</text>
+    <text x="20" y="152" fill="#374151" font-size="12">GET /api/_debug/stats · /inflight (gate DEBUG_INFLIGHT=1) · GET /api/health</text>
+    <text x="20" y="178" fill="#1f2937" font-size="12" font-weight="700">PDF:</text>
+    <text x="78" y="178" fill="#374151" font-size="12">html2canvas-pro + jsPDF, una hoja A4 = una página; tablas largas chunkeadas (no se cortan).</text>
+  </g>
+
+  <text x="40" y="916" fill="#6b7280" font-size="11">Vento · Mavalan Software · resumen visual del Manual Técnico (docs/manual-tecnico.md)</text>
+</svg><figcaption>Figura 1 — Resumen visual del Manual Técnico (arquitectura, stack, ingesta, capacidad).</figcaption></figure>
+  <h1 id="manual-tecnico-vento-plataforma-de-idoneidad-eolica">Manual Técnico — Vento (Plataforma de idoneidad eólica)</h1>
 <blockquote>
 <p>Arquitectura, comportamiento, datos, seguridad, configuración y operación.
 Escrito a partir de una lectura completa del código (front + backend).
@@ -585,7 +735,134 @@ decide el <strong>front</strong> con <code>NEXT_PUBLIC_USE_BACKEND</code>. Proce
 <li>Benchmark: <code>docs/testing/benchmark-carga-h3-2026-09-30.md</code> · Comportamiento/config:
   <code>docs/ops/documento-tecnico-comportamiento-herramientas-config.md</code> · Runbook AccuWeb:
   <code>docs/ops/accuweb-runbook.md</code> · Instalación y <code>.env</code>: <code>docs/manual-instalacion.md</code> · ADRs: <code>docs/adr/</code>.</li>
-</ul><hr><h1 id="manual-de-instalacion-vento">Manual de Instalación — Vento</h1>
+</ul>
+</div>
+
+<div class="section">
+  <figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 980" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <linearGradient id="hdr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0f3547"/><stop offset="1" stop-color="#165170"/></linearGradient>
+    <marker id="ar2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#165170"/></marker>
+  </defs>
+  <rect width="1200" height="980" fill="#f7f9fb"/>
+
+  <!-- Header -->
+  <rect width="1200" height="92" fill="url(#hdr)"/>
+  <text x="40" y="42" fill="#fff" font-size="25" font-weight="800">Vento — Manual de Instalación (resumen)</text>
+  <text x="40" y="70" fill="#cfe3ee" font-size="14">Orden, variables de entorno, ingesta y verificación. Detalle y .env completo en docs/manual-instalacion.md</text>
+  <text x="1160" y="52" fill="#fff" font-size="13" text-anchor="end" opacity="0.85">2026-10-01</text>
+
+  <!-- Opción rápida -->
+  <g transform="translate(40,112)">
+    <rect width="1120" height="44" rx="10" fill="#cce1ee"/>
+    <text x="16" y="28" fill="#0f3547" font-size="13" font-weight="700">Opción rápida (dev):</text>
+    <text x="168" y="28" fill="#0f3547" font-size="13">cd backend/AppVento---Backend &amp;&amp; docker compose up -d  → levanta Postgres + Keycloak + backend (:8000)</text>
+  </g>
+
+  <!-- Pasos (flujo) -->
+  <text x="40" y="186" fill="#165170" font-size="16" font-weight="800">Instalación paso a paso (prod)</text>
+  <g font-size="12.5">
+    <rect x="40" y="198" width="255" height="96" rx="10" fill="#fff" stroke="#165170"/>
+    <circle cx="66" cy="224" r="13" fill="#165170"/><text x="66" y="229" text-anchor="middle" fill="#fff" font-weight="800">1</text>
+    <text x="90" y="229" fill="#0f3547" font-weight="700">PostgreSQL</text>
+    <text x="56" y="256" fill="#374151" font-size="11.5">createdb · DSN postgresql+psycopg://</text>
+    <text x="56" y="274" fill="#374151" font-size="11.5">max_connections ≥ (pool 20)×workers</text>
+
+    <rect x="313" y="198" width="255" height="96" rx="10" fill="#fff" stroke="#165170"/>
+    <circle cx="339" cy="224" r="13" fill="#165170"/><text x="339" y="229" text-anchor="middle" fill="#fff" font-weight="800">2</text>
+    <text x="363" y="229" fill="#0f3547" font-weight="700">Keycloak</text>
+    <text x="329" y="256" fill="#374151" font-size="11.5">realm + roles admin/analista</text>
+    <text x="329" y="274" fill="#374151" font-size="11.5">cliente OIDC (vento-web) + secret</text>
+
+    <rect x="586" y="198" width="255" height="96" rx="10" fill="#fff" stroke="#165170"/>
+    <circle cx="612" cy="224" r="13" fill="#165170"/><text x="612" y="229" text-anchor="middle" fill="#fff" font-weight="800">3</text>
+    <text x="636" y="229" fill="#0f3547" font-weight="700">Backend + ingesta</text>
+    <text x="602" y="256" fill="#374151" font-size="11.5">docker build/run · alembic upgrade head</text>
+    <text x="602" y="274" fill="#374151" font-size="11.5">subir máster + catálogo · VACUUM ANALYZE</text>
+
+    <rect x="859" y="198" width="255" height="96" rx="10" fill="#fff" stroke="#165170"/>
+    <circle cx="885" cy="224" r="13" fill="#165170"/><text x="885" y="229" text-anchor="middle" fill="#fff" font-weight="800">4</text>
+    <text x="909" y="229" fill="#0f3547" font-weight="700">Frontend</text>
+    <text x="875" y="256" fill="#374151" font-size="11.5">npm install · build · start (AccuWeb)</text>
+    <text x="875" y="274" fill="#374151" font-size="11.5">NEXT_PUBLIC_USE_BACKEND=true</text>
+
+    <line x1="295" y1="246" x2="311" y2="246" stroke="#165170" stroke-width="2" marker-end="url(#ar2)"/>
+    <line x1="568" y1="246" x2="584" y2="246" stroke="#165170" stroke-width="2" marker-end="url(#ar2)"/>
+    <line x1="841" y1="246" x2="857" y2="246" stroke="#165170" stroke-width="2" marker-end="url(#ar2)"/>
+  </g>
+
+  <!-- .env Frontend -->
+  <g transform="translate(40,320)">
+    <rect width="555" height="236" rx="12" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="236" fill="#2563eb" rx="3"/>
+    <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">.env — Frontend</text>
+    <g font-size="11.5" fill="#374151">
+      <text x="20" y="52">NEXT_PUBLIC_USE_BACKEND = true | false  (modo)</text>
+      <text x="20" y="72">BACKEND_URL / NEXT_PUBLIC_API_URL  (proxy / API)</text>
+      <text x="20" y="92">INTERNAL_API_SECRET  (= al del backend)</text>
+      <text x="20" y="112">AUTH_SECRET · AUTH_URL · AUTH_TRUST_HOST</text>
+      <text x="20" y="132">AUTH_KEYCLOAK_ID / _SECRET / _ISSUER</text>
+      <text x="20" y="152">NEXT_PUBLIC_KEYCLOAK_URL / _REALM / _ISSUER</text>
+      <text x="20" y="172">SENDGRID_API_KEY / _FROM_EMAIL  (correo)</text>
+    </g>
+    <text x="20" y="200" fill="#6b7280" font-size="11">NEXT_PUBLIC_* = visibles al navegador (no secretos).</text>
+    <text x="20" y="218" fill="#6b7280" font-size="11">AUTH_* / BACKEND_URL / SENDGRID_* = solo servidor.</text>
+  </g>
+
+  <!-- .env Backend -->
+  <g transform="translate(615,320)">
+    <rect width="545" height="236" rx="12" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="236" fill="#16a34a" rx="3"/>
+    <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">.env — Backend</text>
+    <g font-size="11.5" fill="#374151">
+      <text x="20" y="52">DATABASE_URL  (postgresql+psycopg://…)</text>
+      <text x="20" y="72">PARQUET_PATH · HEXAGON_INGEST=copy|orm · RUN_INGEST</text>
+      <text x="20" y="92">KEYCLOAK_ISSUER / _JWKS_URL / _AUDIENCE · JWT_ALGORITHMS</text>
+      <text x="20" y="112">INTERNAL_API_SECRET · CORS_ORIGINS</text>
+      <text x="20" y="132">DB_POOL_SIZE 5 · DB_MAX_OVERFLOW 15 · _TIMEOUT · _RECYCLE</text>
+      <text x="20" y="152">APP_THREAD_LIMIT 18 · EXCLUDED_CACHE_TTL 300</text>
+      <text x="20" y="172">OFFSHORE_VAR · MAX_HISTORIAL_PER_USER 50 · INGEST_MEM_CAP_MB</text>
+      <text x="20" y="192">DEBUG_INFLIGHT · TRACE_REQUESTS · INFLIGHT_WARN · SLOW_REQUEST_MS</text>
+    </g>
+    <text x="20" y="220" fill="#6b7280" font-size="11">dev: carga .env (dotenv) · prod: env del contenedor.</text>
+  </g>
+
+  <!-- Migraciones / tools -->
+  <g transform="translate(40,572)">
+    <rect width="720" height="180" rx="12" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="180" fill="#165170" rx="3"/>
+    <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">Migraciones y herramientas</text>
+    <text x="20" y="52" fill="#374151" font-size="12">alembic upgrade head  → aplica 0001…0015 (última: índice parcial excluidos)</text>
+    <text x="20" y="74" fill="#374151" font-size="12">Índice sin lock largo (opcional): CREATE INDEX CONCURRENTLY … + alembic stamp 0015</text>
+    <text x="20" y="100" fill="#1f2937" font-size="12" font-weight="700">Tools (python -m tools.…):</text>
+    <text x="20" y="120" fill="#374151" font-size="12">ingest_parquet · ingest_bundle (--plan) · ingest_docs · inspect_parquet(s)</text>
+    <text x="20" y="140" fill="#374151" font-size="12">loadtest.py --base … --cookie … [--db-url …]  (carga + EXPLAIN/salud BD)</text>
+    <text x="20" y="166" fill="#6b7280" font-size="11">Reingesta controlada por consola (no hay endpoint que pise datos curados).</text>
+  </g>
+
+  <!-- Verificación + memoria -->
+  <g transform="translate(780,572)">
+    <rect width="380" height="180" rx="12" fill="#0f3547"/>
+    <text x="20" y="28" fill="#fff" font-size="14" font-weight="700">Verificación + red de memoria</text>
+    <text x="20" y="54" fill="#cfe3ee" font-size="12">curl /api/health</text>
+    <text x="20" y="74" fill="#cfe3ee" font-size="12">loadtest --db-url → cache-hit &gt;99%,</text>
+    <text x="20" y="92" fill="#9fc3d6" font-size="11.5">variables-bulk ok, warmup/excluded &lt;10 ms</text>
+    <text x="20" y="118" fill="#cfe3ee" font-size="12">Server chico: swap 4 GB + earlyoom</text>
+    <text x="20" y="138" fill="#9fc3d6" font-size="11.5">(fallocate/mkswap/swapon + apt install earlyoom)</text>
+    <text x="20" y="164" fill="#9fc3d6" font-size="11.5">Son mitigaciones; el fix real es Fase 2 + RAM.</text>
+  </g>
+
+  <!-- Ramas -->
+  <g transform="translate(40,764)">
+    <rect width="1120" height="150" rx="12" fill="#fff" stroke="#e5e7eb"/>
+    <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">Ramas / despliegue</text>
+    <text x="20" y="54" fill="#374151" font-size="12.5">Front (repo Vento): trabajo <tspan font-weight="700">Sprint_4--report_preconig / develop</tspan> → producción <tspan font-weight="700">deploy-prod</tspan></text>
+    <text x="20" y="76" fill="#374151" font-size="12.5">Backend: trabajo <tspan font-weight="700">develop</tspan> → producción <tspan font-weight="700">main</tspan> (prod consume main, no develop)</text>
+    <text x="20" y="102" fill="#1f2937" font-size="12.5" font-weight="700">Tras merge a prod:</text>
+    <text x="150" y="102" fill="#374151" font-size="12.5">alembic upgrade head · VACUUM ANALYZE hexagon · build del front.</text>
+    <text x="20" y="128" fill="#6b7280" font-size="11.5">Docker (prod): entrypoint aplica migraciones (y opcional RUN_INGEST) y arranca gunicorn -w 2 --timeout 120.</text>
+  </g>
+
+  <text x="40" y="952" fill="#6b7280" font-size="11">Vento · Mavalan Software · resumen visual del Manual de Instalación (docs/manual-instalacion.md)</text>
+</svg><figcaption>Figura 2 — Resumen visual del Manual de Instalación (pasos, .env, verificación).</figcaption></figure>
+  <h1 id="manual-de-instalacion-vento">Manual de Instalación — Vento</h1>
 <blockquote>
 <p>Puesta en marcha de <strong>frontend</strong>, <strong>backend</strong>, <strong>base de datos</strong> e <strong>identidad</strong>,
 con el <strong>detalle completo de las variables de entorno</strong> y de la <strong>ingesta de datos</strong>.
@@ -858,4 +1135,8 @@ curados). El bundle pesado corre aislado (<code>apply_detached</code>, <code>RLI
 </tbody>
 </table>
 <p>Backend prod consume <strong><code>main</code></strong>. Tras merge a prod: <code>alembic upgrade head</code> +
-<code>VACUUM ANALYZE hexagon</code> + build del front.</p><p style="margin-top:40px;color:#6b7280;font-size:12px">Vento · Mavalan Software · 2026-10-01 — Ctrl+P → Guardar como PDF.</p></body></html>
+<code>VACUUM ANALYZE hexagon</code> + build del front.</p>
+</div>
+
+<p style="padding:0 10mm;margin-top:40px;color:#6b7280;font-size:12px">Vento · Mavalan Software · 2026-10-01 — imprime con Ctrl+P → Guardar como PDF (A4, diagramas + texto).</p>
+</body></html>
