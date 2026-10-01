@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useIsAdmin } from "../../Utils/useIsAdmin";
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
@@ -28,6 +28,24 @@ export default function SideBar({
   const isAdmin = useIsAdmin();
   const isAdminPage = pathname?.startsWith("/admin");
   const [mobileOpen, setMobileOpen] = useState(false);
+  // #25: modal de soporte con el correo GUARDADO EN BD (app_config/support_email,
+  // editable por admin vía PATCH). Fallback a la constante si no está fijado.
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [supportEmail, setSupportEmail] = useState(SUPPORT_EMAIL);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/admin/catalog/config/support_email")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((v) => {
+        const email = v && typeof v.email === "string" ? v.email.trim() : "";
+        if (alive && email) setSupportEmail(email);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
   const isHydrated = useSyncExternalStore(
     subscribeToHydration,
     getHydratedSnapshot,
@@ -355,17 +373,76 @@ export default function SideBar({
               <></>
             )}
 
-            <a
-              href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
-                "Soporte Vento",
-              )}`}
+            {/* #25: abre un modal con el correo de soporte (guardado en BD) en vez
+                de un mailto directo. */}
+            <button
+              type="button"
+              onClick={() => {
+                setCopied(false);
+                setSupportOpen(true);
+              }}
               className={secondaryItemBase}
             >
               <Image src="/soporte.png" alt="" width={15} height={15} unoptimized className={iconCls} />
               <p className={`${itemLabelCls} ${labelCls}`}>
                 Soporte
               </p>
-            </a>
+            </button>
+
+            {supportOpen && (
+              <div
+                className="fixed inset-0 z-[300] flex items-center justify-center p-4"
+                style={{ backgroundColor: "rgba(180,195,210,0.45)", backdropFilter: "blur(2px)" }}
+                onClick={() => setSupportOpen(false)}
+                role="dialog"
+                aria-modal="true"
+              >
+                <div
+                  className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h3 className="text-base font-semibold text-gray-800">Soporte</h3>
+                  <p className="mt-1 text-xs text-gray-500">
+                    ¿Necesitas ayuda? Escríbenos a este correo:
+                  </p>
+                  <div className="mt-3 flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                    <span className="truncate font-mono text-sm text-[#165170]">
+                      {supportEmail}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(supportEmail);
+                          setCopied(true);
+                        } catch {
+                          /* sin portapapeles: el usuario lo copia a mano */
+                        }
+                      }}
+                      className="shrink-0 rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                    >
+                      {copied ? "Copiado ✓" : "Copiar"}
+                    </button>
+                  </div>
+                  <div className="mt-4 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setSupportOpen(false)}
+                      className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                    >
+                      Cerrar
+                    </button>
+                    <a
+                      href={`mailto:${supportEmail}?subject=${encodeURIComponent("Soporte Vento")}`}
+                      className="rounded-md px-4 py-2 text-sm font-medium text-white"
+                      style={{ backgroundColor: "#165170" }}
+                    >
+                      Escribir correo
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {mobileOpen && hasSubpage ? (
               <hr className={dividerCls}></hr>
