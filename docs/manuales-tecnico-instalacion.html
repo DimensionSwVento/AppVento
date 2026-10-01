@@ -1,0 +1,502 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8">
+<title>Manuales Vento — Técnico e Instalación</title><style>
+@page { size: A4; margin: 18mm 16mm; }
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', Arial, sans-serif; color:#1f2937; line-height:1.5; max-width: 900px; margin: 0 auto; padding: 24px; }
+h1 { color:#0f3547; border-bottom:3px solid #165170; padding-bottom:6px; page-break-before: always; }
+h1:first-of-type { page-break-before: avoid; }
+h2 { color:#165170; margin-top:1.4em; }
+h3 { color:#1f2937; }
+table { border-collapse: collapse; width:100%; margin:10px 0; font-size:13px; }
+th,td { border:1px solid #cbd5e1; padding:6px 8px; text-align:left; vertical-align:top; }
+th { background:#165170; color:#fff; }
+tr:nth-child(even) td { background:#f3f6f8; }
+code { background:#eef2f5; padding:1px 4px; border-radius:3px; font-size:12px; }
+pre { background:#0f3547; color:#e8f1f6; padding:12px; border-radius:8px; overflow:auto; font-size:12px; }
+pre code { background:none; color:inherit; }
+blockquote { border-left:4px solid #165170; margin:10px 0; padding:4px 12px; background:#f0f6f9; color:#374151; }
+@media print { pre,table,blockquote { page-break-inside: avoid; } a{color:#165170;text-decoration:none;} }
+</style></head>
+<body><h1 id="manual-tecnico-vento-plataforma-de-idoneidad-eolica">Manual Técnico — Vento (Plataforma de idoneidad eólica)</h1>
+<blockquote>
+<p>Arquitectura, stack, nube, configuración y operación. Audiencia: equipo de
+desarrollo / on-call. No es el manual de usuario.
+Fecha: 2026-10-01 · Autor: Mavalan Software</p>
+</blockquote>
+<hr />
+<h2 id="1-que-es-vento">1. Qué es Vento</h2>
+<p>Plataforma SIG/MCDM que evalúa la <strong>idoneidad de zonas para proyectos eólicos</strong> en
+Colombia sobre una malla de hexágonos <strong>H3 (resolución 8)</strong>. El usuario selecciona
+un área, el sistema calcula un <strong>índice de idoneidad (0–100)</strong> por dimensión y
+general, y genera un <strong>informe PDF</strong> configurable. Admin gestiona variables,
+datasets, normas, escenarios económicos y usuarios.</p>
+<ul>
+<li><strong>Modelo:</strong> multicriterio (WLC/AHP) en escala 1–5 (−1 = excluida), normalizado a
+  0–1 con <code>(raw−1)/4</code>. El <code>global</code> y los scores por dimensión vienen
+  <strong>precalculados</strong> en la máster; la app NO recalcula el modelo (solo agrega/formatea).</li>
+<li><strong>Dimensiones:</strong> Técnica, Ambiental, Social (puntuables) + Económica y Regulatoria
+  (<strong>informativas</strong>, no puntúan).</li>
+</ul>
+<h2 id="2-arquitectura-alto-nivel">2. Arquitectura (alto nivel)</h2>
+<pre><code>Navegador ──HTTPS──&gt; Front Next.js (AccuWeb)
+                         │  /api/* (BFF: Next route handlers)
+                         │   - añade el JWT de Keycloak (Bearer) al llamar al backend
+                         ▼
+                     Backend FastAPI (Docker)  ──SQLAlchemy──&gt; PostgreSQL
+                         │                                        (tabla hexagon 1.6M filas,
+                         │                                         hexagon_meta, catalog_*,
+                         └── Keycloak (OIDC/JWT)                   app_config, informe, ...)
+</code></pre>
+<ul>
+<li><strong>Front (BFF):</strong> Next.js App Router. Las rutas <code>/api/*</code> son <em>route handlers</em> que
+  <strong>proxyean</strong> al backend añadiendo el <code>Authorization: Bearer &lt;JWT&gt;</code> (Keycloak). El
+  front nunca habla directo con Postgres.</li>
+<li><strong>Backend:</strong> FastAPI <strong>stateless</strong> — nada se carga a RAM al arrancar; cada request
+  consulta Postgres (streaming anti-OOM). Clean architecture (api/application/
+  domain/infrastructure).</li>
+<li><strong>Auth:</strong> Auth.js (NextAuth v5) en el front (cookies <code>__Secure-authjs.session-token</code>);
+  Keycloak como IdP (OIDC). El backend valida el <strong>JWT de Keycloak</strong> (<code>require_user</code>/
+  <code>require_admin</code>).</li>
+<li><strong>Datos geoespaciales:</strong> H3 res 8. <code>lat/lng</code> persistidos por hex para consultas por
+  bbox (tiles). Variables del modelo en JSONB (<code>hexagon.variables</code>).</li>
+</ul>
+<h2 id="3-stack-lenguajes">3. Stack / lenguajes</h2>
+<table>
+<thead>
+<tr>
+<th>Capa</th>
+<th>Tecnologías</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Front</strong></td>
+<td>TypeScript · <strong>Next.js 16</strong> (App Router) · React · <strong>deck.gl 9.2</strong> + MapLibre (mapa) · <strong>h3-js 4</strong> · Tailwind CSS v4 · Auth.js (NextAuth v5) · jsPDF + svg2pdf + html2canvas-pro (export PDF)</td>
+</tr>
+<tr>
+<td><strong>Backend</strong></td>
+<td><strong>Python 3.12</strong> · <strong>FastAPI</strong> · Uvicorn + <strong>Gunicorn</strong> (prod) · <strong>SQLAlchemy 2</strong> · <strong>Alembic</strong> (migraciones) · <strong>psycopg 3</strong> · pandas + pyarrow (ingesta parquet) · <strong>h3</strong> · anyio (threadpool)</td>
+</tr>
+<tr>
+<td><strong>BD</strong></td>
+<td><strong>PostgreSQL</strong> (tabla <code>hexagon</code> ~1.6 M filas × ~746 B)</td>
+</tr>
+<tr>
+<td><strong>Identidad</strong></td>
+<td><strong>Keycloak</strong> (OIDC/JWT; roles <code>admin</code>/<code>analista</code>)</td>
+</tr>
+<tr>
+<td><strong>Infra</strong></td>
+<td>Front en <strong>AccuWeb</strong> (Node runtime) · Backend en <strong>Docker</strong> (<code>python:3.12-slim</code>, gunicorn <code>-w 2</code>)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-backend-comportamiento-y-endpoints">4. Backend — comportamiento y endpoints</h2>
+<p>Router <code>/api/tiles/*</code> (datos del mapa) + <code>/api/admin/*</code> (gestión) + <code>/api/historico</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Qué hace</th>
+<th>Coste</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /tiles/warmup</code></td>
+<td>bundle de metadatos (conteo <strong>estimado</strong> <code>reltuples</code> + <code>hexagon_meta</code>)</td>
+<td>µs</td>
+</tr>
+<tr>
+<td><code>GET /tiles/variables</code></td>
+<td>catálogo de variables (meta + <code>catalog_variable</code>)</td>
+<td>&lt;1 ms</td>
+</tr>
+<tr>
+<td><code>GET /tiles/{z}/{x}/{y}</code></td>
+<td>tile del grid (bbox → agregación por zoom, streaming)</td>
+<td>ms</td>
+</tr>
+<tr>
+<td><code>GET /tiles/detail/{h3}</code></td>
+<td>detalle de un hex (PK)</td>
+<td>0,1 ms</td>
+</tr>
+<tr>
+<td><code>POST /tiles/area</code></td>
+<td>informe: hexes del área con score/dimensiones/variables</td>
+<td>ms</td>
+</tr>
+<tr>
+<td><code>POST /tiles/variable(s-bulk)</code></td>
+<td>capa(s) de variable por bbox (bulk: N códigos en 1 scan)</td>
+<td>el más pesado</td>
+</tr>
+<tr>
+<td><code>GET /tiles/excluded</code></td>
+<td>capa completa de excluidos (índice parcial + caché)</td>
+<td>ms</td>
+</tr>
+<tr>
+<td><code>GET /api/admin/db/overview</code></td>
+<td><strong>verificación de ingesta</strong>: columnas por tabla + tríada h3/catálogo/master</td>
+<td>(admin)</td>
+</tr>
+<tr>
+<td><code>GET /api/_debug/stats</code> · <code>/_debug/inflight</code></td>
+<td>RAM/swap/in-flight (gate <code>DEBUG_INFLIGHT=1</code>)</td>
+<td>diagnóstico</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Anti-OOM / concurrencia:</strong>
+- Consultas en <strong>streaming</strong> (<code>stream_results</code>, <code>yield_per</code>) — la RAM no escala con el dataset.
+- <strong>Pool explícito</strong> (<code>DB_POOL_SIZE=5</code> + <code>DB_MAX_OVERFLOW=15</code> = 20/worker) + cap del
+  <strong>threadpool anyio</strong> (<code>APP_THREAD_LIMIT=18</code>).
+- Gunicorn <strong>2 workers</strong>, <code>--timeout 120</code>.</p>
+<h2 id="5-capacidad-medida-con-toolsloadtestpy">5. Capacidad (medida con <code>tools/loadtest.py</code>)</h2>
+<p>Server 2 workers / ~2 GB. Techo útil ≈ <strong>25 usuarios concurrentes</strong> explorando.
+Ver evidencia en <code>docs/testing/benchmark-carga-h3-2026-09-30.md</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Techo (2 GB)</th>
+<th>≈ por GB RAM</th>
+<th>Cuello</th>
+<th>Datos movidos</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>detail</code></td>
+<td>~100</td>
+<td>~50</td>
+<td>app (2 workers)</td>
+<td>1 hex (~0,7 KB)</td>
+</tr>
+<tr>
+<td><code>area</code></td>
+<td>~100</td>
+<td>~50</td>
+<td>app</td>
+<td>20–300 hexes (~0,06–0,22 MB)</td>
+</tr>
+<tr>
+<td><code>variables</code></td>
+<td>~100</td>
+<td>~50</td>
+<td>app</td>
+<td>62 filas meta</td>
+</tr>
+<tr>
+<td><code>warmup</code></td>
+<td>&gt;100 (tras fix)</td>
+<td>&gt;50</td>
+<td>—</td>
+<td>estimado <code>reltuples</code></td>
+</tr>
+<tr>
+<td><code>variables-bulk</code></td>
+<td>~10</td>
+<td>~5</td>
+<td><strong>BD</strong> (scan bbox)</td>
+<td>hasta ~165 MB leídos</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Regla:</strong> ~1 worker ≈ 18 operaciones BD concurrentes por cada ~1 GB de RAM.
+<code>variables-bulk</code> es el más caro → el front acota <strong>bbox + resolución</strong> y <strong>cachea</strong>.</p>
+<h2 id="6-base-de-datos">6. Base de datos</h2>
+<ul>
+<li><strong><code>hexagon</code></strong> (PK <code>h3_index</code> texto; <code>score_general</code>, <code>tipo_celda</code>, <code>emplazamiento</code>,
+  <code>lat</code>, <code>lng</code>, <code>variables</code> JSONB) ~1,6 M filas.</li>
+<li><strong><code>hexagon_meta</code></strong> (rango min–max por variable), <strong><code>hexagon_variables_pon</code></strong> (ponderadas).</li>
+<li><strong><code>catalog_variable</code> / <code>catalog_norma</code> / <code>catalog_escenario</code> / <code>catalog_turbine</code></strong>,
+  <strong><code>parquet_column</code></strong> (registro de columnas de la máster), <strong><code>app_config</code></strong> (clave→JSON,
+  p.ej. <code>support_email</code>, <code>report_calc_text</code>), <strong><code>informe</code></strong> (histórico), <strong><code>app_user</code></strong>.</li>
+<li><strong>Migraciones:</strong> Alembic (<code>migrations/versions/</code>). En dev <code>init_db</code> crea tablas; en
+  prod se usa Alembic (<code>alembic upgrade head</code>). Última: <code>0015_hexagon_excluded_index</code>
+  (índice parcial para <code>/tiles/excluded</code>).</li>
+<li><strong>Fase 2 (propuesta, <code>_bmad-output/planning-artifacts/architecture-db-espacial-h3.md</code>):</strong>
+  extensión <strong><code>h3-pg</code></strong> (PK <code>h3index</code> BIGINT), partir el JSONB, columnas padre H3 y
+  vistas materializadas para <code>variables-bulk</code>.</li>
+</ul>
+<h2 id="7-seguridad">7. Seguridad</h2>
+<ul>
+<li><strong>OIDC/Keycloak</strong>: login en el front (Auth.js); el backend valida el JWT. Roles
+  <code>admin</code> (gestión) / <code>analista</code> (flujo de análisis).</li>
+<li>Cookies <code>__Secure-/__Host-</code> (HTTPS). El BFF añade el Bearer y <code>X-User-Roles</code> al backend.</li>
+<li>Endpoints de datos exigen usuario autenticado; <code>/admin/*</code> exige rol <code>admin</code>.</li>
+<li>Datos: el backend <strong>nunca inventa valores</strong> (real o vacío); el modo <em>template</em> del
+  front usa placeholders solo con <code>USE_BACKEND=false</code>.</li>
+</ul>
+<h2 id="8-observabilidad-operacion">8. Observabilidad / operación</h2>
+<ul>
+<li><strong><code>tools/loadtest.py</code></strong> (prueba de carga por endpoint + <code>EXPLAIN</code>/salud BD con <code>--db-url</code>).</li>
+<li><strong><code>/api/_debug/stats</code></strong> y <strong><code>/_debug/inflight</code></strong> (<code>DEBUG_INFLIGHT=1</code>): RAM, swap, in-flight.</li>
+<li>Red de seguridad de memoria: <strong>swap + earlyoom</strong> (ver Manual de Instalación §7).</li>
+<li>Runbook de producción (front AccuWeb): <code>docs/ops/accuweb-runbook.md</code>.</li>
+</ul>
+<h2 id="9-referencias">9. Referencias</h2>
+<ul>
+<li>Arquitectura DB espacial: <code>_bmad-output/planning-artifacts/architecture-db-espacial-h3.md</code></li>
+<li>Benchmark de carga: <code>docs/testing/benchmark-carga-h3-2026-09-30.md</code></li>
+<li>Documento técnico de comportamiento: <code>docs/ops/documento-tecnico-comportamiento-herramientas-config.md</code></li>
+<li>ADRs: <code>docs/adr/</code> · Runbook: <code>docs/ops/accuweb-runbook.md</code></li>
+</ul><hr><h1 id="manual-de-instalacion-vento">Manual de Instalación — Vento</h1>
+<blockquote>
+<p>Puesta en marcha de <strong>frontend</strong>, <strong>backend</strong>, <strong>base de datos</strong> e <strong>identidad</strong>.
+Audiencia: equipo de despliegue. Usa <strong>placeholders</strong> (<code>HOST</code>, <code>USUARIO</code>, <code>CLAVE</code>,
+<code>TU_DOMINIO</code>) — reemplázalos por los reales del gestor de secretos; <strong>no</strong> pongas
+credenciales en el repo.
+Fecha: 2026-10-01 · Autor: Mavalan Software</p>
+</blockquote>
+<hr />
+<h2 id="0-prerrequisitos">0. Prerrequisitos</h2>
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Requisito</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Frontend</td>
+<td>Node.js (versión indicada por AccuWeb) + npm</td>
+</tr>
+<tr>
+<td>Backend</td>
+<td>Python 3.12 (o Docker)</td>
+</tr>
+<tr>
+<td>Base de datos</td>
+<td>PostgreSQL 14+</td>
+</tr>
+<tr>
+<td>Identidad</td>
+<td>Keycloak (realm con roles <code>admin</code> y <code>analista</code>)</td>
+</tr>
+<tr>
+<td>Datos</td>
+<td>Parquet maestro (<code>data/master_variables.h3.parquet</code>) + InfoVariables.xlsx</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="1-base-de-datos-postgresql">1. Base de datos (PostgreSQL)</h2>
+<pre><code class="language-bash"># Crear BD y usuario (ajusta nombres)
+createdb NOMBRE_BD
+# o: psql -c &quot;CREATE DATABASE NOMBRE_BD; CREATE USER USUARIO WITH PASSWORD 'CLAVE'; GRANT ALL ON DATABASE NOMBRE_BD TO USUARIO;&quot;
+</code></pre>
+<ul>
+<li>DSN: <code>postgresql://USUARIO:CLAVE@HOST_BD:5432/NOMBRE_BD</code></li>
+<li>Vigilar <code>max_connections</code> ≥ <code>(DB_POOL_SIZE + DB_MAX_OVERFLOW) × workers</code> (con 2 workers = 40).</li>
+<li>Tuning recomendado (server chico): <code>shared_buffers</code> ≈ 25 % RAM, <code>work_mem</code> suficiente;
+  <code>VACUUM ANALYZE hexagon</code> tras cada ingesta.</li>
+</ul>
+<hr />
+<h2 id="2-backend-fastapi">2. Backend (FastAPI)</h2>
+<h3 id="opcion-a-docker-produccion">Opción A — Docker (producción)</h3>
+<pre><code class="language-bash">cd backend/AppVento---Backend
+docker build -t vento-backend .
+docker run -d --name vento-backend -p 8000:8000 \
+  -e DATABASE_URL=&quot;postgresql://USUARIO:CLAVE@HOST_BD:5432/NOMBRE_BD&quot; \
+  -e APP_THREAD_LIMIT=18 -e DB_POOL_SIZE=5 -e DB_MAX_OVERFLOW=15 \
+  vento-backend
+</code></pre>
+<p>El <code>docker-entrypoint.sh</code> aplica migraciones (<code>alembic upgrade head</code>) y arranca
+<code>gunicorn main:app -k uvicorn.workers.UvicornWorker -w 2 -b 0.0.0.0:8000 --timeout 120</code>.</p>
+<h3 id="opcion-b-local-dev">Opción B — local (dev)</h3>
+<pre><code class="language-bash">cd backend/AppVento---Backend
+python -m venv .venv &amp;&amp; source .venv/bin/activate
+pip install -r requirements.txt
+alembic upgrade head
+uvicorn main:app --reload --port 8000
+</code></pre>
+<h3 id="variables-de-entorno-backend">Variables de entorno (backend)</h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Def.</th>
+<th>Uso</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DATABASE_URL</code></td>
+<td>—</td>
+<td>DSN de Postgres (requerido)</td>
+</tr>
+<tr>
+<td><code>APP_THREAD_LIMIT</code></td>
+<td>18</td>
+<td>threads anyio por worker</td>
+</tr>
+<tr>
+<td><code>DB_POOL_SIZE</code> / <code>DB_MAX_OVERFLOW</code> / <code>DB_POOL_TIMEOUT</code></td>
+<td>5 / 15 / 30</td>
+<td>pool por worker</td>
+</tr>
+<tr>
+<td><code>EXCLUDED_CACHE_TTL</code></td>
+<td>300</td>
+<td>TTL (s) caché de <code>/tiles/excluded</code></td>
+</tr>
+<tr>
+<td><code>DEBUG_INFLIGHT</code></td>
+<td>(off)</td>
+<td><code>=1</code> activa <code>/api/_debug/*</code></td>
+</tr>
+<tr>
+<td><code>HEXAGON_INGEST</code></td>
+<td>copy</td>
+<td>método de ingesta (<code>copy</code>/<code>orm</code>)</td>
+</tr>
+<tr>
+<td><code>PARQUET_PATH</code></td>
+<td>—</td>
+<td>ruta del parquet maestro</td>
+</tr>
+<tr>
+<td>(Keycloak)</td>
+<td>—</td>
+<td>issuer / audiencia / claves para validar el JWT</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ingesta-de-datos">Ingesta de datos</h3>
+<ol>
+<li>Colocar el parquet en <code>data/master_variables.h3.parquet</code>.</li>
+<li>Ingerir máster (hexágonos) y catálogo (variables/normas/escenarios) desde
+   <strong>Admin → Metadatos / Subir master</strong>, o el tool de ingesta.</li>
+<li><code>VACUUM ANALYZE hexagon;</code> (mantiene <code>reltuples</code> al día para <code>warmup</code>).</li>
+<li>Verificar con <strong><code>GET /api/admin/db/overview</code></strong> (columnas por tabla + qué variables
+   quedaron en h3 vs catálogo vs máster).</li>
+</ol>
+<hr />
+<h2 id="3-frontend-nextjs">3. Frontend (Next.js)</h2>
+<pre><code class="language-bash">cd Vento
+npm install
+# Desarrollo
+npm run dev            # http://localhost:3000
+# Producción
+npm run build &amp;&amp; npm start
+</code></pre>
+<h3 id="variables-de-entorno-frontend">Variables de entorno (frontend)</h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Valor</th>
+<th>Uso</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NEXT_PUBLIC_USE_BACKEND</code></td>
+<td><code>true</code> (prod) / <code>false</code> (template/demo)</td>
+<td>enciende la API real</td>
+</tr>
+<tr>
+<td><code>AUTH_SECRET</code></td>
+<td>(secreto)</td>
+<td>Auth.js (NextAuth v5)</td>
+</tr>
+<tr>
+<td><code>BACKEND_URL</code> / proxy</td>
+<td>URL del backend</td>
+<td>el BFF <code>/api/*</code> proxea aquí</td>
+</tr>
+<tr>
+<td>(Keycloak)</td>
+<td>issuer / client id / client secret</td>
+<td>OIDC</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>En <strong>modo backend</strong> (<code>NEXT_PUBLIC_USE_BACKEND=true</code>) no hay fallback a template:
+dato real o vacío. El arranque loguea <code>[VENTO] MODO: BACKEND/TEMPLATE</code>.</p>
+</blockquote>
+<h3 id="despliegue-en-accuweb">Despliegue en AccuWeb</h3>
+<p>Ver runbook detallado: <code>docs/ops/accuweb-runbook.md</code> (proveedor, build, variables,
+cookies/SSL, incidentes).</p>
+<hr />
+<h2 id="4-identidad-keycloak">4. Identidad (Keycloak)</h2>
+<ul>
+<li>Realm con <strong>roles</strong> <code>admin</code> y <code>analista</code>.</li>
+<li>Cliente para el front (OIDC, redirect URIs del dominio).</li>
+<li>El backend valida el JWT emitido por Keycloak; el front (Auth.js) guarda la sesión
+  en cookies <code>__Secure-authjs.session-token</code>.</li>
+<li>Dar a quien administre el rol <code>admin</code> (desde Keycloak o desde Vento → Gestión de usuarios).</li>
+</ul>
+<hr />
+<h2 id="5-migraciones-alembic">5. Migraciones (Alembic)</h2>
+<pre><code class="language-bash">cd backend/AppVento---Backend
+alembic upgrade head          # aplica todas (incluye 0015 índice parcial excluidos)
+# Para el índice SIN lock largo en una tabla ya cargada (opcional, cero-downtime):
+#   CREATE INDEX CONCURRENTLY ix_hexagon_excluded ON hexagon (h3_index)
+#     WHERE tipo_celda = 'excluida' OR score_general &lt; 0;
+#   luego: alembic stamp 0015_hexagon_excluded_index
+</code></pre>
+<hr />
+<h2 id="6-verificacion-post-instalacion">6. Verificación post-instalación</h2>
+<pre><code class="language-bash"># Backend arriba
+curl -s https://TU_DOMINIO/api/health
+# Capacidad / salud BD (desde el server o túnel; 5432 no suele ser público)
+python backend/AppVento---Backend/tools/loadtest.py \
+  --base &quot;https://TU_DOMINIO&quot; \
+  --cookie &quot;__Secure-authjs.session-token=VALOR&quot; \
+  --db-url &quot;postgresql://USUARIO:CLAVE@HOST_BD:5432/NOMBRE_BD&quot; --stage-secs 15
+</code></pre>
+<ul>
+<li>Objetivo sano: BD <code>cache-hit &gt; 99 %</code>, <code>variables-bulk</code> razonable, <code>warmup/excluded</code> &lt; 10 ms.</li>
+</ul>
+<hr />
+<h2 id="7-red-de-seguridad-de-memoria-server-chico">7. Red de seguridad de memoria (server chico)</h2>
+<pre><code class="language-bash"># Swap 4 GB persistente
+sudo fallocate -l 4G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=4096
+sudo chmod 600 /swapfile &amp;&amp; sudo mkswap /swapfile &amp;&amp; sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+sudo sysctl -w vm.swappiness=10
+echo 'vm.swappiness=10' | sudo tee /etc/sysctl.d/99-swappiness.conf
+# earlyoom (mata el proceso correcto antes del OOM del kernel)
+sudo apt-get update &amp;&amp; sudo apt-get install -y earlyoom
+sudo systemctl enable --now earlyoom
+</code></pre>
+<blockquote>
+<p>Son mitigaciones, no la solución: el fix real de capacidad es el rediseño de datos
+(Fase 2 h3-pg) + más RAM/workers.</p>
+</blockquote>
+<hr />
+<h2 id="8-ramas-despliegue">8. Ramas / despliegue</h2>
+<table>
+<thead>
+<tr>
+<th>Repo</th>
+<th>Trabajo</th>
+<th>Producción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Front (<code>Vento</code>)</td>
+<td><code>Sprint_4--report_preconig</code> / <code>develop</code></td>
+<td><code>deploy-prod</code></td>
+</tr>
+<tr>
+<td>Backend</td>
+<td><code>develop</code></td>
+<td><code>main</code></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Backend prod consume <strong><code>main</code></strong> (no <code>develop</code>).</li>
+<li>Tras merge a prod: <code>alembic upgrade head</code> + <code>VACUUM ANALYZE</code> + build del front.</li>
+</ul>
+<p style="margin-top:40px;color:#6b7280;font-size:12px">Vento · Mavalan Software · 2026-10-01 — generado desde los .md (imprime con Ctrl+P → Guardar como PDF).</p>
+</body></html>
