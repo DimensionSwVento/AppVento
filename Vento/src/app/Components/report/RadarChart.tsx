@@ -42,6 +42,7 @@ export default function RadarChart({
     <svg
       viewBox={`${-padX} 0 ${size + padX * 2} ${size}`}
       className={className}
+      style={{ fontFamily: "inherit" }}
       role="img"
       aria-label={`Radar de idoneidad por dimensión: ${axes
         .map((a) => `${a.label} ${Math.round(a.value)} de 100`)
