@@ -6,6 +6,8 @@ import { useVariables } from "../../Utils/contexts/VariablesContext";
 import { useCaracteristicas } from "../../Utils/contexts/CaracteristicasContext";
 import { useHistorial } from "../../Utils/historial/HistorialContext";
 import { groupByRecency } from "../../Utils/historial/grouping";
+import { uncompactHexes } from "../../Utils/historial/hexCodec";
+import ConfirmDialog from "../ui/ConfirmDialog";
 import { MAX_HISTORIAL_ENTRIES as MAX_ENTRIES } from "../../Utils/projectData";
 import type { InformeEntry } from "../../Utils/historial/types";
 import { useToast } from "../ui/Toast";
@@ -41,6 +43,10 @@ export default function HistorialList() {
 
   const [query, setQuery] = useState("");
   const [periodo, setPeriodo] = useState<Periodo>("todos");
+  // FB-FIX-07: confirmación de borrado con el modal propio de la app (antes
+  // `window.confirm` nativo, que rompía la consistencia visual).
+  const [confirmDel, setConfirmDel] = useState<InformeEntry | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Re-consultar la BD CADA VEZ que se abre el histórico (este componente se
   // monta al entrar a la vista). Antes solo se consultaba una vez al arrancar la
@@ -62,7 +68,10 @@ export default function HistorialList() {
   const groups = useMemo(() => groupByRecency(filtered), [filtered]);
 
   const verInforme = (e: InformeEntry) => {
-    setSelectedHexes(new Set(e.hexes));
+    // Descompacta a la resolución original: lo guardado viene COMPACTADO
+    // (`compactHexes`); en modo backend hay que restaurar la selección real para
+    // que `/tiles/area` case (si no, el informe/tooltip restaurado sale vacío).
+    setSelectedHexes(new Set(uncompactHexes(e.hexes)));
     replaceActiveVariables(e.variables);
     restoreCaracteristicas(e.caracteristicas);
     // Rehidrata la config del informe guardada (US audit: antes se guardaba
@@ -76,10 +85,18 @@ export default function HistorialList() {
     requestMapFocus();
   };
 
-  const eliminar = async (e: InformeEntry) => {
-    if (!window.confirm(`¿Eliminar el informe "${e.nombre}" del histórico?`)) return;
-    await remove(e.id);
-    toast.info("Informe eliminado del histórico");
+  const eliminar = (e: InformeEntry) => setConfirmDel(e);
+
+  const doEliminar = async () => {
+    if (!confirmDel) return;
+    setDeleting(true);
+    try {
+      await remove(confirmDel.id);
+      toast.info("Informe eliminado del histórico");
+    } finally {
+      setDeleting(false);
+      setConfirmDel(null);
+    }
   };
 
   // Fallo al traer el histórico → avisar + reintentar (no silenciar como vacío).
@@ -237,6 +254,23 @@ export default function HistorialList() {
           automáticamente el más antiguo.
         </span>
       </p>
+
+      {confirmDel && (
+        <ConfirmDialog
+          variant="danger"
+          loading={deleting}
+          title="Eliminar informe del histórico"
+          confirmLabel="Eliminar"
+          message={
+            <>
+              ¿Eliminar el informe <b>{confirmDel.nombre}</b> del histórico? Esta
+              acción no se puede deshacer.
+            </>
+          }
+          onConfirm={doEliminar}
+          onCancel={() => setConfirmDel(null)}
+        />
+      )}
     </div>
   );
 }
