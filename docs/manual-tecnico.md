@@ -260,6 +260,19 @@ Server 2 workers / ~2 GB. Techo útil ≈ **25 usuarios concurrentes** explorand
 techo). Más capacidad = más workers (necesita RAM) o escalar; respetar
 `APP_THREAD_LIMIT ≤ DB_POOL_SIZE+DB_MAX_OVERFLOW` y `(pool)×workers ≤ max_connections`.
 
+### Proyección tras Fase 2 (h3-pg) — estimada, a validar con re-benchmark
+
+| Métrica | Hoy (Fase 1) | **Estimado tras Fase 2** | Por qué |
+|---|---|---|---|
+| `variables-bulk` | ~10 users · ~5,8 s · ~165 MB/req | **~100+ users · <100 ms** | lee **MV precomputada** por resolución (miles de filas), no escanea 221 K res8 |
+| cache-hit BD | ~74 % | **>95 %** | tabla e índices más chicos (PK `h3index` 8 B + JSONB fuera del camino caliente) caben en `shared_buffers` |
+| Techo útil (mismo server 2 GB/2 workers) | ~25 usuarios | **~50–80 usuarios** | la BD deja de ser el cuello → el límite pasa a ser la **app** (2 workers × 18) |
+| Margen extra | — | **+~50 %** con un **3.er worker** | la RAM liberada por la tabla más chica permite otro worker **sin añadir RAM** |
+
+> Son **proyecciones**, no medidas. El ítem "Re-benchmark tras Fase 2" del Sprint 5
+> (`loadtest.py --db-url`) las confirma comparando `cache-hit`/EXPLAIN y el techo real.
+> Para romper el techo de la **app** (no de la BD) se suben workers/RAM u horizontal.
+
 ---
 
 ## 13. Configuración — variables de entorno (efecto técnico)

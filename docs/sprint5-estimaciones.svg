@@ -170,7 +170,7 @@
     <rect width="1160" height="24" fill="#0f3547"/><text x="12" y="17" fill="#fff" font-size="12.5" font-weight="700">Pruebas / Benchmark</text>
     <g font-size="12">
       <rect y="24" width="1160" height="26" fill="#fff" stroke="#eef2f5"/>
-      <text x="14" y="41" fill="#1f2937">Re-benchmark de carga tras Fase 2 (loadtest --db-url): comparar cache-hit/EXPLAIN y el techo de usuarios</text>
+      <text x="14" y="41" fill="#1f2937">Re-benchmark tras Fase 2 (loadtest --db-url) → meta estimada: techo ~50–80 users · bulk &lt;100 ms · cache &gt;95%</text>
       <text x="806" y="41" fill="#165170" font-weight="700" text-anchor="middle">~1 d</text><circle cx="896" cy="37" r="5" fill="#dc2626"/><text x="908" y="41" fill="#374151">Valida Fase 2</text>
 
       <rect y="50" width="1160" height="26" fill="#f3f6f8" stroke="#eef2f5"/>

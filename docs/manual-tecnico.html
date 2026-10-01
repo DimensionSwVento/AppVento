@@ -1,17 +1,13 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Vento — Manual Técnico</title><style>
-@page { size: A4; margin: 16mm 15mm; }
-*{box-sizing:border-box;} body{font-family:'Segoe UI',Arial,sans-serif;color:#1f2937;line-height:1.5;max-width:920px;margin:0 auto;padding:0;}
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Vento — Manual Técnico</title><style>@page{size:A4;margin:16mm 15mm;} *{box-sizing:border-box;} body{font-family:'Segoe UI',Arial,sans-serif;color:#1f2937;line-height:1.5;max-width:920px;margin:0 auto;padding:0;}
 .cover{height:245mm;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:0 10mm;background:linear-gradient(135deg,#0f3547,#165170);color:#fff;page-break-after:always;}
 .cover h1{border:0;color:#fff;font-size:42px;margin:0 0 8px;page-break-before:avoid;} .cover .sub{color:#cfe3ee;font-size:18px;} .cover .meta{color:#9fc3d6;font-size:14px;margin-top:28px;} .cover .logo{font-size:15px;letter-spacing:3px;color:#9fc3d6;margin-bottom:16px;}
 h1{color:#0f3547;border-bottom:3px solid #165170;padding-bottom:6px;page-break-before:always;font-size:25px;} h2{color:#165170;margin-top:1.4em;} h3{color:#1f2937;}
 table{border-collapse:collapse;width:100%;margin:10px 0;font-size:11.5px;} th,td{border:1px solid #cbd5e1;padding:5px 7px;text-align:left;vertical-align:top;} th{background:#165170;color:#fff;} tr:nth-child(even) td{background:#f3f6f8;}
 code{background:#eef2f5;color:#0f3547;padding:1px 4px;border-radius:3px;font-size:12px;}
-pre{background:#f1f5f8;color:#0f3547;border:1px solid #d6e0e6;border-left:4px solid #165170;padding:12px;border-radius:8px;font-size:11px;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;}
-pre code{background:none;color:inherit;padding:0;}
+pre{background:#f1f5f8;color:#0f3547;border:1px solid #d6e0e6;border-left:4px solid #165170;padding:12px;border-radius:8px;font-size:11px;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;} pre code{background:none;color:inherit;padding:0;}
 blockquote{border-left:4px solid #165170;margin:10px 0;padding:4px 12px;background:#f0f6f9;color:#374151;}
 figure.diagram{margin:0;padding:10px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;page-break-after:always;} figure.diagram svg{width:100%;height:auto;display:block;} figure.diagram figcaption{color:#6b7280;font-size:11px;text-align:center;margin-top:8px;}
-.section{padding:0 10mm;} @media print{pre,table,blockquote{page-break-inside:avoid;} a{color:#165170;text-decoration:none;}}
-</style></head><body>
+.section{padding:0 10mm;} @media print{pre,table,blockquote{page-break-inside:avoid;} a{color:#165170;text-decoration:none;}}</style></head><body>
 <section class="cover"><div class="logo">⟟ VENTO · MAVALAN SOFTWARE</div><h1>Manual Técnico</h1><div class="sub">Vento — Plataforma de idoneidad eólica (SIG / MCDM · hexágonos H3)</div><div class="meta">2026-10-01 · Audiencia: equipo de desarrollo / on-call</div></section>
 <div class="section"><figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 940" font-family="Segoe UI, Arial, sans-serif">
   <defs>
@@ -105,14 +101,15 @@ figure.diagram{margin:0;padding:10px;border:1px solid #e5e7eb;border-radius:12px
   <!-- Capacidad -->
   <g transform="translate(780,470)">
     <rect width="380" height="190" rx="12" fill="#0f3547"/>
-    <text x="20" y="28" fill="#fff" font-size="14" font-weight="700">Capacidad (benchmark)</text>
-    <text x="20" y="54" fill="#cfe3ee" font-size="12.5">Techo útil ≈ <tspan font-weight="800" fill="#fff">25 usuarios</tspan> concurrentes</text>
-    <text x="20" y="74" fill="#9fc3d6" font-size="11.5">2 workers × APP_THREAD_LIMIT 18 = 36 ops BD</text>
-    <text x="20" y="100" fill="#cfe3ee" font-size="12.5">Cuello: variables-bulk (~165 MB/req)</text>
-    <text x="20" y="120" fill="#cfe3ee" font-size="12.5">cache-hit BD ~74% → Fase 2 h3-pg</text>
-    <text x="20" y="146" fill="#9fc3d6" font-size="11.5">Regla: ~1 worker ≈ 18 ops BD por ~1 GB RAM;</text>
-    <text x="20" y="164" fill="#9fc3d6" font-size="11.5">APP_THREAD_LIMIT ≤ pool(20) × workers ≤ max_conn.</text>
-    <text x="20" y="184" fill="#9fc3d6" font-size="11">Medido con tools/loadtest.py (--db-url: EXPLAIN+salud BD)</text>
+    <text x="20" y="26" fill="#fff" font-size="14" font-weight="700">Capacidad (benchmark)</text>
+    <text x="20" y="50" fill="#cfe3ee" font-size="12.5">Hoy: techo ≈ <tspan font-weight="800" fill="#fff">25 usuarios</tspan> (2w×18 = 36 ops BD)</text>
+    <text x="20" y="68" fill="#9fc3d6" font-size="11.5">Cuello: variables-bulk ~165 MB/req · cache-hit ~74%</text>
+    <rect x="12" y="78" width="356" height="64" rx="8" fill="#13425a"/>
+    <text x="22" y="97" fill="#fff" font-size="12.5" font-weight="800">Tras Fase 2 (estimado):</text>
+    <text x="22" y="114" fill="#cfe3ee" font-size="12">~50–80 usuarios · bulk &lt;100 ms (MV) · cache &gt;95%</text>
+    <text x="22" y="132" fill="#9fc3d6" font-size="11.5">+~50% con 3.er worker (RAM liberada por tabla + chica)</text>
+    <text x="20" y="160" fill="#9fc3d6" font-size="11.5">Regla: APP_THREAD_LIMIT ≤ pool(20) × workers ≤ max_conn.</text>
+    <text x="20" y="180" fill="#9fc3d6" font-size="11">Validar con tools/loadtest.py --db-url (re-benchmark S5)</text>
   </g>
 
   <!-- Endpoints / flujo -->
@@ -578,6 +575,48 @@ tras lotes · ingesta pesada aislada. Trazabilidad: <code>TRACE_REQUESTS</code>/
 <p><strong>Regla:</strong> <code>2 workers × APP_THREAD_LIMIT(18) = 36</code> operaciones de BD concurrentes (de ahí el
 techo). Más capacidad = más workers (necesita RAM) o escalar; respetar
 <code>APP_THREAD_LIMIT ≤ DB_POOL_SIZE+DB_MAX_OVERFLOW</code> y <code>(pool)×workers ≤ max_connections</code>.</p>
+<h3 id="proyeccion-tras-fase-2-h3-pg-estimada-a-validar-con-re-benchmark">Proyección tras Fase 2 (h3-pg) — estimada, a validar con re-benchmark</h3>
+<table>
+<thead>
+<tr>
+<th>Métrica</th>
+<th>Hoy (Fase 1)</th>
+<th><strong>Estimado tras Fase 2</strong></th>
+<th>Por qué</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>variables-bulk</code></td>
+<td>~10 users · ~5,8 s · ~165 MB/req</td>
+<td><strong>~100+ users · &lt;100 ms</strong></td>
+<td>lee <strong>MV precomputada</strong> por resolución (miles de filas), no escanea 221 K res8</td>
+</tr>
+<tr>
+<td>cache-hit BD</td>
+<td>~74 %</td>
+<td><strong>&gt;95 %</strong></td>
+<td>tabla e índices más chicos (PK <code>h3index</code> 8 B + JSONB fuera del camino caliente) caben en <code>shared_buffers</code></td>
+</tr>
+<tr>
+<td>Techo útil (mismo server 2 GB/2 workers)</td>
+<td>~25 usuarios</td>
+<td><strong>~50–80 usuarios</strong></td>
+<td>la BD deja de ser el cuello → el límite pasa a ser la <strong>app</strong> (2 workers × 18)</td>
+</tr>
+<tr>
+<td>Margen extra</td>
+<td>—</td>
+<td><strong>+~50 %</strong> con un <strong>3.er worker</strong></td>
+<td>la RAM liberada por la tabla más chica permite otro worker <strong>sin añadir RAM</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Son <strong>proyecciones</strong>, no medidas. El ítem "Re-benchmark tras Fase 2" del Sprint 5
+(<code>loadtest.py --db-url</code>) las confirma comparando <code>cache-hit</code>/EXPLAIN y el techo real.
+Para romper el techo de la <strong>app</strong> (no de la BD) se suben workers/RAM u horizontal.</p>
+</blockquote>
 <hr />
 <h2 id="13-configuracion-variables-de-entorno-efecto-tecnico">13. Configuración — variables de entorno (efecto técnico)</h2>
 <p>El <code>.env</code> completo con ejemplos está en <code>docs/manual-instalacion.md</code>. Aquí, el <strong>efecto</strong>:</p>
