@@ -1244,29 +1244,37 @@ export default function Report() {
         rangeText(v.masterId),
       ];
     });
-    addSection("Ponderación (verificación admin)", (n) => [
-      <div key="wr" className="text-[10px]">
-        <div className="flex items-center gap-2">
-          <h3 className="text-base font-bold text-[#165170ff]">
-            {n}. Intervalos de ponderación
-          </h3>
-          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
-            Solo admin · verificación
-          </span>
+    // #3: ~60 variables NO caben en una hoja → se CHUNKEAN (una hoja por bloque),
+    // igual que la tabla de dimensión, para que el PDF no corte la tabla a mitad.
+    const wrPages = chunk(rows, 24);
+    addSection("Ponderación (verificación admin)", (n) =>
+      wrPages.map((pageRows, pi) => (
+        <div key={`wr-${pi}`} className="text-[10px]">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-bold text-[#165170ff]">
+              {n}. Intervalos de ponderación
+              {wrPages.length > 1 ? ` (${pi + 1}/${wrPages.length})` : ""}
+            </h3>
+            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
+              Solo admin · verificación
+            </span>
+          </div>
+          {pi === 0 && (
+            <p className="mt-1 text-[9px] leading-snug text-gray-600">
+              Peso (con signo), polaridad y rango de medición (min–max) por variable
+              ponderada, para verificar la normalización y el cálculo. El rango es el
+              REAL de la master ({varRanges && Object.keys(varRanges).length > 0
+                ? "backend · hexagon_meta"
+                : "sin backend → s/d"}); el peso viene de BD en modo backend.
+            </p>
+          )}
+          <MiniTable
+            columns={["Código", "Variable", "Peso", "Polaridad", "Intervalo (min–max)"]}
+            rows={pageRows}
+          />
         </div>
-        <p className="mt-1 text-[9px] leading-snug text-gray-600">
-          Peso (con signo), polaridad y rango de medición (min–max) por variable
-          ponderada, para verificar la normalización y el cálculo. El rango es el
-          REAL de la master ({varRanges && Object.keys(varRanges).length > 0
-            ? "backend · hexagon_meta"
-            : "sin backend → s/d"}); el peso viene de BD en modo backend.
-        </p>
-        <MiniTable
-          columns={["Código", "Variable", "Peso", "Polaridad", "Intervalo (min–max)"]}
-          rows={rows}
-        />
-      </div>,
-    ]);
+      )),
+    );
   }
 
   // Hoja de disclaimer.
