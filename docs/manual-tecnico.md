@@ -207,7 +207,58 @@ capas/salir (evita apilamiento que satura el back).
 
 ---
 
-## 11. Referencias
+## 11. Configuración — variables de entorno (referencia de comportamiento)
+
+Qué **cambia en el sistema** cada variable (el `.env` completo con ejemplos está en
+`docs/manual-instalacion.md`).
+
+### Frontend
+| Variable | Efecto técnico |
+|----------|----------------|
+| `NEXT_PUBLIC_USE_BACKEND` | **El interruptor de modo.** `true` → `USE_BACKEND=true`, `USE_PLACEHOLDER_FALLBACK=false` → dato real o vacío. `false` → template (placeholders deterministas, sin API). Deriva también `SHOW_PLACEHOLDER_EXCLUDED`. |
+| `BACKEND_URL` | destino interno del proxy `/api/*` (servidor Next → FastAPI). |
+| `NEXT_PUBLIC_API_URL` | URL pública de la API visible al cliente. |
+| `INTERNAL_API_SECRET` | secreto BFF→backend (debe coincidir con el del backend). |
+| `AUTH_SECRET` / `AUTH_URL` / `AUTH_TRUST_HOST` | sesión de Auth.js (firma, URL, confianza de host). |
+| `AUTH_KEYCLOAK_ID` / `_SECRET` / `_ISSUER` | cliente OIDC (login server-side). |
+| `NEXT_PUBLIC_KEYCLOAK_URL` / `_REALM` / `_ISSUER` | Keycloak visible al cliente (logout/registro). |
+| `SENDGRID_API_KEY` / `_FROM_EMAIL` | correos (p.ej. notificar al otorgar admin). |
+
+### Backend
+| Variable | Def. | Efecto técnico |
+|----------|------|----------------|
+| `DATABASE_URL` | localhost | DSN Postgres (`postgresql+psycopg://…`). |
+| `PARQUET_PATH` | `data/…parquet` | ubicación del parquet maestro a ingerir. |
+| `HEXAGON_INGEST` | `copy` | método de ingesta: `copy` (COPY atómico, rápido) \| `orm` (lotes, portable). |
+| `INGEST_MEM_CAP_MB` | — | tope de RAM del proceso de ingesta. |
+| `OFFSHORE_VAR` | `""` | columna mar(1)/tierra(0); vacío → el tile no expone `off`. |
+| `KEYCLOAK_ISSUER` / `_JWKS_URL` / `_AUDIENCE` | — / derivado / `account` | verificación del JWT (issuer, claves públicas, audiencia). |
+| `JWT_ALGORITHMS` | `RS256` | algoritmos aceptados del JWT. |
+| `INTERNAL_API_SECRET` | `""` | exige el secreto del BFF; vacío = modo interno deshabilitado. |
+| `CORS_ORIGINS` | `localhost:3000` | orígenes permitidos (coma-separado). |
+| `MAX_HISTORIAL_PER_USER` | 50 | tope de informes guardados por usuario. |
+| `DB_POOL_SIZE` / `DB_MAX_OVERFLOW` | 5 / 15 | conexiones persistentes + ráfaga **por worker** (20 máx). |
+| `DB_POOL_TIMEOUT` / `DB_POOL_RECYCLE` | 30 / 1800 | espera por conexión / reciclaje (s). |
+| `APP_THREAD_LIMIT` | 18 | threads anyio por worker = **operaciones de BD concurrentes** (techo de carga). |
+| `EXCLUDED_CACHE_TTL` | 300 | TTL (s) de la caché en proceso de `/tiles/excluded`. |
+| `DEBUG_INFLIGHT` | off | `=1` activa `/api/_debug/stats` e `/inflight`. |
+| `TRACE_REQUESTS` | 0 | `=1` loguea cada request (entra/sale + duración). |
+| `INFLIGHT_WARN` | 12 | WARNING si ≥N peticiones en vuelo (detecta apilamiento). |
+| `SLOW_REQUEST_MS` | 3000 | loguea las peticiones más lentas que N ms. |
+
+> **Nota sobre el "use" del backend:** el backend **no tiene** un interruptor
+> template/real — siempre sirve dato real o vacío. El modo lo decide el **front** con
+> `NEXT_PUBLIC_USE_BACKEND`. Lo que ajusta el comportamiento del backend es la tabla de
+> arriba (pool, threadpool, ingesta, caché, trazas) — no un flag de modo.
+
+### Gunicorn / proceso (fijado en el `Dockerfile`, no por env)
+`gunicorn main:app -k uvicorn.workers.UvicornWorker -w 2 -b 0.0.0.0:8000 --timeout 120`
+→ **2 workers** × `APP_THREAD_LIMIT` (18) = **36 operaciones de BD concurrentes** (el techo
+de ~25 usuarios explorando). Para más capacidad: más workers (necesita RAM) o escalar.
+
+---
+
+## 12. Referencias
 - Benchmark de carga: `docs/testing/benchmark-carga-h3-2026-09-30.md`
 - Comportamiento/herramientas/config: `docs/ops/documento-tecnico-comportamiento-herramientas-config.md`
 - Runbook AccuWeb: `docs/ops/accuweb-runbook.md`

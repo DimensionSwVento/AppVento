@@ -1,14 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Manuales Vento — Técnico e Instalación</title><style>
-@page { size: A4; margin: 18mm 16mm; }
-*{box-sizing:border-box;} body{font-family:'Segoe UI',Arial,sans-serif;color:#1f2937;line-height:1.5;max-width:900px;margin:0 auto;padding:24px;}
-h1{color:#0f3547;border-bottom:3px solid #165170;padding-bottom:6px;page-break-before:always;} h1:first-of-type{page-break-before:avoid;}
-h2{color:#165170;margin-top:1.4em;} h3{color:#1f2937;}
-table{border-collapse:collapse;width:100%;margin:10px 0;font-size:12.5px;} th,td{border:1px solid #cbd5e1;padding:6px 8px;text-align:left;vertical-align:top;}
-th{background:#165170;color:#fff;} tr:nth-child(even) td{background:#f3f6f8;}
-code{background:#eef2f5;padding:1px 4px;border-radius:3px;font-size:12px;} pre{background:#0f3547;color:#e8f1f6;padding:12px;border-radius:8px;overflow:auto;font-size:11.5px;} pre code{background:none;color:inherit;}
-blockquote{border-left:4px solid #165170;margin:10px 0;padding:4px 12px;background:#f0f6f9;color:#374151;}
-@media print{pre,table,blockquote{page-break-inside:avoid;} a{color:#165170;text-decoration:none;}}
-</style></head><body><h1 id="manual-tecnico-vento-plataforma-de-idoneidad-eolica">Manual Técnico — Vento (Plataforma de idoneidad eólica)</h1>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Manuales Vento</title><style>@page{size:A4;margin:18mm 16mm;} *{box-sizing:border-box;} body{font-family:'Segoe UI',Arial,sans-serif;color:#1f2937;line-height:1.5;max-width:900px;margin:0 auto;padding:24px;} h1{color:#0f3547;border-bottom:3px solid #165170;padding-bottom:6px;page-break-before:always;} h1:first-of-type{page-break-before:avoid;} h2{color:#165170;margin-top:1.4em;} h3{color:#1f2937;} table{border-collapse:collapse;width:100%;margin:10px 0;font-size:12px;} th,td{border:1px solid #cbd5e1;padding:6px 8px;text-align:left;vertical-align:top;} th{background:#165170;color:#fff;} tr:nth-child(even) td{background:#f3f6f8;} code{background:#eef2f5;padding:1px 4px;border-radius:3px;font-size:12px;} pre{background:#0f3547;color:#e8f1f6;padding:12px;border-radius:8px;overflow:auto;font-size:11.5px;} pre code{background:none;color:inherit;} blockquote{border-left:4px solid #165170;margin:10px 0;padding:4px 12px;background:#f0f6f9;color:#374151;} @media print{pre,table,blockquote{page-break-inside:avoid;} a{color:#165170;text-decoration:none;}}</style></head><body><h1 id="manual-tecnico-vento-plataforma-de-idoneidad-eolica">Manual Técnico — Vento (Plataforma de idoneidad eólica)</h1>
 <blockquote>
 <p>Arquitectura, stack, comportamiento, configuración y operación.
 Audiencia: equipo de desarrollo / on-call. No es el manual de usuario.
@@ -351,7 +341,166 @@ capas/salir (evita apilamiento que satura el back).</p>
 <li><strong>Documento técnico de comportamiento/config:</strong> <code>docs/ops/documento-tecnico-comportamiento-herramientas-config.md</code>.</li>
 </ul>
 <hr />
-<h2 id="11-referencias">11. Referencias</h2>
+<h2 id="11-configuracion-variables-de-entorno-referencia-de-comportamiento">11. Configuración — variables de entorno (referencia de comportamiento)</h2>
+<p>Qué <strong>cambia en el sistema</strong> cada variable (el <code>.env</code> completo con ejemplos está en
+<code>docs/manual-instalacion.md</code>).</p>
+<h3 id="frontend">Frontend</h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Efecto técnico</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NEXT_PUBLIC_USE_BACKEND</code></td>
+<td><strong>El interruptor de modo.</strong> <code>true</code> → <code>USE_BACKEND=true</code>, <code>USE_PLACEHOLDER_FALLBACK=false</code> → dato real o vacío. <code>false</code> → template (placeholders deterministas, sin API). Deriva también <code>SHOW_PLACEHOLDER_EXCLUDED</code>.</td>
+</tr>
+<tr>
+<td><code>BACKEND_URL</code></td>
+<td>destino interno del proxy <code>/api/*</code> (servidor Next → FastAPI).</td>
+</tr>
+<tr>
+<td><code>NEXT_PUBLIC_API_URL</code></td>
+<td>URL pública de la API visible al cliente.</td>
+</tr>
+<tr>
+<td><code>INTERNAL_API_SECRET</code></td>
+<td>secreto BFF→backend (debe coincidir con el del backend).</td>
+</tr>
+<tr>
+<td><code>AUTH_SECRET</code> / <code>AUTH_URL</code> / <code>AUTH_TRUST_HOST</code></td>
+<td>sesión de Auth.js (firma, URL, confianza de host).</td>
+</tr>
+<tr>
+<td><code>AUTH_KEYCLOAK_ID</code> / <code>_SECRET</code> / <code>_ISSUER</code></td>
+<td>cliente OIDC (login server-side).</td>
+</tr>
+<tr>
+<td><code>NEXT_PUBLIC_KEYCLOAK_URL</code> / <code>_REALM</code> / <code>_ISSUER</code></td>
+<td>Keycloak visible al cliente (logout/registro).</td>
+</tr>
+<tr>
+<td><code>SENDGRID_API_KEY</code> / <code>_FROM_EMAIL</code></td>
+<td>correos (p.ej. notificar al otorgar admin).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="backend">Backend</h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Def.</th>
+<th>Efecto técnico</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DATABASE_URL</code></td>
+<td>localhost</td>
+<td>DSN Postgres (<code>postgresql+psycopg://…</code>).</td>
+</tr>
+<tr>
+<td><code>PARQUET_PATH</code></td>
+<td><code>data/…parquet</code></td>
+<td>ubicación del parquet maestro a ingerir.</td>
+</tr>
+<tr>
+<td><code>HEXAGON_INGEST</code></td>
+<td><code>copy</code></td>
+<td>método de ingesta: <code>copy</code> (COPY atómico, rápido) | <code>orm</code> (lotes, portable).</td>
+</tr>
+<tr>
+<td><code>INGEST_MEM_CAP_MB</code></td>
+<td>—</td>
+<td>tope de RAM del proceso de ingesta.</td>
+</tr>
+<tr>
+<td><code>OFFSHORE_VAR</code></td>
+<td><code>""</code></td>
+<td>columna mar(1)/tierra(0); vacío → el tile no expone <code>off</code>.</td>
+</tr>
+<tr>
+<td><code>KEYCLOAK_ISSUER</code> / <code>_JWKS_URL</code> / <code>_AUDIENCE</code></td>
+<td>— / derivado / <code>account</code></td>
+<td>verificación del JWT (issuer, claves públicas, audiencia).</td>
+</tr>
+<tr>
+<td><code>JWT_ALGORITHMS</code></td>
+<td><code>RS256</code></td>
+<td>algoritmos aceptados del JWT.</td>
+</tr>
+<tr>
+<td><code>INTERNAL_API_SECRET</code></td>
+<td><code>""</code></td>
+<td>exige el secreto del BFF; vacío = modo interno deshabilitado.</td>
+</tr>
+<tr>
+<td><code>CORS_ORIGINS</code></td>
+<td><code>localhost:3000</code></td>
+<td>orígenes permitidos (coma-separado).</td>
+</tr>
+<tr>
+<td><code>MAX_HISTORIAL_PER_USER</code></td>
+<td>50</td>
+<td>tope de informes guardados por usuario.</td>
+</tr>
+<tr>
+<td><code>DB_POOL_SIZE</code> / <code>DB_MAX_OVERFLOW</code></td>
+<td>5 / 15</td>
+<td>conexiones persistentes + ráfaga <strong>por worker</strong> (20 máx).</td>
+</tr>
+<tr>
+<td><code>DB_POOL_TIMEOUT</code> / <code>DB_POOL_RECYCLE</code></td>
+<td>30 / 1800</td>
+<td>espera por conexión / reciclaje (s).</td>
+</tr>
+<tr>
+<td><code>APP_THREAD_LIMIT</code></td>
+<td>18</td>
+<td>threads anyio por worker = <strong>operaciones de BD concurrentes</strong> (techo de carga).</td>
+</tr>
+<tr>
+<td><code>EXCLUDED_CACHE_TTL</code></td>
+<td>300</td>
+<td>TTL (s) de la caché en proceso de <code>/tiles/excluded</code>.</td>
+</tr>
+<tr>
+<td><code>DEBUG_INFLIGHT</code></td>
+<td>off</td>
+<td><code>=1</code> activa <code>/api/_debug/stats</code> e <code>/inflight</code>.</td>
+</tr>
+<tr>
+<td><code>TRACE_REQUESTS</code></td>
+<td>0</td>
+<td><code>=1</code> loguea cada request (entra/sale + duración).</td>
+</tr>
+<tr>
+<td><code>INFLIGHT_WARN</code></td>
+<td>12</td>
+<td>WARNING si ≥N peticiones en vuelo (detecta apilamiento).</td>
+</tr>
+<tr>
+<td><code>SLOW_REQUEST_MS</code></td>
+<td>3000</td>
+<td>loguea las peticiones más lentas que N ms.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Nota sobre el "use" del backend:</strong> el backend <strong>no tiene</strong> un interruptor
+template/real — siempre sirve dato real o vacío. El modo lo decide el <strong>front</strong> con
+<code>NEXT_PUBLIC_USE_BACKEND</code>. Lo que ajusta el comportamiento del backend es la tabla de
+arriba (pool, threadpool, ingesta, caché, trazas) — no un flag de modo.</p>
+</blockquote>
+<h3 id="gunicorn-proceso-fijado-en-el-dockerfile-no-por-env">Gunicorn / proceso (fijado en el <code>Dockerfile</code>, no por env)</h3>
+<p><code>gunicorn main:app -k uvicorn.workers.UvicornWorker -w 2 -b 0.0.0.0:8000 --timeout 120</code>
+→ <strong>2 workers</strong> × <code>APP_THREAD_LIMIT</code> (18) = <strong>36 operaciones de BD concurrentes</strong> (el techo
+de ~25 usuarios explorando). Para más capacidad: más workers (necesita RAM) o escalar.</p>
+<hr />
+<h2 id="12-referencias">12. Referencias</h2>
 <ul>
 <li>Benchmark de carga: <code>docs/testing/benchmark-carga-h3-2026-09-30.md</code></li>
 <li>Comportamiento/herramientas/config: <code>docs/ops/documento-tecnico-comportamiento-herramientas-config.md</code></li>
@@ -599,4 +748,4 @@ sudo systemctl enable --now earlyoom
 </tbody>
 </table>
 <p>Backend prod consume <strong><code>main</code></strong>. Tras merge a prod: <code>alembic upgrade head</code> +
-<code>VACUUM ANALYZE hexagon</code> + build del front.</p><p style="margin-top:40px;color:#6b7280;font-size:12px">Vento · Mavalan Software · 2026-10-01 — imprime con Ctrl+P → Guardar como PDF.</p></body></html>
+<code>VACUUM ANALYZE hexagon</code> + build del front.</p><p style="margin-top:40px;color:#6b7280;font-size:12px">Vento · Mavalan Software · 2026-10-01 — Ctrl+P → Guardar como PDF.</p></body></html>
