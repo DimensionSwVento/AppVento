@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+import { UserCheck, UserX } from "lucide-react";
 import { User, AppRole } from "../../types/user";
 
 interface UsersTableProps {
@@ -13,13 +14,6 @@ interface UsersTableProps {
   hasMore: boolean;
 }
 
-interface InlineEditState {
-  firstName: string;
-  lastName: string;
-  email: string;
-  enabled: boolean;
-}
-
 export default function UsersTable({
   users,
   onEdit,
@@ -29,18 +23,7 @@ export default function UsersTable({
   onPageChange,
   hasMore,
 }: UsersTableProps) {
-  // onActivate forma parte del contrato del componente (lo pasa la página
-  // admin) pero la activación hoy se maneja con el select inline de estado.
-  void onActivate;
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [editState, setEditState] = useState<InlineEditState>({
-    firstName: "",
-    lastName: "",
-    email: "",
-    enabled: true,
-  });
   const [rolesCache, setRolesCache] = useState<Record<string, AppRole>>({});
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Prefetch roles para todos los usuarios visibles en la página.
   // N+1 consciente — limitado a 20 usuarios por página (limit en page.tsx).
@@ -73,45 +56,6 @@ export default function UsersTable({
     };
   }, [users]);
 
-  // Close selection when clicking outside the list
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setSelectedUserId(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleSelectUser = (user: User) => {
-    if (selectedUserId === user.id) {
-      setSelectedUserId(null);
-      return;
-    }
-    setSelectedUserId(user.id);
-    setEditState({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      enabled: user.enabled,
-    });
-  };
-
-  const handleConfirmEdit = (user: User) => {
-    onEdit({
-      ...user,
-      firstName: editState.firstName,
-      lastName: editState.lastName,
-      email: editState.email,
-      enabled: editState.enabled,
-    });
-    setSelectedUserId(null);
-  };
-
-  const handleCancelSelect = () => {
-    setSelectedUserId(null);
-  };
 
   if (users.length === 0) {
     return (
@@ -122,207 +66,117 @@ export default function UsersTable({
   }
 
   return (
-    <div ref={containerRef}>
+    <div>
       {/* Users list */}
       <div className="flex flex-col gap-2">
-        {users.map((user) => {
-          const isSelected = selectedUserId === user.id;
-
-          return (
-            <div
-              key={user.id}
-              className={`
-                relative px-4 py-5 rounded-xl transition-all duration-150 cursor-pointer
-                ${isSelected
-                  ? "bg-gray-100 border border-gray-200 shadow-sm"
-                  : "bg-gray-50 hover:bg-gray-100"
-                }
-              `}
-              onClick={() => !isSelected && handleSelectUser(user)}
-            >
-              {/* Main row: left content + right action buttons centered */}
-              <div className="flex items-center">
-                {/* Left side: status + name + email */}
-                <div className="flex-1 min-w-0">
-                  {/* Status + Role badges */}
-                  <div className="mb-2 flex items-center gap-2 flex-wrap">
-                    {isSelected ? (
-                      <select
-                        value={editState.enabled ? "activo" : "desactivado"}
-                        onChange={(e) =>
-                          setEditState((prev) => ({
-                            ...prev,
-                            enabled: e.target.value === "activo",
-                          }))
-                        }
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-xs font-medium px-2.5 py-1 rounded border cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#165170] transition-colors"
-                        style={{
-                          backgroundColor: editState.enabled ? "#d7ebc1" : "#ebc1c7",
-                          color: editState.enabled ? "#386904" : "#850a0c",
-                          borderColor: editState.enabled ? "#b8d89e" : "#d9a0a8",
-                        }}
-                      >
-                        <option value="activo" style={{ backgroundColor: "#ffffff", color: "#386904" }}>Activo</option>
-                        <option value="desactivado" style={{ backgroundColor: "#ffffff", color: "#850a0c" }}>Desactivado</option>
-                      </select>
-                    ) : (
-                      <>
-                        {user.enabled ? (
-                          <span
-                            className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium"
-                            style={{ backgroundColor: "#d7ebc1", color: "#386904" }}
-                          >
-                            Activo
-                          </span>
-                        ) : (
-                          <span
-                            className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium"
-                            style={{ backgroundColor: "#ebc1c7", color: "#850a0c" }}
-                          >
-                            Desactivado
-                          </span>
-                        )}
-                      </>
-                    )}
-                    {/* Role badge — siempre visible (US-FB-05 AC1) */}
-                    {(() => {
-                      const role = rolesCache[user.id];
-                      if (!role) {
-                        return (
-                          <span
-                            className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium text-gray-400 bg-gray-100 border border-gray-200"
-                            title="Cargando rol..."
-                          >
-                            …
-                          </span>
-                        );
-                      }
-                      const isAdmin = role === "admin";
+        {users.map((user) => (
+          <div
+            key={user.id}
+            className="relative px-4 py-5 rounded-xl transition-all duration-150 cursor-pointer bg-gray-50 hover:bg-gray-100"
+            // Clic en la fila = editar: abre directo el modal completo (nombre,
+            // estado y rol), sin edición inline previa (feedback UX US08-04).
+            onClick={() => onEdit(user)}
+          >
+            {/* Main row: left content + right action buttons centered */}
+            <div className="flex items-center">
+              {/* Left side: status + name + email */}
+              <div className="flex-1 min-w-0">
+                {/* Status + Role badges */}
+                <div className="mb-2 flex items-center gap-2 flex-wrap">
+                  {user.enabled ? (
+                    <span
+                      className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium"
+                      style={{ backgroundColor: "#d7ebc1", color: "#386904" }}
+                    >
+                      Activo
+                    </span>
+                  ) : (
+                    <span
+                      className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium"
+                      style={{ backgroundColor: "#ebc1c7", color: "#850a0c" }}
+                    >
+                      Desactivado
+                    </span>
+                  )}
+                  {/* Role badge — siempre visible (US-FB-05 AC1) */}
+                  {(() => {
+                    const role = rolesCache[user.id];
+                    if (!role) {
                       return (
                         <span
-                          className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium border"
-                          style={{
-                            backgroundColor: isAdmin ? "#e0e7ff" : "#f3f4f6",
-                            color: isAdmin ? "#3730a3" : "#4b5563",
-                            borderColor: isAdmin ? "#c7d2fe" : "#e5e7eb",
-                          }}
-                          title={isAdmin ? "Administrador — gestión de usuarios y acceso total" : "Analista — acceso al flujo principal"}
+                          className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium text-gray-400 bg-gray-100 border border-gray-200"
+                          title="Cargando rol..."
                         >
-                          {isAdmin ? "Administrador" : "Analista"}
+                          …
                         </span>
                       );
-                    })()}
-                  </div>
-
-                  {/* Name & Email */}
-                  <div onClick={(e) => isSelected && e.stopPropagation()}>
-                    {isSelected ? (
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-2 w-full max-w-md">
-                          {/* First Name input */}
-                          <input
-                            type="text"
-                            value={editState.firstName}
-                            onChange={(e) => setEditState((prev) => ({ ...prev, firstName: e.target.value }))}
-                            className="text-sm font-medium text-gray-800 border border-gray-300 rounded-md px-3 py-2 w-full focus:outline-none focus:ring-1 focus:ring-[#165170] focus:border-[#165170] bg-white"
-                            autoFocus
-                            onClick={(e) => e.stopPropagation()}
-                            placeholder="Nombre"
-                          />
-                          {/* Last Name input */}
-                          <input
-                            type="text"
-                            value={editState.lastName}
-                            onChange={(e) => setEditState((prev) => ({ ...prev, lastName: e.target.value }))}
-                            className="text-sm font-medium text-gray-800 border border-gray-300 rounded-md px-3 py-2 w-full focus:outline-none focus:ring-1 focus:ring-[#165170] focus:border-[#165170] bg-white"
-                            onClick={(e) => e.stopPropagation()}
-                            placeholder="Apellido"
-                          />
-                        </div>
-                        {/* Email input */}
-                        <input
-                          type="email"
-                          value={editState.email}
-                          onChange={(e) => setEditState((prev) => ({ ...prev, email: e.target.value }))}
-                          className="text-xs text-gray-600 border border-gray-300 rounded-md px-3 py-2 w-full max-w-md focus:outline-none focus:ring-1 focus:ring-[#165170] focus:border-[#165170] bg-white"
-                          onClick={(e) => e.stopPropagation()}
-                          placeholder="Correo electrónico"
-                        />
-                      </div>
-                    ) : (
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">
-                          {user.firstName} {user.lastName}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">{user.email}</p>
-                      </div>
-                    )}
-                  </div>
+                    }
+                    const isAdmin = role === "admin";
+                    return (
+                      <span
+                        className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium border"
+                        style={{
+                          backgroundColor: isAdmin ? "#e0e7ff" : "#f3f4f6",
+                          color: isAdmin ? "#3730a3" : "#4b5563",
+                          borderColor: isAdmin ? "#c7d2fe" : "#e5e7eb",
+                        }}
+                        title={isAdmin ? "Administrador — gestión de usuarios y acceso total" : "Analista — acceso al flujo principal"}
+                      >
+                        {isAdmin ? "Administrador" : "Analista"}
+                      </span>
+                    );
+                  })()}
                 </div>
 
-                {/* Right side: Action buttons — always visible, vertically centered */}
-                <div
-                  className="flex-shrink-0 flex items-center gap-2 ml-4"
-                  onClick={(e) => e.stopPropagation()}
+                {/* Name & Email */}
+                <p className="text-sm font-medium text-gray-800">
+                  {user.firstName} {user.lastName}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">{user.email}</p>
+              </div>
+
+              {/* Right side: Action buttons — always visible, vertically centered */}
+              <div
+                className="flex-shrink-0 flex items-center gap-2 ml-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => onEdit(user)}
+                  title="Editar usuario"
+                  aria-label={`Editar a ${user.firstName} ${user.lastName}`}
+                  className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 hover:border-[#165170] transition-colors"
+                  style={{ color: "#165170" }}
                 >
-                  {isSelected ? (
-                    <>
-                      {/* Confirm (green check) */}
-                      <button
-                        onClick={() => handleConfirmEdit(user)}
-                        title="Guardar cambios"
-                        className="w-10 h-10 flex items-center justify-center rounded-full border-2 transition-colors bg-transparent"
-                        style={{ borderColor: "#386904", color: "#386904" }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      </button>
-                      {/* Cancel (red X) */}
-                      <button
-                        onClick={handleCancelSelect}
-                        title="Cancelar"
-                        className="w-10 h-10 flex items-center justify-center rounded-full border-2 transition-colors bg-transparent"
-                        style={{ borderColor: "#850a0c", color: "#850a0c" }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      {/* Edit icon — always visible */}
-                      <button
-                        onClick={() => handleSelectUser(user)}
-                        title="Editar usuario"
-                        className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 hover:border-[#165170] transition-colors"
-                        style={{ color: "#165170" }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 7.125L18 8.625" />
-                        </svg>
-                      </button>
-                      {/* Delete icon — always visible */}
-                      <button
-                        onClick={() => onDelete(user)}
-                        title="Desactivar usuario"
-                        className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 hover:border-[#165170] transition-colors"
-                        style={{ color: "#165170" }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                        </svg>
-                      </button>
-                    </>
-                  )}
-                </div>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 7.125L18 8.625" />
+                  </svg>
+                </button>
+                {/* Desactivar ≠ eliminar: ícono de usuario tachado (no papelera)
+                    y, si ya está inactivo, la acción inversa "Activar". */}
+                {user.enabled ? (
+                  <button
+                    onClick={() => onDelete(user)}
+                    title="Desactivar usuario"
+                    aria-label={`Desactivar a ${user.firstName} ${user.lastName}`}
+                    className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-[#850a0c] hover:border-[#850a0c] hover:bg-red-50 transition-colors"
+                  >
+                    <UserX className="w-5 h-5" strokeWidth={1.75} aria-hidden="true" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onActivate(user)}
+                    title="Activar usuario"
+                    aria-label={`Activar a ${user.firstName} ${user.lastName}`}
+                    className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-[#386904] hover:border-[#386904] hover:bg-green-50 transition-colors"
+                  >
+                    <UserCheck className="w-5 h-5" strokeWidth={1.75} aria-hidden="true" />
+                  </button>
+                )}
               </div>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
 
       {/* Show more / Pagination */}
