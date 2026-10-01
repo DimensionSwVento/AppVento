@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useRef,
+  useState,
   type Dispatch,
   type SetStateAction,
 } from "react";
@@ -13,6 +14,18 @@ import { type Place } from "../../Utils/h3/geocoder";
 import { INITIAL_VIEW_STATE } from "../../Utils/h3/h3Resolution";
 
 type ViewState = typeof INITIAL_VIEW_STATE;
+
+/**
+ * Resultado de la última búsqueda (FB-FIX-21): qué hizo realmente el buscador,
+ * para que la UI muestre el MODO activo sin ambigüedad.
+ * - `auto`: se seleccionaron `count` hexágonos del lugar.
+ * - `explore`: solo se movió la cámara. `reason` dice por qué:
+ *   `sin-poligono` (región/área sin límite), `sin-zonas` (todo excluido) o
+ *   `zoom` (había autoselección pero se quitó al cambiar de resolución H3).
+ */
+export type SearchOutcome =
+  | { name: string; mode: "auto"; count: number }
+  | { name: string; mode: "explore"; reason: "sin-poligono" | "sin-zonas" | "zoom" };
 
 /** Determina un nivel de zoom razonable según el tipo de lugar OSM. */
 function zoomForPlaceType(type: string, category: string): number {
@@ -57,6 +70,7 @@ export function useMapSelection({
   const searchHexesRef = useRef<Set<string>>(new Set());
   // Resolución H3 a la que se ancló la última selección por búsqueda.
   const searchH3ResRef = useRef<number | null>(null);
+  const [searchOutcome, setSearchOutcome] = useState<SearchOutcome | null>(null);
   // Slide programático del search: token rAF + flag activa.
   const flyToRafRef = useRef<number | null>(null);
   const isFlyingRef = useRef<boolean>(false);
@@ -146,6 +160,13 @@ export function useMapSelection({
         });
         searchHexesRef.current = newSearchHexes;
         searchH3ResRef.current = targetH3Res;
+        setSearchOutcome({ name: place.name, mode: "auto", count: newSearchHexes.size });
+      } else {
+        setSearchOutcome({
+          name: place.name,
+          mode: "explore",
+          reason: place.polygons.length > 0 ? "sin-zonas" : "sin-poligono",
+        });
       }
     },
     [clampViewState, setSelectedHexes, setViewState],
@@ -165,6 +186,10 @@ export function useMapSelection({
         for (const h of toRemove) next.delete(h);
         return next;
       });
+      // Avisar: si no, la selección del buscador "desaparece" sin explicación.
+      setSearchOutcome((o) =>
+        o && o.mode === "auto" ? { name: o.name, mode: "explore", reason: "zoom" } : o,
+      );
     }
     searchHexesRef.current = new Set();
     searchH3ResRef.current = null;
@@ -203,7 +228,10 @@ export function useMapSelection({
   const resetSearch = useCallback(() => {
     searchHexesRef.current = new Set();
     searchH3ResRef.current = null;
+    setSearchOutcome(null);
   }, []);
+
+  const dismissSearchOutcome = useCallback(() => setSearchOutcome(null), []);
 
   // Selección por POLÍGONO (US03-04): dado un anillo de vértices [lng,lat]
   // (puntos puestos en el mapa, estilo Google Maps), selecciona TODOS los
@@ -244,5 +272,7 @@ export function useMapSelection({
     handlePlaceSelect,
     isFlyingRef,
     resetSearch,
+    searchOutcome,
+    dismissSearchOutcome,
   };
 }
