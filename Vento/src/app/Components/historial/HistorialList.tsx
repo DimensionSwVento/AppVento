@@ -7,6 +7,7 @@ import { useCaracteristicas } from "../../Utils/contexts/CaracteristicasContext"
 import { useHistorial } from "../../Utils/historial/HistorialContext";
 import { groupByRecency } from "../../Utils/historial/grouping";
 import { uncompactHexes } from "../../Utils/historial/hexCodec";
+import { isHexBanned } from "../../Utils/h3/hexClassification";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import { MAX_HISTORIAL_ENTRIES as MAX_ENTRIES } from "../../Utils/projectData";
 import type { InformeEntry } from "../../Utils/historial/types";
@@ -71,7 +72,11 @@ export default function HistorialList() {
     // Descompacta a la resolución original: lo guardado viene COMPACTADO
     // (`compactHexes`); en modo backend hay que restaurar la selección real para
     // que `/tiles/area` case (si no, el informe/tooltip restaurado sale vacío).
-    setSelectedHexes(new Set(uncompactHexes(e.hexes)));
+    // #14: al restaurar NO deben entrar zonas excluidas en la selección (igual que
+    // a mano y por búsqueda). Se descompacta y se filtran las excluidas.
+    setSelectedHexes(
+      new Set(uncompactHexes(e.hexes).filter((h) => !isHexBanned(h))),
+    );
     replaceActiveVariables(e.variables);
     restoreCaracteristicas(e.caracteristicas);
     // Rehidrata la config del informe guardada (US audit: antes se guardaba
