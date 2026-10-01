@@ -13,6 +13,7 @@ import {
 import {
   backendScore,
   hexVariableValue,
+  areaInfoForCell,
   type AreaHexMap,
 } from "../../Utils/report/useAreaHexData";
 import { USE_PLACEHOLDER_FALLBACK } from "../../Utils/projectData";
@@ -55,7 +56,10 @@ export default function HexValuesTooltip({
   areaData?: AreaHexMap | null;
 }) {
   const { activeDimension } = useHeatmapDimension();
-  const info = hex ? areaData?.get(hex) : undefined;
+  // #1: usa areaInfoForCell (no areaData.get directo) → al alejar el zoom el hex
+  // del hover es una celda PADRE que no está en areaData (res8); la función agrega
+  // las res8 bajo ella para que el tooltip siga mostrando valores.
+  const info = hex ? areaInfoForCell(areaData ?? null, hex) : undefined;
 
   // Puntajes por dimensión: en modo API, reales del backend (`null` si el backend
   // aún no entrega esa dimensión → se muestra "—"); en template, placeholder.

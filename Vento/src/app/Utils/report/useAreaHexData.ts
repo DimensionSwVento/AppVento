@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { cellToParent, getResolution } from "h3-js";
 import { USE_BACKEND } from "../projectData";
 import { setBannedData, setEsOffshoreData } from "../h3/hexClassification";
 
@@ -160,6 +161,71 @@ export function areaVariableAverage(
     }
   }
   return n > 0 ? sum / n : null;
+}
+
+/**
+ * Datos de UNA celda de la malla del mapa. Si la celda existe tal cual en
+ * `areaData` (res8) la devuelve; si es MÁS GRUESA (zoom alejado → celda padre),
+ * AGREGA las celdas res8 del área que caen bajo ella (promedia score_general,
+ * scores y variables). Así el tooltip del hover NO se queda vacío al alejar el
+ * zoom (antes `areaData.get(celdaPadre)` fallaba). Recorre `areaData` una vez
+ * (acotado a la selección).
+ */
+export function areaInfoForCell(
+  areaData: AreaHexMap | null,
+  cell: string,
+): AreaHexInfo | undefined {
+  if (!areaData || !cell) return undefined;
+  const direct = areaData.get(cell);
+  if (direct) return direct;
+  let r: number;
+  try {
+    r = getResolution(cell);
+  } catch {
+    return undefined;
+  }
+  if (r >= 8) return undefined; // res8 o más fino sin match directo → sin dato
+  let gS = 0;
+  let gN = 0;
+  const scoreS: Record<string, number> = {};
+  const scoreN: Record<string, number> = {};
+  const varS: Record<string, number> = {};
+  const varN: Record<string, number> = {};
+  for (const [h, info] of areaData) {
+    let p: string;
+    try {
+      p = cellToParent(h, r);
+    } catch {
+      continue;
+    }
+    if (p !== cell) continue;
+    if (typeof info.score_general === "number") {
+      gS += info.score_general;
+      gN += 1;
+    }
+    for (const k in info.scores) {
+      const v = info.scores[k];
+      if (typeof v === "number") {
+        scoreS[k] = (scoreS[k] ?? 0) + v;
+        scoreN[k] = (scoreN[k] ?? 0) + 1;
+      }
+    }
+    if (info.variables) {
+      for (const k in info.variables) {
+        const v = info.variables[k];
+        if (typeof v === "number") {
+          varS[k] = (varS[k] ?? 0) + v;
+          varN[k] = (varN[k] ?? 0) + 1;
+        }
+      }
+    }
+  }
+  if (gN === 0) return undefined;
+  const scores: Record<string, number> = {};
+  for (const k in scoreS) scores[k] = scoreS[k] / scoreN[k];
+  const variables: Record<string, number> = {};
+  for (const k in varS) variables[k] = varS[k] / varN[k];
+  return { score_general: gS / gN, scores, variables };
 }
 
 // Cache de una sola entrada (la selección actual): el informe y el heatmap
