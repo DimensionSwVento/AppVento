@@ -679,6 +679,22 @@ export default function MapView() {
   // que el tooltip de hover muestre scores/variables reales en modo API.
   const areaData = useAreaHexData(selectedHexes, heatmapActive);
 
+  // #19: muesca de la leyenda viridis = idoneidad (%) del hex MENOS y MÁS apto de
+  // la selección (igual que en el informe). Solo en modo informe (areaData cargado).
+  const heatNotch = useMemo(() => {
+    if (!areaData || areaData.size === 0) return null;
+    let min = Infinity;
+    let max = -Infinity;
+    for (const info of areaData.values()) {
+      const s = info.score_general;
+      if (typeof s !== "number") continue;
+      const pct = s * 100;
+      if (pct < min) min = pct;
+      if (pct > max) max = pct;
+    }
+    return min <= max ? { min, max } : null;
+  }, [areaData]);
+
   // Símbolos informativos en el mapa (círculo + ícono) para variables con
   // "mostrar en mapa" (nodos, infra, áreas protegidas, resguardos). La leyenda
   // (abajo-izq) actúa como interruptor: por defecto todas apagadas. No depende
@@ -779,9 +795,20 @@ export default function MapView() {
     // resuelve por el camino async (bulk con [] → vacío → setSymbolCells({})).
     const hasWork = wanted.length > 0;
     // setState fuera del cuerpo del effect (regla React Compiler): en un microtask.
-    if (hasWork) queueMicrotask(() => alive && setLayersLoading((n) => n + 1));
+    // #19: el contador de "cargando capas" se desbalanceaba (incrementaba pero al
+    // abortar/cambiar deps NO decrementaba por el guard `alive`) → el pill de
+    // "cargando mapa" se quedaba pegado aunque todo hubiera resuelto. Ahora inc/dec
+    // se atan a `counted`: si llegó a incrementar, SIEMPRE decrementa al terminar.
+    let counted = false;
+    if (hasWork)
+      queueMicrotask(() => {
+        if (alive) {
+          counted = true;
+          setLayersLoading((n) => n + 1);
+        }
+      });
     const done = () => {
-      if (alive && hasWork) setLayersLoading((n) => Math.max(0, n - 1));
+      if (counted) setLayersLoading((n) => Math.max(0, n - 1));
     };
     if (USE_BACKEND) {
       // BULK: una sola petición para TODAS las variables de símbolo (1 scan) →
@@ -959,9 +986,20 @@ export default function MapView() {
     // camino async (bulk con [] → vacío → setExtraCells({})).
     const hasWork = vars.length > 0;
     // setState fuera del cuerpo del effect (regla React Compiler): en un microtask.
-    if (hasWork) queueMicrotask(() => alive && setLayersLoading((n) => n + 1));
+    // #19: el contador de "cargando capas" se desbalanceaba (incrementaba pero al
+    // abortar/cambiar deps NO decrementaba por el guard `alive`) → el pill de
+    // "cargando mapa" se quedaba pegado aunque todo hubiera resuelto. Ahora inc/dec
+    // se atan a `counted`: si llegó a incrementar, SIEMPRE decrementa al terminar.
+    let counted = false;
+    if (hasWork)
+      queueMicrotask(() => {
+        if (alive) {
+          counted = true;
+          setLayersLoading((n) => n + 1);
+        }
+      });
     const done = () => {
-      if (alive && hasWork) setLayersLoading((n) => Math.max(0, n - 1));
+      if (counted) setLayersLoading((n) => Math.max(0, n - 1));
     };
     if (USE_BACKEND) {
       // BULK: una sola petición para todas las capas de catálogo (1 scan del bbox).
@@ -1718,10 +1756,18 @@ export default function MapView() {
           así que se retiró la mini-leyenda `WindHeatmapLegend` (era redundante:
           otro termómetro de color) — instrucción cliente Sprint 4. */}
 
+      {/* #19: leyenda viridis también en DIMENSIONES cuando hay un mapa de calor de
+          variable activo (ahí es el valor de la variable, no idoneidad → sin muesca). */}
+      {accion === "dimensiones" && activeHeatVarId && (
+        <div className="absolute top-3 left-3 z-10">
+          <HeatmapLegend title="Valor (%)" />
+        </div>
+      )}
+
       {accion === "informe" && (
         <>
           <div className="absolute top-3 left-3 z-10">
-            <HeatmapLegend />
+            <HeatmapLegend notch={heatNotch} />
           </div>
           <div className="absolute top-3 right-3 z-10 flex w-44 flex-col gap-3">
             <HeatmapDimensionSwitches />

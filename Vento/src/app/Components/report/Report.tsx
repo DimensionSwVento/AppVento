@@ -45,6 +45,7 @@ import {
 } from "../../Utils/report/reportConfig";
 import AreaMiniMap from "./AreaMiniMap";
 import { useCachedImage } from "../../Utils/useCachedImage";
+import ConfirmDialog from "../ui/ConfirmDialog";
 import { SNAPSHOT_KEY } from "../../Utils/h3/h3Resolution";
 import { selectionNature } from "../../Utils/h3/hexClassification";
 import { dimensionScore } from "../../Utils/report/heatmapPalette";
@@ -115,8 +116,11 @@ const RADAR_DIMS: HeatmapDimensionId[] = [
 // del cálculo" y las informativas → por eso los cupos son CONSERVADORES, para que
 // ninguna hoja exceda el A4 (1123px) y el export no corte a mitad de fila. Si aún
 // se corta, bajar más estos números (el precio es más hojas, no cortes).
-const FIRST_SHEET_ROWS = 6;
-const CONT_SHEET_ROWS = 11;
+// #3: bajados (6→4, 11→9) porque la 1ª hoja (radar+influyentes+tabla) y la última
+// (resumen+informativas) excedían A4 → el export rebanaba a mitad de fila. Más
+// hojas, pero ninguna tabla cortada.
+const FIRST_SHEET_ROWS = 4;
+const CONT_SHEET_ROWS = 9;
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -289,6 +293,9 @@ export default function Report() {
   // Rol admin: habilita la exportación de datos crudos por hexágono.
   const isAdmin = useIsAdmin();
   const reportRef = useRef<HTMLDivElement>(null);
+  // #18: aviso previo a exportar "datos por hexágono" (nº hex × columnas; con
+  // muchos hexágonos la imagen sale muy pesada → se recomienda con pocos).
+  const [hexExportWarn, setHexExportWarn] = useState<{ n: number; c: number } | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportMsg, setExportMsg] = useState("");        // "Hoja 2 de 8…"
   const [exportPct, setExportPct] = useState<number | null>(null); // 0–100 real
@@ -1412,6 +1419,19 @@ export default function Report() {
   const previewScale = capturing ? 1 : 0.42;
 
   // ── PDF: una HOJA = una PÁGINA A4 (captura por hoja) ───────────────────
+  // #18: al pulsar "datos por hexágono" se muestra primero un aviso con el tamaño
+  // (nº hex × columnas); con muchos hexágonos la imagen sale muy pesada. El export
+  // real (handleDownloadHexTable) se dispara al confirmar.
+  const requestHexTable = () => {
+    const n = areaData?.size ?? 0;
+    if (n === 0) {
+      toast.error("No hay datos por hexágono para exportar (requiere backend).");
+      return;
+    }
+    const c = VARIABLES.filter((v) => v.masterId !== "NA").length;
+    setHexExportWarn({ n, c });
+  };
+
   // Exportación ADMIN: imagen (PNG) de una tabla con una fila por hexId y los
   // datos de cada variable del modelo (columna = masterId). Requiere datos por
   // hex del backend (`areaData`). Aparece solo para admin en el informe final.
@@ -1615,12 +1635,13 @@ export default function Report() {
         console.warn("[pdfExport] setProperties falló:", err);
       }
 
-      // MEMORIA: html2canvas a scale 2 rasteriza 4× píxeles por hoja; sobre muchas
-      // hojas el navegador llegaba a ~4 GB. Bajamos a 1.5 (nítido para A4) y, tras
-      // convertir cada canvas a JPEG, lo LIBERAMOS (width/height=0) + cedemos un
-      // tick al event loop para que el GC reclame antes de la siguiente hoja → el
-      // pico se acota a ~1 canvas, no a todos a la vez.
-      const CAPTURE_SCALE = 1.5;
+      // NITIDEZ vs MEMORIA (#5): a scale 1.5 el A4 salía borroso ("imagen
+      // estirada"). html2canvas a scale 2 rasteriza 4× píxeles/hoja (antes el
+      // navegador llegaba a ~4 GB con muchas hojas). Como cada canvas se LIBERA
+      // (width/height=0) + se cede un tick antes de la siguiente, el pico es de ~1
+      // canvas → podemos subir a 2 para informes normales (≤12 hojas) y solo caer a
+      // 1.5 en informes muy largos (defensa de memoria).
+      const CAPTURE_SCALE = totalSheets <= 12 ? 2 : 1.5;
       const SLICE_EPS_MM = 2; // franja mínima sobrante: no añade página casi vacía
 
       // Rasteriza una hoja a JPEG y LIBERA el canvas. `hideCharts` = oculta los
@@ -1637,7 +1658,7 @@ export default function Report() {
             ignoreElements: (n) =>
               (n as HTMLElement).getAttribute?.("data-pdf-ignore") === "true",
           });
-          const data = canvas.toDataURL("image/jpeg", 0.9);
+          const data = canvas.toDataURL("image/jpeg", 0.95);
           const w = canvas.width;
           const h = canvas.height;
           canvas.width = 0; // libera YA: evita acumular canvases en RAM
@@ -1920,7 +1941,7 @@ export default function Report() {
         {isAdmin && (
           <button
             type="button"
-            onClick={handleDownloadHexTable}
+            onClick={requestHexTable}
             disabled={isExporting}
             title="Descargar imagen de la tabla de datos por hexágono (todas las variables)"
             className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 px-4 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
@@ -1930,6 +1951,25 @@ export default function Report() {
             </svg>
             Datos por hex (admin)
           </button>
+        )}
+        {hexExportWarn && (
+          <ConfirmDialog
+            title="Exportar datos por hexágono"
+            confirmLabel="Generar imagen"
+            message={
+              <>
+                La selección tiene <b>{hexExportWarn.n.toLocaleString("es-CO")}</b>{" "}
+                hexágonos × <b>~{hexExportWarn.c}</b> columnas. Con muchos hexágonos
+                la imagen puede salir <b>muy pesada</b> y tardar; se recomienda
+                exportar con <b>pocos hexágonos</b>. ¿Generar la imagen?
+              </>
+            }
+            onConfirm={() => {
+              setHexExportWarn(null);
+              void handleDownloadHexTable();
+            }}
+            onCancel={() => setHexExportWarn(null)}
+          />
         )}
       </div>
       {error && (

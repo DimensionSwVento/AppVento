@@ -43,6 +43,9 @@ export default function Gauge({
     <svg
       viewBox={`0 0 ${size} ${size * 0.78}`}
       className={className}
+      /* #4: el número del score general hereda la fuente del informe (antes el
+         texto SVG salía en otra fuente). */
+      style={{ fontFamily: "inherit" }}
       role="img"
       aria-label={`Índice de viabilidad ${v.toFixed(0)} de 100, ${band.label}`}
     >
