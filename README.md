@@ -46,7 +46,7 @@ El usuario avanza por cuatro pasos, en orden, desde el menú lateral:
 
 Se puede volver libremente a un paso anterior para ajustar la selección.
 
-📖 Guía paso a paso para el usuario final: **[Manual de usuario](docs/manual-usuario.md)**.
+📖 Guía paso a paso para el usuario final: **[Manual de usuario](docs/manuales/manual-usuario.md)**.
 
 ---
 
@@ -77,7 +77,8 @@ AppVento/
 │
 ├── docs/                  → Toda la documentación técnica y del proyecto
 │   ├── README.md            · Índice maestro: por dónde empezar según tu rol
-│   ├── manual-usuario.md    · Guía para el usuario final del software
+│   ├── manuales/            · Manuales usuario, técnico e instalación (.md/.svg/.html)
+│   ├── entregas/            · Resúmenes de sprint y estimaciones (infografías .svg)
 │   ├── stories/             · Qué se construye (historias, scopes, feedback, sprints)
 │   ├── adr/                 · Decisiones de arquitectura (ADRs)
 │   ├── architecture/        · Arquitectura del sistema y del stack
@@ -101,7 +102,7 @@ El **backend** (el servidor que procesa y sirve los datos, hecho en Python/FastA
 |---------|------|
 | **Levantar el proyecto en mi computador** | [`Vento/README.md`](Vento/README.md) |
 | **Entender la documentación (soy dev nuevo, PM o stakeholder)** | [`docs/README.md`](docs/README.md) — índice maestro |
-| **Usar el software como usuario final** | [Manual de usuario](docs/manual-usuario.md) |
+| **Usar el software como usuario final** | [Manual de usuario](docs/manuales/manual-usuario.md) |
 | **Ver qué se entregó al cliente en cada fase** | [`Reportes_Entregas/`](Reportes_Entregas/) |
 | **Saber qué se está construyendo ahora** | [`docs/stories/`](docs/stories/) |
 | **Entender una decisión técnica** | [`docs/adr/`](docs/adr/) — registros de decisiones |

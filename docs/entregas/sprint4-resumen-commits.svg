@@ -125,7 +125,7 @@
     <text x="20" y="82" fill="#374151" font-size="12.5">• Verificación: <tspan font-weight="700">CI de GitHub</tspan> (lint + build + test en cada PR) + QA manual (no se puede dejar VS abierto en el entorno seguro).</text>
     <text x="20" y="106" fill="#374151" font-size="12.5">• Trabajo en 3 repos/ramas: front (develop → deploy-prod) · backend (develop → main) · docs.</text>
     <text x="20" y="130" fill="#374151" font-size="12.5">• Entregables de cierre: manuales técnico e instalación (con diagramas), benchmark, arquitectura y plan de Sprint 5.</text>
-    <text x="20" y="154" fill="#6b7280" font-size="11">Detalle completo de commits en docs/sprint4-resumen-commits.md</text>
+    <text x="20" y="154" fill="#6b7280" font-size="11">Detalle completo de commits en docs/entregas/sprint4-resumen-commits.md</text>
   </g>
 
   <text x="40" y="1000" fill="#6b7280" font-size="11">Vento · Mavalan Software · resumen del Sprint 4 (entregado, tiempos y decisiones)</text>
