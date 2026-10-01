@@ -1,0 +1,429 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Vento — Manual de Instalación</title><style>
+@page { size: A4; margin: 16mm 15mm; }
+*{box-sizing:border-box;}
+body{font-family:'Segoe UI',Arial,sans-serif;color:#1f2937;line-height:1.5;max-width:920px;margin:0 auto;padding:0;}
+.cover{height:245mm;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:0 10mm;
+       background:linear-gradient(135deg,#0f3547,#165170);color:#fff;page-break-after:always;}
+.cover h1{border:0;color:#fff;font-size:42px;margin:0 0 8px;page-break-before:avoid;}
+.cover .sub{color:#cfe3ee;font-size:18px;} .cover .meta{color:#9fc3d6;font-size:14px;margin-top:28px;}
+.cover .logo{font-size:15px;letter-spacing:3px;color:#9fc3d6;margin-bottom:16px;}
+h1{color:#0f3547;border-bottom:3px solid #165170;padding-bottom:6px;page-break-before:always;font-size:25px;}
+h2{color:#165170;margin-top:1.4em;} h3{color:#1f2937;}
+table{border-collapse:collapse;width:100%;margin:10px 0;font-size:11.5px;}
+th,td{border:1px solid #cbd5e1;padding:5px 7px;text-align:left;vertical-align:top;}
+th{background:#165170;color:#fff;} tr:nth-child(even) td{background:#f3f6f8;}
+code{background:#eef2f5;padding:1px 4px;border-radius:3px;font-size:12px;}
+pre{background:#0f3547;color:#e8f1f6;padding:12px;border-radius:8px;overflow:auto;font-size:11px;} pre code{background:none;color:inherit;}
+blockquote{border-left:4px solid #165170;margin:10px 0;padding:4px 12px;background:#f0f6f9;color:#374151;}
+figure.diagram{margin:0;padding:10px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;page-break-after:always;}
+figure.diagram svg{width:100%;height:auto;display:block;}
+figure.diagram figcaption{color:#6b7280;font-size:11px;text-align:center;margin-top:8px;}
+.section{padding:0 10mm;}
+@media print{pre,table,blockquote{page-break-inside:avoid;} a{color:#165170;text-decoration:none;}}
+</style></head><body>
+<section class="cover">
+  <div class="logo">⟟ VENTO · MAVALAN SOFTWARE</div>
+  <h1>Manual de Instalación</h1>
+  <div class="sub">Vento — Puesta en marcha de front, backend, BD e identidad</div>
+  <div class="meta">2026-10-01 · Audiencia: equipo de desarrollo / on-call</div>
+</section>
+<div class="section">
+  <figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 980" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <linearGradient id="hdr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0f3547"/><stop offset="1" stop-color="#165170"/></linearGradient>
+    <marker id="ar2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#165170"/></marker>
+  </defs>
+  <rect width="1200" height="980" fill="#f7f9fb"/>
+
+  <!-- Header -->
+  <rect width="1200" height="92" fill="url(#hdr)"/>
+  <text x="40" y="42" fill="#fff" font-size="25" font-weight="800">Vento — Manual de Instalación (resumen)</text>
+  <text x="40" y="70" fill="#cfe3ee" font-size="14">Orden, variables de entorno, ingesta y verificación. Detalle y .env completo en docs/manual-instalacion.md</text>
+  <text x="1160" y="52" fill="#fff" font-size="13" text-anchor="end" opacity="0.85">2026-10-01</text>
+
+  <!-- Opción rápida -->
+  <g transform="translate(40,112)">
+    <rect width="1120" height="44" rx="10" fill="#cce1ee"/>
+    <text x="16" y="28" fill="#0f3547" font-size="13" font-weight="700">Opción rápida (dev):</text>
+    <text x="168" y="28" fill="#0f3547" font-size="13">cd backend/AppVento---Backend &amp;&amp; docker compose up -d  → levanta Postgres + Keycloak + backend (:8000)</text>
+  </g>
+
+  <!-- Pasos (flujo) -->
+  <text x="40" y="186" fill="#165170" font-size="16" font-weight="800">Instalación paso a paso (prod)</text>
+  <g font-size="12.5">
+    <rect x="40" y="198" width="255" height="96" rx="10" fill="#fff" stroke="#165170"/>
+    <circle cx="66" cy="224" r="13" fill="#165170"/><text x="66" y="229" text-anchor="middle" fill="#fff" font-weight="800">1</text>
+    <text x="90" y="229" fill="#0f3547" font-weight="700">PostgreSQL</text>
+    <text x="56" y="256" fill="#374151" font-size="11.5">createdb · DSN postgresql+psycopg://</text>
+    <text x="56" y="274" fill="#374151" font-size="11.5">max_connections ≥ (pool 20)×workers</text>
+
+    <rect x="313" y="198" width="255" height="96" rx="10" fill="#fff" stroke="#165170"/>
+    <circle cx="339" cy="224" r="13" fill="#165170"/><text x="339" y="229" text-anchor="middle" fill="#fff" font-weight="800">2</text>
+    <text x="363" y="229" fill="#0f3547" font-weight="700">Keycloak</text>
+    <text x="329" y="256" fill="#374151" font-size="11.5">realm + roles admin/analista</text>
+    <text x="329" y="274" fill="#374151" font-size="11.5">cliente OIDC (vento-web) + secret</text>
+
+    <rect x="586" y="198" width="255" height="96" rx="10" fill="#fff" stroke="#165170"/>
+    <circle cx="612" cy="224" r="13" fill="#165170"/><text x="612" y="229" text-anchor="middle" fill="#fff" font-weight="800">3</text>
+    <text x="636" y="229" fill="#0f3547" font-weight="700">Backend + ingesta</text>
+    <text x="602" y="256" fill="#374151" font-size="11.5">docker build/run · alembic upgrade head</text>
+    <text x="602" y="274" fill="#374151" font-size="11.5">subir máster + catálogo · VACUUM ANALYZE</text>
+
+    <rect x="859" y="198" width="255" height="96" rx="10" fill="#fff" stroke="#165170"/>
+    <circle cx="885" cy="224" r="13" fill="#165170"/><text x="885" y="229" text-anchor="middle" fill="#fff" font-weight="800">4</text>
+    <text x="909" y="229" fill="#0f3547" font-weight="700">Frontend</text>
+    <text x="875" y="256" fill="#374151" font-size="11.5">npm install · build · start (AccuWeb)</text>
+    <text x="875" y="274" fill="#374151" font-size="11.5">NEXT_PUBLIC_USE_BACKEND=true</text>
+
+    <line x1="295" y1="246" x2="311" y2="246" stroke="#165170" stroke-width="2" marker-end="url(#ar2)"/>
+    <line x1="568" y1="246" x2="584" y2="246" stroke="#165170" stroke-width="2" marker-end="url(#ar2)"/>
+    <line x1="841" y1="246" x2="857" y2="246" stroke="#165170" stroke-width="2" marker-end="url(#ar2)"/>
+  </g>
+
+  <!-- .env Frontend -->
+  <g transform="translate(40,320)">
+    <rect width="555" height="236" rx="12" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="236" fill="#2563eb" rx="3"/>
+    <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">.env — Frontend</text>
+    <g font-size="11.5" fill="#374151">
+      <text x="20" y="52">NEXT_PUBLIC_USE_BACKEND = true | false  (modo)</text>
+      <text x="20" y="72">BACKEND_URL / NEXT_PUBLIC_API_URL  (proxy / API)</text>
+      <text x="20" y="92">INTERNAL_API_SECRET  (= al del backend)</text>
+      <text x="20" y="112">AUTH_SECRET · AUTH_URL · AUTH_TRUST_HOST</text>
+      <text x="20" y="132">AUTH_KEYCLOAK_ID / _SECRET / _ISSUER</text>
+      <text x="20" y="152">NEXT_PUBLIC_KEYCLOAK_URL / _REALM / _ISSUER</text>
+      <text x="20" y="172">SENDGRID_API_KEY / _FROM_EMAIL  (correo)</text>
+    </g>
+    <text x="20" y="200" fill="#6b7280" font-size="11">NEXT_PUBLIC_* = visibles al navegador (no secretos).</text>
+    <text x="20" y="218" fill="#6b7280" font-size="11">AUTH_* / BACKEND_URL / SENDGRID_* = solo servidor.</text>
+  </g>
+
+  <!-- .env Backend -->
+  <g transform="translate(615,320)">
+    <rect width="545" height="236" rx="12" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="236" fill="#16a34a" rx="3"/>
+    <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">.env — Backend</text>
+    <g font-size="11.5" fill="#374151">
+      <text x="20" y="52">DATABASE_URL  (postgresql+psycopg://…)</text>
+      <text x="20" y="72">PARQUET_PATH · HEXAGON_INGEST=copy|orm · RUN_INGEST</text>
+      <text x="20" y="92">KEYCLOAK_ISSUER / _JWKS_URL / _AUDIENCE · JWT_ALGORITHMS</text>
+      <text x="20" y="112">INTERNAL_API_SECRET · CORS_ORIGINS</text>
+      <text x="20" y="132">DB_POOL_SIZE 5 · DB_MAX_OVERFLOW 15 · _TIMEOUT · _RECYCLE</text>
+      <text x="20" y="152">APP_THREAD_LIMIT 18 · EXCLUDED_CACHE_TTL 300</text>
+      <text x="20" y="172">OFFSHORE_VAR · MAX_HISTORIAL_PER_USER 50 · INGEST_MEM_CAP_MB</text>
+      <text x="20" y="192">DEBUG_INFLIGHT · TRACE_REQUESTS · INFLIGHT_WARN · SLOW_REQUEST_MS</text>
+    </g>
+    <text x="20" y="220" fill="#6b7280" font-size="11">dev: carga .env (dotenv) · prod: env del contenedor.</text>
+  </g>
+
+  <!-- Migraciones / tools -->
+  <g transform="translate(40,572)">
+    <rect width="720" height="180" rx="12" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="180" fill="#165170" rx="3"/>
+    <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">Migraciones y herramientas</text>
+    <text x="20" y="52" fill="#374151" font-size="12">alembic upgrade head  → aplica 0001…0015 (última: índice parcial excluidos)</text>
+    <text x="20" y="74" fill="#374151" font-size="12">Índice sin lock largo (opcional): CREATE INDEX CONCURRENTLY … + alembic stamp 0015</text>
+    <text x="20" y="100" fill="#1f2937" font-size="12" font-weight="700">Tools (python -m tools.…):</text>
+    <text x="20" y="120" fill="#374151" font-size="12">ingest_parquet · ingest_bundle (--plan) · ingest_docs · inspect_parquet(s)</text>
+    <text x="20" y="140" fill="#374151" font-size="12">loadtest.py --base … --cookie … [--db-url …]  (carga + EXPLAIN/salud BD)</text>
+    <text x="20" y="166" fill="#6b7280" font-size="11">Reingesta controlada por consola (no hay endpoint que pise datos curados).</text>
+  </g>
+
+  <!-- Verificación + memoria -->
+  <g transform="translate(780,572)">
+    <rect width="380" height="180" rx="12" fill="#0f3547"/>
+    <text x="20" y="28" fill="#fff" font-size="14" font-weight="700">Verificación + red de memoria</text>
+    <text x="20" y="54" fill="#cfe3ee" font-size="12">curl /api/health</text>
+    <text x="20" y="74" fill="#cfe3ee" font-size="12">loadtest --db-url → cache-hit &gt;99%,</text>
+    <text x="20" y="92" fill="#9fc3d6" font-size="11.5">variables-bulk ok, warmup/excluded &lt;10 ms</text>
+    <text x="20" y="118" fill="#cfe3ee" font-size="12">Server chico: swap 4 GB + earlyoom</text>
+    <text x="20" y="138" fill="#9fc3d6" font-size="11.5">(fallocate/mkswap/swapon + apt install earlyoom)</text>
+    <text x="20" y="164" fill="#9fc3d6" font-size="11.5">Son mitigaciones; el fix real es Fase 2 + RAM.</text>
+  </g>
+
+  <!-- Ramas -->
+  <g transform="translate(40,764)">
+    <rect width="1120" height="150" rx="12" fill="#fff" stroke="#e5e7eb"/>
+    <text x="20" y="28" fill="#165170" font-size="14" font-weight="700">Ramas / despliegue</text>
+    <text x="20" y="54" fill="#374151" font-size="12.5">Front (repo Vento): trabajo <tspan font-weight="700">Sprint_4--report_preconig / develop</tspan> → producción <tspan font-weight="700">deploy-prod</tspan></text>
+    <text x="20" y="76" fill="#374151" font-size="12.5">Backend: trabajo <tspan font-weight="700">develop</tspan> → producción <tspan font-weight="700">main</tspan> (prod consume main, no develop)</text>
+    <text x="20" y="102" fill="#1f2937" font-size="12.5" font-weight="700">Tras merge a prod:</text>
+    <text x="150" y="102" fill="#374151" font-size="12.5">alembic upgrade head · VACUUM ANALYZE hexagon · build del front.</text>
+    <text x="20" y="128" fill="#6b7280" font-size="11.5">Docker (prod): entrypoint aplica migraciones (y opcional RUN_INGEST) y arranca gunicorn -w 2 --timeout 120.</text>
+  </g>
+
+  <text x="40" y="952" fill="#6b7280" font-size="11">Vento · Mavalan Software · resumen visual del Manual de Instalación (docs/manual-instalacion.md)</text>
+</svg><figcaption>Resumen visual: pasos, .env, migraciones, verificación.</figcaption></figure>
+  <h1 id="manual-de-instalacion-vento">Manual de Instalación — Vento</h1>
+<blockquote>
+<p>Puesta en marcha de <strong>frontend</strong>, <strong>backend</strong>, <strong>base de datos</strong> e <strong>identidad</strong>,
+con el <strong>detalle completo de las variables de entorno</strong> y de la <strong>ingesta de datos</strong>.
+Usa placeholders (<code>HOST</code>, <code>USUARIO</code>, <code>CLAVE</code>, <code>TU_DOMINIO</code>, secretos) — reemplázalos
+por los reales del gestor de secretos; <strong>no</strong> pongas credenciales en el repo.
+Fecha: 2026-10-01 · Autor: Mavalan Software</p>
+</blockquote>
+<hr />
+<h2 id="0-prerrequisitos">0. Prerrequisitos</h2>
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Requisito</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Frontend</td>
+<td>Node.js (versión indicada por AccuWeb) + npm</td>
+</tr>
+<tr>
+<td>Backend</td>
+<td>Python 3.12 (o Docker)</td>
+</tr>
+<tr>
+<td>Base de datos</td>
+<td>PostgreSQL 14+</td>
+</tr>
+<tr>
+<td>Identidad</td>
+<td>Keycloak (realm con roles <code>admin</code> y <code>analista</code>)</td>
+</tr>
+<tr>
+<td>Datos</td>
+<td>Parquet maestro (<code>data/master_variables.h3.parquet</code>) + InfoVariables.xlsx</td>
+</tr>
+</tbody>
+</table>
+<p>Orden recomendado: <strong>BD → Keycloak → Backend (+ ingesta) → Frontend</strong>.</p>
+<h3 id="opcion-rapida-docker-compose-dev-todo-en-uno">Opción rápida — <code>docker-compose</code> (dev, todo en uno)</h3>
+<p>El backend trae un <code>docker-compose.yml</code> que levanta <strong>Postgres + Keycloak + backend</strong>:</p>
+<pre><code class="language-bash">cd backend/AppVento---Backend
+docker compose up -d        # db (postgres:16), keycloak (26.1, importa deploy/keycloak/), app (:8000)
+# el realm se importa desde deploy/keycloak/vento-realm.json; la BD queda en el volumen pgdata
+</code></pre>
+<p>Para producción, sigue las secciones 1–8 (servicios separados). Artefactos de despliegue:
+<code>deploy/vento-backend.service</code> (systemd), <code>deploy/keycloak/</code> (realm), <code>DEPLOY.md</code>.</p>
+<hr />
+<h2 id="1-base-de-datos-postgresql">1. Base de datos (PostgreSQL)</h2>
+<pre><code class="language-bash">createdb NOMBRE_BD
+# o: psql -c &quot;CREATE DATABASE NOMBRE_BD;
+#            CREATE USER USUARIO WITH PASSWORD 'CLAVE';
+#            GRANT ALL PRIVILEGES ON DATABASE NOMBRE_BD TO USUARIO;&quot;
+</code></pre>
+<ul>
+<li>DSN (formato del backend): <code>postgresql+psycopg://USUARIO:CLAVE@HOST_BD:5432/NOMBRE_BD</code></li>
+<li><code>max_connections</code> ≥ <code>(DB_POOL_SIZE + DB_MAX_OVERFLOW) × workers</code> → con 2 workers = <strong>40</strong>.</li>
+<li>Tuning (server chico): <code>shared_buffers</code> ≈ 25 % RAM, <code>work_mem</code> suficiente para los bbox.</li>
+</ul>
+<hr />
+<h2 id="2-identidad-keycloak">2. Identidad (Keycloak)</h2>
+<ol>
+<li>Crear <strong>realm</strong> (p.ej. <code>vento</code>) con <strong>roles</strong> <code>admin</code> y <code>analista</code>.</li>
+<li>Crear <strong>cliente</strong> OIDC para el front (p.ej. <code>vento-web</code>): confidential, con los
+   <em>redirect URIs</em> del dominio del front y el <em>client secret</em>.</li>
+<li>El backend <strong>solo verifica</strong> el JWT (no emite): necesita el issuer, el JWKS y la audiencia.</li>
+<li>Asignar el rol <code>admin</code> a quien administre (desde Keycloak o desde Vento → Gestión de usuarios).</li>
+</ol>
+<hr />
+<h2 id="3-backend-fastapi">3. Backend (FastAPI)</h2>
+<h3 id="31-env-del-backend-completo">3.1 <code>.env</code> del backend (completo)</h3>
+<pre><code class="language-dotenv"># ── Base de datos (requerido) ──
+DATABASE_URL=postgresql+psycopg://USUARIO:CLAVE@HOST_BD:5432/NOMBRE_BD
+
+# ── Datos ──
+PARQUET_PATH=/app/data/master_variables.h3.parquet   # ruta del parquet maestro
+HEXAGON_INGEST=copy                                   # copy (Postgres COPY, rápido) | orm (portable)
+INGEST_MEM_CAP_MB=                                    # (opcional) tope de RAM del proceso de ingesta
+OFFSHORE_VAR=                                         # código de la columna mar(1)/tierra(0); vacío = no se expone aún
+
+# ── Autenticación (Keycloak — el backend VERIFICA, no emite) ──
+KEYCLOAK_ISSUER=https://KEYCLOAK_HOST/realms/vento
+KEYCLOAK_JWKS_URL=https://KEYCLOAK_HOST/realms/vento/protocol/openid-connect/certs  # default: {ISSUER}/protocol/openid-connect/certs
+KEYCLOAK_AUDIENCE=account
+JWT_ALGORITHMS=RS256
+
+# ── BFF (secreto compartido Next → FastAPI) ──
+INTERNAL_API_SECRET=&lt;secreto-largo-aleatorio&gt;         # mismo valor en el front; vacío = modo interno off
+
+# ── CORS ──
+CORS_ORIGINS=https://TU_DOMINIO                        # coma-separado; default http://localhost:3000
+
+# ── Histórico ──
+MAX_HISTORIAL_PER_USER=50
+
+# ── Pool de BD (por worker) ──
+DB_POOL_SIZE=5
+DB_MAX_OVERFLOW=15        # 5+15 = 20 conexiones/worker (× workers ≤ max_connections)
+DB_POOL_TIMEOUT=30        # s esperando una conexión
+DB_POOL_RECYCLE=1800      # recicla conexiones viejas (s)
+
+# ── Concurrencia / caché ──
+APP_THREAD_LIMIT=18       # threads anyio por worker (consultas BD concurrentes)
+EXCLUDED_CACHE_TTL=300    # TTL (s) de la caché de /tiles/excluded
+
+# ── Ingesta al arrancar (entrypoint) ──
+RUN_INGEST=              # =true → el docker-entrypoint.sh ejecuta tools.ingest_parquet (ingesta destructiva) antes de gunicorn
+
+# ── Observabilidad (diagnóstico; dejar off en prod salvo incidente) ──
+DEBUG_INFLIGHT=           # =1 activa /api/_debug/stats e /inflight
+TRACE_REQUESTS=0          # =1 loguea cada request (entra/sale + duración)
+INFLIGHT_WARN=12          # WARNING si ≥N peticiones en vuelo a la vez (apilamiento)
+SLOW_REQUEST_MS=3000      # loguea las que tarden más de N ms
+</code></pre>
+<blockquote>
+<p>En <strong>dev</strong> el backend carga <code>.env</code> automáticamente (python-dotenv). En <strong>prod</strong> las
+variables vienen del entorno/contenedor (no se usa <code>.env</code>).</p>
+</blockquote>
+<h3 id="32-arranque-docker-produccion">3.2 Arranque — Docker (producción)</h3>
+<pre><code class="language-bash">cd backend/AppVento---Backend
+docker build -t vento-backend .
+docker run -d --name vento-backend -p 8000:8000 --env-file .env vento-backend
+</code></pre>
+<p>El <code>docker-entrypoint.sh</code> aplica migraciones (<code>alembic upgrade head</code>), opcionalmente
+ingiere el parquet, y arranca
+<code>gunicorn main:app -k uvicorn.workers.UvicornWorker -w 2 -b 0.0.0.0:8000 --timeout 120</code>.</p>
+<h3 id="33-arranque-local-dev">3.3 Arranque — local (dev)</h3>
+<pre><code class="language-bash">cd backend/AppVento---Backend
+python -m venv .venv &amp;&amp; source .venv/bin/activate
+pip install -r requirements.txt
+alembic upgrade head
+uvicorn main:app --reload --port 8000
+</code></pre>
+<h3 id="34-ingesta-de-datos-detallada">3.4 Ingesta de datos (detallada)</h3>
+<p>La ingesta es <strong>destructiva por dataset</strong> (reemplaza todo) y, en la máster, <strong>atómica</strong>
+(<code>TRUNCATE</code>+<code>COPY</code> en una transacción).</p>
+<ol>
+<li><strong>Máster (hexágonos):</strong> coloca el parquet en <code>PARQUET_PATH</code> e ingiere desde
+   <strong>Admin → Subir master</strong> (drag-and-drop) o el tool. <code>HEXAGON_INGEST=copy</code> usa <code>COPY</code>
+   (rápido, streaming); <code>orm</code> es el fallback portable. En la misma transacción se
+   recalcula <code>hexagon_meta</code> (min/max por variable).</li>
+<li><strong>Catálogo (InfoVariables.xlsx):</strong> <strong>Admin → Metadatos</strong> → <code>catalog_variable</code>
+   (label, dimensión, criterio, fuente, licencia, método, <code>icon_key</code>, <code>enMapa</code>, pesos)</li>
+<li><code>parquet_column</code>.</li>
+<li><strong>Normas</strong> (regulatoria) y <strong>escenarios</strong> (económica): Admin → Normativa / Escenarios.</li>
+<li><strong>Después de ingerir:</strong> <code>VACUUM ANALYZE hexagon;</code> y verifica con
+   <strong><code>GET /api/admin/db/overview</code></strong> (columnas por tabla + diff h3 ↔ catálogo ↔ máster).</li>
+</ol>
+<hr />
+<h2 id="4-frontend-nextjs">4. Frontend (Next.js)</h2>
+<h3 id="41-env-envlocal-del-frontend-completo">4.1 <code>.env</code> / <code>.env.local</code> del frontend (completo)</h3>
+<pre><code class="language-dotenv"># ── Modo ──
+NEXT_PUBLIC_USE_BACKEND=true          # true = API real | false = template/demo (sin backend)
+NEXT_PUBLIC_API_URL=https://TU_DOMINIO # URL pública de la API (cliente)
+
+# ── BFF (servidor Next → backend) ──
+BACKEND_URL=http://HOST_BACKEND:8000   # destino interno del proxy /api/*
+INTERNAL_API_SECRET=&lt;secreto-largo-aleatorio&gt;  # mismo valor que en el backend
+
+# ── Auth.js (NextAuth v5) ──
+AUTH_SECRET=&lt;secreto-largo-aleatorio&gt;  # firma de la sesión (openssl rand -base64 32)
+AUTH_URL=https://TU_DOMINIO            # URL pública del front
+AUTH_TRUST_HOST=true
+
+# ── Cliente OIDC (Keycloak) ──
+AUTH_KEYCLOAK_ID=vento-web             # client id
+AUTH_KEYCLOAK_SECRET=&lt;client-secret&gt;   # client secret del cliente OIDC
+AUTH_KEYCLOAK_ISSUER=https://KEYCLOAK_HOST/realms/vento
+
+# ── Keycloak visible al cliente (logout, registro) ──
+NEXT_PUBLIC_KEYCLOAK_URL=https://KEYCLOAK_HOST
+NEXT_PUBLIC_KEYCLOAK_REALM=vento
+NEXT_PUBLIC_KEYCLOAK_ISSUER=https://KEYCLOAK_HOST/realms/vento
+
+# ── Correo (notificaciones, p.ej. al otorgar admin) ──
+SENDGRID_API_KEY=&lt;api-key&gt;
+SENDGRID_FROM_EMAIL=no-reply@TU_DOMINIO
+</code></pre>
+<blockquote>
+<p><code>NEXT_PUBLIC_*</code> se exponen al navegador (no poner secretos ahí). <code>AUTH_*</code>,
+<code>BACKEND_URL</code>, <code>INTERNAL_API_SECRET</code>, <code>SENDGRID_*</code> son <strong>solo de servidor</strong>.
+<code>INTERNAL_API_SECRET</code> debe ser <strong>idéntico</strong> en front y backend.</p>
+</blockquote>
+<h3 id="42-arranque">4.2 Arranque</h3>
+<pre><code class="language-bash">cd Vento
+npm install
+npm run dev                 # dev → http://localhost:3000
+npm run build &amp;&amp; npm start  # producción
+</code></pre>
+<p>Al cargar, la consola loguea <code>[VENTO] MODO: BACKEND</code> o <code>TEMPLATE</code> (según
+<code>NEXT_PUBLIC_USE_BACKEND</code>). Despliegue en AccuWeb: ver <code>docs/ops/accuweb-runbook.md</code>.</p>
+<hr />
+<h2 id="5-migraciones-alembic">5. Migraciones (Alembic)</h2>
+<p>Historial (<code>migrations/versions/</code>): <code>0001</code> esquema inicial (app_user, hexagon, informe) ·
+<code>0002</code> hexagon_meta + índices geo · <code>0003</code> catálogo (variables/normas/escenarios) ·
+<code>0004</code> master_version · <code>0005</code> campos reales de catalog_variable · <code>0006</code> económico +
+turbinas · <code>0007</code> data_source · <code>0008</code> ingesta por clases (parquet_column + scores/
+emplazamiento) · <code>0009</code> jerarquía (dimension/criterio/subcriterio) + column_mapping ·
+<code>0010</code> hexagon_variables_pon · <code>0011</code> economic_series/panel · <code>0012</code> campos InfoVariables ·
+<code>0013</code> app_config · <code>0014</code> catalog_variable.metodo_calculo · <strong><code>0015</code> índice parcial
+ix_hexagon_excluded</strong>.</p>
+<pre><code class="language-bash">cd backend/AppVento---Backend
+alembic upgrade head        # aplica todas (incluye 0015 índice parcial de excluidos)
+# Cero-downtime sobre tabla ya cargada (opcional): crear el índice CONCURRENTLY a mano
+#   CREATE INDEX CONCURRENTLY ix_hexagon_excluded ON hexagon (h3_index)
+#     WHERE tipo_celda = 'excluida' OR score_general &lt; 0;
+#   luego: alembic stamp 0015_hexagon_excluded_index
+</code></pre>
+<hr />
+<h2 id="6-verificacion-post-instalacion">6. Verificación post-instalación</h2>
+<pre><code class="language-bash">curl -s https://TU_DOMINIO/api/health
+# Capacidad / salud BD (desde el server o túnel; el 5432 no suele ser público)
+python backend/AppVento---Backend/tools/loadtest.py \
+  --base &quot;https://TU_DOMINIO&quot; \
+  --cookie &quot;__Secure-authjs.session-token=VALOR&quot; \
+  --db-url &quot;postgresql://USUARIO:CLAVE@HOST_BD:5432/NOMBRE_BD&quot; --stage-secs 15
+</code></pre>
+<p>Objetivo sano: BD <code>cache-hit &gt; 99 %</code>, <code>variables-bulk</code> razonable, <code>warmup/excluded</code> &lt; 10 ms.</p>
+<hr />
+<h2 id="7-red-de-seguridad-de-memoria-server-chico">7. Red de seguridad de memoria (server chico)</h2>
+<pre><code class="language-bash"># Swap 4 GB persistente
+sudo fallocate -l 4G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=4096
+sudo chmod 600 /swapfile &amp;&amp; sudo mkswap /swapfile &amp;&amp; sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+sudo sysctl -w vm.swappiness=10
+echo 'vm.swappiness=10' | sudo tee /etc/sysctl.d/99-swappiness.conf
+# earlyoom (mata el proceso correcto antes del OOM del kernel)
+sudo apt-get update &amp;&amp; sudo apt-get install -y earlyoom
+sudo systemctl enable --now earlyoom
+</code></pre>
+<blockquote>
+<p>Mitigaciones, no la solución: el fix real de capacidad es el rediseño de datos
+(Fase 2) + más RAM/workers.</p>
+</blockquote>
+<hr />
+<h2 id="8-herramientas-ingesta-diagnostico">8. Herramientas (ingesta / diagnóstico)</h2>
+<p>Desde <code>backend/AppVento---Backend/</code>:</p>
+<pre><code class="language-bash">python -m tools.ingest_parquet [ruta.parquet]   # ingesta DESTRUCTIVA del parquet → hexagon
+python -m tools.ingest_bundle --plan            # plan de ingesta del bundle (clasifica columnas)
+python -m tools.ingest_bundle                   # ingesta destructiva del bundle (blue-green)
+python -m tools.ingest_docs --list              # fuentes registradas (master/escenarios…)
+python -m tools.inspect_parquet  ruta.parquet   # estructura de UN .h3.parquet
+python -m tools.inspect_parquets carpeta/       # árbol + esquema de un bundle (solo footer)
+python tools/loadtest.py --base https://TU_DOMINIO --cookie &quot;…&quot; [--db-url &quot;…&quot;]  # carga + EXPLAIN
+</code></pre>
+<p>La reingesta controlada es por consola (no hay endpoint que reingiera seeds y pise datos
+curados). El bundle pesado corre aislado (<code>apply_detached</code>, <code>RLIMIT_AS = INGEST_MEM_CAP_MB</code>).</p>
+<hr />
+<h2 id="9-ramas-despliegue">9. Ramas / despliegue</h2>
+<table>
+<thead>
+<tr>
+<th>Repo</th>
+<th>Trabajo</th>
+<th>Producción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Front (<code>Vento</code>)</td>
+<td><code>Sprint_4--report_preconig</code> / <code>develop</code></td>
+<td><code>deploy-prod</code></td>
+</tr>
+<tr>
+<td>Backend</td>
+<td><code>develop</code></td>
+<td><code>main</code></td>
+</tr>
+</tbody>
+</table>
+<p>Backend prod consume <strong><code>main</code></strong>. Tras merge a prod: <code>alembic upgrade head</code> +
+<code>VACUUM ANALYZE hexagon</code> + build del front.</p>
+  <p style="margin-top:40px;color:#6b7280;font-size:12px">Vento · Mavalan Software · 2026-10-01 — imprime con Ctrl+P → Guardar como PDF (A4).</p>
+</div></body></html>
