@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1240" viewBox="0 0 1200 1240" font-family="Segoe UI, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1360" viewBox="0 0 1200 1360" font-family="Segoe UI, Arial, sans-serif">
   <defs><linearGradient id="hdr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0f3547"/><stop offset="1" stop-color="#165170"/></linearGradient></defs>
-  <rect width="1200" height="1240" fill="#f7f9fb"/>
+  <rect width="1200" height="1360" fill="#f7f9fb"/>
 
   <!-- Header -->
   <rect width="1200" height="92" fill="url(#hdr)"/>
@@ -165,18 +165,34 @@
     </g>
   </g>
 
-  <!-- ===== RESUMEN ===== -->
-  <g transform="translate(20,1034)">
-    <rect width="720" height="180" rx="12" fill="#ffffff" stroke="#e5e7eb"/>
-    <text x="22" y="32" fill="#165170" font-size="15" font-weight="800">Resumen y velocidad</text>
-    <text x="22" y="60" fill="#374151" font-size="12.5">• HU pequeñas "listo para sprint": <tspan font-weight="800" fill="#165170">~8 h (≈ 1,5 días)</tspan> de trabajo sumadas.</text>
-    <text x="22" y="82" fill="#374151" font-size="12.5">• Mayores: #26 (~1 d) + Fase 2 (~2–3 d) + E2E (~1–2 d) + datos reales (~2 d) + manual (~1 d).</text>
-    <text x="22" y="104" fill="#374151" font-size="12.5">• Épicas aparte: polígonos externos (2–4 d) y borrado real Keycloak (sin estimar).</text>
-    <text x="22" y="132" fill="#374151" font-size="12.5" font-weight="700">Velocidad histórica:</text>
-    <text x="22" y="152" fill="#374151" font-size="12">Sprint 4 cerró ~35 commits/fixes a buen ritmo → las ~18 HU de 10–60 min son muy asumibles;</text>
-    <text x="22" y="170" fill="#374151" font-size="12">el sprint lo marcan #26 + Fase 2 + E2E + las épicas, no las HU pequeñas.</text>
+  <!-- ===== PRUEBAS / BENCHMARK ===== -->
+  <g transform="translate(20,1010)">
+    <rect width="1160" height="24" fill="#0f3547"/><text x="12" y="17" fill="#fff" font-size="12.5" font-weight="700">Pruebas / Benchmark</text>
+    <g font-size="12">
+      <rect y="24" width="1160" height="26" fill="#fff" stroke="#eef2f5"/>
+      <text x="14" y="41" fill="#1f2937">Re-benchmark de carga tras Fase 2 (loadtest --db-url): comparar cache-hit/EXPLAIN y el techo de usuarios</text>
+      <text x="806" y="41" fill="#165170" font-weight="700" text-anchor="middle">~1 d</text><circle cx="896" cy="37" r="5" fill="#dc2626"/><text x="908" y="41" fill="#374151">Valida Fase 2</text>
+
+      <rect y="50" width="1160" height="26" fill="#f3f6f8" stroke="#eef2f5"/>
+      <text x="14" y="67" fill="#1f2937">Benchmark de ingesta (tiempo de máster) y de generación de PDF con muchos hexágonos</text>
+      <text x="806" y="67" fill="#165170" font-weight="700" text-anchor="middle">~0,5 d</text><circle cx="896" cy="63" r="5" fill="#d97706"/><text x="908" y="67" fill="#374151">Media</text>
+    </g>
   </g>
-  <g transform="translate(760,1034)">
+
+  <!-- ===== RESUMEN ===== -->
+  <g transform="translate(20,1114)">
+    <rect width="720" height="212" rx="12" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="22" y="30" fill="#165170" font-size="15" font-weight="800">Resumen en días</text>
+    <text x="22" y="54" fill="#374151" font-size="12.5">• HU pequeñas (minutos, ~18): <tspan font-weight="700" fill="#165170">~9–12 h ≈ 1,5–2 d</tspan></text>
+    <text x="22" y="74" fill="#374151" font-size="12.5">• Mayores: #26 (~1) + Fase 2 (~2–3) + E2E (~1–2) + datos reales (~2) + manual (~1) = <tspan font-weight="700" fill="#165170">~7–9 d</tspan></text>
+    <text x="22" y="94" fill="#374151" font-size="12.5">• Pruebas / benchmark: <tspan font-weight="700" fill="#165170">~1,5 d</tspan></text>
+    <text x="22" y="114" fill="#374151" font-size="12.5">• Épicas aparte: polígonos externos (2–4 d) + borrado Keycloak (sin estimar)</text>
+    <rect x="18" y="126" width="684" height="34" rx="6" fill="#cce1ee"/>
+    <text x="30" y="148" fill="#0f3547" font-size="13" font-weight="800">TOTAL núcleo ≈ 11–13 días (≈ 2–2,5 sem · 1 pers · o ~1–1,5 sem · 2 pers)</text>
+    <text x="22" y="182" fill="#374151" font-size="11.5" font-weight="700">Velocidad histórica:</text>
+    <text x="22" y="200" fill="#374151" font-size="11.5">S4 cerró ~35 commits/fixes a buen ritmo → las HU de 10–60 min son muy asumibles.</text>
+  </g>
+  <g transform="translate(760,1114)">
     <rect width="420" height="180" rx="12" fill="#0f3547"/>
     <text x="22" y="32" fill="#fff" font-size="15" font-weight="700">Sprint 5 sugerido</text>
     <text x="22" y="60" fill="#cfe3ee" font-size="12.5">1. #26 Turbinas (alta, cliente)</text>
@@ -187,5 +203,5 @@
     <text x="22" y="170" fill="#9fc3d6" font-size="11.5">Keycloak, selector de mapas base, disclaimer EAFIT.</text>
   </g>
 
-  <text x="20" y="1232" fill="#6b7280" font-size="11">Vento · Mavalan Software · estimaciones orientativas (a confirmar en planning de Sprint 5)</text>
+  <text x="20" y="1348" fill="#6b7280" font-size="11">Vento · Mavalan Software · estimaciones orientativas (a confirmar en planning de Sprint 5)</text>
 </svg>
