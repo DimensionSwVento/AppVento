@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { searchPlace, type Place } from "../../Utils/h3/geocoder";
+import type { SearchOutcome } from "./useMapSelection";
 
 const DEBOUNCE_MS = 350;
 
@@ -22,8 +23,13 @@ export default function MapSearchBox({
   onAddCoordinate,
   onRemovePoint,
   onApplyPolygon,
+  outcome = null,
+  onDismissOutcome,
 }: {
   onSelect: (place: Place) => void;
+  /** Qué hizo la última búsqueda (FB-FIX-21) — se muestra bajo el input. */
+  outcome?: SearchOutcome | null;
+  onDismissOutcome?: () => void;
   /** Vértices del polígono en curso (US03-04) — para listarlos aquí. */
   polygonPoints?: [number, number][];
   /** Añade un vértice por coordenada [lng,lat] (y vuela ahí). */
@@ -64,6 +70,12 @@ export default function MapSearchBox({
   };
   // Evita re-buscar (y reabrir el dropdown) cuando el query cambia por una selección.
   const suppressSearchRef = useRef(false);
+  // Móvil: el aviso de modo va plegado en una pastilla dentro del input (no
+  // cabe bajo el buscador sin chocar con la tarjeta de área). Se despliega al
+  // tocarla; se guarda POR outcome para que una búsqueda nueva vuelva a plegarlo.
+  const [detailFor, setDetailFor] = useState<SearchOutcome | null>(null);
+  const detailOpen = outcome !== null && detailFor === outcome;
+  const showOutcome = outcome !== null && !open;
 
   // Debounce + AbortController para cancelar peticiones obsoletas
   useEffect(() => {
@@ -164,8 +176,29 @@ export default function MapSearchBox({
           aria-autocomplete="list"
           aria-controls="map-search-listbox"
           aria-expanded={open}
-          className="w-full rounded-full bg-white/95 px-9 py-2 text-sm text-[#393939] placeholder:text-gray-400 shadow-md outline-none focus:bg-white"
+          className={`w-full rounded-full bg-white/95 px-9 py-2 text-sm text-[#393939] placeholder:text-gray-400 shadow-md outline-none focus:bg-white ${
+            showOutcome && !loading ? "max-md:pr-24" : ""
+          }`}
         />
+        {showOutcome && !loading && (
+          <button
+            type="button"
+            onClick={() => setDetailFor(detailOpen ? null : outcome)}
+            aria-expanded={detailOpen}
+            aria-label={`Modo ${outcome.mode === "auto" ? "autoselección" : "exploración"}: ver detalle`}
+            className={`absolute right-2 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold md:hidden ${
+              outcome.mode === "auto"
+                ? "bg-green-100 text-green-800"
+                : "bg-orange-100 text-orange-800"
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className={`h-1.5 w-1.5 rounded-full ${outcome.mode === "auto" ? "bg-green-600" : "bg-orange-500"}`}
+            />
+            {outcome.mode === "auto" ? "Auto" : "Explorar"}
+          </button>
+        )}
         {loading && (
           <span
             aria-hidden="true"
@@ -194,6 +227,16 @@ export default function MapSearchBox({
           </span>
         )}
       </div>
+
+      {showOutcome && (
+        <SearchOutcomeBanner
+          outcome={outcome}
+          onDismiss={onDismissOutcome}
+          // En móvil solo se ve desplegado desde la pastilla, y encima de la
+          // tarjeta de área (z-20) mientras está abierto.
+          className={detailOpen ? "relative z-20" : "max-md:hidden"}
+        />
+      )}
 
       {/* Selección por COORDENADAS (US03-04): campos que arman un polígono. */}
       {coordsEnabled && (
@@ -288,6 +331,16 @@ export default function MapSearchBox({
           {results.length === 0 && !loading && (
             <li className="px-3 py-2 text-xs text-gray-500">Sin resultados</li>
           )}
+          {results.length > 0 && (
+            <li
+              role="presentation"
+              className="border-b border-gray-100 px-3 py-1.5 text-[11px] leading-snug text-gray-500"
+            >
+              <b className="text-green-700">Autoselección</b> marca los hexágonos
+              del lugar · <b className="text-orange-700">Exploración</b> solo mueve
+              el mapa
+            </li>
+          )}
           {results.map((place, i) => (
             <li key={`${place.lat}-${place.lng}-${i}`} role="option" aria-selected={false}>
               <button
@@ -324,14 +377,83 @@ export default function MapSearchBox({
 function SelectBadge({ willSelect }: { willSelect: boolean }) {
   return (
     <span
-      className={`mt-0.5 shrink-0 self-start rounded-full px-2 py-0.5 text-[9px] font-semibold ${
+      title={
         willSelect
-          ? "bg-green-100 text-green-700"
-          : "bg-orange-100 text-orange-700"
+          ? "Al elegirlo se seleccionan los hexágonos del lugar"
+          : "Al elegirlo solo se mueve el mapa; no se selecciona nada"
+      }
+      className={`mt-0.5 inline-flex shrink-0 self-start items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+        willSelect
+          ? "bg-green-100 text-green-800"
+          : "bg-orange-100 text-orange-800"
       }`}
     >
+      <span
+        aria-hidden="true"
+        className={`h-1.5 w-1.5 rounded-full ${willSelect ? "bg-green-600" : "bg-orange-500"}`}
+      />
       {willSelect ? "Autoselección" : "Exploración"}
     </span>
+  );
+}
+
+/**
+ * Aviso persistente bajo el buscador con el MODO que quedó activo tras elegir
+ * un lugar (FB-FIX-21). Antes la única pista era la etiqueta del desplegable,
+ * que desaparece al cerrarlo; y los casos "polígono sin zonas seleccionables"
+ * o "selección quitada por zoom" no se explicaban.
+ */
+function SearchOutcomeBanner({
+  outcome,
+  onDismiss,
+  className = "",
+}: {
+  outcome: SearchOutcome;
+  onDismiss?: () => void;
+  className?: string;
+}) {
+  const auto = outcome.mode === "auto";
+  let detail: string;
+  if (outcome.mode === "auto") {
+    detail = `${outcome.count} hexágono${outcome.count === 1 ? "" : "s"} de ${outcome.name} seleccionado${outcome.count === 1 ? "" : "s"}.`;
+  } else if (outcome.reason === "sin-zonas") {
+    detail = `${outcome.name} no tiene zonas seleccionables; solo se movió el mapa. Toca hexágonos o dibuja un área.`;
+  } else if (outcome.reason === "zoom") {
+    detail = `La selección de ${outcome.name} se quitó al cambiar el zoom. Vuelve a buscarlo o toca hexágonos.`;
+  } else {
+    detail = `${outcome.name} no tiene un límite definido; solo se movió el mapa. Toca hexágonos o dibuja un área.`;
+  }
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={`mt-1 rounded-lg border-l-4 bg-white px-3 py-2 shadow-md ring-1 ring-black/5 ${
+        auto ? "border-green-600" : "border-orange-500"
+      } ${className}`}
+    >
+      {/* Etiqueta y ✕ en una fila; el texto debajo a todo el ancho (en una
+          columna al lado de la etiqueta quedaba en 5-6 líneas en móvil). */}
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+            auto ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"
+          }`}
+        >
+          {auto ? "Autoselección" : "Exploración"}
+        </span>
+        {onDismiss && (
+          <button
+            type="button"
+            onClick={onDismiss}
+            aria-label="Cerrar aviso de modo"
+            className="text-gray-400 hover:text-gray-600"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+      <p className="mt-1 text-xs leading-snug text-gray-700">{detail}</p>
+    </div>
   );
 }
 

@@ -320,7 +320,9 @@ export default function EditUserModal({
               <b>
                 {firstName} {lastName}
               </b>
-              ? Perderá el acceso a la gestión de usuarios.
+              ? Perderá el acceso a la gestión de usuarios. Este cambio es
+              reversible mientras el usuario no haya sido eliminado de
+              Keycloak.
             </>
           )
         }
