@@ -266,7 +266,15 @@ export default function MapView() {
   }, []);
 
   // Selección de hexágonos + fly-to del buscador (comparten searchHexesRef).
-  const { toggleHex, selectPolygon, handlePlaceSelect, isFlyingRef, resetSearch } = useMapSelection({
+  const {
+    toggleHex,
+    selectPolygon,
+    handlePlaceSelect,
+    isFlyingRef,
+    resetSearch,
+    searchOutcome,
+    dismissSearchOutcome,
+  } = useMapSelection({
     canSelect,
     viewState,
     selectedHexes,
@@ -1489,6 +1497,8 @@ export default function MapView() {
       {mapReady && accion === "seleccion-area" && (
         <MapSearchBox
           onSelect={handlePlaceSelect}
+          outcome={searchOutcome}
+          onDismissOutcome={dismissSearchOutcome}
           polygonPoints={polygonPoints}
           onAddCoordinate={addPolygonCoordinate}
           onRemovePoint={(i) =>
