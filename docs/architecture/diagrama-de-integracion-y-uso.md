@@ -183,7 +183,7 @@ La intensidad de uso del backend se puede deducir por la navegación real del us
 
 ---
 
-## 5. Patr��n de carga útil para rendimiento
+## 5. Patron de carga útil para rendimiento
 
 Para detectar cuellos de botella con datasets grandes, el “contador de sesión” más útil es:
 
