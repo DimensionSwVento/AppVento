@@ -43,19 +43,19 @@ flowchart LR
 
 Los siguientes son los endpoints del backend que la aplicacion del usuario final usa realmente:
 
-| Endpoint | Que hace | Frecuencia esperada | Nivel de costo |
-|----------|----------|--------------------|----------------|
-| `GET /api/tiles/warmup` | arranque del mapa, inicializa metadata y estado | 1 vez por sesion | bajo |
-| `GET /api/tiles/variables` | devuelve variables disponibles y metadata | 1-2 veces por sesion | bajo |
-| `GET /api/tiles/{z}/{x}/{y}` | tiles del mapa, hexagonos visibles | muy alta | alto |
-| `GET /api/tiles/counts` | conteos globales por zoom/variable/seleccion | media | medio |
-| `GET /api/tiles/detail/{h3_index}` | detalle de un hexagono | baja | bajo |
-| `POST /api/tiles/variable` | capa de una variable especifica | media | medio/alto |
-| `POST /api/tiles/variables-bulk` | varias capas del mapa a la vez | media/alta | muy alto |
-| `POST /api/tiles/area` | calculo del area seleccionada + scores | media | alto |
-| `GET /api/historico` | lista de informes del usuario | baja | bajo |
-| `POST /api/historico` | guardar informe | baja | bajo |
-| `DELETE /api/historico/{id}` | borrar informe | muy baja | bajo |
+| Endpoint | Que hace | Motivo tecnico | Frecuencia esperada | Nivel de costo |
+|----------|----------|---------------|--------------------|----------------|
+| `GET /api/tiles/warmup` | arranque del mapa, inicializa metadata y estado | carga el parquet y prepara el indice espacial de H3 para que el mapa pueda operar sin leer todo el dataset en cada request | 1 vez por sesion | bajo |
+| `GET /api/tiles/variables` | devuelve variables disponibles y metadata | lee el catalogo de variables, rangos min/max y flags de mapa para poblar el menu de capas | 1-2 veces por sesion | bajo |
+| `GET /api/tiles/{z}/{x}/{y}` | tiles del mapa, hexagonos visibles | obtiene el subconjunto visible por zoom/bbox; es la consulta basica del mapa y la mas frecuente en navegacion | muy alta | alto |
+| `GET /api/tiles/counts` | conteos globales por zoom/variable/seleccion | usa agregaciones por resolucion y filtros para responder un resumen del mapa y evitar cargar todos los hexagonos | media | medio |
+| `GET /api/tiles/detail/{h3_index}` | detalle de un hexagono | recupera el score completo y variables de una celda puntual para el popup del usuario | baja | bajo |
+| `POST /api/tiles/variable` | capa de una variable especifica | devuelve una capa geometrica de una variable concreta para un bbox, normalmente para pintar una sola layer sobre el mapa | media | medio/alto |
+| `POST /api/tiles/variables-bulk` | varias capas del mapa a la vez | hace varios calculos por bbox y variable; normalmente recorre un conjunto grande de hexagonos para responder varias layers simultaneas, por eso es una de las llamadas mas costosas | media/alta | muy alto |
+| `POST /api/tiles/area` | calculo del area seleccionada + scores | recibe un poligono o lista de hexagonos, intersecta con el dataset, recalcula scores por area y devuelve detalle por celda para el informe | media | alto |
+| `GET /api/historico` | lista de informes del usuario | consulta los informes guardados para recuperar el historial del usuario con sus snapshots | baja | bajo |
+| `POST /api/historico` | guardar informe | persiste una salida del usuario y sus parametros compactados; evita guardar el PDF completo y reduce almacenamiento | baja | bajo |
+| `DELETE /api/historico/{id}` | borrar informe | elimina un informe propio del usuario para mantener el historial consistente | muy baja | bajo |
 
 ### Endpoints no incluidos por diseno
 
@@ -161,14 +161,17 @@ La intensidad de uso del backend se puede deducir por la navegacion real del usu
 1. `GET /api/tiles/{z}/{x}/{y}`
    - es la mas repetida en un mapa interactivo
    - ocurre en cada pan, zoom y render
+   - motivo: el frontend necesita el conjunto visible de hexagonos por vista
 
 2. `POST /api/tiles/variables-bulk`
    - aparece cuando se quiere mostrar varias capas al mismo tiempo
    - suele ser la mas costosa de la UI
+   - motivo: evalua varias variables sobre el mismo bbox, por lo que normalmente hace scans grandes de datos y agrega varios layers
 
 3. `POST /api/tiles/area`
    - se usa al calcular un informe por area o zona seleccionada
    - es critica funcionalmente y tambien costosa
+   - motivo: intersecta un poligono o conjunto de hexagonos con el dataset, calcula scores y devuelve detalle del area
 
 ### Uso secundario
 
@@ -201,6 +204,12 @@ Con este frontend, los puntos criticos esperados son:
 - `/api/tiles/area` en el calculo del informe
 
 Estos tres son los candidatos principales a cuello de botella cuando el dataset supera 30M filas.
+
+### Interpretacion funcional
+
+- `tiles/{z}/{x}/{y}`: costo por bbox + zoom + sincronizacion de capas
+- `variables-bulk`: costo por bbox + N variables + scans sobre dataset grande
+- `area`: costo por interseccion geometrica + score recomputation + detalle por region
 
 ---
 
