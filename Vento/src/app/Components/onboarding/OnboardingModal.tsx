@@ -25,14 +25,15 @@ const STEPS: Step[] = [
     texto: "Haz clic en los hexágonos del mapa de Colombia para definir la zona a evaluar.",
   },
   {
-    img: "/on3.svg",
-    titulo: "Configura las dimensiones",
-    texto: "Elige las variables por dimensión que quieres considerar en el análisis.",
-  },
-  {
     img: "/on4.svg",
     titulo: "Características del proyecto",
     texto: "Ingresa la capacidad nominal y el tipo de tu proyecto eólico.",
+  },
+
+  {
+    img: "/on3.svg",
+    titulo: "Configura las dimensiones",
+    texto: "Elige las variables por dimensión que quieres considerar en el análisis.",
   },
   {
     // TODO: falta la 5ª imagen (on5) — placeholder hasta que la entreguen.
@@ -105,9 +106,8 @@ export default function OnboardingModal({
           {STEPS.map((_, i) => (
             <span
               key={i}
-              className={`h-1.5 rounded-full transition-all ${
-                i === step ? "w-4 bg-[#123a4d]" : "w-1.5 bg-gray-300"
-              }`}
+              className={`h-1.5 rounded-full transition-all ${i === step ? "w-4 bg-[#123a4d]" : "w-1.5 bg-gray-300"
+                }`}
             />
           ))}
         </div>

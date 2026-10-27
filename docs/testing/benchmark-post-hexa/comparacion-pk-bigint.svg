@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="860" viewBox="0 0 1180 860" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <linearGradient id="hdr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0f3547"/><stop offset="1" stop-color="#165170"/></linearGradient>
+  </defs>
+  <rect width="1180" height="860" fill="#f7f9fb"/>
+
+  <!-- Header -->
+  <rect width="1180" height="92" fill="url(#hdr)"/>
+  <text x="40" y="42" fill="#fff" font-size="24" font-weight="800">Vento — Benchmark: PK BIGINT + stats calientes (run warm)</text>
+  <text x="40" y="70" fill="#cfe3ee" font-size="13.5">Límite por endpoint · loadtest unitario (rampa [10,25,50,100,200,400,700] · corte err&gt;25% o p95&gt;8s)</text>
+  <text x="1140" y="52" fill="#fff" font-size="13" text-anchor="end" opacity="0.85">2026-10-01</text>
+
+  <!-- Tabla -->
+  <g>
+    <rect x="40" y="116" width="1100" height="38" rx="6" fill="#165170"/>
+    <text x="56" y="141" fill="#fff" font-size="13" font-weight="700">Endpoint</text>
+    <text x="226" y="141" fill="#fff" font-size="13" font-weight="700">Base · 30-sep  (warm, PK varchar, pre-reltuples)</text>
+    <text x="666" y="141" fill="#cfe3ee" font-size="13" font-weight="700">Warm · 01-oct  (PK bigint + reltuples + VACUUM ANALYZE)</text>
+  </g>
+
+  <g font-size="12.5">
+    <line x1="210" y1="116" x2="210" y2="440" stroke="#e2e8f0"/>
+    <line x1="650" y1="116" x2="650" y2="440" stroke="#e2e8f0"/>
+
+    <!-- warmup (mejora) -->
+    <rect x="40" y="154" width="1100" height="46" fill="#f0fdf4"/>
+    <text x="56" y="182" fill="#0f3547" font-weight="700">warmup</text>
+    <text x="226" y="182" fill="#334155">rompió 50 · query 720 ms (count exacto)</text>
+    <text x="666" y="177" fill="#334155">rompió <tspan font-weight="800" fill="#16a34a">700</tspan> · query 187 ms</text>
+    <text x="666" y="194" font-size="11" fill="#15803d">✅ gran mejora: endpoint por reltuples (el count de 14 s era stats frías)</text>
+
+    <!-- variables -->
+    <rect x="40" y="200" width="1100" height="34" fill="#f1f5f8"/>
+    <text x="56" y="222" fill="#0f3547" font-weight="700">variables</text>
+    <text x="226" y="222" fill="#334155">rompió 100</text>
+    <text x="666" y="222" fill="#334155">rompió 100  (recuperado)</text>
+
+    <!-- variables-bulk (cuello) -->
+    <rect x="40" y="234" width="1100" height="46" fill="#fef2f2"/>
+    <text x="56" y="262" fill="#b91c1c" font-weight="700">variables-bulk</text>
+    <text x="226" y="262" fill="#334155">rompió <tspan font-weight="700">10</tspan> · query 5,8 s · CUELLO=BD</text>
+    <text x="666" y="257" fill="#334155">rompió <tspan font-weight="800" fill="#b91c1c">10</tspan> · err 70% @10 · p95 9,3 s</text>
+    <text x="666" y="274" font-size="11" fill="#b91c1c">⛔ sigue el cuello — ahora CUELLO=APP/workers (2), ya no disco</text>
+
+    <!-- area -->
+    <rect x="40" y="280" width="1100" height="34" fill="#f1f5f8"/>
+    <text x="56" y="302" fill="#0f3547" font-weight="700">area</text>
+    <text x="226" y="302" fill="#334155">rompió 100 · 0,68 ms</text>
+    <text x="666" y="302" fill="#334155">rompió 100 · 1,5 ms  (recuperado)</text>
+
+    <!-- detail -->
+    <rect x="40" y="314" width="1100" height="34" fill="#fff"/>
+    <text x="56" y="336" fill="#0f3547" font-weight="700">detail</text>
+    <text x="226" y="336" fill="#334155">rompió 100 · 0,10 ms</text>
+    <text x="666" y="336" fill="#334155">rompió 100 · <tspan font-weight="700">0,06 ms</tspan>  (Index Scan ::bigint)</text>
+
+    <!-- cache-hit -->
+    <rect x="40" y="348" width="1100" height="34" fill="#f1f5f8"/>
+    <text x="56" y="370" fill="#0f3547" font-weight="700">cache-hit BD</text>
+    <text x="226" y="370" fill="#334155">74,4 %</text>
+    <text x="666" y="370" fill="#334155">74,2 %  (sin cambio → RAM corta)</text>
+
+    <!-- techo -->
+    <rect x="40" y="382" width="1100" height="40" fill="#eef4f8"/>
+    <text x="56" y="408" fill="#0f3547" font-weight="800">Techo mixto</text>
+    <text x="226" y="408" fill="#0f3547" font-weight="800">≈ 25</text>
+    <text x="666" y="408" fill="#0f3547" font-weight="800">≈ 25  <tspan font-weight="600" fill="#64748b" font-size="11">(lo fija variables-bulk; los ligeros escalan 100–700)</tspan></text>
+
+    <rect x="40" y="116" width="1100" height="306" rx="6" fill="none" stroke="#e2e8f0"/>
+  </g>
+
+  <!-- Conclusiones -->
+  <text x="40" y="462" fill="#165170" font-size="16" font-weight="800">Qué dice de verdad</text>
+  <g font-size="12.5" fill="#374151">
+    <g transform="translate(40,474)">
+      <rect width="543" height="92" rx="10" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="92" fill="#16a34a" rx="3"/>
+      <text x="20" y="26"><tspan font-weight="700" fill="#16a34a">✓ warmup resuelto.</tspan></text>
+      <text x="20" y="46" font-size="12">Con reltuples escala a 700 usuarios (antes 50). El</text>
+      <text x="20" y="64" font-size="12">count(*) de 14 s era puramente estadísticas frías.</text>
+      <text x="20" y="82" font-size="11" fill="#64748b">detail/area/variables recuperaron su rango (100).</text>
+    </g>
+    <g transform="translate(597,474)">
+      <rect width="543" height="92" rx="10" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="92" fill="#b91c1c" rx="3"/>
+      <text x="20" y="26"><tspan font-weight="700" fill="#b91c1c">variables-bulk sigue siendo el cuello.</tspan></text>
+      <text x="20" y="46" font-size="12">Rompe en 10 (igual que la base). El disco dejó de</text>
+      <text x="20" y="64" font-size="12">ser el problema; ahora saturan los 2 workers con</text>
+      <text x="20" y="82" font-size="12">10 bulk simultáneos (p95 9,3 s). Es el que fija el techo.</text>
+    </g>
+    <g transform="translate(40,576)">
+      <rect width="1100" height="70" rx="10" fill="#fff" stroke="#e5e7eb"/><rect width="6" height="70" fill="#165170" rx="3"/>
+      <text x="20" y="26"><tspan font-weight="700">El bigint es correcto y prerequisito, pero NO movió el techo.</tspan> Ayuda en los lookups por PK (detail 0,06 ms) y deja la PK lista para h3-pg.</text>
+      <text x="20" y="48" font-size="12">bigint + ANALYZE RECUPERARON lo que el frío rompió; el límite estructural (variables-bulk ~10 · techo mixto ~25) se mantiene.</text>
+      <text x="20" y="64" font-size="11" fill="#64748b">Para subirlo de verdad (Fase 2): tabla/vista angosta para variables-bulk (sin el JSONB width=741) + más workers/RAM.</text>
+    </g>
+  </g>
+
+  <!-- Nota al pie -->
+  <g transform="translate(40,656)">
+    <rect width="1100" height="38" rx="8" fill="#0f3547"/>
+    <text x="20" y="24" fill="#cfe3ee" font-size="12"><tspan font-weight="700" fill="#fff">Nota:</tspan> el run intermedio "en frío" (reltuples=0 → techo 25 / count 14 s) fue un artefacto de medición; el VACUUM ANALYZE lo corrigió. reltuples = 1.618.553.</text>
+  </g>
+
+  <text x="40" y="724" fill="#6b7280" font-size="11">Vento · Mavalan Software · migración 0016 (PK h3_index → BIGINT) + stats calientes · fuente: loadtest-report3.txt</text>
+</svg>
