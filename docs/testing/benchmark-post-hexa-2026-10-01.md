@@ -12,12 +12,16 @@
   mismo corte `err>25% o p95>8000ms`.
 
 > [!WARNING]
-> **Esta corrida NO es comparación justa.** Se ejecutó con la tabla **recién
-> ingerida y sin `VACUUM ANALYZE`** (el paso falló por "VACUUM cannot run inside a
-> transaction block"). Resultado: `pg_class.reltuples = 0` → `warmup` cayó al
-> `count(*)` exacto (14 s) y el visibility map vacío disparó los heap-fetches. Tras
-> correr `ANALYZE hexagon;` → `reltuples = 1.618.553`. **Hace falta re-benchmark
-> con estadísticas calientes para la foto real del bigint.**
+> **El primer post-hexa (`loadtest-report.txt`) NO es comparación justa.** Se
+> ejecutó con la tabla **recién ingerida y sin `VACUUM ANALYZE`** (el paso falló por
+> "VACUUM cannot run inside a transaction block"). Resultado: `reltuples = 0` →
+> `warmup` cayó al `count(*)` exacto (14 s) y el visibility map vacío disparó los
+> heap-fetches. **Fue un artefacto de medición.**
+>
+> [!NOTE]
+> **El run bueno es el WARM (`loadtest-report3.txt`)**, tras `VACUUM ANALYZE`
+> (`reltuples = 1.618.553`, muestra 2494 hexes). **Es el que vale para conclusiones**
+> — ver §1-bis. El comparativo visual: `benchmark-post-hexa/comparacion-pk-bigint.svg`.
 
 ---
 
