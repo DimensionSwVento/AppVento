@@ -138,6 +138,11 @@ Workflow `AppVento---Backend/.github/workflows/performance.yml`:
 - `strict=true` convierte la corrida en **gate** (falla si un SLO no se cumple).
   Por defecto mide y deja el semáforo en el resumen.
 
+> GitHub solo expone `workflow_dispatch`/`schedule` cuando el workflow está en la
+> rama por defecto. Mientras `feature/performance-testing` no se mergee a
+> `develop`/`main`, el workflow no aparece en la UI ni corre por horario; usa los
+> comandos locales o mergea la rama cuando el equipo lo apruebe.
+
 ### Producción
 
 - Post-deploy: `PERF_BASE_URL=https://www.proyectovento.com npm run perf:e2e:smoke`
