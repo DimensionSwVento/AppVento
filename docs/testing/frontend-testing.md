@@ -51,6 +51,20 @@ potentes se puede paralelizar con `--workers=4`.
 - La autenticación usa usuarios reales sembrados en `infra/keycloak/realm-export.json` (SOLO DEV/E2E); el login se hace una vez por rol (`auth.setup.ts`) y se reutiliza vía storageState.
 - El backend FastAPI no vive en este repo: los datos se stubbean con `page.route()` (`e2e/fixtures/networkStubs.ts`).
 
+## Performance (Playwright, suite separada)
+
+La suite funcional de E2E stubbea el backend; la de **performance** usa datos
+reales y mide lo que siente el usuario (NFR-P2/P3/P5/P6, LCP/TBT/FPS). Vive en
+`e2e-perf/` y tiene su propio README y config:
+
+```bash
+npm run perf:e2e          # local (build de producción + backend real)
+PERF_BASE_URL=https://<test> npm run perf:e2e:smoke   # entorno desplegado
+npm run perf:report       # medianas de varias corridas
+```
+
+Plan, SLOs, entornos y CI: [`performance-testing-plan.md`](performance-testing-plan.md).
+
 ## Trazabilidad RNF → tests
 
 Los RNF priorizados del proyecto (sección 8.2.2 del documento de diseño) y

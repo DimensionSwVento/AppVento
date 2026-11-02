@@ -1,4 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
+import fs from "node:fs";
+import { BASE_URL, ENV_NAME, IS_LOCAL, RESULTS_DIR, targetInfo } from "./e2e-perf/lib/config";
+
+fs.mkdirSync(RESULTS_DIR, { recursive: true });
 
 /**
  * Suite de PERFORMANCE del frontend (aparte de la e2e funcional).
@@ -6,26 +10,34 @@ import { defineConfig, devices } from "@playwright/test";
  * A diferencia de `playwright.config.ts`, aquí NO se stubbea el backend: el mapa
  * pide datos REALES al FastAPI (vía el BFF) para medir lo que siente el usuario.
  *
- * Requiere:
- *   - Keycloak local:   docker compose -f ../infra/keycloak/docker-compose.yml up -d
+ * Local (por defecto):
+ *   - Keycloak local:        docker compose -f ../infra/keycloak/docker-compose.yml up -d
  *   - Backend local con datos (AppVento---Backend: docker compose up -d db app)
- *   - INTERNAL_API_SECRET igual al del .env del backend.
- *
+ *   - INTERNAL_API_SECRET igual al del .env del backend
  *   INTERNAL_API_SECRET=… npm run perf:e2e
  *
- * Resultados: perf-results/<fecha>.json + tabla en consola.
+ * Test/prod (sin levantar Next):
+ *   PERF_BASE_URL=https://test.… PERF_ENV=test PERF_USER=… PERF_PASSWORD=… npm run perf:e2e
+ *
+ * Resultados: perf-results/<run>_<test>.json + reporte con `npm run perf:report`.
  */
 export default defineConfig({
   testDir: "./e2e-perf",
   // Mediciones: 1 worker, sin reintentos (un reintento escondería el problema).
   workers: 1,
   retries: 0,
-  timeout: 180_000,
-  reporter: [["list"]],
+  fullyParallel: false,
+  timeout: 300_000,
+  reporter: [
+    ["list"],
+    ["json", { outputFile: `${RESULTS_DIR}/playwright.json` }],
+  ],
+  metadata: targetInfo(),
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: BASE_URL,
     viewport: { width: 1440, height: 900 }, // mismo viewport que modela k6 (perf/k6/lib/geo.js)
     trace: "retain-on-failure",
+    video: "off",
   },
   projects: [
     { name: "setup", testMatch: /auth\.setup\.ts/ },
@@ -43,24 +55,33 @@ export default defineConfig({
       dependencies: ["setup"],
     },
   ],
-  webServer: {
-    // Build de PRODUCCIÓN: en `next dev` todo es mucho más lento y los números no sirven.
-    command: "npm run build && npm run start",
-    url: "http://localhost:3000",
-    reuseExistingServer: true,
-    timeout: 300_000,
-    env: {
-      NEXT_PUBLIC_USE_BACKEND: "true",
-      BACKEND_URL: process.env.BACKEND_URL ?? "http://localhost:8000",
-      INTERNAL_API_SECRET: process.env.INTERNAL_API_SECRET ?? "",
-      AUTH_SECRET: "e2e-only-secret-not-for-production",
-      AUTH_TRUST_HOST: "true",
-      AUTH_KEYCLOAK_ID: "vento-web",
-      // Secret de desarrollo ya commiteado en infra/keycloak/realm-export.json.
-      AUTH_KEYCLOAK_SECRET: "dev-secret-change-in-production",
-      AUTH_KEYCLOAK_ISSUER: "http://localhost:8080/realms/vento",
-      NEXT_PUBLIC_KEYCLOAK_URL: "http://localhost:8080",
-      NEXT_PUBLIC_KEYCLOAK_REALM: "vento",
-    },
-  },
+  // Solo en local levanta el build de producción. Contra un entorno desplegado
+  // no se debe compilar ni arrancar nada: se mide el servidor real.
+  webServer: IS_LOCAL
+    ? {
+        // Build de PRODUCCIÓN: en `next dev` todo es mucho más lento y los números no sirven.
+        command: "npm run build && npm run start",
+        url: BASE_URL,
+        reuseExistingServer: true,
+        timeout: 300_000,
+        env: {
+          NEXT_PUBLIC_USE_BACKEND: "true",
+          BACKEND_URL: process.env.BACKEND_URL ?? "http://localhost:8000",
+          INTERNAL_API_SECRET: process.env.INTERNAL_API_SECRET ?? "",
+          AUTH_SECRET: "e2e-only-secret-not-for-production",
+          AUTH_TRUST_HOST: "true",
+          AUTH_KEYCLOAK_ID: "vento-web",
+          // Secret de desarrollo ya commiteado en infra/keycloak/realm-export.json.
+          AUTH_KEYCLOAK_SECRET: "dev-secret-change-in-production",
+          AUTH_KEYCLOAK_ISSUER: "http://localhost:8080/realms/vento",
+          NEXT_PUBLIC_KEYCLOAK_URL: "http://localhost:8080",
+          NEXT_PUBLIC_KEYCLOAK_REALM: "vento",
+        },
+      }
+    : undefined,
+  // Etiqueta visible en el reporte (también queda en el JSON de resultados).
+  expect: { timeout: 30_000 },
+  // Nombre de entorno para logs (no afecta la ejecución).
+  forbidOnly: !!process.env.CI,
+  outputDir: `${RESULTS_DIR}/artifacts-${ENV_NAME}`,
 });

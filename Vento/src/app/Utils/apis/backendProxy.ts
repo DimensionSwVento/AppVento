@@ -55,10 +55,26 @@ export async function proxyBackend(
   }
 
   const text = await backendRes.text();
+  const resHeaders = new Headers({
+    "Content-Type": backendRes.headers.get("content-type") ?? "application/json",
+  });
+  // Propaga la política de caché del backend (tiles/variables/detail). Antes se
+  // perdía y el navegador volvía a pedir todo en cada navegación. Solo se
+  // reenvían cabeceras seguras de cache; `Set-Cookie`/auth nunca.
+  for (const name of ["cache-control", "etag", "last-modified"]) {
+    const value = backendRes.headers.get(name);
+    if (value) resHeaders.set(name, value);
+  }
+  if (
+    !resHeaders.has("cache-control") &&
+    (init?.method ?? "GET") === "GET" &&
+    path.startsWith("/api/tiles/")
+  ) {
+    // GET de datos del mapa sin política explícita: caché privada corta.
+    resHeaders.set("Cache-Control", "private, max-age=300");
+  }
   return new Response(text || null, {
     status: backendRes.status,
-    headers: {
-      "Content-Type": backendRes.headers.get("content-type") ?? "application/json",
-    },
+    headers: resHeaders,
   });
 }

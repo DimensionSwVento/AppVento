@@ -11,9 +11,6 @@ import {
   getCentroid,
   getRegion,
 } from "../../Utils/report/reportData";
-import html2canvas from "html2canvas-pro";
-import jsPDF from "jspdf";
-import { svg2pdf } from "svg2pdf.js"; // Fase 1 PDF nativo: charts SVG → vector
 import { useIsAdmin } from "../../Utils/useIsAdmin";
 import { fetchMasterStatus, fetchEscenarios, fetchNormas, fetchVariableRanges, fetchReportCalcText, fetchReportContent, type AdminEscenario } from "../../Utils/admin/catalogApi";
 import { dbField, AuditDataLabel } from "../../Utils/audit";
@@ -1607,6 +1604,8 @@ export default function Report() {
       // varios GB. Escala adaptativa: 1 si el área es grande (>500 hex), 2 para
       // áreas pequeñas donde la nitidez importa y el costo es bajo.
       const scale = hexes.length > 500 ? 1 : 2;
+      // Carga bajo demanda: html2canvas pesa ~200 KB y solo se usa al exportar.
+      const { default: html2canvas } = await import("html2canvas-pro");
       const canvas = await html2canvas(wrap, {
         scale,
         backgroundColor: "#ffffff",
@@ -1645,6 +1644,18 @@ export default function Report() {
         root.querySelectorAll<HTMLElement>("[data-report-sheet]"),
       );
       if (sheetEls.length === 0) throw new Error("No hay hojas para exportar");
+
+      // Carga bajo demanda: estas librerías pesan ~700 KB y solo se usan al
+      // exportar. `svg2pdf` puede fallar al resolverse en algunos entornos
+      // (UMD/global); en ese caso se omite el overlay vectorial y el PDF sigue.
+      const [html2canvasMod, jspdfMod, svg2pdfMod] = await Promise.all([
+        import("html2canvas-pro"),
+        import("jspdf"),
+        import("svg2pdf.js").catch(() => ({ svg2pdf: undefined })),
+      ]);
+      const html2canvas = html2canvasMod.default;
+      const jsPDF = jspdfMod.default;
+      const svg2pdf = svg2pdfMod.svg2pdf;
 
       const pdf = new jsPDF({
         orientation: "portrait",
@@ -1829,13 +1840,15 @@ export default function Report() {
             const hmm = r.height * pxToMm;
             // clamp: por redondeo el índice podría exceder las páginas creadas.
             pdf.setPage(Math.min(basePage + pageIdx, pdf.getNumberOfPages()));
-            try {
-              await svg2pdf(svg, pdf, { x, y, width: wmm, height: hmm });
-            } catch (err) {
-              // SIN fallback a html2canvas (es el motor lento que revienta prod):
-              // si un chart falla en vector, se deja el hueco y se sigue. Se
-              // prioriza descarga rápida y estable sobre rescatar un gráfico suelto.
-              console.warn("[pdfExport] chart vector falló, se omite (sin fallback raster):", err);
+            if (svg2pdf) {
+              try {
+                await svg2pdf(svg, pdf, { x, y, width: wmm, height: hmm });
+              } catch (err) {
+                // SIN fallback a html2canvas (es el motor lento que revienta prod):
+                // si un chart falla en vector, se deja el hueco y se sigue. Se
+                // prioriza descarga rápida y estable sobre rescatar un gráfico suelto.
+                console.warn("[pdfExport] chart vector falló, se omite (sin fallback raster):", err);
+              }
             }
           }
           pdf.setPage(pdf.getNumberOfPages()); // vuelve a la última antes de seguir

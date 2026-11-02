@@ -328,10 +328,13 @@ export type MetadataApplyResult = MetadataApplyCatalog | MetadataApplyEconomic;
 export async function applyMetadata(
   path: string, perfil = "infovariables", sheet?: string, name?: string,
 ): Promise<MetadataApplyResult> {
-  return api<MetadataApplyResult>(`/metadata/apply`, {
+  const res = await api<MetadataApplyResult>(`/metadata/apply`, {
     method: "POST",
     body: JSON.stringify({ path, perfil, sheet, name }),
   });
+  // El catálogo cambió en BD: invalida lo cacheado por el dashboard.
+  invalidate("adminVars:modelo", "adminVars:informativa", "varRanges");
+  return res;
 }
 
 /** Catálogo anidado dimensión→criterio→subcriterio→variable. `emplazamiento`
@@ -391,7 +394,14 @@ export async function fetchEconomicScenarios(panel: string): Promise<number[]> {
 export async function fetchVariables(tipo: VariableTipo): Promise<AdminVariable[]> {
   // Sin mixtura: en modo BACKEND se usa SOLO la API (si falla, lanza — no cae a
   // template). En modo TEMPLATE se usa SOLO el store. Nunca a medias.
-  if (USE_BACKEND) return api<AdminVariable[]>(`/variables?tipo=${tipo}`);
+  //
+  // Cacheado 5 min + coalescing: el dashboard pide el catálogo varias veces
+  // (hidratar variables, menú de Dimensiones, ids deshabilitados en el mapa).
+  // Antes eran 4–5 requests idénticos en la primera carga. Las mutaciones de
+  // abajo invalidan la entrada.
+  if (USE_BACKEND) {
+    return cached(`adminVars:${tipo}`, () => api<AdminVariable[]>(`/variables?tipo=${tipo}`));
+  }
   return variablesStore.filter((v) => v.tipo === tipo);
 }
 
@@ -553,10 +563,14 @@ export async function createInformativa(
   payload: Partial<AdminVariable> & { label: string; dimension: string },
 ): Promise<AdminVariable> {
   if (USE_BACKEND)
-    return api<AdminVariable>(`/variables`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    return (async () => {
+      const created = await api<AdminVariable>(`/variables`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      invalidate("adminVars:modelo", "adminVars:informativa");
+      return created;
+    })();
   const nueva: AdminVariable = {
     id: `inf-${Date.now()}`,
     label: payload.label,
@@ -588,6 +602,7 @@ export async function updateVariable(
       method: "PATCH",
       body: JSON.stringify(patch),
     });
+    invalidate("adminVars:modelo", "adminVars:informativa");
     // La BD es la fuente de verdad (ya persistió). Además refrescamos el CATÁLOGO
     // en memoria (lo que leen mapa/menú vía `getVariableById`) con la fila
     // autoritativa, para que el cambio de enMapa/método/icono se vea al instante
@@ -625,10 +640,14 @@ export async function updateDataset(
   version: string,
 ): Promise<AdminVariable> {
   if (USE_BACKEND)
-    return api<AdminVariable>(`/datasets/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ version }),
-    });
+    return (async () => {
+      const updated = await api<AdminVariable>(`/datasets/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ version }),
+      });
+      invalidate("adminVars:modelo", "adminVars:informativa", "varRanges");
+      return updated;
+    })();
   variablesStore = variablesStore.map((v) =>
     v.id === id ? { ...v, datasetVersion: version, datasetUpdatedAt: "hoy" } : v,
   );

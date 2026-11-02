@@ -29,6 +29,12 @@ vi.mock("jspdf", () => ({
   default: vi.fn(function () {
     return {
       internal: { pageSize: { getWidth: () => 210, getHeight: () => 297 } },
+      setProperties: vi.fn(),
+      getNumberOfPages: vi.fn(() => 1),
+      setPage: vi.fn(),
+      setFontSize: vi.fn(),
+      text: vi.fn(),
+      outline: { add: vi.fn() },
       addImage: vi.fn(),
       addPage: vi.fn(),
       save: saveMock,
@@ -102,6 +108,7 @@ describe("Report (US06) — pantalla de informe (hojas A4)", () => {
   });
 
   it("muestra la dimensión regulatoria (informativa) en el informe completo", async () => {
+    // El informe completo (12 hojas + SVG) es pesado en jsdom.
     render(
       <Wrapper>
         <Report />
@@ -111,11 +118,15 @@ describe("Report (US06) — pantalla de informe (hojas A4)", () => {
     fireEvent.click(screen.getByRole("button", { name: /Previsualizar/i }));
     // "Dimensión regulatoria" aparece en el índice y en la hoja → varias.
     expect(
-      (await screen.findAllByText(/Dimensión regulatoria/i)).length,
+      (
+        await screen.findAllByText(/Dimensión regulatoria/i, undefined, {
+          timeout: 15_000,
+        })
+      ).length,
     ).toBeGreaterThanOrEqual(1);
     // Deja claro que es informativa y no puntúa.
     expect(screen.getAllByText(/no puntúa/i).length).toBeGreaterThanOrEqual(1);
-  });
+  }, 20_000);
 
   it("muestra 0 km² cuando no hay selección", () => {
     render(
@@ -149,16 +160,22 @@ describe("Report (US06) — pantalla de informe (hojas A4)", () => {
     await act(async () => {
       fireEvent.click(botones[botones.length - 1]);
     });
-    await waitFor(() => {
-      expect(html2canvasMock).toHaveBeenCalled();
-      expect(saveMock).toHaveBeenCalledTimes(1);
-    });
+    await waitFor(
+      () => {
+        expect(html2canvasMock).toHaveBeenCalled();
+        expect(saveMock).toHaveBeenCalledTimes(1);
+      },
+      { timeout: 20_000 },
+    );
     const [filename] = saveMock.mock.calls[0];
     expect(filename).toMatch(/^informe-vento-\d+\.pdf$/);
   });
 
   it("muestra mensaje de error si la generación del PDF falla", async () => {
-    html2canvasMock.mockRejectedValueOnce(new Error("boom"));
+    // Fuerza el fallo global al guardar (el fallo de una hoja se omite y sigue).
+    saveMock.mockImplementationOnce(() => {
+      throw new Error("boom");
+    });
     render(
       <Wrapper>
         <Report />
@@ -169,7 +186,11 @@ describe("Report (US06) — pantalla de informe (hojas A4)", () => {
     await act(async () => {
       fireEvent.click(botones[botones.length - 1]);
     });
-    const errores = await screen.findAllByText(/No se pudo generar el PDF/i);
+    const errores = await screen.findAllByText(
+      /No se pudo generar el PDF/i,
+      undefined,
+      { timeout: 20_000 },
+    );
     expect(errores.length).toBeGreaterThanOrEqual(1);
-  });
+  }, 25_000);
 });
