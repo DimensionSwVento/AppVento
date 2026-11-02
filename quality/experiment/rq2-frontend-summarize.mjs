@@ -12,7 +12,14 @@
  *
  *   node rq2-frontend-summarize.mjs <corpus dir> [--append-summary]
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync as rawWrite } from "node:fs";
+
+// atomic writes: a reader (or a resumed run) never sees a half-written file
+function writeFileSync(file, data) {
+  const tmp = `${file}.tmp-${process.pid}`;
+  rawWrite(tmp, data);
+  renameSync(tmp, file);
+}
 import path from "node:path";
 
 const corpus = path.resolve(process.argv[2]);

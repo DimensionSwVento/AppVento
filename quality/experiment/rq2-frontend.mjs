@@ -22,7 +22,7 @@
  * except node_modules (cold .next / coverage / tsbuildinfo for every run), applies the patch and runs.
  */
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, rmSync, renameSync } from "node:fs";
 import path from "node:path";
 
 const args = Object.fromEntries(
@@ -246,7 +246,8 @@ async function run() {
   const raw = path.resolve(args.raw);
   rmSync(raw, { recursive: true, force: true });
   mkdirSync(raw, { recursive: true });
-  resetWorktree(wt, info.base);
+  resetWorktree(wt, info.base); // also recovers a worktree left dirty by an interrupted run
+  if (cond === "P") sh("fuser -k 3000/tcp >/dev/null 2>&1 || true", wt);
   let patchApplied = null;
   if (args.patch) {
     const p = path.resolve(args.patch);
@@ -264,7 +265,10 @@ async function run() {
     patch: patchApplied, node: process.version, ...r,
   };
   mkdirSync(path.dirname(path.resolve(args.out)), { recursive: true });
-  writeFileSync(path.resolve(args.out), JSON.stringify(result, null, 2) + "\n");
+  // atomic: a run interrupted mid-write never leaves a truncated (but "existing") result file
+  const tmpOut = `${path.resolve(args.out)}.tmp-${process.pid}`;
+  writeFileSync(tmpOut, JSON.stringify(result, null, 2) + "\n");
+  renameSync(tmpOut, path.resolve(args.out));
   resetWorktree(wt, info.base);
   const failing = r.checks.filter((c) => c.status !== "passed").map((c) => c.id);
   console.log(`[rq2] ${cond} ${args.id}: ${Math.round(durationMs / 1000)} s; failing checks: ${failing.join(",") || "none"}`);
