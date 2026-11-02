@@ -220,3 +220,38 @@ describe("SelectedVariablesChips (US04-AC4) — panel default, pill al colapsar"
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });
+
+// Regression, issue #265: `wpd` is required (always active by `isActive`) and a
+// heatmap variable. Turning on another heatmap used to remove it from the active
+// set, so `totalActive` stopped matching what the UI showed.
+function ActiveProbe() {
+  const { totalActive, isActive, activeVariables, toggleVariable } = useVariables();
+  return (
+    <div>
+      <span data-testid="total-active">{totalActive}</span>
+      <span data-testid="wpd-active">{String(isActive("wpd"))}</span>
+      <span data-testid="wpd-in-set">{String(activeVariables.has("wpd"))}</span>
+      <button onClick={() => toggleVariable("densidad-viento")}>densidad</button>
+    </div>
+  );
+}
+
+describe("VariablesContext — heatmap invariant with required variables (issue #265)", () => {
+  it("prender un mapa de calor no saca del set a una obligatoria", () => {
+    render(
+      <VariablesProvider>
+        <ActiveProbe />
+      </VariablesProvider>,
+    );
+    // `densidad-viento` no está activa por defecto; al prenderla debe sumar 1 y
+    // `wpd` (obligatoria y de calor) debe seguir en el set.
+    const before = Number(screen.getByTestId("total-active").textContent);
+    expect(screen.getByTestId("wpd-in-set").textContent).toBe("true");
+
+    fireEvent.click(screen.getByRole("button", { name: "densidad" }));
+
+    expect(screen.getByTestId("wpd-in-set").textContent).toBe("true");
+    expect(screen.getByTestId("wpd-active").textContent).toBe("true");
+    expect(Number(screen.getByTestId("total-active").textContent)).toBe(before + 1);
+  });
+});

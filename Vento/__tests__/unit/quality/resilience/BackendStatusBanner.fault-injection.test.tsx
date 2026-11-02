@@ -65,13 +65,13 @@ describe("BackendStatusBanner — fault injection and recovery", () => {
     globalThis.fetch = originalFetch;
   });
 
-  it("healthy backend: probes /api/health without cache and never shows the banner", async () => {
+  it("healthy backend: probes /api/tiles/warmup without cache and never shows the banner", async () => {
     const { calls } = installFaultInjector(["ok"]);
     render(<BackendStatusBanner />);
     await tick(0);
     await tick(POLL_MS * 3);
     expect(calls.length).toBe(4);
-    expect(calls.every((c) => c.url === "/api/health")).toBe(true);
+    expect(calls.every((c) => c.url === "/api/tiles/warmup")).toBe(true);
     expect(screen.queryByText(BANNER_TEXT)).toBeNull();
   });
 

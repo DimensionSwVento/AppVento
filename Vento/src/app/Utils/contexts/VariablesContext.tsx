@@ -107,10 +107,15 @@ export function VariablesProvider({ children }: { children: React.ReactNode }) {
       } else {
         // UN solo mapa de calor a la vez: al activar una variable de calor, apaga
         // las otras de calor (mantiene las de área/interconectado). Las demás se
-        // acumulan normal.
+        // acumulan normal. Las OBLIGATORIAS no se tocan: `isActive` las considera
+        // siempre activas, así que borrarlas del set desincronizaba `totalActive`
+        // con la UI (issue #265).
         if (isHeatVariable(id)) {
           for (const other of [...next]) {
-            if (other !== id && isHeatVariable(other)) next.delete(other);
+            if (other !== id && isHeatVariable(other)
+                && getVariableById(other)?.required !== true) {
+              next.delete(other);
+            }
           }
         }
         next.add(id);
@@ -153,7 +158,7 @@ export function VariablesProvider({ children }: { children: React.ReactNode }) {
       isActive,
       activeCountByDimension,
       totalByDimension: (dim) => optionalVariablesByDimension(dim).length,
-      totalActive: activeVariables.size,
+      totalActive: new Set([...activeVariables, ...requiredVariableIds()]).size,
       totalVariables: OPTIONAL_VARIABLES.length,
       clearNonRequired,
       replaceActiveVariables,

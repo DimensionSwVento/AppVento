@@ -26,9 +26,11 @@ export default function BackendStatusBanner() {
       const ctrl = new AbortController();
       const to = setTimeout(() => ctrl.abort(), 8000);
       try {
-        // `/api/health` es BARATO (is_ready = SELECT ... LIMIT 1). Antes se pegaba
-        // a `/warmup`, que hace count() de TODA la tabla → carga innecesaria cada 15 s.
-        const res = await fetch("/api/health", { cache: "no-store", signal: ctrl.signal });
+        // `/api/tiles/warmup` atraviesa el BFF: si el backend privado no responde,
+        // devuelve 502 y el sondeo falla. `/api/health` lo atiende Next y responde
+        // 200 aunque FastAPI esté caído (regresión corregida, issue #264). Warmup
+        // es barato desde que usa `is_ready` (EXISTS) + conteo estimado.
+        const res = await fetch("/api/tiles/warmup", { cache: "no-store", signal: ctrl.signal });
         if (!res.ok) throw new Error(String(res.status));
         fails = 0;
         if (alive) setDown(false);
