@@ -1,0 +1,133 @@
+{
+  "runId": "41384832926",
+  "jobs": [
+    {
+      "name": "Quality evidence",
+      "startedAt": "2026-11-02T03:45:52Z",
+      "completedAt": "2026-11-02T03:53:58Z",
+      "durationMs": 486000,
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "durationMs": 1000
+        },
+        {
+          "name": "Checkout (no marketplace actions)",
+          "conclusion": "success",
+          "durationMs": 0
+        },
+        {
+          "name": "Node 22 from the runner tool cache",
+          "conclusion": "success",
+          "durationMs": 1000
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "durationMs": 59000
+        },
+        {
+          "name": "Validate quality attributes catalog",
+          "conclusion": "success",
+          "durationMs": 0
+        },
+        {
+          "name": "Validate quality gate inventory",
+          "conclusion": "success",
+          "durationMs": 1000
+        },
+        {
+          "name": "Attribute coverage inventory",
+          "conclusion": "success",
+          "durationMs": 0
+        },
+        {
+          "name": "Start Keycloak (realm vento)",
+          "conclusion": "success",
+          "durationMs": 12000
+        },
+        {
+          "name": "Wait for realm import",
+          "conclusion": "success",
+          "durationMs": 31000
+        },
+        {
+          "name": "Install Playwright chromium",
+          "conclusion": "success",
+          "durationMs": 24000
+        },
+        {
+          "name": "Collect quality evidence",
+          "conclusion": "success",
+          "durationMs": 348000
+        },
+        {
+          "name": "Validate evidence bundle",
+          "conclusion": "success",
+          "durationMs": 0
+        },
+        {
+          "name": "Analyzer level 1 (diagnostic)",
+          "conclusion": "success",
+          "durationMs": 4000
+        },
+        {
+          "name": "Analyzer level 2 (coverage recommendation)",
+          "conclusion": "success",
+          "durationMs": 3000
+        },
+        {
+          "name": "Deployment decision",
+          "conclusion": "success",
+          "durationMs": 0
+        },
+        {
+          "name": "Render job summary",
+          "conclusion": "success",
+          "durationMs": 0
+        },
+        {
+          "name": "Publish evidence bundle",
+          "conclusion": "success",
+          "durationMs": 0
+        },
+        {
+          "name": "Publish analyzer prompts and responses",
+          "conclusion": "success",
+          "durationMs": 0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "durationMs": 0
+        }
+      ]
+    },
+    {
+      "name": "Deployment gate",
+      "startedAt": "2026-11-02T03:54:00Z",
+      "completedAt": "2026-11-02T03:54:02Z",
+      "durationMs": 2000,
+      "conclusion": "failure",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "durationMs": 1000
+        },
+        {
+          "name": "Enforce the deployment decision",
+          "conclusion": "failure",
+          "durationMs": 0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "durationMs": 0
+        }
+      ]
+    }
+  ]
+}

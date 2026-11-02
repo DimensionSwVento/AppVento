@@ -102,7 +102,9 @@ describe("CRS consistency — axis order and territory predicates", () => {
     expect(pointInRing(-74, 5, ring)).toBe(false);
   });
 
-  it("the two 'inside Colombia' predicates used by the map and by the selection agree on a 0.25° grid", () => {
+  // ~4.4k point-in-polygon evaluations against the full IGAC boundary on each
+  // predicate: CPU-bound, ~5-8 s on CI runners, so it gets an explicit timeout.
+  it("the two 'inside Colombia' predicates used by the map and by the selection agree on a 0.25° grid", { timeout: 60_000 }, () => {
     const disagreements: [number, number][] = [];
     for (let lat = -4.25; lat <= 13.5; lat += 0.25) {
       for (let lng = -82; lng <= -66.75; lng += 0.25) {
