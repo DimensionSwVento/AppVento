@@ -32,7 +32,7 @@ test.describe("Dashboard — mapa de selección de área", () => {
 
     // Flujo principal visible (sidebar con los 4 pasos).
     await expect(page.getByText("Selección de área")).toBeVisible();
-    await expect(page.getByText("Informe de prefactibilidad")).toBeVisible();
+    await expect(page.getByText("Informe de idoneidad")).toBeVisible();
 
     // Canvas WebGL del mapa pintado dentro del presupuesto.
     await expect(page.locator("canvas").first()).toBeVisible({
