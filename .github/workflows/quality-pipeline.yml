@@ -42,7 +42,7 @@ jobs:
   # the deployment decision.
   quality-evidence:
     name: Quality evidence
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       decision: ${{ steps.decision.outputs.decision }}
       deploy_allowed: ${{ steps.decision.outputs.deploy_allowed }}
@@ -197,7 +197,7 @@ jobs:
   # allows or blocks a simulated deployment.
   deployment-gate:
     name: Deployment gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: quality-evidence
     if: always()
     steps:
