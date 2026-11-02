@@ -266,6 +266,135 @@
       "catalogTests": [],
       "blocking": true,
       "enabled": true
+    },
+    {
+      "id": "crs-reproducibility-tests",
+      "name": "CRS consistency and reproducibility tests",
+      "attributeId": "processing",
+      "description": "Tests of the Web-Mercator tile to geographic bbox conversion used by the map grid against the independent OSM slippy-map formulas (round trips, shared tile edges, child partition), GeoJSON [lng, lat] axis order, agreement of the two 'inside Colombia' predicates, and order-independence/determinism of area, centroid, scores and the stored selection encoding.",
+      "source": {
+        "kind": "vitest",
+        "include": [
+          "__tests__/unit/quality/processing/crs.reproducibility.test.ts"
+        ]
+      },
+      "catalogTests": [
+        "CRS consistency tests",
+        "reproducibility tests"
+      ],
+      "blocking": true,
+      "enabled": true
+    },
+    {
+      "id": "data-source-connectivity-tests",
+      "name": "Spatial data source connectivity and fault tolerance tests",
+      "attributeId": "availability",
+      "description": "Tests of the BFF proxy through which every tile, area and historial request reaches the private FastAPI data backend: forwarding of path, query, body and verified identity; 401 without contacting the source; controlled 503 when unconfigured and 502 when unreachable (connection refused, DNS, timeout); propagation of upstream 5xx; and stateless recovery once the backend is back.",
+      "source": {
+        "kind": "vitest",
+        "include": [
+          "__tests__/unit/quality/availability/backendProxy.connectivity.test.ts"
+        ]
+      },
+      "catalogTests": [
+        "connectivity tests to data sources",
+        "fault tolerance tests",
+        "GIS service recovery tests"
+      ],
+      "blocking": true,
+      "enabled": true
+    },
+    {
+      "id": "backend-fault-injection-tests",
+      "name": "Backend fault injection and recovery tests",
+      "attributeId": "resilience",
+      "description": "Fault injection at the HTTP boundary (network error, 500, 503, hanging request cut by the 8 s probe timeout) against the global server-status banner and the report history: a single blip is tolerated, two consecutive faults show a polite non-blocking 'Reconectando' state, probes never stack, the history shows an explicit error with retry instead of an empty list, and both recover when the backend returns.",
+      "source": {
+        "kind": "vitest",
+        "include": [
+          "__tests__/unit/quality/resilience/BackendStatusBanner.fault-injection.test.tsx",
+          "__tests__/unit/quality/resilience/HistorialList.backend-failure.test.tsx"
+        ]
+      },
+      "catalogTests": [
+        "controlled failure tests (fault injection)",
+        "recovery testing"
+      ],
+      "blocking": true,
+      "enabled": true
+    },
+    {
+      "id": "result-reference-topology-tests",
+      "name": "Result reference values and topology tests",
+      "attributeId": "result-quality",
+      "description": "Validation of the report figures against independent references: selected area of a drawn polygon versus the closed-form spherical area, convergence with resolution, additivity, centroid of a symmetric selection, turbine count and expected area for a capacity versus hand arithmetic; and topological consistency of polygon to H3 selection (no duplicates, no spill-over, no gaps, single component, partition along a shared edge, disjoint lossless compaction).",
+      "source": {
+        "kind": "vitest",
+        "include": [
+          "__tests__/unit/quality/result-quality/selection.reference-and-topology.test.ts"
+        ]
+      },
+      "catalogTests": [
+        "validation against reference data",
+        "topological consistency"
+      ],
+      "blocking": true,
+      "enabled": true
+    },
+    {
+      "id": "report-traceability-tests",
+      "name": "Report history traceability tests",
+      "attributeId": "traceability-auditability",
+      "description": "A report saved from the UI records the decision inputs (selection, active variables, project characteristics, report configuration), its outputs (area, region, scores) and an ISO timestamp; the stored selection decodes losslessly; re-running the analysis on the stored inputs reproduces the stored scores; opening it from the history restores the full state; and the history shows date, area, score and the data version only when recorded.",
+      "source": {
+        "kind": "vitest",
+        "include": [
+          "__tests__/unit/quality/traceability/historial.reproducibility.test.tsx"
+        ]
+      },
+      "catalogTests": [
+        "historical reproducibility of results",
+        "decision flow auditing"
+      ],
+      "blocking": true,
+      "enabled": true
+    },
+    {
+      "id": "data-integration-tests",
+      "name": "Catalog and area data integration tests",
+      "attributeId": "data-integration",
+      "description": "Integration of the two catalog endpoints (model and informative variables) into the live catalog with weights, metadata and the land/sea vocabulary; refusal to mix template and real data on a failing source; semantic consistency of master codes with dimensions and backend category/variable keys (separator- and case-insensitive, sub-variables averaged); and aggregation of multi-row area data into dimension scores and coarser map cells.",
+      "source": {
+        "kind": "vitest",
+        "include": [
+          "__tests__/unit/quality/data-integration/catalog-and-area.integration.test.ts"
+        ]
+      },
+      "catalogTests": [
+        "multi-source integration",
+        "semantic consistency",
+        "metadata validation"
+      ],
+      "blocking": true,
+      "enabled": true
+    },
+    {
+      "id": "data-origin-license-tests",
+      "name": "Data origin and licence disclosure tests",
+      "attributeId": "geoethics",
+      "description": "Every declared source link is a valid absolute http(s) URL with its source; the variable tooltip shows the declared source of every catalog variable that has one (linked when a URL exists) and invents none; the variable detail shows source, licence and link when declared and no licence otherwise; the report 'Fuentes de datos' sheet lists every source with version and link and the sources per dimension come from the variables' declared sources.",
+      "source": {
+        "kind": "vitest",
+        "include": [
+          "__tests__/unit/quality/geoethics/dataOrigin.license.test.tsx"
+        ]
+      },
+      "catalogTests": [
+        "data origin validation",
+        "license validation"
+      ],
+      "blocking": true,
+      "enabled": true
     }
   ]
 }
