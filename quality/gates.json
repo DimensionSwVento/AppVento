@@ -324,6 +324,23 @@
       "enabled": true
     },
     {
+      "id": "backend-outage-detection-test",
+      "name": "Backend outage detection integration test",
+      "attributeId": "resilience",
+      "description": "End-to-end fault injection through the real Next route handlers: with the private FastAPI backend unreachable (BFF answers 502 for spatial data), the server-status banner must tell the user. Currently fails: the banner probes the Next-local /api/health route, which answers 200 regardless of the backend.",
+      "source": {
+        "kind": "vitest",
+        "include": [
+          "__tests__/unit/quality/resilience/backendOutage.banner-integration.test.tsx"
+        ]
+      },
+      "catalogTests": [
+        "controlled failure tests (fault injection)"
+      ],
+      "blocking": true,
+      "enabled": true
+    },
+    {
       "id": "result-reference-topology-tests",
       "name": "Result reference values and topology tests",
       "attributeId": "result-quality",
@@ -337,6 +354,23 @@
       "catalogTests": [
         "validation against reference data",
         "topological consistency"
+      ],
+      "blocking": true,
+      "enabled": true
+    },
+    {
+      "id": "region-reference-test",
+      "name": "Department attribution reference test",
+      "attributeId": "result-quality",
+      "description": "Validation of the department shown in the report and used to name saved reports against a reference set: the capital of each of the 32 departments plus Bogota D.C. Currently fails for 13 of 33 references because the lookup uses overlapping hand-made bounding boxes.",
+      "source": {
+        "kind": "vitest",
+        "include": [
+          "__tests__/unit/quality/result-quality/region.reference-capitals.test.ts"
+        ]
+      },
+      "catalogTests": [
+        "validation against reference data"
       ],
       "blocking": true,
       "enabled": true
