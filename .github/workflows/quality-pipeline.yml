@@ -23,7 +23,7 @@ on:
       - "quality/**"
       - ".github/workflows/quality-pipeline.yml"
   push:
-    branches: [main, develop, "feature/quality-attributes-pipeline"]
+    branches: [main, develop, "feature/quality-attributes-pipeline", "research/quality-pipeline-v2"]
     paths:
       - "Vento/**"
       - "quality/**"
