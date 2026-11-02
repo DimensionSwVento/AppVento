@@ -1,0 +1,222 @@
+# RQ2 timing baseline (condition B) — measurement-only workflow (frontend).
+#
+# Union of the checks of `ci.yml` and `frontend-ci.yml` on origin/develop,
+# deduplicated (lint and build appear in both workflows with the same command):
+#
+#   quality   ci.yml:quality            lint + tsc
+#   build     ci.yml:build              next build (needs quality, as in ci.yml)
+#   unit      vitest unit suite          the step the RQ2 detection baseline ran
+#   security  ci.yml:security           npm audit (continue-on-error) + gitleaks
+#
+# Deliberate differences from develop, all declared in TIMING-DESIGN.md:
+#   - every job pinned to ubuntu-24.04, the protocol workflow's runner
+#     (develop uses ubuntu-latest, currently ubuntu-26.04);
+#   - Node 22 from the runner tool cache, the protocol workflow's version
+#     (ci.yml sets up Node 20);
+#   - the deploy / deploy-front jobs are not replicated: they only run on
+#     pushes to develop/main and need repository secrets.
+#
+# The baseline runs develop's TEST FILES against the research product (same
+# product as P): test files are restored from origin/develop and research-only
+# test files are removed, exactly like quality/experiment/rq2-frontend.mjs.
+# The research vitest.config.ts is kept (svg2pdf.js inline fix), as in the
+# local harness.
+#
+# Trigger: a push touching quality/.rq2-timing/**. That path also matches the
+# quality-pipeline.yml path filter (quality/**), so the same push triggers the
+# protocol (P) on the same commit.
+name: RQ2 Timing Baseline (develop CI)
+
+on:
+  push:
+    paths:
+      - "quality/.rq2-timing/**"
+
+concurrency:
+  group: rq2-timing-baseline-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: Vento
+
+jobs:
+  quality:
+    name: Lint + TypeCheck
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout (no marketplace actions)
+        working-directory: .
+        run: |
+          git init -q .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch -q --depth 1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Restore develop test files (RQ2 baseline)
+        working-directory: .
+        run: |
+          set -euo pipefail
+          git fetch -q --depth 1 origin develop
+          DEV=$(git rev-parse FETCH_HEAD)
+          list_tests() {
+            git ls-tree -r --name-only "$1" -- Vento/__tests__ Vento/e2e Vento/src \
+              | grep -E '^Vento/__tests__/|^Vento/e2e/|\.(test|spec)\.[cm]?[jt]sx?$' || true
+          }
+          list_tests "$DEV" | LC_ALL=C sort > /tmp/rq2-dev-tests.txt
+          list_tests HEAD | LC_ALL=C sort > /tmp/rq2-head-tests.txt
+          comm -13 /tmp/rq2-dev-tests.txt /tmp/rq2-head-tests.txt > /tmp/rq2-removed-tests.txt
+          xargs -r -d '\n' rm -f < /tmp/rq2-removed-tests.txt
+          xargs -r -d '\n' git checkout -q "$DEV" -- < /tmp/rq2-dev-tests.txt
+      - name: Node 22 from the runner tool cache
+        run: |
+          NODE_DIR=$(ls -d /opt/hostedtoolcache/node/22.*/x64/bin 2>/dev/null | sort -V | tail -1)
+          if [ -n "$NODE_DIR" ]; then echo "$NODE_DIR" >> "$GITHUB_PATH"; fi
+          node --version
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+  build:
+    name: Build
+    needs: quality
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout (no marketplace actions)
+        working-directory: .
+        run: |
+          git init -q .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch -q --depth 1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Restore develop test files (RQ2 baseline)
+        working-directory: .
+        run: |
+          set -euo pipefail
+          git fetch -q --depth 1 origin develop
+          DEV=$(git rev-parse FETCH_HEAD)
+          list_tests() {
+            git ls-tree -r --name-only "$1" -- Vento/__tests__ Vento/e2e Vento/src \
+              | grep -E '^Vento/__tests__/|^Vento/e2e/|\.(test|spec)\.[cm]?[jt]sx?$' || true
+          }
+          list_tests "$DEV" | LC_ALL=C sort > /tmp/rq2-dev-tests.txt
+          list_tests HEAD | LC_ALL=C sort > /tmp/rq2-head-tests.txt
+          comm -13 /tmp/rq2-dev-tests.txt /tmp/rq2-head-tests.txt > /tmp/rq2-removed-tests.txt
+          xargs -r -d '\n' rm -f < /tmp/rq2-removed-tests.txt
+          xargs -r -d '\n' git checkout -q "$DEV" -- < /tmp/rq2-dev-tests.txt
+      - name: Node 22 from the runner tool cache
+        run: |
+          NODE_DIR=$(ls -d /opt/hostedtoolcache/node/22.*/x64/bin 2>/dev/null | sort -V | tail -1)
+          if [ -n "$NODE_DIR" ]; then echo "$NODE_DIR" >> "$GITHUB_PATH"; fi
+          node --version
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Build Next.js
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: ""
+          NEXT_PUBLIC_KEYCLOAK_URL: "http://localhost:8080"
+          NEXT_PUBLIC_KEYCLOAK_REALM: "vento"
+          # Dummy DEV-ONLY values, identical to frontend-ci.yml (B build env).
+          AUTH_SECRET: "ci-build-only-secret"
+          AUTH_TRUST_HOST: "true"
+          AUTH_KEYCLOAK_ID: "vento-web"
+          AUTH_KEYCLOAK_SECRET: "dev-secret-change-in-production"
+          AUTH_KEYCLOAK_ISSUER: "http://localhost:8080/realms/vento"
+
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout (no marketplace actions)
+        working-directory: .
+        run: |
+          git init -q .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch -q --depth 1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Restore develop test files (RQ2 baseline)
+        working-directory: .
+        run: |
+          set -euo pipefail
+          git fetch -q --depth 1 origin develop
+          DEV=$(git rev-parse FETCH_HEAD)
+          list_tests() {
+            git ls-tree -r --name-only "$1" -- Vento/__tests__ Vento/e2e Vento/src \
+              | grep -E '^Vento/__tests__/|^Vento/e2e/|\.(test|spec)\.[cm]?[jt]sx?$' || true
+          }
+          list_tests "$DEV" | LC_ALL=C sort > /tmp/rq2-dev-tests.txt
+          list_tests HEAD | LC_ALL=C sort > /tmp/rq2-head-tests.txt
+          comm -13 /tmp/rq2-dev-tests.txt /tmp/rq2-head-tests.txt > /tmp/rq2-removed-tests.txt
+          xargs -r -d '\n' rm -f < /tmp/rq2-removed-tests.txt
+          xargs -r -d '\n' git checkout -q "$DEV" -- < /tmp/rq2-dev-tests.txt
+      - name: Node 22 from the runner tool cache
+        run: |
+          NODE_DIR=$(ls -d /opt/hostedtoolcache/node/22.*/x64/bin 2>/dev/null | sort -V | tail -1)
+          if [ -n "$NODE_DIR" ]; then echo "$NODE_DIR" >> "$GITHUB_PATH"; fi
+          node --version
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Unit tests (vitest)
+        run: npx vitest run --project unit --reporter=default --reporter=junit --outputFile=vitest-junit.xml
+
+  security:
+    name: Audit + Secrets Scan
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout (no marketplace actions)
+        working-directory: .
+        run: |
+          git init -q .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch -q --depth 1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Restore develop test files (RQ2 baseline)
+        working-directory: .
+        run: |
+          set -euo pipefail
+          git fetch -q --depth 1 origin develop
+          DEV=$(git rev-parse FETCH_HEAD)
+          list_tests() {
+            git ls-tree -r --name-only "$1" -- Vento/__tests__ Vento/e2e Vento/src \
+              | grep -E '^Vento/__tests__/|^Vento/e2e/|\.(test|spec)\.[cm]?[jt]sx?$' || true
+          }
+          list_tests "$DEV" | LC_ALL=C sort > /tmp/rq2-dev-tests.txt
+          list_tests HEAD | LC_ALL=C sort > /tmp/rq2-head-tests.txt
+          comm -13 /tmp/rq2-dev-tests.txt /tmp/rq2-head-tests.txt > /tmp/rq2-removed-tests.txt
+          xargs -r -d '\n' rm -f < /tmp/rq2-removed-tests.txt
+          xargs -r -d '\n' git checkout -q "$DEV" -- < /tmp/rq2-dev-tests.txt
+      - name: Node 22 from the runner tool cache
+        run: |
+          NODE_DIR=$(ls -d /opt/hostedtoolcache/node/22.*/x64/bin 2>/dev/null | sort -V | tail -1)
+          if [ -n "$NODE_DIR" ]; then echo "$NODE_DIR" >> "$GITHUB_PATH"; fi
+          node --version
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Audit de dependencias (continue-on-error, as in ci.yml)
+        continue-on-error: true
+        run: npm audit --audit-level=high
+      - name: Instalar gitleaks
+        working-directory: /tmp
+        run: |
+          set -euo pipefail
+          wget -q -O gitleaks.tar.gz \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz
+          tar xzf gitleaks.tar.gz -C /usr/local/bin gitleaks
+          gitleaks version
+      - name: Scan de secretos (gitleaks)
+        working-directory: .
+        run: gitleaks detect --no-git --redact --config "$GITHUB_WORKSPACE/.gitleaks.toml" --source . --verbose
