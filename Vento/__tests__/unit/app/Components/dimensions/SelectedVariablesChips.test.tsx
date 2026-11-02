@@ -138,20 +138,31 @@ describe("SelectedVariablesChips (US04-AC4) — panel default, pill al colapsar"
     }
   });
 
-  it("variables no obligatorias muestran ✕ que las deselecciona", () => {
-    // uso-suelo (modelo, no obligatoria) está activa por defecto → su ✕ la quita.
+  // a5e4fc8: la modal es para QUITAR rápido lo seleccionado → solo las
+  // INFORMATIVAS (opcionales) llevan ✕; las del MODELO (p. ej. uso-suelo) van
+  // plegadas abajo, siempre activas y sin ✕.
+  it("variables no obligatorias (informativas) muestran ✕ que las deselecciona", () => {
+    const optional = OPTIONAL_VARIABLES[0];
     render(
       <VariablesProvider>
+        <Seeder ids={[optional.id]} />
         <SelectedVariablesChips />
       </VariablesProvider>,
     );
     const dialog = screen.getByRole("dialog");
-    fireEvent.click(
-      within(dialog).getByRole("button", {
+    // Las del modelo no ofrecen ✕.
+    expect(
+      within(dialog).queryByRole("button", {
         name: new RegExp(`Deseleccionar ${ambientalA.label}`),
       }),
+    ).not.toBeInTheDocument();
+    expect(within(dialog).getByText(optional.label)).toBeInTheDocument();
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: new RegExp(`Deseleccionar ${optional.label}`),
+      }),
     );
-    expect(within(dialog).queryByText(ambientalA.label)).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(optional.label)).not.toBeInTheDocument();
   });
 
   it("click sobre el header del panel lo colapsa a la pill compacta", () => {
@@ -171,13 +182,18 @@ describe("SelectedVariablesChips (US04-AC4) — panel default, pill al colapsar"
   it("click sobre 'Limpiar' NO colapsa el panel (stopPropagation)", () => {
     render(
       <VariablesProvider>
-        <Seeder ids={[ambientalA.id]} />
+        {/* a5e4fc8: 'Limpiar' solo aparece si hay informativas (quitables) —
+            las del modelo (p. ej. uso-suelo) no cuentan → se siembra una opcional. */}
+        <Seeder ids={[OPTIONAL_VARIABLES[0].id]} />
         <SelectedVariablesChips />
       </VariablesProvider>,
     );
     fireEvent.click(screen.getByRole("button", { name: /Limpiar/i }));
     // El panel sigue abierto después de limpiar
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Variables seleccionadas en el mapa — abrir lista/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("click sobre la pill compacta vuelve a abrir el panel", () => {

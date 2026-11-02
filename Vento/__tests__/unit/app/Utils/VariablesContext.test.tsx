@@ -5,6 +5,7 @@ import {
   VARIABLES,
   OPTIONAL_VARIABLES,
   getVariableById,
+  isHeatVariable,
   modelVariableIds,
   optionalVariablesByDimension,
 } from "@/app/Utils/variables/variablesCatalog";
@@ -18,7 +19,6 @@ function Probe({ onCtx }: { onCtx: (ctx: ReturnType<typeof useVariables>) => voi
 // Sprint 4: las del MODELO (`VARIABLES`) arrancan ACTIVAS por defecto. Las
 // toggleables inactivas-por-defecto son las OPCIONALES (informativas).
 const firstNonRequired = OPTIONAL_VARIABLES[0];
-const secondNonRequired = OPTIONAL_VARIABLES[1];
 const requiredVar = VARIABLES.find((v) => v.required)!;
 
 describe("VariablesContext — multi-selección con obligatorias", () => {
@@ -71,7 +71,12 @@ describe("VariablesContext — multi-selección con obligatorias", () => {
     expect(captured.totalActive).toBe(before);
   });
 
-  it("permite múltiples no-obligatorias activas simultáneamente", () => {
+  // 1c2510f: UN solo mapa de calor activo a la vez (por CLASE calor, gana el
+  // último). Las NO-calor (área/interconectado) siguen acumulándose.
+  it("permite múltiples no-obligatorias (no-calor) activas simultáneamente", () => {
+    const nonHeat = OPTIONAL_VARIABLES.filter((v) => !isHeatVariable(v.id));
+    expect(nonHeat.length).toBeGreaterThanOrEqual(2);
+    const [a, b] = nonHeat;
     let captured!: ReturnType<typeof useVariables>;
     render(
       <VariablesProvider>
@@ -79,11 +84,33 @@ describe("VariablesContext — multi-selección con obligatorias", () => {
       </VariablesProvider>,
     );
     act(() => {
-      captured.toggleVariable(firstNonRequired.id);
-      captured.toggleVariable(secondNonRequired.id);
+      captured.toggleVariable(a.id);
+      captured.toggleVariable(b.id);
     });
-    expect(captured.isActive(firstNonRequired.id)).toBe(true);
-    expect(captured.isActive(secondNonRequired.id)).toBe(true);
+    expect(captured.isActive(a.id)).toBe(true);
+    expect(captured.isActive(b.id)).toBe(true);
+  });
+
+  it("solo un mapa de calor activo a la vez: activar otra de calor apaga la anterior", () => {
+    const heat = OPTIONAL_VARIABLES.filter((v) => isHeatVariable(v.id));
+    expect(heat.length).toBeGreaterThanOrEqual(2);
+    const [h1, h2] = heat;
+    const other = OPTIONAL_VARIABLES.find((v) => !isHeatVariable(v.id))!;
+    let captured!: ReturnType<typeof useVariables>;
+    render(
+      <VariablesProvider>
+        <Probe onCtx={(c) => (captured = c)} />
+      </VariablesProvider>,
+    );
+    act(() => {
+      captured.toggleVariable(other.id);
+      captured.toggleVariable(h1.id);
+      captured.toggleVariable(h2.id);
+    });
+    expect(captured.isActive(h1.id)).toBe(false);
+    expect(captured.isActive(h2.id)).toBe(true);
+    // La no-calor no se ve afectada.
+    expect(captured.isActive(other.id)).toBe(true);
   });
 
   it("activeCountByDimension cuenta las OPCIONALES activas de esa dimensión", () => {

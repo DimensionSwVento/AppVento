@@ -29,9 +29,15 @@ describe("HeatmapDimensionSwitches", () => {
     const select = screen.getByLabelText("Visualización en el mapa");
     expect(select).toBeInTheDocument();
     const options = screen.getAllByRole("option");
+    // #7 (32df657): solo las dimensiones PUNTUABLES — Regulatoria/Económica
+    // (informativas, scorable:false) ya no se ofrecen como mapa de calor.
     expect(options.map((o) => o.textContent)).toEqual(
-      HEATMAP_DIMENSIONS.map((d) => d.label),
+      HEATMAP_DIMENSIONS.filter((d) => d.scorable).map((d) => d.label),
     );
+    for (const d of HEATMAP_DIMENSIONS.filter((d) => !d.scorable)) {
+      expect(screen.queryByRole("option", { name: d.label })).not.toBeInTheDocument();
+    }
+    expect(screen.queryByRole("group", { name: "Informativa" })).not.toBeInTheDocument();
   });
 
   it("arranca con 'general' activa (heatmap siempre encendido)", () => {

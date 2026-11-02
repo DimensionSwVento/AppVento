@@ -17,6 +17,9 @@ export default defineConfig({
     // módulos (next-auth/react, next/navigation, @/app/Utils/AccionPrincipalContext)
     // con factories distintas. Sin aislamiento, el primer factory queda cementado
     // en la caché de módulos compartida y los demás archivos ven mocks ajenos.
+    // svg2pdf.js (usado por Report.tsx) importa `jspdf` por default; sin
+    // procesarlo con Vite el interop CJS/ESM deja `jsPDF` undefined al cargar.
+    server: { deps: { inline: ["svg2pdf.js"] } },
     isolate: true,
     fileParallelism: false,
     coverage: {
