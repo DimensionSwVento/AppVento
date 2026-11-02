@@ -1,0 +1,5 @@
+# Raw per-gate outputs (Vitest JSON report, tsc/build logs, npm audit JSON).
+# They are inputs to the normalized bundle, not the deliverable, and they are
+# large and machine-specific. The bundles themselves (evidence/run-*.json) are
+# committed on purpose: they are the quantitative record behind the paper.
+evidence/raw/

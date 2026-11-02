@@ -1,0 +1,248 @@
+#!/usr/bin/env node
+/**
+ * Renders an evidence bundle as Markdown for the GitHub Actions job summary,
+ * which is the delivery surface of this pipeline.
+ *
+ * Usage:  node quality/scripts/render-summary.mjs quality/evidence/run-<id>.json
+ */
+
+import path from "node:path";
+
+import { loadCatalog, readJsonFile } from "./lib/model.mjs";
+
+const STATUS_ICON = { passed: "✅", failed: "❌", skipped: "⏭️" };
+
+function escapePipes(text) {
+  return String(text ?? "").replace(/\|/g, "\\|").replace(/\n+/g, " ");
+}
+
+function renderGateTable(bundle, attributeNames) {
+  const lines = [];
+  lines.push("| Gate | Attribute | Status | Tests | Assertions | Duration |");
+  lines.push("| --- | --- | --- | --- | --- | --- |");
+  for (const gate of bundle.gates) {
+    lines.push(
+      `| \`${gate.gateId}\` | ${attributeNames.get(gate.attributeId) ?? gate.attributeId} | ` +
+        `${STATUS_ICON[gate.status] ?? ""} ${gate.status} | ` +
+        `${gate.testsPassed}/${gate.testsRun} | ${gate.assertions} | ${gate.durationMs} ms |`,
+    );
+  }
+  return lines.join("\n");
+}
+
+function renderDiagnostics(bundle, attributeNames) {
+  const failed = bundle.gates.filter((gate) => gate.status === "failed");
+  if (failed.length === 0) return null;
+
+  const lines = [];
+  lines.push("## Diagnostics (level 1)");
+  lines.push("");
+
+  for (const gate of failed) {
+    const diagnostic = gate.diagnostic;
+    lines.push(`### ❌ \`${gate.gateId}\``);
+    lines.push("");
+
+    if (!diagnostic) {
+      lines.push("_No diagnostic was produced for this gate._");
+      lines.push("");
+      continue;
+    }
+    if (diagnostic.error) {
+      lines.push(`> Diagnostic unavailable: ${diagnostic.error}`);
+      lines.push("");
+      continue;
+    }
+
+    const attributeName =
+      attributeNames.get(diagnostic.affectedAttributeId) ?? diagnostic.affectedAttributeId;
+    lines.push(
+      `**Compromised attribute:** ${attributeName} (\`${diagnostic.affectedAttributeId}\`) — ` +
+        `confidence ${diagnostic.confidence}`,
+    );
+    lines.push("");
+    lines.push(`**Root cause.** ${diagnostic.rootCause}`);
+    lines.push("");
+    lines.push(`**Why it matters.** ${diagnostic.whyItMatters}`);
+    lines.push("");
+    lines.push(`**Remediation.** ${diagnostic.remediation}`);
+    lines.push("");
+    lines.push("<details><summary>Log excerpt</summary>");
+    lines.push("");
+    lines.push("```");
+    lines.push(gate.logExcerpt);
+    lines.push("```");
+    lines.push("");
+    lines.push("</details>");
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+function renderCoverageRecommendation(bundle, attributeNames) {
+  const analysis = bundle.analysis;
+  if (!analysis) return null;
+
+  const lines = [];
+  lines.push("## Coverage recommendation (level 2)");
+  lines.push("");
+
+  if (analysis.error) {
+    lines.push(`> Coverage recommendation unavailable: ${analysis.error}`);
+    return lines.join("\n");
+  }
+
+  const name = (id) => attributeNames.get(id) ?? id;
+
+  lines.push(
+    `**Uncovered (${analysis.uncoveredAttributes.length}):** ` +
+      (analysis.uncoveredAttributes.map(name).join(", ") || "none"),
+  );
+  lines.push("");
+
+  if (analysis.weaklyCoveredAttributes.length > 0) {
+    lines.push("**Weakly covered**");
+    lines.push("");
+    lines.push("| Attribute | What is missing |");
+    lines.push("| --- | --- |");
+    for (const entry of analysis.weaklyCoveredAttributes) {
+      lines.push(`| ${name(entry.attributeId)} | ${escapePipes(entry.missing)} |`);
+    }
+    lines.push("");
+  }
+
+  lines.push("**Recommended next, in priority order**");
+  lines.push("");
+  for (const [index, recommendation] of analysis.recommendations.entries()) {
+    lines.push(
+      `${index + 1}. **${name(recommendation.attributeId)}** — _${recommendation.priority} priority_`,
+    );
+    for (const test of recommendation.suggestedTests) {
+      lines.push(`   - \`${test}\``);
+    }
+    lines.push(`   ${recommendation.rationale}`);
+  }
+  lines.push("");
+
+  const dropped = analysis.validation?.droppedSuggestedTests ?? [];
+  const droppedRecs = analysis.validation?.droppedRecommendations ?? [];
+  if (dropped.length > 0 || droppedRecs.length > 0) {
+    lines.push(
+      `_Discarded as not traceable to the catalog: ${dropped.length} suggested test(s), ` +
+        `${droppedRecs.length} recommendation(s)._`,
+    );
+  } else {
+    lines.push(
+      "_Every recommended test is traceable verbatim to the catalog entry of its attribute._",
+    );
+  }
+
+  return lines.join("\n");
+}
+
+function renderDeployment(bundle, attributeNames) {
+  const deployment = bundle.deployment;
+  if (!deployment) return null;
+
+  const lines = [];
+  lines.push("## Deployment decision");
+  lines.push("");
+  lines.push(
+    deployment.decision === "allow"
+      ? `**✅ ALLOW** — ${deployment.reason}`
+      : `**⛔ BLOCK** — ${deployment.reason}`,
+  );
+  lines.push("");
+
+  if (deployment.blockingFailures.length > 0) {
+    lines.push("| Blocking gate | Attribute | Reason |");
+    lines.push("| --- | --- | --- |");
+    for (const failure of deployment.blockingFailures) {
+      lines.push(
+        `| \`${failure.gateId}\` | ${attributeNames.get(failure.attributeId) ?? failure.attributeId} ` +
+          `| ${escapePipes(failure.reason)} |`,
+      );
+    }
+    lines.push("");
+  }
+
+  if (deployment.warnings.length > 0) {
+    lines.push("Warnings (do not block):");
+    lines.push("");
+    for (const warning of deployment.warnings) {
+      lines.push(`- \`${warning.gateId}\`: ${warning.reason}`);
+    }
+    lines.push("");
+  }
+
+  lines.push(
+    "_Deterministic: the decision follows from the collected evidence and the " +
+      "`blocking` flag each gate declares. The diagnostics above explain a block; " +
+      "they never cause or lift one._",
+  );
+  return lines.join("\n");
+}
+
+function main() {
+  const bundlePath = process.argv[2];
+  if (!bundlePath) {
+    console.error("[render-summary] Usage: render-summary.mjs <path to run-*.json>");
+    process.exit(1);
+  }
+
+  const bundle = readJsonFile(path.resolve(bundlePath));
+  const catalog = loadCatalog();
+  const attributeNames = new Map(catalog.attributes.map((a) => [a.id, a.name]));
+
+  const passed = bundle.gates.filter((g) => g.status === "passed").length;
+  const failed = bundle.gates.filter((g) => g.status === "failed").length;
+  const skipped = bundle.gates.filter((g) => g.status === "skipped").length;
+  const coverage = bundle.attributeCoverage;
+
+  const out = [];
+  out.push("# Quality attributes pipeline");
+  out.push("");
+  out.push(
+    `Run \`${bundle.runId}\` · commit \`${bundle.commit.slice(0, 8)}\` · ` +
+      `catalog v${bundle.catalogVersion} · gates v${bundle.gatesVersion} · ` +
+      `${Math.round(bundle.workflowDurationMs / 1000)} s`,
+  );
+  out.push("");
+  out.push(
+    `**${passed} passed · ${failed} failed · ${skipped} skipped.** ` +
+      `Coverage: ${bundle.coverage.lines}% lines, ${bundle.coverage.branches}% branches. ` +
+      `npm audit: ${bundle.audit.critical} critical, ${bundle.audit.high} high, ` +
+      `${bundle.audit.moderate} moderate, ${bundle.audit.low} low.`,
+  );
+  out.push("");
+  out.push(
+    `**Attribute coverage: ${coverage.covered.length} of ${coverage.totalAttributes}** ` +
+      `attributes have at least one gate ` +
+      `(${coverage.stronglyCovered.length} covered, ${coverage.weaklyCovered.length} weakly covered).`,
+  );
+  out.push("");
+  out.push("## Quality gates");
+  out.push("");
+  out.push(renderGateTable(bundle, attributeNames));
+  out.push("");
+
+  const diagnostics = renderDiagnostics(bundle, attributeNames);
+  if (diagnostics) {
+    out.push(diagnostics);
+  }
+
+  const recommendation = renderCoverageRecommendation(bundle, attributeNames);
+  if (recommendation) {
+    out.push(recommendation);
+  }
+
+  const deployment = renderDeployment(bundle, attributeNames);
+  if (deployment) {
+    out.push(deployment);
+  }
+
+  console.log(out.join("\n"));
+}
+
+main();

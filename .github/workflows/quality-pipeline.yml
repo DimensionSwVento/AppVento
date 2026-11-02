@@ -1,0 +1,253 @@
+# Quality Attributes Pipeline.
+#
+# Executes the tests declared in the quality attributes catalog
+# (quality/quality-attributes.json) on every change, collects the resulting
+# evidence, and decides whether the change can be deployed.
+#
+# This workflow is additive: it does NOT replace frontend-ci.yml, which remains
+# the pipeline that gates merges today.
+#
+# NOTE: the organization's Actions policy only allows actions from
+# DimensionSwVento repositories, so this workflow uses no marketplace action
+# (not even actions/checkout): checkout is done with git + github.token and Node
+# comes from the runner tool cache. Same constraint and same workaround as
+# frontend-ci.yml.
+name: Quality Attributes Pipeline
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "Vento/**"
+      - "quality/**"
+      - ".github/workflows/quality-pipeline.yml"
+  push:
+    branches: [main, develop, "feature/quality-attributes-pipeline"]
+    paths:
+      - "Vento/**"
+      - "quality/**"
+      - ".github/workflows/quality-pipeline.yml"
+
+concurrency:
+  group: quality-pipeline-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Job 1 of 2: runs the quality gates declared in the catalog, collects their
+  # evidence into one bundle, runs the two analysis levels over it, and computes
+  # the deployment decision.
+  quality-evidence:
+    name: Quality evidence
+    runs-on: ubuntu-latest
+    outputs:
+      decision: ${{ steps.decision.outputs.decision }}
+      deploy_allowed: ${{ steps.decision.outputs.deploy_allowed }}
+      reason: ${{ steps.decision.outputs.reason }}
+      blocking_gates: ${{ steps.decision.outputs.blocking_gates }}
+    steps:
+      - name: Checkout (no marketplace actions)
+        run: |
+          git init -q .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch -q --depth 1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Node 22 from the runner tool cache
+        run: |
+          NODE_DIR=$(ls -d /opt/hostedtoolcache/node/22.*/x64/bin 2>/dev/null | sort -V | tail -1)
+          if [ -n "$NODE_DIR" ]; then echo "$NODE_DIR" >> "$GITHUB_PATH"; fi
+          node --version
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: Vento
+
+      # The catalog is the reference model for every later stage: gates declare
+      # the attribute they cover and the analyzer is grounded on catalog entries.
+      # A malformed catalog must stop the pipeline here, before any evidence is
+      # collected against it.
+      - name: Validate quality attributes catalog
+        run: node quality/scripts/validate-catalog.mjs
+
+      # Cross-checks the gate inventory against the catalog: unknown attribute
+      # ids, invented catalog tests, and unit test files claimed by zero or by
+      # more than one gate all stop the pipeline here. Without this, the coverage
+      # figures reported downstream could drift from what the repository does.
+      - name: Validate quality gate inventory
+        run: node quality/scripts/validate-gates.mjs
+
+      - name: Attribute coverage inventory
+        run: |
+          node quality/scripts/coverage-inventory.mjs
+          node quality/scripts/coverage-inventory.mjs --markdown >> "$GITHUB_STEP_SUMMARY"
+
+      # The two Playwright gates (accessibility-tests, map-render-performance)
+      # need a running Keycloak; the realm and its DEV-ONLY credentials live in
+      # infra/keycloak/realm-export.json, same as frontend-ci.yml.
+      - name: Start Keycloak (realm vento)
+        working-directory: infra/keycloak
+        run: docker compose up -d --wait
+
+      - name: Wait for realm import
+        working-directory: infra/keycloak
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/realms/vento/.well-known/openid-configuration > /dev/null; then
+              echo "Realm vento ready"; exit 0
+            fi
+            sleep 5
+          done
+          echo "Keycloak did not answer in time"; docker compose logs --tail 50; exit 1
+
+      - name: Install Playwright chromium
+        working-directory: Vento
+        run: npx playwright install --with-deps chromium
+
+      # Runs every enabled gate and reduces their heterogeneous outputs to a
+      # single normalized bundle. The collector never fails the job: producing
+      # the evidence is its only responsibility, and a failed gate is evidence.
+      - name: Collect quality evidence
+        env:
+          NEXT_PUBLIC_API_URL: ""
+          NEXT_PUBLIC_KEYCLOAK_URL: "http://localhost:8080"
+          NEXT_PUBLIC_KEYCLOAK_REALM: "vento"
+          AUTH_SECRET: "ci-quality-pipeline-only-secret"
+          AUTH_TRUST_HOST: "true"
+          AUTH_KEYCLOAK_ID: "vento-web"
+          AUTH_KEYCLOAK_SECRET: "dev-secret-change-in-production"
+          AUTH_KEYCLOAK_ISSUER: "http://localhost:8080/realms/vento"
+        run: node quality/scripts/collect-evidence.mjs
+
+      - name: Validate evidence bundle
+        run: node quality/scripts/validate-bundle.mjs "quality/evidence/run-${GITHUB_RUN_ID}.json"
+
+      # One call per failed gate. With every gate green this step makes no call
+      # at all. continue-on-error so that a missing key or a provider outage
+      # degrades the analysis without hiding the evidence collected above.
+      - name: Analyzer level 1 (diagnostic)
+        continue-on-error: true
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          AI_ANALYZER_MODEL: ${{ vars.AI_ANALYZER_MODEL }}
+        run: node quality/scripts/analyze-level1.mjs "quality/evidence/run-${GITHUB_RUN_ID}.json"
+
+      # Exactly one call per run, green or not: the question it answers is what
+      # the catalog demands that the repository does not yet implement, which
+      # does not depend on this run having failed.
+      - name: Analyzer level 2 (coverage recommendation)
+        continue-on-error: true
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          AI_ANALYZER_MODEL: ${{ vars.AI_ANALYZER_MODEL }}
+        run: node quality/scripts/analyze-level2.mjs "quality/evidence/run-${GITHUB_RUN_ID}.json"
+
+      # Deterministic. A blocking gate that failed, or that produced no evidence
+      # at all, blocks the deployment. The diagnostics above explain a block;
+      # they never cause or lift one. Runs even if the analysis stage degraded.
+      - name: Deployment decision
+        id: decision
+        if: always()
+        run: node quality/scripts/deployment-decision.mjs "quality/evidence/run-${GITHUB_RUN_ID}.json"
+
+      - name: Render job summary
+        if: always()
+        run: |
+          node quality/scripts/render-summary.mjs "quality/evidence/run-${GITHUB_RUN_ID}.json" \
+            >> "$GITHUB_STEP_SUMMARY"
+
+      # actions/upload-artifact is a marketplace action and is blocked by the
+      # organization policy, so the bundle is emitted into the job log instead.
+      # It is a single self-contained JSON document and can be copied from here.
+      - name: Publish evidence bundle
+        if: always()
+        run: |
+          BUNDLE="quality/evidence/run-${GITHUB_RUN_ID}.json"
+          echo "::group::Evidence bundle ($BUNDLE)"
+          cat "$BUNDLE"
+          echo "::endgroup::"
+
+      # The analyzer persists every prompt and raw response for reproducibility,
+      # but those files live only on the runner and disappear with it. Emitting
+      # them into the log is what makes that claim hold after the run ends.
+      - name: Publish analyzer prompts and responses
+        if: always()
+        run: |
+          DIR="quality/evidence/raw/${GITHUB_RUN_ID}/analysis"
+          if [ ! -d "$DIR" ]; then
+            echo "No analyzer exchanges were recorded for this run."
+            exit 0
+          fi
+          for f in "$DIR"/*.json; do
+            [ -e "$f" ] || continue
+            echo "::group::$(basename "$f")"
+            cat "$f"
+            echo "::endgroup::"
+          done
+
+  # Job 2 of 2: the deployment gate. It enforces the decision computed above and
+  # is deliberately thin — its purpose is to make the enforcement point a
+  # separate, visible node of the pipeline graph rather than a step buried in the
+  # job that produced the evidence. This proof of concept does not deploy: it
+  # allows or blocks a simulated deployment.
+  deployment-gate:
+    name: Deployment gate
+    runs-on: ubuntu-latest
+    needs: quality-evidence
+    if: always()
+    steps:
+      - name: Enforce the deployment decision
+        env:
+          DECISION: ${{ needs.quality-evidence.outputs.decision }}
+          DEPLOY_ALLOWED: ${{ needs.quality-evidence.outputs.deploy_allowed }}
+          REASON: ${{ needs.quality-evidence.outputs.reason }}
+          BLOCKING_GATES: ${{ needs.quality-evidence.outputs.blocking_gates }}
+        run: |
+          if [ -z "$DECISION" ]; then
+            echo "The quality evidence job produced no decision; treating that as a block."
+            {
+              echo "## Deployment gate"
+              echo ""
+              echo "### ⛔ BLOCK"
+              echo ""
+              echo "The quality evidence job did not reach the decision stage."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          echo "Decision: $DECISION"
+          echo "Reason:   $REASON"
+
+          {
+            echo "## Deployment gate"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$DEPLOY_ALLOWED" = "true" ]; then
+            {
+              echo "### ✅ Deployment allowed"
+              echo ""
+              echo "$REASON"
+              echo ""
+              echo "_Simulated: this proof of concept does not deploy._"
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "Deployment allowed. This proof of concept does not deploy."
+            exit 0
+          fi
+
+          {
+            echo "### ⛔ Deployment blocked"
+            echo ""
+            echo "$REASON"
+            echo ""
+            echo "Blocking gates: \`$BLOCKING_GATES\`"
+            echo ""
+            echo "See the diagnostic for each blocking gate in the quality evidence job summary."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Deployment blocked by: $BLOCKING_GATES"
+          exit 1
