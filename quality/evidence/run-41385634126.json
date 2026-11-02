@@ -1,0 +1,808 @@
+{
+  "runId": "41385634126",
+  "commit": "232a87877ad30dea417d4045ab5d7a300923ece2",
+  "timestamp": "2026-11-02T04:00:04.942Z",
+  "workflowDurationMs": 187948,
+  "catalogVersion": "1.0.0",
+  "gatesVersion": "1.0.0",
+  "assertionCountMethod": "static-expect-calls",
+  "environment": {
+    "ci": true,
+    "workflow": "Quality Attributes Pipeline",
+    "ref": "refs/heads/research/quality-pipeline-v2",
+    "node": "v22.23.4"
+  },
+  "gates": [
+    {
+      "gateId": "typescript-check",
+      "attributeId": "processing",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 1,
+      "testsPassed": 1,
+      "assertions": 0,
+      "durationMs": 5925,
+      "logExcerpt": "Command 'npx --no-install tsc --noEmit' exited 0.",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/typescript-check.log"
+      ]
+    },
+    {
+      "gateId": "spatial-operations-tests",
+      "attributeId": "processing",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 44,
+      "testsPassed": 44,
+      "assertions": 60,
+      "durationMs": 20,
+      "logExcerpt": "44/44 test cases passed across 5 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "h3-boundary-tests",
+      "attributeId": "data-quality",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 12,
+      "testsPassed": 12,
+      "assertions": 26,
+      "durationMs": 16016,
+      "logExcerpt": "12/12 test cases passed across 2 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "external-service-client-tests",
+      "attributeId": "interoperability",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 7,
+      "testsPassed": 7,
+      "assertions": 19,
+      "durationMs": 5,
+      "logExcerpt": "7/7 test cases passed across 1 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "spatial-data-cache-tests",
+      "attributeId": "availability",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 3,
+      "testsPassed": 3,
+      "assertions": 3,
+      "durationMs": 5,
+      "logExcerpt": "3/3 test cases passed across 1 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "health-route-test",
+      "attributeId": "availability",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 2,
+      "testsPassed": 2,
+      "assertions": 5,
+      "durationMs": 5,
+      "logExcerpt": "2/2 test cases passed across 1 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "auth-rbac-tests",
+      "attributeId": "security",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 91,
+      "testsPassed": 91,
+      "assertions": 182,
+      "durationMs": 452,
+      "logExcerpt": "91/91 test cases passed across 11 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "dependency-audit",
+      "attributeId": "security",
+      "blocking": false,
+      "status": "passed",
+      "testsRun": 1,
+      "testsPassed": 1,
+      "assertions": 0,
+      "durationMs": 2440,
+      "logExcerpt": "npm audit: 5 critical, 19 high, 25 moderate, 0 low (49 total advisories).",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/npm-audit.json"
+      ]
+    },
+    {
+      "gateId": "ui-component-tests",
+      "attributeId": "usability-geospatial",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 212,
+      "testsPassed": 212,
+      "assertions": 398,
+      "durationMs": 7967,
+      "logExcerpt": "212/212 test cases passed across 40 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "accessibility-tests",
+      "attributeId": "usability-geospatial",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 4,
+      "testsPassed": 4,
+      "assertions": 2,
+      "durationMs": 34422,
+      "logExcerpt": "4 Playwright test(s) passed.",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/accessibility-tests.log"
+      ]
+    },
+    {
+      "gateId": "map-render-performance",
+      "attributeId": "performance",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 4,
+      "testsPassed": 4,
+      "assertions": 6,
+      "durationMs": 38055,
+      "logExcerpt": "4 Playwright test(s) passed.",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/map-render-performance.log"
+      ]
+    },
+    {
+      "gateId": "production-build",
+      "attributeId": "availability",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 1,
+      "testsPassed": 1,
+      "assertions": 0,
+      "durationMs": 26267,
+      "logExcerpt": "Command 'npm run build' exited 0.",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/production-build.log"
+      ]
+    },
+    {
+      "gateId": "crs-reproducibility-tests",
+      "attributeId": "processing",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 16,
+      "testsPassed": 16,
+      "assertions": 39,
+      "durationMs": 3891,
+      "logExcerpt": "16/16 test cases passed across 1 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "data-source-connectivity-tests",
+      "attributeId": "availability",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 14,
+      "testsPassed": 14,
+      "assertions": 30,
+      "durationMs": 83,
+      "logExcerpt": "14/14 test cases passed across 1 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "backend-fault-injection-tests",
+      "attributeId": "resilience",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 17,
+      "testsPassed": 17,
+      "assertions": 32,
+      "durationMs": 304,
+      "logExcerpt": "17/17 test cases passed across 2 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "backend-outage-detection-test",
+      "attributeId": "resilience",
+      "blocking": true,
+      "status": "failed",
+      "testsRun": 2,
+      "testsPassed": 1,
+      "assertions": 4,
+      "durationMs": 28,
+      "logExcerpt": "__tests__/unit/quality/resilience/backendOutage.banner-integration.test.tsx > Backend outage → user-visible degraded state (BFF integration) with FastAPI down for two polling periods, the 'Reconectando con el servidor' banner is shown\nError: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).toBeInTheDocument()\u001b[22m\n\n\u001b[31mreceived\u001b[39m value must be an HTMLElement or an SVGElement.\nReceived has type:  Null\nReceived has value: \u001b[31mnull\u001b[39m\n    at /home/runner/work/AppVento/AppVento/Vento/__tests__/unit/quality/resilience/backendOutage.banner-integration.test.tsx:93:65",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/vitest-results.json"
+      ],
+      "diagnostic": {
+        "rootCause": "The /api/health route handler in the Next.js BFF returns a 200 status code even when the downstream FastAPI service is unreachable, preventing the frontend from triggering the 'Reconectando con el servidor' banner.",
+        "affectedAttributeId": "resilience",
+        "whyItMatters": "The system fails to communicate its degraded state to users during backend outages, which prevents stakeholders from knowing that the wind-energy assessment data being displayed is stale or unavailable, potentially leading to erroneous territorial planning decisions.",
+        "remediation": "Update the /api/health route handler in the Next.js BFF to perform a health check request against the FastAPI backend and return a 503 status if the backend is unreachable.",
+        "confidence": 0.95,
+        "attempts": 1,
+        "model": "google/gemini-3.1-flash-lite",
+        "usage": {
+          "prompt_tokens": 1449,
+          "completion_tokens": 172,
+          "total_tokens": 1621,
+          "cost": 0.00062025,
+          "is_byok": false,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "audio_tokens": 0,
+            "video_tokens": 0
+          },
+          "cost_details": {
+            "upstream_inference_cost": 0.00062025,
+            "upstream_inference_prompt_cost": 0.00036225,
+            "upstream_inference_completions_cost": 0.000258
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "image_tokens": 0,
+            "audio_tokens": 0
+          }
+        }
+      }
+    },
+    {
+      "gateId": "result-reference-topology-tests",
+      "attributeId": "result-quality",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 23,
+      "testsPassed": 23,
+      "assertions": 35,
+      "durationMs": 1689,
+      "logExcerpt": "23/23 test cases passed across 1 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "region-reference-test",
+      "attributeId": "result-quality",
+      "blocking": true,
+      "status": "failed",
+      "testsRun": 33,
+      "testsPassed": 20,
+      "assertions": 1,
+      "durationMs": 15,
+      "logExcerpt": "__tests__/unit/quality/result-quality/region.reference-capitals.test.ts > Result quality — department attribution vs reference capitals a selection on the capital of Caldas (Manizales) is attributed to that department\nAssertionError: expected 'Risaralda' to be 'Caldas' // Object.is equality\n    at /home/runner/work/AppVento/AppVento/Vento/__tests__/unit/quality/result-quality/region.reference-capitals.test.ts:54:41\n    at new Promise (<anonymous>)\n    at new Promise (<anonymous>)\n\n__tests__/unit/quality/result-quality/region.reference-capitals.test.ts > Result quality — department attribution vs reference capitals a selection on the capital of Caquetá (Florencia) is attributed to that department\nAssertionError: expected 'Cauca' to be 'Caquetá' // Object.is equality\n    at /home/runner/work/AppVento/AppVento/Vento/__tests__/unit/quality/result-quality/region.reference-capitals.test.ts:54:41\n    at new Promise (<anonymous>)\n    at new Promise (<anonymous>)\n\n__tests__/unit/quality/result-quality/region.reference-capitals.test.ts > Result quality — department attribution vs reference capitals a selection on the capital of Casanare (Yopal) is attributed to that department\nAssertionError: expected 'Boyacá' to be 'Casanare' // Object.is equality\n    at /home/runner/work/AppVento/AppVento/Vento/__tests__/unit/quality/result-quality/region.reference-capitals.test.ts:54:41\n    at new Promise (<anonymous>)\n    at new Promise (<anonymous>)\n\n__tests__/unit/quality/result-quality/region.reference-capitals.test.ts > Result quality — department attribution vs reference capitals a selection on the capital of Cundinamarca (Zipaquirá) is attributed to that department\nAssertionError: expected 'Boyacá' to be 'Cundinamarca' // Object.is equality\n    at /home/runner/work/AppVento/AppVento/Vento/__tests__/unit/quality/result-quality/region.reference-capitals.test.ts:54:41\n    at new Promise (<anonymous>)\n    at new Promise (<anonymous>)\n\n__tests__/unit/quality/result-quality/region.reference-capitals.test.ts > Result quality — department attribution vs reference capitals a selection on the capital of Guainía (Inírida) is attributed to that department\nAssertionError: expected 'Vichada' to be 'Guainía' // Object.is equality\n    at /home/runner/work/AppVento/AppVento/Vento/__tests__/unit/quality/result-quality/region.reference-capitals.test.ts:54:41\n    at new Promise (<anonymous>)\n    at new Promise (<anonymous>)\n\n__tests__/unit/quality/result-quality/region.reference-capitals.test.ts > Result quality — department attribution vs reference capitals a selection on the capital of Guaviare (San José del Guaviare) is attributed to that department\nAssertionError: expected 'Meta' to be 'Guaviare' // Object.is equality\n    at /home/runner/work/AppVento/AppVento/Vento/__tests__/unit/quality/result-quality/region.reference-capitals.test.ts:54:41\n    at new Promise (<anonymous>)\n    at new Promise (<anonymous>)\n\n__tests__/unit/quality/result-quality/region.reference-capitals.test.ts > Result quality — department attribution vs reference capitals a selection on the capital of Huila (Neiva) is attributed to that department\nAssertionError: expected 'Tolima' to be 'Huila' // Object.is equality\n    at /home/runner/work/AppVento/AppVento/Vento/__tests__/unit/quality/result-quality/region.reference-capitals.test.ts:54:41\n    at new Promise (<anonymous>)\n    at new Promise (<anonymous>)\n\n__tests__/unit/quality/result-quality/region.reference-capitals.test.ts > Result quality — department attribution vs reference capitals a selection on the capital of Meta (Villavicencio) is attributed to that department\nAssertionError: expected 'Cundinamarca' to be 'Meta' // Object.is equality\n    at /home/runner/work/AppVento/AppVento/Vento/__tests__/unit/quality/result-quality/region.reference-capitals.test.ts:54:41\n    at new Promise (<anonymous>)\n    at new Promise (<anonymous>)\n\n__tests__/unit/quality/result-quality/region.reference-capitals.test.ts > Result quality — department att\n[...truncated, 2318 more characters]",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/vitest-results.json"
+      ],
+      "diagnostic": {
+        "rootCause": "The spatial lookup logic uses overlapping, manually defined bounding boxes that incorrectly map geographic coordinates to administrative departments.",
+        "affectedAttributeId": "result-quality",
+        "whyItMatters": "Incorrect department attribution compromises the reliability of wind-energy assessment reports, leading to misinformed territorial planning and administrative errors in project documentation.",
+        "remediation": "Replace the manual bounding box logic in the spatial lookup module with a precise point-in-polygon algorithm using official administrative boundary GeoJSON files.",
+        "confidence": 1,
+        "attempts": 1,
+        "model": "google/gemini-3.1-flash-lite",
+        "usage": {
+          "prompt_tokens": 2343,
+          "completion_tokens": 119,
+          "total_tokens": 2462,
+          "cost": 0.00076425,
+          "is_byok": false,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "audio_tokens": 0,
+            "video_tokens": 0
+          },
+          "cost_details": {
+            "upstream_inference_cost": 0.00076425,
+            "upstream_inference_prompt_cost": 0.00058575,
+            "upstream_inference_completions_cost": 0.0001785
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "image_tokens": 0,
+            "audio_tokens": 0
+          }
+        }
+      }
+    },
+    {
+      "gateId": "report-traceability-tests",
+      "attributeId": "traceability-auditability",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 8,
+      "testsPassed": 8,
+      "assertions": 41,
+      "durationMs": 419,
+      "logExcerpt": "8/8 test cases passed across 1 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "data-integration-tests",
+      "attributeId": "data-integration",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 27,
+      "testsPassed": 27,
+      "assertions": 44,
+      "durationMs": 74,
+      "logExcerpt": "27/27 test cases passed across 1 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/vitest-results.json"
+      ]
+    },
+    {
+      "gateId": "data-origin-license-tests",
+      "attributeId": "geoethics",
+      "blocking": true,
+      "status": "passed",
+      "testsRun": 10,
+      "testsPassed": 10,
+      "assertions": 29,
+      "durationMs": 1081,
+      "logExcerpt": "10/10 test cases passed across 1 file(s).",
+      "artifacts": [
+        "quality/evidence/raw/41385634126/vitest-results.json"
+      ]
+    }
+  ],
+  "coverage": {
+    "lines": 51,
+    "branches": 43.95
+  },
+  "audit": {
+    "critical": 5,
+    "high": 19,
+    "moderate": 25,
+    "low": 0
+  },
+  "attributeCoverage": {
+    "totalAttributes": 13,
+    "strongCoverageMinRatio": 0.5,
+    "covered": [
+      "processing",
+      "availability",
+      "data-integration",
+      "performance",
+      "result-quality",
+      "security",
+      "data-quality",
+      "interoperability",
+      "usability-geospatial",
+      "traceability-auditability",
+      "resilience",
+      "geoethics"
+    ],
+    "uncovered": [
+      "scalability"
+    ],
+    "stronglyCovered": [
+      "processing",
+      "availability",
+      "data-integration",
+      "result-quality",
+      "security",
+      "data-quality",
+      "usability-geospatial",
+      "traceability-auditability",
+      "resilience",
+      "geoethics"
+    ],
+    "weaklyCovered": [
+      "performance",
+      "interoperability"
+    ],
+    "perAttribute": [
+      {
+        "attributeId": "processing",
+        "name": "Processing",
+        "status": "covered",
+        "gateIds": [
+          "typescript-check",
+          "spatial-operations-tests",
+          "crs-reproducibility-tests"
+        ],
+        "implementedTests": [
+          "CRS consistency tests",
+          "geometric precision tests",
+          "reproducibility tests",
+          "spatial unit tests (vector/raster)"
+        ],
+        "missingTests": [],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 1
+      },
+      {
+        "attributeId": "availability",
+        "name": "Availability",
+        "status": "covered",
+        "gateIds": [
+          "spatial-data-cache-tests",
+          "health-route-test",
+          "production-build",
+          "data-source-connectivity-tests"
+        ],
+        "implementedTests": [
+          "GIS service recovery tests",
+          "connectivity tests to data sources",
+          "fault tolerance tests"
+        ],
+        "missingTests": [],
+        "catalogTestCount": 3,
+        "implementedTestRatio": 1
+      },
+      {
+        "attributeId": "data-integration",
+        "name": "Data Integration",
+        "status": "covered",
+        "gateIds": [
+          "data-integration-tests"
+        ],
+        "implementedTests": [
+          "metadata validation",
+          "multi-source integration",
+          "semantic consistency"
+        ],
+        "missingTests": [
+          "vector-raster compatibility"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0.75
+      },
+      {
+        "attributeId": "performance",
+        "name": "Performance",
+        "status": "weak",
+        "gateIds": [
+          "map-render-performance"
+        ],
+        "implementedTests": [
+          "map rendering"
+        ],
+        "missingTests": [
+          "layer loading time",
+          "spatial query latency"
+        ],
+        "catalogTestCount": 3,
+        "implementedTestRatio": 0.3333
+      },
+      {
+        "attributeId": "result-quality",
+        "name": "Result Quality",
+        "status": "covered",
+        "gateIds": [
+          "result-reference-topology-tests",
+          "region-reference-test"
+        ],
+        "implementedTests": [
+          "topological consistency",
+          "validation against reference data"
+        ],
+        "missingTests": [
+          "uncertainty analysis"
+        ],
+        "catalogTestCount": 3,
+        "implementedTestRatio": 0.6667
+      },
+      {
+        "attributeId": "security",
+        "name": "Security",
+        "status": "covered",
+        "gateIds": [
+          "auth-rbac-tests",
+          "dependency-audit"
+        ],
+        "implementedTests": [
+          "GIS API security",
+          "layer access control protection",
+          "sensitive data"
+        ],
+        "missingTests": [
+          "spatial integrity"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0.75
+      },
+      {
+        "attributeId": "data-quality",
+        "name": "Data Quality",
+        "status": "covered",
+        "gateIds": [
+          "h3-boundary-tests"
+        ],
+        "implementedTests": [
+          "metadata validation",
+          "positional accuracy tests",
+          "spatial completeness tests"
+        ],
+        "missingTests": [
+          "temporal consistency tests"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0.75
+      },
+      {
+        "attributeId": "scalability",
+        "name": "Scalability",
+        "status": "uncovered",
+        "gateIds": [],
+        "implementedTests": [],
+        "missingTests": [
+          "load tests with increasing datasets",
+          "resolution increase tests (raster)",
+          "concurrent user tests",
+          "horizontal/vertical scaling tests"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0
+      },
+      {
+        "attributeId": "interoperability",
+        "name": "Interoperability",
+        "status": "weak",
+        "gateIds": [
+          "external-service-client-tests"
+        ],
+        "implementedTests": [
+          "integration with external systems"
+        ],
+        "missingTests": [
+          "OGC services testing",
+          "import/export format testing",
+          "standards and schema validation"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0.25
+      },
+      {
+        "attributeId": "usability-geospatial",
+        "name": "Usability (Geospatial)",
+        "status": "covered",
+        "gateIds": [
+          "ui-component-tests",
+          "accessibility-tests"
+        ],
+        "implementedTests": [
+          "accessibility testing",
+          "symbology and scale evaluation"
+        ],
+        "missingTests": [
+          "cartographic comprehension tests",
+          "spatial cognitive load tests"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0.5
+      },
+      {
+        "attributeId": "traceability-auditability",
+        "name": "Traceability and Auditability",
+        "status": "covered",
+        "gateIds": [
+          "report-traceability-tests"
+        ],
+        "implementedTests": [
+          "decision flow auditing",
+          "historical reproducibility of results"
+        ],
+        "missingTests": [
+          "spatial data lineage tests",
+          "data versioning tests"
+        ],
+        "catalogTestCount": 4,
+        "implementedTestRatio": 0.5
+      },
+      {
+        "attributeId": "resilience",
+        "name": "Resilience",
+        "status": "covered",
+        "gateIds": [
+          "backend-fault-injection-tests",
+          "backend-outage-detection-test"
+        ],
+        "implementedTests": [
+          "controlled failure tests (fault injection)",
+          "recovery testing"
+        ],
+        "missingTests": [
+          "stress recovery scenarios"
+        ],
+        "catalogTestCount": 3,
+        "implementedTestRatio": 0.6667
+      },
+      {
+        "attributeId": "geoethics",
+        "name": "Geoethics",
+        "status": "covered",
+        "gateIds": [
+          "data-origin-license-tests"
+        ],
+        "implementedTests": [
+          "data origin validation",
+          "license validation"
+        ],
+        "missingTests": [
+          "data consent and usage tests"
+        ],
+        "catalogTestCount": 3,
+        "implementedTestRatio": 0.6667
+      }
+    ]
+  },
+  "analysis": {
+    "level": 2,
+    "model": "google/gemini-3.1-flash-lite",
+    "usage": {
+      "prompt_tokens": 5395,
+      "completion_tokens": 716,
+      "total_tokens": 6111,
+      "cost": 0.00242275,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.00242275,
+        "upstream_inference_prompt_cost": 0.00134875,
+        "upstream_inference_completions_cost": 0.001074
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "uncoveredAttributes": [
+      "scalability"
+    ],
+    "weaklyCoveredAttributes": [
+      {
+        "attributeId": "data-integration",
+        "missing": "vector-raster compatibility"
+      },
+      {
+        "attributeId": "performance",
+        "missing": "layer loading time; spatial query latency"
+      },
+      {
+        "attributeId": "result-quality",
+        "missing": "uncertainty analysis"
+      },
+      {
+        "attributeId": "security",
+        "missing": "spatial integrity"
+      },
+      {
+        "attributeId": "data-quality",
+        "missing": "temporal consistency tests"
+      },
+      {
+        "attributeId": "interoperability",
+        "missing": "OGC services testing; import/export format testing; standards and schema validation"
+      },
+      {
+        "attributeId": "usability-geospatial",
+        "missing": "cartographic comprehension tests; spatial cognitive load tests"
+      },
+      {
+        "attributeId": "traceability-auditability",
+        "missing": "spatial data lineage tests; data versioning tests"
+      },
+      {
+        "attributeId": "resilience",
+        "missing": "stress recovery scenarios"
+      },
+      {
+        "attributeId": "geoethics",
+        "missing": "data consent and usage tests"
+      }
+    ],
+    "recommendations": [
+      {
+        "attributeId": "result-quality",
+        "suggestedTests": [
+          "uncertainty analysis"
+        ],
+        "rationale": "The application currently lacks explicit uncertainty quantification for spatial outputs, which is critical for decision-makers assessing wind-energy potential.",
+        "priority": "high"
+      },
+      {
+        "attributeId": "security",
+        "suggestedTests": [
+          "spatial integrity"
+        ],
+        "rationale": "Ensuring that spatial data remains unaltered during transmission and processing is essential for the reliability of territorial assessments.",
+        "priority": "high"
+      },
+      {
+        "attributeId": "performance",
+        "suggestedTests": [
+          "layer loading time",
+          "spatial query latency"
+        ],
+        "rationale": "Performance is central to the user experience in a GIS application; current coverage only addresses rendering, ignoring the latency of data retrieval.",
+        "priority": "medium"
+      },
+      {
+        "attributeId": "scalability",
+        "suggestedTests": [
+          "load tests with increasing datasets",
+          "concurrent user tests"
+        ],
+        "rationale": "The system has no scalability gates; verifying behavior under load is necessary to ensure stability as the user base and data volume grow.",
+        "priority": "medium"
+      },
+      {
+        "attributeId": "resilience",
+        "suggestedTests": [
+          "stress recovery scenarios"
+        ],
+        "rationale": "While basic fault injection is implemented, the system needs to be tested against sustained stress to ensure robust recovery.",
+        "priority": "low"
+      }
+    ],
+    "validation": {
+      "droppedSuggestedTests": [],
+      "droppedRecommendations": [],
+      "coverageComparison": {
+        "uncoveredClaimedButCovered": [],
+        "uncoveredMissedByModel": [],
+        "weakClaimedButNotWeak": [],
+        "weakMissedByModel": []
+      }
+    }
+  },
+  "deployment": {
+    "decision": "block",
+    "reason": "2 blocking quality gate(s) did not pass.",
+    "blockingFailures": [
+      {
+        "gateId": "backend-outage-detection-test",
+        "attributeId": "resilience",
+        "reason": "blocking gate failed (1/2 test cases passed)"
+      },
+      {
+        "gateId": "region-reference-test",
+        "attributeId": "result-quality",
+        "reason": "blocking gate failed (20/33 test cases passed)"
+      }
+    ],
+    "warnings": [
+      {
+        "gateId": "dependency-audit",
+        "attributeId": "security",
+        "reason": "dependency advisories present (5 critical, 19 high); the gate is declared non-blocking, so this does not stop the deployment"
+      }
+    ],
+    "evaluatedAt": "2026-11-02T04:00:11.817Z",
+    "rule": "deterministic; the generative analysis explains a block but never causes or lifts one"
+  }
+}
