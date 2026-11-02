@@ -5,7 +5,7 @@ import { USE_BACKEND } from "../../Utils/projectData";
 
 /**
  * Cartel global de "servidor caído". Sondea el endpoint de salud (`/api/tiles/warmup`,
- * abierto y barato) cada 15 s en modo backend; tras 2 fallos seguidos muestra una
+ * abierto y barato) cada 30 s en modo backend; tras 2 fallos seguidos muestra una
  * franja de error para que la app NO parezca rota (antes: pantallas en 0 sin aviso).
  * Se oculta sola en cuanto el backend responde. En modo template no hace nada.
  */
