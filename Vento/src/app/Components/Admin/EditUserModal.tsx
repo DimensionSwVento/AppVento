@@ -18,9 +18,12 @@ export default function EditUserModal({
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
   const [enabled, setEnabled] = useState(user.enabled);
-  const [role, setRole] = useState<"admin" | "analista">("analista");
-  const [newrole, setNewRole] = useState<"admin" | "analista">("analista");
-  const [rolesLoading, setRolesLoading] = useState(true);
+  // El listado ya trae `roles` (BFF GET /api/admin/users): si viene, el modal
+  // abre con el rol listo; solo se consulta /roles cuando falta.
+  const initialRole = user.roles?.includes("admin") ? "admin" : "analista";
+  const [role, setRole] = useState<"admin" | "analista">(initialRole);
+  const [newrole, setNewRole] = useState<"admin" | "analista">(initialRole);
+  const [rolesLoading, setRolesLoading] = useState(!user.roles);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +40,7 @@ export default function EditUserModal({
   const isDowngrade = roleChanged && role === "admin" && newrole === "analista";
 
   useEffect(() => {
+    if (user.roles) return;
     const fetchRoles = async () => {
       try {
         const res = await fetch(`/api/admin/users/${user.id}/roles`);
@@ -53,7 +57,7 @@ export default function EditUserModal({
       }
     };
     fetchRoles();
-  }, [user.id]);
+  }, [user.id, user.roles]);
 
   // Aplica realmente los cambios (tras la confirmación si aplica).
   const applyChanges = async () => {

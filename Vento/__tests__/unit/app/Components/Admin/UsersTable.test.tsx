@@ -84,123 +84,55 @@ describe("UsersTable", () => {
     expect(handlePageChange).toHaveBeenCalledWith(3);
   });
 
-  it("calls onDelete when trash icon is clicked", () => {
-    const handleDelete = vi.fn();
-
-    render(
-      <UsersTable
-        users={mockUsers}
-        onEdit={vi.fn()}
-        onDelete={handleDelete}
-        onActivate={vi.fn()}
-        page={1}
-        onPageChange={vi.fn()}
-        hasMore={false}
-      />
-    );
-
-    // Find the deactivate buttons by title (US08-04: "Eliminar" → "Desactivar")
-    const deleteButtons = screen.getAllByTitle("Desactivar usuario");
-    fireEvent.click(deleteButtons[0]);
-    expect(handleDelete).toHaveBeenCalledWith(mockUsers[0]);
-  });
-
-  it("enters inline edit mode when edit icon is clicked", () => {
-    render(
-      <UsersTable
-        users={mockUsers}
-        onEdit={vi.fn()}
-        onDelete={vi.fn()}
-        onActivate={vi.fn()}
-        page={1}
-        onPageChange={vi.fn()}
-        hasMore={false}
-      />
-    );
-
-    // Click the edit button for the first user
-    const editButtons = screen.getAllByTitle("Editar usuario");
-    fireEvent.click(editButtons[0]);
-
-    // The name should now appear in separate input fields
-    const firstNameInput = screen.getByDisplayValue("John");
-    expect(firstNameInput).toBeDefined();
-
-    const lastNameInput = screen.getByDisplayValue("Doe");
-    expect(lastNameInput).toBeDefined();
-
-    // The email should also be in an editable input
-    const emailInput = screen.getByDisplayValue("john@test.com");
-    expect(emailInput).toBeDefined();
-
-    // Should show confirm and cancel buttons
-    expect(screen.getByTitle("Guardar cambios")).toBeDefined();
-    expect(screen.getByTitle("Cancelar")).toBeDefined();
-  });
-
-  it("calls onEdit with updated data when confirmed", () => {
+  // US08-04 (feedback UX): sin edición inline — editar abre directo el modal
+  // (onEdit con el usuario tal cual) y desactivar/activar son acciones directas.
+  describe("acciones por fila", () => {
     const handleEdit = vi.fn();
-
-    render(
-      <UsersTable
-        users={mockUsers}
+    const handleDelete = vi.fn();
+    const handleActivate = vi.fn();
+    const renderTable = () =>
+      render(
+        <UsersTable
+          users={mockUsers}
         onEdit={handleEdit}
-        onDelete={vi.fn()}
-        onActivate={vi.fn()}
+        onDelete={handleDelete}
+        onActivate={handleActivate}
         page={1}
         onPageChange={vi.fn()}
         hasMore={false}
-      />
-    );
+        />
+      );
 
-    // Enter edit mode
-    const editButtons = screen.getAllByTitle("Editar usuario");
-    fireEvent.click(editButtons[0]);
+    it("el lápiz llama a onEdit con el usuario, sin inputs inline", () => {
+      renderTable();
+      fireEvent.click(screen.getAllByTitle("Editar usuario")[0]);
+      expect(handleEdit).toHaveBeenCalledWith(mockUsers[0]);
+      expect(screen.queryByDisplayValue("John")).toBeNull();
+    });
 
-    // Edit the name
-    const firstNameInput = screen.getByDisplayValue("John");
-    fireEvent.change(firstNameInput, { target: { value: "Juan" } });
-    
-    const lastNameInput = screen.getByDisplayValue("Doe");
-    fireEvent.change(lastNameInput, { target: { value: "Carlos" } });
+    it("clic en la fila también abre la edición", () => {
+      renderTable();
+      fireEvent.click(screen.getByText("Jane Smith"));
+      expect(handleEdit).toHaveBeenCalledWith(mockUsers[1]);
+    });
 
-    // Click confirm
-    fireEvent.click(screen.getByTitle("Guardar cambios"));
+    it("usuario activo: 'Desactivar' llama a onDelete y no abre la edición", () => {
+      renderTable();
+      const buttons = screen.getAllByTitle("Desactivar usuario");
+      expect(buttons).toHaveLength(1); // solo John está activo
+      fireEvent.click(buttons[0]);
+      expect(handleDelete).toHaveBeenCalledWith(mockUsers[0]);
+      expect(handleEdit).not.toHaveBeenCalled();
+    });
 
-    expect(handleEdit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: "1",
-        firstName: "Juan",
-        lastName: "Carlos",
-      })
-    );
-  });
-
-  it("cancels edit when cancel button is clicked", () => {
-    render(
-      <UsersTable
-        users={mockUsers}
-        onEdit={vi.fn()}
-        onDelete={vi.fn()}
-        onActivate={vi.fn()}
-        page={1}
-        onPageChange={vi.fn()}
-        hasMore={false}
-      />
-    );
-
-    // Enter edit mode
-    const editButtons = screen.getAllByTitle("Editar usuario");
-    fireEvent.click(editButtons[0]);
-
-    // Should be in edit mode
-    expect(screen.getByTitle("Cancelar")).toBeDefined();
-
-    // Click cancel
-    fireEvent.click(screen.getByTitle("Cancelar"));
-
-    // Should be back to display mode — name is plain text again
-    expect(screen.getByText("John Doe")).toBeDefined();
+    it("usuario inactivo: muestra 'Activar' en vez de 'Desactivar'", () => {
+      renderTable();
+      const buttons = screen.getAllByTitle("Activar usuario");
+      expect(buttons).toHaveLength(1); // solo Jane está inactiva
+      fireEvent.click(buttons[0]);
+      expect(handleActivate).toHaveBeenCalledWith(mockUsers[1]);
+      expect(handleEdit).not.toHaveBeenCalled();
+    });
   });
 
   it("shows empty state when no users", () => {

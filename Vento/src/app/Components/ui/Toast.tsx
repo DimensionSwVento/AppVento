@@ -30,7 +30,8 @@ export function useToast(): ToastApi {
   return ctx;
 }
 
-const DEFAULT_DURATION = 4000;
+// 5s: con 4s abajo-derecha el aviso pasaba desapercibido (feedback US08-04).
+const DEFAULT_DURATION = 5000;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -77,9 +78,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 const VARIANT = {
-  success: { border: "border-green-500", Icon: CheckCircle2, color: "text-green-600", role: "status" as const, live: "polite" as const },
-  error: { border: "border-red-500", Icon: AlertCircle, color: "text-red-600", role: "alert" as const, live: "assertive" as const },
-  info: { border: "border-[#165170ff]", Icon: Info, color: "text-[#165170ff]", role: "status" as const, live: "polite" as const },
+  success: { box: "border-green-500 bg-green-50", Icon: CheckCircle2, color: "text-green-600", role: "status" as const, live: "polite" as const },
+  error: { box: "border-red-500 bg-red-50", Icon: AlertCircle, color: "text-red-600", role: "alert" as const, live: "assertive" as const },
+  info: { box: "border-[#165170ff] bg-[#eef5f9]", Icon: Info, color: "text-[#165170ff]", role: "status" as const, live: "polite" as const },
 };
 
 function ToastViewport({
@@ -90,8 +91,11 @@ function ToastViewport({
   onDismiss: (id: number) => void;
 }) {
   if (toasts.length === 0) return null;
+  // Arriba-centro (no abajo-derecha): es donde la vista ya está puesta tras
+  // pulsar un botón de un formulario/modal, y no compite con controles del mapa.
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-full max-w-xs flex-col gap-2">
+    <div className="pointer-events-none fixed inset-x-0 top-4 z-[70] flex flex-col items-center gap-2 px-4">
+      <style>{`@keyframes ventoToastIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }`}</style>
       {toasts.map((t) => {
         const v = VARIANT[t.variant];
         const Icon = v.Icon;
@@ -100,10 +104,11 @@ function ToastViewport({
             key={t.id}
             role={v.role}
             aria-live={v.live}
-            className={`pointer-events-auto flex items-start gap-2 rounded-lg border-l-4 bg-white px-3 py-2.5 shadow-lg ${v.border}`}
+            className={`pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-xl border-l-4 px-4 py-3 shadow-xl ring-1 ring-black/5 ${v.box}`}
+            style={{ animation: "ventoToastIn 180ms ease-out" }}
           >
-            <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${v.color}`} aria-hidden="true" />
-            <p className="flex-1 text-xs text-gray-700">{t.message}</p>
+            <Icon className={`h-5 w-5 shrink-0 ${v.color}`} aria-hidden="true" />
+            <p className="flex-1 text-sm font-medium text-gray-800">{t.message}</p>
             <button
               onClick={() => onDismiss(t.id)}
               aria-label="Cerrar notificación"
