@@ -1,0 +1,25 @@
+"use client";
+
+import { useMemo } from "react";
+import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
+import { calcAreaKm2 } from "../../Utils/report/areaCalc";
+
+const fmt = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 });
+
+/**
+ * Tooltip flotante a la derecha del mapa que muestra el área (km²)
+ * total de los hexágonos seleccionados. Siempre visible.
+ */
+export default function AreaDisplay() {
+  const { selectedHexes } = useAprincipal();
+  const km2 = useMemo(() => calcAreaKm2(selectedHexes), [selectedHexes]);
+
+  return (
+    <div className="w-full rounded-lg bg-[#165170ff] shadow-md px-3 py-2">
+      <p className="text-[10px] uppercase tracking-wide text-gray-300">Área seleccionada</p>
+      <p className="text-base font-semibold text-white">
+        {fmt.format(km2)} <span className="text-xs font-normal text-gray-300">km²</span>
+      </p>
+    </div>
+  );
+}
