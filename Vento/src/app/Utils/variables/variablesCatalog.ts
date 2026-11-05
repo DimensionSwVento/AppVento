@@ -59,6 +59,13 @@ export interface Variable {
   aplicaEn?: "mar" | "tierra";
   /** Nombre del ícono en formato `lib:name`. Resolución en `variableIcons.tsx`. */
   iconKey: string;
+  /**
+   * Color PROPIO de la variable (hex `#rrggbb`) para el mapa: relleno del área y
+   * borde circular del icono. Editable/ingestable en admin. Si no se define, cae
+   * al color por dimensión (`colorHexForVariable`). FUENTE ÚNICA del color →
+   * `mapComponent(id)` (lo consumen mapa, modal y admin, sin divergir).
+   */
+  color?: string;
   /** Si es `true`, arranca activa y su switch no se puede apagar desde la UI. */
   required?: boolean;
   /**
@@ -232,8 +239,8 @@ export const SUBCRITERIO_DESCRIPTIONS: Record<string, string> = {
 // ════════════════════════════════════════════════════════════════════════
 export const VARIABLES: Variable[] = [
   // ─── AMBIENTAL · Bióticas · Especies bióticas (7) ───────────────────────
-  { id: "especies-endemicas", masterId: "AMB-005-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Especies bióticas", label: "Especies endémicas", description: "Ocurrencias de vertebrados que se distribuyen únicamente en Colombia.", fuente: "Instituto Von Humboldt", licencia: "Uso libre", url: "https://www.gbif.org/", iconKey: "lucide:Bird" },
-  { id: "especies-migratorias", masterId: "AMB-003-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Especies bióticas", label: "Especies migratorias", description: "Ocurrencias georreferenciadas de especies migratorias presentes en Colombia.", fuente: "GBIF", url: "https://biodiversidad.co/", iconKey: "lucide:Bird" },
+  { id: "especies-endemicas", masterId: "AMB-005-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Especies bióticas", label: "Especies endémicas", description: "Ocurrencias de vertebrados que se distribuyen únicamente en Colombia.", fuente: "Instituto Von Humboldt", licencia: "Uso libre", url: "https://www.gbif.org/", iconKey: "lucide:Feather" },
+  { id: "especies-migratorias", masterId: "AMB-003-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Especies bióticas", label: "Especies migratorias", description: "Ocurrencias georreferenciadas de especies migratorias presentes en Colombia.", fuente: "GBIF", url: "https://biodiversidad.co/", iconKey: "lucide:Navigation" },
   { id: "especies-marinas-iucn", masterId: "AMB-019-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Especies bióticas", label: "Especies marinas IUCN", description: "Ocurrencias georreferenciadas de especies marinas presentes en Colombia listadas por la UICN.", fuente: "GBIF", url: "https://obis.org/", iconKey: "lucide:Fish" },
   { id: "especies-aves-iucn", masterId: "AMB-017-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Especies bióticas", label: "Especies aves IUCN", description: "Especies de aves presentes en Colombia listadas por la UICN.", fuente: "GBIF", url: "https://www.gbif.org/", iconKey: "lucide:Bird" },
   { id: "especies-murcielagos-iucn", masterId: "AMB-042-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Especies bióticas", label: "Especies murciélagos IUCN", description: "Ocurrencias georreferenciadas de murciélagos presentes en Colombia listados por la UICN.", fuente: "GBIF", url: "https://www.gbif.org/", aplicaEn: "tierra", iconKey: "lucide:PawPrint" },
@@ -256,7 +263,7 @@ export const VARIABLES: Variable[] = [
   { id: "fallas-sismicidad", masterId: "AMB-031-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Fallas y sismicidad", description: "Presencia de zonas de fallas.", fuente: "SGC", aplicaEn: "tierra", iconKey: "lucide:Activity" },
   { id: "batimetria-offshore", masterId: "AMB-030-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Batimetría para cimentación offshore", description: "Profundidad del lecho marino para cimentación costa afuera.", fuente: "NOAA", enMapa: true, aplicaEn: "mar", iconKey: "lucide:Radar" },
   { id: "pendiente-terreno", masterId: "AMB-007-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Pendiente del terreno", description: "Inclinación del terreno; factor de estabilidad ecológica.", fuente: "Elaboración propia", enMapa: true, aplicaEn: "tierra", iconKey: "svg:slope" },
-  { id: "litologia", masterId: "AMB-028-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Litología", description: "Composición litológica del suelo.", fuente: "SGC", aplicaEn: "tierra", iconKey: "lucide:Map" },
+  { id: "litologia", masterId: "AMB-028-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Litología", description: "Composición litológica del suelo.", fuente: "SGC", aplicaEn: "tierra", iconKey: "lucide:Layers" },
   { id: "fondos-marinos", masterId: "AMB-029-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Fondos marinos", description: "Composición y características del fondo marino para cimentación costa afuera.", fuente: "INVEMAR", aplicaEn: "mar", iconKey: "lucide:Waves" },
   { id: "elevacion", masterId: "AMB-008-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Elevación", description: "Altitud media sobre el nivel del mar.", fuente: "IGAC", enMapa: true, aplicaEn: "tierra", iconKey: "lucide:MountainSnow" },
 
@@ -288,10 +295,10 @@ export const VARIABLES: Variable[] = [
   { id: "analfabetismo", masterId: "SOC-012-S", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Tasa de analfabetismo", description: "Proporción de población que no sabe leer ni escribir; valores altos reflejan mayores barreras educativas.", fuente: "Datos Abiertos", iconKey: "lucide:Book" },
   { id: "hogares-municipio", masterId: "SOC-034-S", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Hogares por municipio", description: "Número de hogares registrados en el municipio; aproxima escala social y demanda potencial de atención.", fuente: "DANE", iconKey: "lucide:Home" },
   { id: "pobreza-monetaria", masterId: "SOC-035-SE", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Índice de pobreza monetaria", description: "Proporción de población con ingresos por debajo de la línea de pobreza monetaria.", fuente: "DANE", iconKey: "lucide:CircleDollarSign" },
-  { id: "tipologia-territorial", masterId: "SOC-036-SE", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Tipología territorial", description: "Clasificación del municipio según características territoriales, funcionales o de desarrollo.", fuente: "DNP", iconKey: "lucide:MapPinned" },
+  { id: "tipologia-territorial", masterId: "SOC-036-SE", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Tipología territorial", description: "Clasificación del municipio según características territoriales, funcionales o de desarrollo.", fuente: "DNP", iconKey: "lucide:LayoutGrid" },
 
   // ─── SOCIAL · Social · Brecha energética y asequibilidad (3) ────────────
-  { id: "tarifa-energia", masterId: "SOC-010-TSE", dimension: "social", criterio: "Social", subcriterio: "Brecha energética y asequibilidad", label: "Tarifa de energía por comercializador", description: "Costo de la energía eléctrica cobrado por el comercializador; permite estimar la asequibilidad del servicio.", fuente: "Datos Abiertos", enMapa: true, iconKey: "lucide:Zap" },
+  { id: "tarifa-energia", masterId: "SOC-010-TSE", dimension: "social", criterio: "Social", subcriterio: "Brecha energética y asequibilidad", label: "Tarifa de energía por comercializador", description: "Costo de la energía eléctrica cobrado por el comercializador; permite estimar la asequibilidad del servicio.", fuente: "Datos Abiertos", enMapa: true, iconKey: "lucide:ReceiptText" },
   { id: "ipm-energetica", masterId: "SOC-038-TSE", dimension: "social", criterio: "Social", subcriterio: "Brecha energética y asequibilidad", label: "IPM energética", description: "Indicador de privaciones relacionadas con acceso, calidad, uso y asequibilidad de la energía.", fuente: "UPME", enMapa: true, iconKey: "lucide:ZapOff" },
   { id: "zni", masterId: "SOC-009-TS", dimension: "social", criterio: "Social", subcriterio: "Brecha energética y asequibilidad", label: "Zona no interconectada", description: "Identifica municipios o áreas sin conexión al Sistema Interconectado Nacional.", fuente: "Datos Abiertos", enMapa: true, iconKey: "lucide:PlugZap" },
 
@@ -307,7 +314,7 @@ export const VARIABLES: Variable[] = [
   // ⚠️ Tipología territorial aparece DOS veces en el Excel del cliente (SOC-036-SE):
   //    en "Vulnerabilidad social" y aquí. Se conserva el duplicado (posible doble
   //    peso a revisar con el cliente). Mismo masterId, slug distinto.
-  { id: "tipologia-territorial-gob", masterId: "SOC-036-SE", dimension: "social", criterio: "Social", subcriterio: "Falta de gobernanza, institucionalidad y riesgo político", label: "Tipología territorial", description: "Clasificación territorial para aproximar capacidades, ruralidad, centralidad o rezagos institucionales.", fuente: "DNP", iconKey: "lucide:Landmark" },
+  { id: "tipologia-territorial-gob", masterId: "SOC-036-SE", dimension: "social", criterio: "Social", subcriterio: "Falta de gobernanza, institucionalidad y riesgo político", label: "Tipología territorial", description: "Clasificación territorial para aproximar capacidades, ruralidad, centralidad o rezagos institucionales.", fuente: "DNP", iconKey: "lucide:LayoutGrid" },
 
   // ─── SOCIAL · Social · Sensibilidad sociocultural, étnica y territorial (5) ─
   { id: "resguardos-indigenas", masterId: "SOC-013-SR", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "Resguardos indígenas", description: "Identifica presencia de resguardos indígenas y posibles necesidades de consulta, coordinación y enfoque diferencial.", fuente: "Colombia en Mapas", enMapa: true, iconKey: "tabler:tent" },
@@ -405,9 +412,9 @@ export const OPTIONAL_VARIABLES: Variable[] = [
   { id: "aep", masterId: "NA", dimension: "tecnica", criterio: "Recurso eólico", label: "AEP (energía anual generada)", description: "Energía anual estimada por el software a partir de Weibull, densidad y perfiles de aerogenerador.", noCalculo: true, iconKey: "lucide:Zap" },
 
   // ─── Social (3) — sin contraparte ponderada ─────────────────────────────
-  { id: "diversidad-religiosa", masterId: "SOC-024-S", dimension: "social", criterio: "Social", label: "Diversidad religiosa", description: "Resultados de la encuesta nacional de diversidad religiosa 2019.", noCalculo: true, iconKey: "lucide:Users" },
+  { id: "diversidad-religiosa", masterId: "SOC-024-S", dimension: "social", criterio: "Social", label: "Diversidad religiosa", description: "Resultados de la encuesta nacional de diversidad religiosa 2019.", noCalculo: true, iconKey: "lucide:Church" },
   { id: "inclinaciones-politicas", masterId: "SOC-005-S", dimension: "social", criterio: "Social", label: "Inclinaciones políticas", description: "Ideología política predominante según la consulta nacional.", noCalculo: true, iconKey: "lucide:Vote" },
-  { id: "riesgo-electoral", masterId: "SOC-004-SR", dimension: "social", criterio: "Social", label: "Riesgo electoral", description: "Indicadores de riesgo de fraude electoral y de violencia.", noCalculo: true, iconKey: "lucide:TriangleAlert" },
+  { id: "riesgo-electoral", masterId: "SOC-004-SR", dimension: "social", criterio: "Social", label: "Riesgo electoral", description: "Indicadores de riesgo de fraude electoral y de violencia.", noCalculo: true, iconKey: "lucide:Siren" },
 
   // ─── Económica (informativa · no puntúa) — proyecciones macro por escenario ─
   // Encendibles por switch como cualquier informativa; el modal "Análisis
@@ -415,9 +422,9 @@ export const OPTIONAL_VARIABLES: Variable[] = [
   { id: "precio-spot", masterId: "ECO-001", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "Sector energético", label: "Precio spot energía (COP/kWh)", description: "Proyección del precio spot del kWh negociado en bolsa por escenario.", noCalculo: true, iconKey: "lucide:LineChart" },
   { id: "pib", masterId: "ECO-002", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "PIB", description: "Proyección del Producto Interno Bruto por escenario de generación.", noCalculo: true, iconKey: "lucide:TrendingUp" },
   { id: "ipc", masterId: "ECO-003", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "IPC", description: "Proyección del Índice de Precios al Consumidor por escenario.", noCalculo: true, iconKey: "lucide:Percent" },
-  { id: "inflacion", masterId: "ECO-004", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "Inflación", description: "Proyección de la inflación por escenario.", noCalculo: true, iconKey: "lucide:Activity" },
+  { id: "inflacion", masterId: "ECO-004", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "Inflación", description: "Proyección de la inflación por escenario.", noCalculo: true, iconKey: "lucide:Banknote" },
   { id: "tasa-cambio", masterId: "ECO-005", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "General", label: "TRM", description: "Proyección de la tasa representativa del mercado (peso-dólar) por escenario.", noCalculo: true, iconKey: "lucide:DollarSign" },
-  { id: "demanda-energia", masterId: "ECO-006", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "Sector energético", label: "Demanda de energía (kWh)", description: "Proyección de la demanda de energía por escenario.", noCalculo: true, iconKey: "lucide:Zap" },
+  { id: "demanda-energia", masterId: "ECO-006", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "Sector energético", label: "Demanda de energía (kWh)", description: "Proyección de la demanda de energía por escenario.", noCalculo: true, iconKey: "lucide:Lightbulb" },
   { id: "oferta-energia", masterId: "ECO-007", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "Sector energético", label: "Oferta de energía (kWh)", description: "Proyección de la oferta de energía por escenario.", noCalculo: true, iconKey: "lucide:Plug" },
   { id: "emisiones", masterId: "ECO-008", dimension: "macroeconomica", criterio: "Proyecciones", subcriterio: "Sector energético", label: "Emisiones (GEN)", description: "Proyección de emisiones del sector de generación por escenario.", noCalculo: true, iconKey: "lucide:Factory" },
 

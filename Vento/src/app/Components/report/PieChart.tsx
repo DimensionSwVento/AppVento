@@ -76,7 +76,7 @@ export default function PieChart({
             <text
               x={size + 24}
               y={ly}
-              fontSize={10}
+              fontSize={13}
               fill="#4b5563"
               fontWeight={600}
               dominantBaseline="middle"

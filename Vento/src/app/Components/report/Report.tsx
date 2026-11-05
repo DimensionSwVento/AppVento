@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { Maximize2 } from "lucide-react";
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
@@ -14,6 +21,7 @@ import {
 import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
 import { svg2pdf } from "svg2pdf.js"; // Fase 1 PDF nativo: charts SVG → vector
+import ReportSheet from "./ReportSheet";
 import { useIsAdmin } from "../../Utils/useIsAdmin";
 import { fetchMasterStatus, fetchEscenarios, fetchNormas, fetchVariableRanges, fetchReportCalcText, fetchReportContent, type AdminEscenario } from "../../Utils/admin/catalogApi";
 import { dbField, AuditDataLabel } from "../../Utils/audit";
@@ -27,7 +35,6 @@ import BarChart from "./BarChart";
 import LineChartGrid from "./LineChartGrid";
 import Gauge from "./Gauge";
 import DivergingBars from "./DivergingBars";
-import ReportSheet from "./ReportSheet";
 import ReportBuilder from "./ReportBuilder";
 import {
   useEconomic,
@@ -45,7 +52,6 @@ import {
 } from "../../Utils/report/reportConfig";
 import AreaMiniMap from "./AreaMiniMap";
 import { useCachedImage } from "../../Utils/useCachedImage";
-import ConfirmDialog from "../ui/ConfirmDialog";
 import { SNAPSHOT_KEY } from "../../Utils/h3/h3Resolution";
 import { selectionNature } from "../../Utils/h3/hexClassification";
 import { dimensionScore } from "../../Utils/report/heatmapPalette";
@@ -99,6 +105,7 @@ import {
   type CaracteristicasState,
 } from "../../Utils/contexts/CaracteristicasContext";
 import { useHistorial } from "../../Utils/historial/HistorialContext";
+import { useClearFlow } from "../../Utils/draft/FlowDraftSync";
 
 const fmtKm2 = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 });
 
@@ -119,8 +126,21 @@ const RADAR_DIMS: HeatmapDimensionId[] = [
 // #3: bajados (6→4, 11→9) porque la 1ª hoja (radar+influyentes+tabla) y la última
 // (resumen+informativas) excedían A4 → el export rebanaba a mitad de fila. Más
 // hojas, pero ninguna tabla cortada.
-const FIRST_SHEET_ROWS = 4;
-const CONT_SHEET_ROWS = 9;
+// Filas por hoja REDUCIDAS (4.3): con la letra más grande caben menos filas por
+// A4 sin cortar tablas; el informe usa más hojas (nos sobran).
+const FIRST_SHEET_ROWS = 3;
+const CONT_SHEET_ROWS = 6;
+
+// Color por dimensión para el radar (hex para que svg2pdf lo pinte bien en el PDF;
+// alineado con los hues de dimensionColors.ts: técnica=azul, ambiental=verde,
+// social=naranja, macroeconómica=magenta, regulatoria=morado).
+const RADAR_DIM_HEX: Record<string, string> = {
+  tecnica: "#2f6fb0",
+  ambiental: "#2f9e52",
+  social: "#d98324",
+  macroeconomica: "#c0398f",
+  regulatoria: "#8b5cf6",
+};
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -168,7 +188,7 @@ function MiniTable({
 }) {
   return (
     <div className="mt-2 overflow-hidden rounded-lg border border-gray-200">
-      <table className="w-full border-collapse text-[9px]">
+      <table className="w-full border-collapse text-[11px]">
         <thead>
           <tr className="bg-[#165170ff] text-left text-white">
             {columns.map((c) => (
@@ -222,7 +242,7 @@ function ViridisLegend({
       <div className="relative h-2">
         {gen !== null && (
           <span
-            className="absolute bottom-0 -translate-x-1/2 text-[9px] leading-none text-[#165170ff]"
+            className="absolute bottom-0 -translate-x-1/2 text-[11px] leading-none text-[#165170ff]"
             style={{ left: `${gen}%` }}
             title={`Idoneidad general: ${gen.toFixed(0)}`}
             aria-hidden="true"
@@ -257,11 +277,11 @@ function ViridisLegend({
         ))}
       </div>
       {gen !== null && (
-        <div className="mt-0.5 text-center text-[8px] font-semibold text-[#165170ff]">
+        <div className="mt-0.5 text-center text-[11px] font-semibold text-[#165170ff]">
           Idoneidad general: {gen.toFixed(0)} / 100
         </div>
       )}
-      <div className="mt-0.5 flex justify-between text-[8px] text-gray-500">
+      <div className="mt-0.5 flex justify-between text-[11px] text-gray-500">
         {/* Swatch en cada extremo → deja explícito qué color es el más bajo
             (morado #440154) y el más alto (amarillo #fde725) de la escala. */}
         <span className="flex items-center gap-1">
@@ -290,12 +310,12 @@ export default function Report() {
   const toast = useToast();
   const caracteristicas = useCaracteristicas();
   const { save: saveInforme } = useHistorial();
+  const clearFlow = useClearFlow();
   // Rol admin: habilita la exportación de datos crudos por hexágono.
   const isAdmin = useIsAdmin();
   const reportRef = useRef<HTMLDivElement>(null);
   // #18: aviso previo a exportar "datos por hexágono" (nº hex × columnas; con
   // muchos hexágonos la imagen sale muy pesada → se recomienda con pocos).
-  const [hexExportWarn, setHexExportWarn] = useState<{ n: number; c: number } | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportMsg, setExportMsg] = useState("");        // "Hoja 2 de 8…"
   const [exportPct, setExportPct] = useState<number | null>(null); // 0–100 real
@@ -306,6 +326,15 @@ export default function Report() {
   const [builderOpen, setBuilderOpen] = useState(false);
   // Al capturar el PDF las hojas se renderizan a escala 1 (tamaño real).
   const [capturing, setCapturing] = useState(false);
+  // EMPAQUETADO MEDIDO de las hojas (US06): el cuerpo del informe es una lista
+  // plana de BLOQUES (`bodyContents`). Para no dejar huecos ni cortar, se miden
+  // sus alturas reales (capa oculta + refs) y se agrupan varios bloques por hoja
+  // A4 sin exceder el alto útil. `packs` = índices de bloque por hoja (null hasta
+  // la 1ª medición → fallback 1-bloque-por-hoja). El preview y la captura del PDF
+  // comparten estas mismas hojas, así que al empaquetar bien el preview queda
+  // por-hoja Y el PDF sale nítido (cada hoja ≈ un A4, sin rebanar un canvas gigante).
+  const [packs, setPacks] = useState<number[][] | null>(null);
+  const measureRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // "Resumen del cálculo" del informe (editable desde admin, solo descriptivo).
   // Arranca con defaults e hidrata el override de BD (app_config·report_calc_text).
@@ -465,6 +494,9 @@ export default function Report() {
       RADAR_DIMS.filter((id) => config.dims[id]).map((id) => ({
         label: HEATMAP_DIMENSIONS.find((d) => d.id === id)?.label ?? id,
         value: scores.byDim[id] ?? 0,
+        // Color por dimensión (hex PDF-safe; svg2pdf no siempre resuelve hsl).
+        // Cada dimensión del radar se pinta con su propio color.
+        color: RADAR_DIM_HEX[id] ?? "#165170",
       })),
     [scores, config.dims],
   );
@@ -681,26 +713,68 @@ export default function Report() {
   // Conmutador de gráfico según la config (radar/circular/barras).
   const renderChart = (axes: { label: string; value: number }[]) => {
     if (axes.length === 0) return null;
+    // Tamaño legible (#cliente): al menos ~80% del ancho de hoja A4 (794px ≈ 640px).
     if (config.chartType === "pie")
-      return <PieChart data={axes} className="w-full max-w-[300px]" />;
+      return <PieChart data={axes} className="w-full max-w-[640px]" />;
     if (config.chartType === "bar")
-      return <BarChart data={axes} className="w-full max-w-[320px]" />;
+      return <BarChart data={axes} className="w-full max-w-[640px]" />;
     if (axes.length >= 3)
-      return <RadarChart axes={axes} className="w-full max-w-[280px]" />;
-    return <BarChart data={axes} className="w-full max-w-[320px]" />;
+      return <RadarChart axes={axes} className="w-full max-w-[540px]" />;
+    return <BarChart data={axes} className="w-full max-w-[640px]" />;
   };
 
   // ── Construcción de las HOJAS del informe ──────────────────────────────
-  const indexEntries: { n: number; title: string; page: number }[] = [
-    { n: 1, title: "Resumen ejecutivo", page: 1 },
-  ];
+  const indexEntries: {
+    n: number;
+    title: string;
+    page: number;
+    startBlock: number; // índice (en bodyContents) del 1er bloque de la sección
+  }[] = [{ n: 1, title: "Resumen ejecutivo", page: 1, startBlock: -1 }];
   const bodyContents: ReactNode[] = [];
   const addSection = (title: string, build: (n: number) => ReactNode[]) => {
     const n = indexEntries.length + 1;
-    const page = bodyContents.length + 2; // la hoja 1 es el resumen
-    indexEntries.push({ n, title, page });
+    const startBlock = bodyContents.length; // 1er bloque de ESTA sección
+    const page = startBlock + 2; // fallback secuencial (se recalcula con packs)
+    indexEntries.push({ n, title, page, startBlock });
     build(n).forEach((c) => bodyContents.push(c));
   };
+
+  // HOJA PROPIA "Desempeño por dimensión" (radar + variables que más influyen):
+  // se saca del resumen para que, al ser grande, NO se corte al rebanar la hoja 1.
+  // Va justo después del resumen (es la primera sección del cuerpo). Cabe en un A4.
+  if (
+    selectedHexes.size > 0 &&
+    (chartAxes.length > 0 ||
+      (config.showInfluencers && topInfluencers.length > 0))
+  ) {
+    addSection("Desempeño por dimensión", (n) => [
+      <div key="perf" className="text-[12px]">
+        <h3 className="text-base font-bold text-[#165170ff]">
+          {n}. Desempeño por dimensión
+        </h3>
+        <div className="mt-3 flex flex-col items-center rounded-lg border border-gray-200 p-3">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">
+            Score por dimensión (radar)
+          </p>
+          {renderChart(chartAxes)}
+        </div>
+        {config.showInfluencers && topInfluencers.length > 0 && (
+          <div className="mt-4">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">
+              Variables que más influyen
+            </p>
+            <div className="mt-1 flex justify-center">
+              <DivergingBars
+                bars={topInfluencers}
+                width={660}
+                className="w-full max-w-[660px]"
+              />
+            </div>
+          </div>
+        )}
+      </div>,
+    ]);
+  }
 
   // Hojas por dimensión puntuable: score + peso en esquinas, variables que
   // influyen, tabla y resumen del cálculo.
@@ -717,208 +791,236 @@ export default function Report() {
       const excl = dimExcluyentes(d.id);
       addSection(`Dimensión ${dl}`, (n) => {
         const pages = chunkFirstThen(rows, FIRST_SHEET_ROWS, CONT_SHEET_ROWS);
-        return pages.map((pr, pi) => (
-          <div key={pi} className="flex h-full flex-col text-[10px]">
-            <div className="flex items-baseline justify-between">
-              <h3 className="text-base font-bold text-[#165170ff]">
-                {n}. Dimensión {dl}
-                {pages.length > 1 ? ` (${pi + 1}/${pages.length})` : ""}
-              </h3>
-              <span className="rounded bg-[#cce1eeff] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#165170ff]">
-                Puntúa
-              </span>
-            </div>
+        // Bloques FINOS (cada uno ≤ A4) → el empaquetado medido los agrupa sin
+        // huecos y SIN cortarlos. Antes todo iba en un bloque "h-full" que, al
+        // superar el A4, se rebanaba a mitad de la lista/el resumen.
+        const dimBlocks: ReactNode[] = [];
 
-            {pi === 0 && (
-              <>
-                {/* Esquinas: score de la dimensión + peso sobre el índice general */}
-                <div className="mt-2 grid grid-cols-2 gap-3">
-                  <div className="rounded-lg border-2 border-[#165170ff] p-3 text-center">
-                    <p className="text-[8px] font-semibold uppercase tracking-wide text-gray-500">
-                      Score de la dimensión
-                    </p>
-                    <p className="text-4xl font-extrabold leading-none text-[#165170ff]">
-                      {dimScore.toFixed(0)}
-                    </p>
-                    <p className="text-[8px] text-gray-400">de 100</p>
-                  </div>
-                  <div className="rounded-lg border border-gray-200 p-3 text-center">
-                    <p className="text-[8px] font-semibold uppercase tracking-wide text-gray-500">
-                      Peso en el índice general
-                    </p>
-                    <p className="text-4xl font-extrabold leading-none text-gray-700">
-                      {pesoDim.toFixed(0)}%
-                    </p>
-                    <p className="text-[8px] text-gray-400">
-                      aporta {((dimScore * pesoDim) / 100).toFixed(1)} pts
-                    </p>
-                  </div>
-                </div>
+        // Un bloque por chunk de la tabla de variables puntuables.
+        pages.forEach((pr, pi) => {
+          dimBlocks.push(
+            <div key={`tbl${pi}`} className="text-[12px]">
+              <div className="flex items-baseline justify-between">
+                <h3 className="text-base font-bold text-[#165170ff]">
+                  {n}. Dimensión {dl}
+                  {pages.length > 1 ? ` (${pi + 1}/${pages.length})` : ""}
+                </h3>
+                <span className="rounded bg-[#cce1eeff] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#165170ff]">
+                  Puntúa
+                </span>
+              </div>
 
-                {/* Variables que más influyen (barras suma/resta) */}
-                {config.showInfluencers && influ.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-[9px] font-bold uppercase tracking-wide text-gray-500">
-                      Variables que más influyen
-                    </p>
-                    <div className="mt-1 flex justify-center">
-                      <DivergingBars bars={influ} width={660} className="w-full max-w-[660px]" />
+              {pi === 0 && (
+                <>
+                  {/* Esquinas: score de la dimensión + peso sobre el índice general */}
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    <div className="rounded-lg border-2 border-[#165170ff] p-3 text-center">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                        Score de la dimensión
+                      </p>
+                      <p className="text-4xl font-extrabold leading-none text-[#165170ff]">
+                        {dimScore.toFixed(0)}
+                      </p>
+                      <p className="text-[11px] text-gray-400">de 100</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 p-3 text-center">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                        Peso en el índice general
+                      </p>
+                      <p className="text-4xl font-extrabold leading-none text-gray-700">
+                        {pesoDim.toFixed(0)}%
+                      </p>
+                      <p className="text-[11px] text-gray-400">
+                        aporta {((dimScore * pesoDim) / 100).toFixed(1)} pts
+                      </p>
                     </div>
                   </div>
-                )}
-              </>
-            )}
 
-            {config.showScoreDetail && (
-              <>
-                <h4 className="mt-3 text-[9px] font-bold uppercase tracking-wide text-gray-500">
-                  Variables consideradas
-                </h4>
-                <MiniTable
-                  columns={[
-                    "Código",
-                    "Variable",
-                    ...(config.showModelDetail ? ["Criterio"] : []),
-                    "Tipo",
-                    "Peso",
-                    "Valor",
-                    "Fecha",
-                    "Fuente",
-                  ]}
-                  rows={pr.map((r) => [
-                    dbField(r.masterId),
-                    dbField(r.label),
-                    ...(config.showModelDetail ? [dbField(r.criterio)] : []),
-                    dbField(r.tipo),
-                    dbField(r.peso.toFixed(2)),
-                    dbField(r.puntaje != null ? r.puntaje.toFixed(1) : "—"),
-                    dbField(r.fecha),
-                    dbField(r.fuente),
-                  ])}
-                />
-                <AuditDataLabel
-                  uses={[
-                    "catálogo variable (label/criterio/tipo/fuente)",
-                    "peso AHP (model_weight)",
-                    "valor = promedio master del área",
-                    "fecha = versión de fuente (data_source)",
-                  ]}
-                />
-                {/* Detalle/descripción por variable (US "detalle interno del
-                    modelo"): opt-in bajo showModelDetail para no saturar. */}
-                {config.showModelDetail && (
-                  <ul className="mt-2 flex flex-col gap-0.5">
-                    {pr.map((r) => (
-                      <li key={r.label} className="text-[9px] leading-snug text-gray-600">
-                        <b className="text-gray-700">{dbField(r.label)}:</b>{" "}
-                        {dbField(r.description)}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </>
-            )}
+                  {/* Variables que más influyen (barras suma/resta) */}
+                  {config.showInfluencers && influ.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">
+                        Variables que más influyen
+                      </p>
+                      <div className="mt-1 flex justify-center">
+                        <DivergingBars bars={influ} width={660} className="w-full max-w-[660px]" />
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
 
-            {/* Detalle de variables EXCLUYENTES de la dimensión (US06-03) */}
-            {pi === pages.length - 1 && config.showExcluyentes && excl.length > 0 && (
-              <div className="mt-3 rounded-lg border border-red-100 bg-red-50/50 p-2.5">
-                <p className="text-[10px] font-bold text-red-700">
-                  Variables excluyentes
+              {config.showScoreDetail && (
+                <>
+                  <h4 className="mt-3 text-[11px] font-bold uppercase tracking-wide text-gray-500">
+                    Variables consideradas
+                  </h4>
+                  <MiniTable
+                    columns={[
+                      "Código",
+                      "Variable",
+                      "Dimensión",
+                      ...(config.showModelDetail ? ["Criterio"] : []),
+                      "Tipo",
+                      "Peso",
+                      "Valor",
+                      "Fecha",
+                      "Fuente",
+                    ]}
+                    rows={pr.map((r) => [
+                      dbField(r.masterId),
+                      dbField(r.label),
+                      dl, // #31: dimensión explícita por variable (además del título)
+                      ...(config.showModelDetail ? [dbField(r.criterio)] : []),
+                      dbField(r.tipo),
+                      dbField(r.peso.toFixed(2)),
+                      dbField(r.puntaje != null ? r.puntaje.toFixed(1) : "—"),
+                      dbField(r.fecha),
+                      dbField(r.fuente),
+                    ])}
+                  />
+                  <AuditDataLabel
+                    uses={[
+                      "catálogo variable (label/criterio/tipo/fuente)",
+                      "peso AHP (model_weight)",
+                      "valor = promedio master del área",
+                      "fecha = versión de fuente (data_source)",
+                    ]}
+                  />
+                  {/* Detalle/descripción por variable (US "detalle interno del
+                      modelo"): opt-in bajo showModelDetail para no saturar. */}
+                  {config.showModelDetail && (
+                    <ul className="mt-2 flex flex-col gap-0.5">
+                      {pr.map((r) => (
+                        <li key={r.label} className="text-[11px] leading-snug text-gray-600">
+                          <b className="text-gray-700">{dbField(r.label)}:</b>{" "}
+                          {dbField(r.description)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </div>,
+          );
+        });
+
+        // Variables EXCLUYENTES (bloque propio, troceado si la lista es larga).
+        if (config.showExcluyentes && excl.length > 0) {
+          chunk(excl, 16).forEach((part, ci) => {
+            dimBlocks.push(
+              <div
+                key={`exc${ci}`}
+                className="rounded-lg border border-red-100 bg-red-50/50 p-2.5 text-[12px]"
+              >
+                <p className="text-[12px] font-bold text-red-700">
+                  Variables excluyentes{ci > 0 ? " (cont.)" : ""}
                 </p>
-                <p className="text-[9px] text-red-500/90">
-                  Restricciones duras: su presencia puede excluir el emplazamiento.
-                </p>
+                {ci === 0 && (
+                  <p className="text-[11px] text-red-500/90">
+                    Restricciones duras: su presencia puede excluir el emplazamiento.
+                  </p>
+                )}
                 <ul className="mt-1 flex flex-col gap-0.5">
-                  {excl.map((e) => (
-                    <li key={e.label} className="text-[9px] text-gray-700">
+                  {part.map((e) => (
+                    <li key={e.label} className="text-[11px] text-gray-700">
                       <b>{dbField(e.label)}:</b> {dbField(e.description)}
                     </li>
                   ))}
                 </ul>
-              </div>
-            )}
+              </div>,
+            );
+          });
+        }
 
-            {/* Variables INFORMATIVAS de ESTA dimensión (no puntúan), TRAS su tabla
-                (#10) — antes salían todas juntas en una hoja global al final. */}
-            {pi === pages.length - 1 &&
-              config.showInformative &&
-              informativeRows.some((r) => r.dimension === d.id) && (
-                <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50/60 p-2.5">
-                  <div className="flex items-center gap-2">
-                    <p className="text-[10px] font-bold text-[#165170ff]">
-                      Variables informativas
-                    </p>
-                    <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-gray-600">
-                      No puntúa
-                    </span>
-                  </div>
-                  <ul className="mt-1 flex flex-col gap-0.5">
-                    {informativeRows
-                      .filter((r) => r.dimension === d.id)
-                      .map((r) => (
-                        <li key={r.id} className="text-[9px] leading-snug text-gray-700">
-                          <b>{dbField(r.label)}</b>
-                          {r.valueText ? <> — {dbField(r.valueText)}</> : null}
-                          {r.description ? (
-                            <span className="text-gray-500">: {dbField(r.description)}</span>
-                          ) : null}
-                        </li>
-                      ))}
-                  </ul>
+        // Variables INFORMATIVAS de ESTA dimensión (no puntúan), TRAS su tabla
+        // (#10). Bloque propio TROCEADO → una lista larga ya no desborda la hoja.
+        const dimInfo = informativeRows.filter((r) => r.dimension === d.id);
+        if (config.showInformative && dimInfo.length > 0) {
+          chunk(dimInfo, 14).forEach((part, ci) => {
+            dimBlocks.push(
+              <div
+                key={`inf${ci}`}
+                className="rounded-lg border border-gray-200 bg-gray-50/60 p-2.5 text-[12px]"
+              >
+                <div className="flex items-center gap-2">
+                  <p className="text-[12px] font-bold text-[#165170ff]">
+                    Variables informativas{ci > 0 ? " (cont.)" : ""}
+                  </p>
+                  <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-600">
+                    No puntúa
+                  </span>
                 </div>
-              )}
+                <ul className="mt-1 flex flex-col gap-0.5">
+                  {part.map((r) => (
+                    <li key={r.id} className="text-[11px] leading-snug text-gray-700">
+                      <b>{dbField(r.label)}</b>
+                      {r.valueText ? <> — {dbField(r.valueText)}</> : null}
+                      {r.description ? (
+                        <span className="text-gray-500">: {dbField(r.description)}</span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>,
+            );
+          });
+        }
 
-            {pi === pages.length - 1 && config.showModelDetail && (
-              <div className="mt-auto rounded-lg bg-gray-50 p-2.5">
-                <p className="text-[10px] font-bold text-[#165170ff]">
-                  Resumen del cálculo
-                </p>
-                {/* El modelo produce cada dimensión/global en escala 1–5 con una
-                    fórmula de pesos (TEMPORAL — el cliente la ajusta). Aquí se
-                    muestra el RESULTADO 1–5 y su normalización a 0–100. */}
-                <p className="mt-0.5 font-mono text-[9px] text-gray-700">
-                  Dimensión = {calcText.formulaDimension} ={" "}
-                  <b>{(1 + (dimScore / 100) * 4).toFixed(1)}</b> (escala 1–5)
-                </p>
-                <p className="mt-0.5 font-mono text-[9px] text-gray-700">
-                  → normalizado (v−1)/4×100 = ({(1 + (dimScore / 100) * 4).toFixed(1)}−1)/4×100
-                  = <b>{dimScore.toFixed(1)} / 100</b>
-                </p>
-                <p className="mt-0.5 font-mono text-[9px] text-gray-700">
-                  Índice general = {calcText.formulaGeneral} ={" "}
-                  <b>{(1 + (scores.general / 100) * 4).toFixed(1)}</b> (1–5) → normalizado
-                  = <b>{scores.general.toFixed(1)} / 100</b>
-                </p>
-                <p className="mt-1 text-[8px] italic leading-snug text-gray-500">
-                  {calcText.metodologiaNota}
-                </p>
-                <AuditDataLabel
-                  uses={[
-                    "score por dimensión (criterios/*.parquet o master + pesos)",
-                    "índice general (global.parquet o Σ peso_dim·score_dim)",
-                    "pesos AHP (model_weight)",
-                  ]}
-                />
-              </div>
-            )}
-          </div>
-        ));
+        // Resumen del cálculo (bloque propio; ya no se "pega" al fondo con mt-auto).
+        if (config.showModelDetail) {
+          dimBlocks.push(
+            <div key="calc" className="rounded-lg bg-gray-50 p-2.5 text-[12px]">
+              <p className="text-[12px] font-bold text-[#165170ff]">
+                Resumen del cálculo
+              </p>
+              {/* El modelo produce cada dimensión/global en escala 1–5 con una
+                  fórmula de pesos (TEMPORAL — el cliente la ajusta). Aquí se
+                  muestra el RESULTADO 1–5 y su normalización a 0–100. */}
+              <p className="mt-0.5 tabular-nums text-[11px] text-gray-700">
+                Dimensión = {calcText.formulaDimension} ={" "}
+                <b>{(1 + (dimScore / 100) * 4).toFixed(1)}</b> (escala 1–5)
+              </p>
+              <p className="mt-0.5 tabular-nums text-[11px] text-gray-700">
+                → normalizado (v−1)/4×100 = ({(1 + (dimScore / 100) * 4).toFixed(1)}−1)/4×100
+                = <b>{dimScore.toFixed(1)} / 100</b>
+              </p>
+              <p className="mt-0.5 tabular-nums text-[11px] text-gray-700">
+                Índice general = {calcText.formulaGeneral} ={" "}
+                <b>{(1 + (scores.general / 100) * 4).toFixed(1)}</b> (1–5) → normalizado
+                = <b>{scores.general.toFixed(1)} / 100</b>
+              </p>
+              <p className="mt-1 text-[11px] italic leading-snug text-gray-500">
+                {calcText.metodologiaNota}
+              </p>
+              <AuditDataLabel
+                uses={[
+                  "score por dimensión (criterios/*.parquet o master + pesos)",
+                  "índice general (global.parquet o Σ peso_dim·score_dim)",
+                  "pesos AHP (model_weight)",
+                ]}
+              />
+            </div>,
+          );
+        }
+
+        return dimBlocks;
       });
     });
 
   // Hoja económica (informativa).
   if (showEconomica) {
     addSection("Dimensión económica (Inf.)", (n) => [
-      <div key="eco" className="text-[10px]">
+      <div key="eco" className="text-[12px]">
         <div className="flex items-center gap-2">
           <h3 className="text-base font-bold text-[#165170ff]">
             {n}. Dimensión económica
           </h3>
-          <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gray-600">
+          <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-600">
             Informativa · no puntúa
           </span>
         </div>
-        <p className="mt-1 text-[11px] text-gray-600">
+        <p className="mt-1 text-[13px] text-gray-600">
           {econ.compareMode ? (
             <>
               <b>Comparación de escenarios</b> (base · optimista · conservador)
@@ -945,13 +1047,13 @@ export default function Report() {
           </div>
         )}
         {!econ.compareMode && escActivo?.impacto && (
-          <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] leading-snug text-amber-800">
+          <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] leading-snug text-amber-800">
             {escActivo.impacto}
           </p>
         )}
         <AuditDataLabel uses={["serie económica por escenario/variable/año (economic_series)"]} />
         {/* Cómo interpretar (US04-02) */}
-        <p className="mt-1 text-[9px] leading-snug text-gray-500">
+        <p className="mt-1 text-[11px] leading-snug text-gray-500">
           {econ.compareMode ? (
             <>
               <b>Cómo interpretar:</b> cada línea es el mismo indicador bajo un
@@ -967,12 +1069,12 @@ export default function Report() {
             </>
           )}
         </p>
-        <p className="mt-2 rounded bg-amber-50 px-2 py-1.5 text-[10px] leading-snug text-amber-800">
+        <p className="mt-2 rounded bg-amber-50 px-2 py-1.5 text-[12px] leading-snug text-amber-800">
           Esta dimensión ayuda en la toma de decisiones pero <b>no se puntúa</b>{" "}
           en el modelo de idoneidad.
         </p>
         {/* Impuestos / incentivos clave del proyecto */}
-        <h4 className="mt-3 text-[9px] font-bold uppercase tracking-wide text-gray-500">
+        <h4 className="mt-3 text-[11px] font-bold uppercase tracking-wide text-gray-500">
           Impuestos e incentivos clave
         </h4>
         <div className="mt-1 grid grid-cols-2 gap-2">
@@ -981,14 +1083,14 @@ export default function Report() {
               key={it.label}
               className="flex items-baseline justify-between rounded-md border border-gray-200 px-2 py-1.5"
             >
-              <span className="text-[10px] text-gray-700">{dbField(it.label)}</span>
-              <span className="text-[10px] font-semibold text-[#165170ff]">
+              <span className="text-[12px] text-gray-700">{dbField(it.label)}</span>
+              <span className="text-[12px] font-semibold text-[#165170ff]">
                 {dbField(it.value)}
               </span>
             </div>
           ))}
         </div>
-        <p className="mt-2 text-[9px] italic text-gray-400">
+        <p className="mt-2 text-[11px] italic text-gray-400">
           Proyección e incentivos ilustrativos (datos template hasta integrar la
           fuente oficial).
         </p>
@@ -1008,24 +1110,24 @@ export default function Report() {
     // #3: semáforo + lista de normas + autoridades NO siempre caben en una hoja →
     // se CHUNKEA la lista (semáforo en la 1ª; autoridades en la última) para que el
     // PDF no corte a mitad.
-    const regPages = chunkFirstThen(activeNormas, 5, 11);
+    const regPages = chunkFirstThen(activeNormas, 4, 8);
     addSection("Dimensión regulatoria (Inf.)", (n) =>
       (regPages.length ? regPages : [[]]).map((pageNormas, pi, arr) => (
-        <div key={`reg-${pi}`} className="text-[10px]">
+        <div key={`reg-${pi}`} className="text-[12px]">
           <div className="flex items-center gap-2">
             <h3 className="text-base font-bold text-[#165170ff]">
               {n}. Dimensión regulatoria{pi > 0 ? " (cont.)" : ""}
             </h3>
-            <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gray-600">
+            <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-600">
               Informativa · no puntúa
             </span>
           </div>
           {pi === 0 && (
             <>
-              <p className="mt-1 text-[11px] text-gray-600">
+              <p className="mt-1 text-[13px] text-gray-600">
                 Marco normativo nacional aplicable al proyecto eólico.
               </p>
-              <p className="mt-1 text-[9px] italic text-gray-500">
+              <p className="mt-1 text-[11px] italic text-gray-500">
                 El estado de cada norma no es una evaluación jurídica del proyecto; la
                 verificación normativa vinculante la realiza la autoridad competente.
               </p>
@@ -1043,7 +1145,7 @@ export default function Report() {
                           {sem[k]}
                         </p>
                         <p
-                          className="text-[8px] font-semibold"
+                          className="text-[11px] font-semibold"
                           style={{ color: m.color }}
                         >
                           {m.label}
@@ -1055,7 +1157,7 @@ export default function Report() {
               </div>
             </>
           )}
-          <h4 className="mt-4 text-[9px] font-bold uppercase tracking-wide text-gray-500">
+          <h4 className="mt-4 text-[11px] font-bold uppercase tracking-wide text-gray-500">
             Normas aplicables al proyecto{arr.length > 1 ? ` (${pi + 1}/${arr.length})` : ""}
           </h4>
           <ul className="mt-1 flex flex-col gap-1">
@@ -1068,12 +1170,12 @@ export default function Report() {
                 >
                   <div className="min-w-0">
                     <p className="font-semibold text-gray-700">{dbField(no.nombre)}</p>
-                    <p className="text-[9px] leading-snug text-gray-500">
+                    <p className="text-[11px] leading-snug text-gray-500">
                       {dbField(no.descripcion)}
                     </p>
                   </div>
                   <span
-                    className="shrink-0 rounded px-1.5 py-0.5 text-[8px] font-semibold"
+                    className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold"
                     style={{ backgroundColor: m.bg, color: m.color }}
                   >
                     {m.label}
@@ -1084,12 +1186,12 @@ export default function Report() {
           </ul>
           {pi === arr.length - 1 && (
             <>
-              <h4 className="mt-3 text-[9px] font-bold uppercase tracking-wide text-gray-500">
+              <h4 className="mt-3 text-[11px] font-bold uppercase tracking-wide text-gray-500">
                 Autoridades competentes
               </h4>
               <ul className="mt-1 grid grid-cols-2 gap-1">
                 {REGULATORY_AUTHORITIES.map((a) => (
-                  <li key={a.sigla} className="text-[9px] text-gray-600">
+                  <li key={a.sigla} className="text-[11px] text-gray-600">
                     <b>{dbField(a.sigla)}</b> — {dbField(a.nombre)}
                   </li>
                 ))}
@@ -1111,14 +1213,20 @@ export default function Report() {
   if (config.showInformative && globalInformative.length > 0) {
     addSection("Variables informativas", (n) => {
       // Con detalle (P1): menos por hoja porque cada una lleva su descripción.
-      const pages = chunk(globalInformative, 12);
+      // #27: ordenadas por dimensión.
+      const pages = chunk(
+        [...globalInformative].sort((a, b) =>
+          (a.dimension ?? "").localeCompare(b.dimension ?? "", "es"),
+        ),
+        8,
+      );
       return pages.map((pr, pi) => (
-        <div key={pi} className="text-[10px]">
+        <div key={pi} className="text-[12px]">
           <h3 className="text-base font-bold text-[#165170ff]">
             {n}. Variables informativas
             {pages.length > 1 ? ` (${pi + 1}/${pages.length})` : ""}
           </h3>
-          <p className="mt-0.5 text-[9px] text-gray-500">
+          <p className="mt-0.5 text-[11px] text-gray-500">
             No puntúan en el modelo; aportan contexto. Se muestra su valor sobre
             el área y qué representa cada una.
           </p>
@@ -1126,12 +1234,20 @@ export default function Report() {
             {pr.map((r) => (
               <li key={r.id} className="border-b border-gray-100 pb-1.5">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-semibold text-gray-700">{dbField(r.label)}</span>
-                  <span className="shrink-0 font-mono text-[#165170ff]">
+                  <span className="font-semibold text-gray-700">
+                    {dbField(r.label)}
+                    {/* #31: dimensión explícita por variable informativa */}
+                    {r.dimension && (
+                      <span className="ml-1.5 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-gray-500">
+                        {HEATMAP_DIMENSIONS.find((dd) => dd.id === r.dimension)?.label ?? r.dimension}
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 tabular-nums text-[#165170ff]">
                     {dbField(`${r.valueText}${r.unit ? ` ${r.unit}` : ""}`)}
                   </span>
                 </div>
-                <p className="text-[9px] leading-snug text-gray-500">
+                <p className="text-[11px] leading-snug text-gray-500">
                   {dbField(r.description)}
                 </p>
               </li>
@@ -1148,15 +1264,15 @@ export default function Report() {
     // #3: la tabla de fuentes + los extras no caben en una hoja → se CHUNKEA la
     // tabla y los extras (fuentes por dim, metodología, trazabilidad) van en su
     // propia hoja final, para que el PDF no corte a mitad.
-    const srcPages = chunk(sourceRows, 20);
+    const srcPages = chunk(sourceRows, 14);
     addSection("Fuentes de datos", (n) => [
       ...(srcPages.length ? srcPages : [[]]).map((pageRows, pi, arr) => (
-        <div key={`src-${pi}`} className="text-[10px]">
+        <div key={`src-${pi}`} className="text-[12px]">
           <h3 className="text-base font-bold text-[#165170ff]">
             {n}. Fuentes de datos{arr.length > 1 ? ` (${pi + 1}/${arr.length})` : ""}
           </h3>
           <div className="mt-2 overflow-hidden rounded-lg border border-gray-200">
-            <table className="w-full border-collapse text-[9px]">
+            <table className="w-full border-collapse text-[11px]">
               <thead>
                 <tr className="bg-[#165170ff] text-left text-white">
                   <th className="px-2 py-1 font-semibold">Fuente</th>
@@ -1191,14 +1307,14 @@ export default function Report() {
           </div>
         </div>
       )),
-      <div key="src-extra" className="text-[10px]">
+      <div key="src-extra" className="text-[12px]">
         <h3 className="text-base font-bold text-[#165170ff]">
           {n}. Fuentes de datos — verificación
         </h3>
 
         {sourcesByDim.length > 0 && (
           <>
-            <h4 className="mt-3 text-[9px] font-bold uppercase tracking-wide text-gray-500">
+            <h4 className="mt-3 text-[11px] font-bold uppercase tracking-wide text-gray-500">
               Fuentes por dimensión
             </h4>
             <MiniTable
@@ -1208,20 +1324,20 @@ export default function Report() {
           </>
         )}
 
-        <p className="mt-2 text-[9px] italic leading-snug text-gray-500">
+        <p className="mt-2 text-[11px] italic leading-snug text-gray-500">
           {calcText.metodologiaNota}
         </p>
 
         {/* Trazabilidad: cómo verificar el informe de lo agregado a lo crudo. */}
         <div className="mt-3 rounded-lg border border-[#165170ff]/30 bg-[#cce1eeff]/25 p-2.5">
-          <p className="text-[10px] font-bold text-[#165170ff]">
+          <p className="text-[12px] font-bold text-[#165170ff]">
             Trazabilidad y verificación
           </p>
-          <p className="mt-0.5 text-[9px] leading-snug text-gray-600">
+          <p className="mt-0.5 text-[11px] leading-snug text-gray-600">
             Este informe es verificable de arriba hacia abajo; cada nivel se
             calcula del siguiente:
           </p>
-          <ol className="mt-1 flex flex-col gap-0.5 text-[9px] leading-snug text-gray-700">
+          <ol className="mt-1 flex flex-col gap-0.5 text-[11px] leading-snug text-gray-700">
             <li>
               <b>1. Índice general</b> = {calcText.formulaGeneral} — resumen
               ejecutivo.
@@ -1239,7 +1355,7 @@ export default function Report() {
               fuente por variable, verificables en SIG/QGIS hex por hexágono.
             </li>
           </ol>
-          <p className="mt-1 text-[8px] italic leading-snug text-gray-500">
+          <p className="mt-1 text-[11px] italic leading-snug text-gray-500">
             Así el análisis es transparente y reproducible: reemplaza la consulta
             manual de múltiples fuentes por una evaluación auditable.
           </p>
@@ -1272,21 +1388,21 @@ export default function Report() {
     });
     // #3: ~60 variables NO caben en una hoja → se CHUNKEAN (una hoja por bloque),
     // igual que la tabla de dimensión, para que el PDF no corte la tabla a mitad.
-    const wrPages = chunk(rows, 24);
+    const wrPages = chunk(rows, 16);
     addSection("Ponderación (verificación admin)", (n) =>
       wrPages.map((pageRows, pi) => (
-        <div key={`wr-${pi}`} className="text-[10px]">
+        <div key={`wr-${pi}`} className="text-[12px]">
           <div className="flex items-center gap-2">
             <h3 className="text-base font-bold text-[#165170ff]">
               {n}. Intervalos de ponderación
               {wrPages.length > 1 ? ` (${pi + 1}/${wrPages.length})` : ""}
             </h3>
-            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
+            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
               Solo admin · verificación
             </span>
           </div>
           {pi === 0 && (
-            <p className="mt-1 text-[9px] leading-snug text-gray-600">
+            <p className="mt-1 text-[11px] leading-snug text-gray-600">
               Peso (con signo), polaridad y rango de medición (min–max) por variable
               ponderada, para verificar la normalización y el cálculo. El rango es el
               REAL de la master ({varRanges && Object.keys(varRanges).length > 0
@@ -1305,23 +1421,95 @@ export default function Report() {
 
   // Hoja de disclaimer.
   addSection("Disclaimer", (n) => [
-    <div key="dis" className="text-[10px]">
+    <div key="dis" className="text-[12px]">
       <h3 className="text-base font-bold text-[#165170ff]">
         {n}. {reportContent.disclaimerTitle}
       </h3>
       <p className="mt-2 leading-relaxed text-gray-600">{dbField(reportContent.disclaimerBody)}</p>
-      <footer className="mt-6 border-t border-gray-200 pt-3 text-[9px] text-gray-400">
+      <footer className="mt-6 border-t border-gray-200 pt-3 text-[11px] text-gray-400">
         Vento · ANH · EAFIT · Mavalan Software · {timestamp}
         {masterVersion ? ` · Datos: master ${masterVersion}` : ""}
       </footer>
     </div>,
   ]);
 
+  // ── EMPAQUETADO MEDIDO: agrupar bloques en hojas A4 (sin huecos ni cortes) ──
+  // Alto útil del contenido de una hoja = A4 (1123px) menos cabecera/pie/padding
+  // de ReportSheet. GAP = separación vertical entre bloques apilados (gap-6).
+  const SHEET_CONTENT_H = 940; // ≈ 1123 − cabecera − pie − padding, con holgura
+  const BLOCK_GAP = 24; // gap-6 entre bloques apilados
+  const packBlocks = (heights: number[]): number[][] => {
+    const out: number[][] = [];
+    let cur: number[] = [];
+    let curH = 0;
+    heights.forEach((h, i) => {
+      const add = cur.length === 0 ? h : curH + BLOCK_GAP + h;
+      if (cur.length > 0 && add > SHEET_CONTENT_H) {
+        out.push(cur);
+        cur = [i];
+        curH = h;
+      } else {
+        cur.push(i);
+        curH = add;
+      }
+    });
+    if (cur.length) out.push(cur);
+    return out;
+  };
+
+  // Mide las alturas reales de los bloques (capa oculta de más abajo) y recalcula
+  // el empaquetado. Sin deps: corre en cada commit mientras el builder está
+  // abierto, pero sólo hace setState si el empaquetado CAMBIA → converge en 1-2
+  // renders, sin bucle. Al cambiar la config (bloques distintos) se re-mide solo.
+  const blockCount = bodyContents.length;
+  useLayoutEffect(() => {
+    if (!builderOpen) return;
+    const els = measureRefs.current;
+    const heights: number[] = [];
+    for (let i = 0; i < blockCount; i++) {
+      const el = els[i];
+      if (!el) return; // aún no montado → espera al siguiente commit
+      heights.push(el.offsetHeight);
+    }
+    const next = packBlocks(heights);
+    // Patrón medir-DOM-y-acomodar: se mide tras el commit y se reempaqueta; el
+    // guard (solo setState si cambia) evita el bucle. La regla no aplica a este
+    // caso de medición de layout.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPacks((prev) =>
+      prev && JSON.stringify(prev) === JSON.stringify(next) ? prev : next,
+    );
+  });
+
+  // Empaquetado efectivo: el medido si es consistente con los bloques actuales;
+  // si no (1ª vez o la config acaba de cambiar), fallback a 1 bloque por hoja.
+  const effectivePacks: number[][] =
+    packs && packs.reduce((a, g) => a + g.length, 0) === bodyContents.length
+      ? packs
+      : bodyContents.map((_, i) => [i]);
+
+  // Página real de cada sección según el empaquetado (cover = pág. 1; 1ª hoja del
+  // cuerpo = pág. 2). Se aplica ANTES de construir el resumen (que lista el TOC).
+  {
+    const blockToSheet = new Map<number, number>();
+    effectivePacks.forEach((arr, s) =>
+      arr.forEach((bi) => blockToSheet.set(bi, s)),
+    );
+    for (const e of indexEntries) {
+      if (e.startBlock < 0) continue; // resumen (cover): página 1
+      const s = blockToSheet.get(e.startBlock);
+      if (s != null) e.page = s + 2;
+    }
+  }
+
   // Hoja 1: índice (izq) + resumen ejecutivo (der).
   const summaryContent = (
-    <div className="flex h-full gap-6 text-[11px]">
+    <div className="text-[13px]">
+      {/* Fila superior: TOC (izq) + cabecera y mapa (der). SIN h-full → el TOC no
+          se estira a todo el alto; solo abarca lo que mida esta fila. */}
+      <div className="flex gap-6">
       <aside className="w-[36%] shrink-0 border-r border-gray-200 pr-4">
-        <h4 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-gray-500">
+        <h4 className="mb-3 text-[12px] font-bold uppercase tracking-widest text-gray-500">
           Índice del informe
         </h4>
         <ol className="flex flex-col gap-2">
@@ -1333,28 +1521,28 @@ export default function Report() {
               <span className="text-gray-700">
                 {e.n}. {e.title}
               </span>
-              <span className="font-mono text-gray-400">{e.page}</span>
+              <span className="tabular-nums text-gray-400">{e.page}</span>
             </li>
           ))}
         </ol>
       </aside>
 
       <div className="min-w-0 flex-1">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-gray-400">
-          Informe de viabilidad
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-400">
+          Informe de idoneidad
         </p>
         <h3 className="text-lg font-bold text-[#165170ff]">Proyecto eólico</h3>
-        <p className="text-[11px] text-gray-600">
+        <p className="text-[13px] text-gray-600">
           {region ?? "Área seleccionada"} · {fmtKm2.format(area)} km²
         </p>
         {centroid && (
-          <p className="font-mono text-[10px] text-gray-400">
+          <p className="tabular-nums text-[12px] text-gray-400">
             {formatCoordenadas(centroid)}
           </p>
         )}
-        <p className="text-[10px] text-gray-400">{timestamp}</p>
+        <p className="text-[12px] text-gray-400">{timestamp}</p>
 
-        <h4 className="mt-4 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+        <h4 className="mt-4 text-[12px] font-bold uppercase tracking-wide text-gray-500">
           Resumen ejecutivo
         </h4>
         {config.showMap && (
@@ -1386,248 +1574,157 @@ export default function Report() {
             "gráfico = score por dimensión (criterios/*)",
           ]}
         />
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <div className="flex flex-col items-center rounded-lg border border-gray-200 p-2">
-            <p className="text-[9px] font-bold uppercase tracking-wide text-gray-500">
-              Índice de viabilidad
+      </div>
+      </div>
+
+      {/* A ANCHO COMPLETO de la hoja (fuera de las 2 columnas): el cliente pidió
+          que el radar y las barras sean grandes. Al sacarlos de la columna derecha
+          (64%), además el "Índice del informe" deja de estirarse a full-height. */}
+      <div className="mt-6">
+        {/* Fila: Índice de idoneidad (izq, al ancho del índice ~36%) + barras por
+            dimensión (der). El cliente pidió el gauge a la izquierda y las barras a
+            su derecha; las barras van coloreadas por su dimensión. */}
+        <div className="flex items-stretch gap-4">
+          <div className="flex w-[36%] shrink-0 flex-col items-center justify-center rounded-lg border border-gray-200 p-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">
+              Índice de idoneidad
             </p>
-            <Gauge value={scores.general} size={150} className="w-full max-w-[180px]" />
-          </div>
-          <div className="flex flex-col items-center justify-center rounded-lg border border-gray-200 p-2">
-            <p className="text-[9px] font-bold uppercase tracking-wide text-gray-500">
-              Desempeño por dimensión
-            </p>
-            {selectedHexes.size > 0 ? (
-              renderChart(chartAxes)
-            ) : (
-              <p className="py-6 text-[10px] text-gray-400">Sin área</p>
+            <div style={{ width: 180 }}>
+              <Gauge value={scores.general} size={170} className="w-full" />
+            </div>
+            {/* #35: rango de idoneidad (mín/máx del área) junto al puntaje global. */}
+            {idoneidadRange && (
+              <p className="mt-1 text-center text-[11px] text-gray-500">
+                Rango del área:{" "}
+                <b>
+                  {idoneidadRange.min.toFixed(0)}–{idoneidadRange.max.toFixed(0)}
+                </b>{" "}
+                / 100
+              </p>
             )}
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col justify-center rounded-lg border border-gray-200 p-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">
+              Score por dimensión
+            </p>
+            {/* #32: escala + unidad del puntaje por dimensión. */}
+            <p className="text-[10px] text-gray-400">Escala 0–100 (índice de idoneidad)</p>
+            <ul className="mt-2 flex flex-col gap-2">
+              {chartAxes.map((a) => (
+                <li key={a.label} className="flex items-center gap-2 text-[13px]">
+                  <span className="flex-1 text-gray-700">{a.label}</span>
+                  <div className="relative h-2 w-40 overflow-hidden rounded-full bg-gray-200">
+                    <span
+                      className="absolute inset-y-0 left-0 rounded-full"
+                      style={{
+                        width: `${Math.max(0, Math.min(100, a.value))}%`,
+                        backgroundColor: a.color ?? "#165170",
+                      }}
+                    />
+                  </div>
+                  <span
+                    className="w-16 text-right tabular-nums font-semibold"
+                    style={{ color: a.color ?? "#165170" }}
+                  >
+                    {a.value.toFixed(1)}
+                    <span className="font-normal text-gray-400"> /100</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 
-        <ul className="mt-3 flex flex-col gap-1">
-          {chartAxes.map((a) => (
-            <li key={a.label} className="flex items-center gap-2 text-[10px]">
-              <span className="flex-1 text-gray-700">{a.label}</span>
-              <div className="relative h-1.5 w-24 overflow-hidden rounded-full bg-gray-200">
-                <span
-                  className="absolute inset-y-0 left-0 rounded-full bg-[#165170ff]"
-                  style={{ width: `${Math.max(0, Math.min(100, a.value))}%` }}
-                />
-              </div>
-              <span className="w-10 text-right font-mono font-semibold text-[#165170ff]">
-                {a.value.toFixed(1)}
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        {config.showInfluencers && topInfluencers.length > 0 && (
-          <div className="mt-3">
-            <p className="text-[9px] font-bold uppercase tracking-wide text-gray-500">
-              Variables que más influyen
+        {/* #33: SÍNTESIS EJECUTIVA — resumen de resultados por dimensión, al inicio. */}
+        {selectedHexes.size > 0 && chartAxes.length > 0 && (
+          <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50/60 p-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">
+              Síntesis ejecutiva
             </p>
-            <div className="mt-1 flex justify-center">
-              <DivergingBars
-                bars={topInfluencers}
-                width={420}
-                className="w-full max-w-[420px]"
-              />
-            </div>
+            <p className="mt-1 text-[12px] text-gray-700">
+              El área analizada obtiene un índice de idoneidad global de{" "}
+              <b>{scores.general.toFixed(1)} / 100</b>
+              {idoneidadRange
+                ? ` (rango del área ${idoneidadRange.min.toFixed(0)}–${idoneidadRange.max.toFixed(0)})`
+                : ""}
+              . Desempeño por dimensión:
+            </p>
+            <ul className="mt-1.5 flex flex-col gap-1 text-[12px] text-gray-700">
+              {chartAxes.map((a) => {
+                const band =
+                  a.value >= 66
+                    ? "idoneidad alta"
+                    : a.value >= 33
+                      ? "idoneidad media"
+                      : "idoneidad baja";
+                return (
+                  <li key={a.label}>
+                    <b style={{ color: a.color ?? "#165170" }}>{a.label}:</b>{" "}
+                    {a.value.toFixed(1)} / 100 — {band}.
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         )}
+
       </div>
     </div>
   );
 
-  const allContents: ReactNode[] = [summaryContent, ...bodyContents];
-  const totalSheets = allContents.length;
-  const sheets = allContents.map((c, i) => (
-    <ReportSheet key={i} region={region} index={i} total={totalSheets}>
-      {c}
-    </ReportSheet>
-  ));
+  // HOJAS = cover (resumen) + una hoja por grupo del empaquetado medido. Varios
+  // bloques por hoja (apilados con gap-6) → sin huecos ni cortes. El preview y la
+  // captura del PDF iteran estas MISMAS hojas (selector [data-report-sheet]).
+  const totalSheets = 1 + effectivePacks.length;
+  const sheets = [
+    <ReportSheet key="cover" region={region} index={0} total={totalSheets}>
+      {summaryContent}
+    </ReportSheet>,
+    ...effectivePacks.map((group, s) => (
+      <ReportSheet key={s} region={region} index={s + 1} total={totalSheets}>
+        <div className="flex flex-col gap-6">
+          {group.map((bi) => (
+            <div key={bi}>{bodyContents[bi]}</div>
+          ))}
+        </div>
+      </ReportSheet>
+    )),
+  ];
+
+  // Capa OCULTA de medición: renderiza cada bloque del cuerpo al ancho útil de la
+  // hoja (714px = 794 − padding px-10×2) con la misma fuente, para medir su alto
+  // real (offsetHeight) y empaquetar. visibility:hidden conserva el layout (a
+  // diferencia de display:none). Sólo se monta con el builder abierto.
+  const measureLayer = builderOpen ? (
+    <div
+      aria-hidden
+      style={{
+        position: "fixed",
+        left: -99999,
+        top: 0,
+        width: 714,
+        visibility: "hidden",
+        fontFamily: "Helvetica, Arial, sans-serif",
+      }}
+    >
+      {bodyContents.map((c, i) => (
+        <div
+          key={i}
+          ref={(el) => {
+            measureRefs.current[i] = el;
+          }}
+        >
+          {c}
+        </div>
+      ))}
+    </div>
+  ) : null;
 
   // Escala de las hojas en la malla del builder: tamaño real al capturar el PDF,
   // miniatura para la vista.
   const previewScale = capturing ? 1 : 0.42;
 
   // ── PDF: una HOJA = una PÁGINA A4 (captura por hoja) ───────────────────
-  // #18: al pulsar "datos por hexágono" se muestra primero un aviso con el tamaño
-  // (nº hex × columnas); con muchos hexágonos la imagen sale muy pesada. El export
-  // real (handleDownloadHexTable) se dispara al confirmar.
-  const requestHexTable = () => {
-    const n = areaData?.size ?? 0;
-    if (n === 0) {
-      toast.error("No hay datos por hexágono para exportar (requiere backend).");
-      return;
-    }
-    const c = VARIABLES.filter((v) => v.masterId !== "NA").length;
-    setHexExportWarn({ n, c });
-  };
-
-  // Exportación ADMIN: imagen (PNG) de una tabla con una fila por hexId y los
-  // datos de cada variable del modelo (columna = masterId). Requiere datos por
-  // hex del backend (`areaData`). Aparece solo para admin en el informe final.
-  const handleDownloadHexTable = async () => {
-    if (!areaData || selectedHexes.size === 0) {
-      toast.error("No hay datos por hexágono para exportar (requiere backend).");
-      return;
-    }
-    const hexVal = (
-      vars: Record<string, number> | undefined,
-      masterId: string,
-    ): number | null => {
-      if (!vars || masterId === "NA") return null;
-      // Match UNIVERSAL por código normalizado (ignora - _ y mayúsculas): casa la
-      // clave del JSONB sea AMB_012_A, AMB-012-A, etc. (igual que hexVariableValue).
-      const target = normCode(masterId);
-      for (const key of Object.keys(vars)) {
-        if (typeof vars[key] === "number" && normCode(key) === target) return vars[key];
-      }
-      return null;
-    };
-    const esc = (s: string) =>
-      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-    // Los datos por hexágono en BD SIEMPRE están a res 8. La selección puede estar
-    // a otra resolución (el piso de selección es res 7, y al acercarse el zoom se
-    // selecciona más fino, res > 8). Hay que normalizar a EXACTAMENTE res 8 —igual
-    // que el heatmap del informe— o `areaData` (res 8) no casa y todo sale "—":
-    //   res > 8  → celda padre res 8 (varias caen en la misma → dedup)
-    //   res == 8 → tal cual
-    //   res < 8  → hijos res 8 (celdas compactadas al guardar, res 6/7)
-    const DATA_H3_RES = 8;
-    const hexes = Array.from(
-      new Set(
-        Array.from(selectedHexes).flatMap((h) => {
-          const res = getResolution(h);
-          return res > DATA_H3_RES
-            ? [cellToParent(h, DATA_H3_RES)]
-            : res === DATA_H3_RES
-              ? [h]
-              : cellToChildren(h, DATA_H3_RES);
-        }),
-      ),
-    )
-      // Solo celdas con dato en BD (res 8): evita filas fantasma "—" al expandir
-      // hijos de una selección compactada (res < 8).
-      .filter((h) => areaData.has(h))
-      .sort();
-    if (hexes.length === 0) {
-      toast.error("La selección no tiene datos por hexágono a res 8 en el backend.");
-      return;
-    }
-    const cols = VARIABLES.filter((v) => v.masterId !== "NA");
-    const thS =
-      "padding:4px 6px;border:1px solid #cbd5e1;background:#165170;color:#fff;font-weight:600;white-space:nowrap;";
-    const tdS =
-      "padding:3px 6px;border:1px solid #e2e8f0;color:#334155;text-align:right;white-space:nowrap;";
-    const idS =
-      "padding:3px 6px;border:1px solid #e2e8f0;color:#0f172a;font-weight:700;white-space:nowrap;";
-
-    let html = `<table style="border-collapse:collapse;font:11px/1.3 ui-monospace,monospace;">`;
-    html += `<thead><tr><th style="${thS}text-align:left;">Hex ID</th>`;
-    for (const v of cols)
-      html += `<th style="${thS}" title="${esc(v.label)}">${esc(v.masterId)}</th>`;
-    html += `</tr></thead><tbody>`;
-    for (const hex of hexes) {
-      const info = areaData.get(hex);
-      html += `<tr><td style="${idS}">${esc(hex)}</td>`;
-      for (const v of cols) {
-        const val = hexVal(info?.variables, v.masterId);
-        html += `<td style="${tdS}">${val != null ? Math.round(val * 1000) / 1000 : "—"}</td>`;
-      }
-      html += `</tr>`;
-    }
-    html += `</tbody></table>`;
-
-    // Leyenda de FUENTES por variable (trazabilidad): cada columna (código) →
-    // variable → fuente, para que el experto verifique cada valor en su SIG.
-    const cellS = "padding:3px 6px;border:1px solid #e2e8f0;color:#334155;";
-    let srcHtml = `<table style="border-collapse:collapse;font:10px/1.3 sans-serif;">`;
-    srcHtml += `<thead><tr><th style="${thS}text-align:left;">Código</th><th style="${thS}text-align:left;">Variable</th><th style="${thS}text-align:left;">Fecha</th><th style="${thS}text-align:left;">Fuente</th></tr></thead><tbody>`;
-    for (const v of cols) {
-      const fuente =
-        v.fuente && v.fuente !== "(sin definir)" ? v.fuente : "Por definir";
-      srcHtml += `<tr><td style="${idS}">${esc(v.masterId)}</td><td style="${cellS}">${esc(v.label)}</td><td style="${cellS}">${esc(sourceVersion(v.fuente))}</td><td style="${cellS}">${esc(fuente)}</td></tr>`;
-    }
-    srcHtml += `</tbody></table>`;
-
-    // Segunda tabla: valores PONDERADOS por hex (tabla `hexagon_variables_pon`).
-    // Solo si el backend trae ponderadas (en template/sin backend va vacío).
-    const hasPon = hexes.some((hx) => {
-      const vp = areaData.get(hx)?.variables_pon;
-      return vp && Object.keys(vp).length > 0;
-    });
-    let ponHtml = "";
-    if (hasPon) {
-      ponHtml = `<table style="border-collapse:collapse;font:11px/1.3 ui-monospace,monospace;">`;
-      ponHtml += `<thead><tr><th style="${thS}text-align:left;">Hex ID</th>`;
-      for (const v of cols)
-        ponHtml += `<th style="${thS}" title="${esc(v.label)}">${esc(v.masterId)}</th>`;
-      ponHtml += `</tr></thead><tbody>`;
-      for (const hex of hexes) {
-        const info = areaData.get(hex);
-        ponHtml += `<tr><td style="${idS}">${esc(hex)}</td>`;
-        for (const v of cols) {
-          const val = hexVal(info?.variables_pon, v.masterId);
-          ponHtml += `<td style="${tdS}">${val != null ? Math.round(val * 1000) / 1000 : "—"}</td>`;
-        }
-        ponHtml += `</tr>`;
-      }
-      ponHtml += `</tbody></table>`;
-    }
-
-    const wrap = document.createElement("div");
-    wrap.setAttribute("data-pdf-ignore", "true");
-    wrap.style.cssText =
-      "position:fixed;left:-99999px;top:0;background:#fff;padding:16px;";
-    wrap.innerHTML =
-      `<div style="font:700 13px sans-serif;color:#165170;margin-bottom:8px;">` +
-      `Datos crudos por hexágono — ${hexes.length} hex × ${cols.length} variables` +
-      `${region ? ` · ${esc(region)}` : ""}</div>` +
-      html +
-      (ponHtml
-        ? `<div style="font:700 12px sans-serif;color:#165170;margin:14px 0 6px;">Valores ponderados por hexágono</div>` +
-          ponHtml
-        : "") +
-      `<div style="font:700 12px sans-serif;color:#165170;margin:14px 0 6px;">Fuentes por variable</div>` +
-      srcHtml +
-      `<div style="font:italic 9px sans-serif;color:#64748b;margin-top:8px;max-width:900px;">` +
-      `Cada valor es el dato crudo de la variable en ese hexágono (clave H3). ` +
-      `Verificable en SIG/QGIS hexágono por hexágono contra la fuente indicada. ` +
-      `La "tabla general por área" del informe es el promedio de estos valores; ` +
-      `el score de cada dimensión resulta de aplicarles los pesos del modelo.</div>`;
-    document.body.appendChild(wrap);
-    setIsExporting(true);
-    setExportMsg(`Rasterizando ${hexes.length} hexágonos…`);
-    try {
-      // MEMORIA: una tabla de miles de filas a scale 2 llevaba el navegador a
-      // varios GB. Escala adaptativa: 1 si el área es grande (>500 hex), 2 para
-      // áreas pequeñas donde la nitidez importa y el costo es bajo.
-      const scale = hexes.length > 500 ? 1 : 2;
-      const canvas = await html2canvas(wrap, {
-        scale,
-        backgroundColor: "#ffffff",
-      });
-      const url = canvas.toDataURL("image/png");
-      canvas.width = 0; // libera el canvas antes de disparar la descarga
-      canvas.height = 0;
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `datos-hex-${Date.now()}.png`;
-      a.click();
-      toast.success("Tabla de datos por hexágono descargada");
-    } catch (e) {
-      console.error("[hexTableExport]", e);
-      toast.error("No se pudo generar la imagen de la tabla");
-    } finally {
-      document.body.removeChild(wrap);
-      setIsExporting(false);
-      setExportMsg("");
-    }
-  };
 
   const handleDownloadPdf = async () => {
     const root = reportRef.current;
@@ -1635,11 +1732,28 @@ export default function Report() {
     setIsExporting(true);
     setError(null);
     setCapturing(true); // hojas a tamaño real para capturar nítido
+    // FUENTE CONSISTENTE EN EL PDF: la app usa Geist (fuente VARIABLE de
+    // next/font), que html2canvas renderiza mal → parte del texto caía a una
+    // fuente de reserva (y sus cursivas se veían como "otra fuente"). Forzamos
+    // Arial/Helvetica (fuente de sistema que html2canvas pinta siempre bien,
+    // upright e itálica) en TODO el informe durante la captura, y coincide con
+    // la Helvetica de los charts vectoriales (svg2pdf) → PDF tipográficamente
+    // uniforme. Se revierte en el finally. `!important` para ganar a Tailwind.
+    const fontOverride = document.createElement("style");
+    fontOverride.textContent =
+      '[data-report-sheet], [data-report-sheet] * { font-family: Helvetica, Arial, sans-serif !important; }';
     try {
       await new Promise((r) =>
         requestAnimationFrame(() => requestAnimationFrame(() => r(null))),
       );
       await new Promise((r) => setTimeout(r, 80));
+      // Espera a que las fuentes terminen de cargar (evita capturas con fallback).
+      try {
+        await document.fonts?.ready;
+      } catch {
+        /* fonts API ausente/antigua → seguir */
+      }
+      document.head.appendChild(fontOverride);
 
       const sheetEls = Array.from(
         root.querySelectorAll<HTMLElement>("[data-report-sheet]"),
@@ -1675,7 +1789,7 @@ export default function Report() {
       // (width/height=0) + se cede un tick antes de la siguiente, el pico es de ~1
       // canvas → podemos subir a 2 para informes normales (≤12 hojas) y solo caer a
       // 1.5 en informes muy largos (defensa de memoria).
-      const CAPTURE_SCALE = totalSheets <= 12 ? 2 : 1.5;
+      const CAPTURE_SCALE = totalSheets <= 20 ? 2 : 1.5;
       const SLICE_EPS_MM = 2; // franja mínima sobrante: no añade página casi vacía
 
       // Rasteriza una hoja a JPEG y LIBERA el canvas. `hideCharts` = oculta los
@@ -1865,6 +1979,7 @@ export default function Report() {
       setError(`No se pudo generar el PDF: ${msg}`);
       toast.error(`No se pudo generar el PDF: ${msg}`);
     } finally {
+      fontOverride.remove(); // quita el override de fuente de la captura
       setCapturing(false);
       setIsExporting(false);
       setExportMsg("");
@@ -1889,7 +2004,11 @@ export default function Report() {
       await saveInforme({
         id: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
-        nombre: region ? `Informe — ${region}` : "Informe de idoneidad",
+        // #29: nombre autogenerado con LOCALIDAD + FECHA/HORA.
+        nombre: `${region ?? "Idoneidad"} · ${new Date().toLocaleString("es-CO", {
+          dateStyle: "short",
+          timeStyle: "short",
+        })}`,
         hexes: compactHexes(Array.from(selectedHexes)),
         variables: Array.from(activeVariables),
         caracteristicas: caracteristicasState,
@@ -1913,8 +2032,8 @@ export default function Report() {
   const inline = (
     <div className="flex flex-col gap-4 p-4">
       <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-        <p className="text-[10px] uppercase tracking-widest text-gray-400">
-          Informe de viabilidad
+        <p className="text-[12px] uppercase tracking-widest text-gray-400">
+          Informe de idoneidad
         </p>
         <h2 className="text-lg font-bold text-[#165170ff]">
           Idoneidad eólica{region ? ` — ${region}` : ""}
@@ -1923,12 +2042,56 @@ export default function Report() {
           {fmtKm2.format(area)} km² · {totalSheets}{" "}
           {totalSheets === 1 ? "hoja" : "hojas"}
         </p>
+
+        {/* #34: acciones en la CABECERA del informe (antes estaban al final). */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setBuilderOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#165170ff] px-4 py-1.5 text-xs font-semibold text-[#165170ff] hover:bg-[#cce1eeff]/40"
+          >
+            <Maximize2 size={14} /> Previsualizar
+          </button>
+          <button
+            type="button"
+            onClick={handleGuardarHistorial}
+            disabled={isSaving || saved}
+            className={`rounded-full border px-4 py-1.5 text-xs font-semibold disabled:opacity-70 ${
+              saved
+                ? "cursor-default border-emerald-500 text-emerald-600"
+                : "border-gray-300 text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            {saved ? "✓ Guardado" : isSaving ? "Guardando…" : "Guardar en histórico"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setBuilderOpen(true)}
+            className="rounded-full bg-[#165170ff] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[#1e6a8c]"
+          >
+            Descargar PDF
+          </button>
+          {/* Limpiar: resetea selección, variables y características, borra el
+              borrador guardado y vuelve al mapa limpio. */}
+          <button
+            type="button"
+            onClick={clearFlow}
+            title="Limpiar todo (selección, dimensiones y características) y volver al mapa"
+            className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 px-4 py-1.5 text-xs font-semibold text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14" />
+            </svg>
+            Limpiar
+          </button>
+        </div>
+
         <div className="mt-3 flex justify-center">
           <Gauge value={scores.general} size={170} className="max-w-[210px]" />
         </div>
         <ul className="mt-2 flex flex-col gap-1">
           {chartAxes.map((a) => (
-            <li key={a.label} className="flex items-center gap-2 text-[11px]">
+            <li key={a.label} className="flex items-center gap-2 text-[13px]">
               <span className="flex-1 text-gray-700">{a.label}</span>
               <div className="relative h-1.5 w-24 overflow-hidden rounded-full bg-gray-200">
                 <span
@@ -1936,7 +2099,7 @@ export default function Report() {
                   style={{ width: `${Math.max(0, Math.min(100, a.value))}%` }}
                 />
               </div>
-              <span className="w-10 text-right font-mono font-semibold text-[#165170ff]">
+              <span className="w-10 text-right tabular-nums font-semibold text-[#165170ff]">
                 {a.value.toFixed(1)}
               </span>
             </li>
@@ -1944,68 +2107,6 @@ export default function Report() {
         </ul>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setBuilderOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-[#165170ff] px-4 py-1.5 text-xs font-semibold text-[#165170ff] hover:bg-[#cce1eeff]/40"
-        >
-          <Maximize2 size={14} /> Previsualizar
-        </button>
-        <button
-          type="button"
-          onClick={handleGuardarHistorial}
-          disabled={isSaving || saved}
-          className={`rounded-full border px-4 py-1.5 text-xs font-semibold disabled:opacity-70 ${
-            saved
-              ? "cursor-default border-emerald-500 text-emerald-600"
-              : "border-gray-300 text-gray-600 hover:bg-gray-50"
-          }`}
-        >
-          {saved ? "✓ Guardado" : isSaving ? "Guardando…" : "Guardar en histórico"}
-        </button>
-        <button
-          type="button"
-          onClick={() => setBuilderOpen(true)}
-          className="rounded-full bg-[#165170ff] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[#1e6a8c]"
-        >
-          Descargar PDF
-        </button>
-        {/* Exportación de datos crudos por hexágono — SOLO admin. */}
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={requestHexTable}
-            disabled={isExporting}
-            title="Descargar imagen de la tabla de datos por hexágono (todas las variables)"
-            className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 px-4 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 5h16v14H4zM4 10h16M10 5v14" />
-            </svg>
-            Datos por hex (admin)
-          </button>
-        )}
-        {hexExportWarn && (
-          <ConfirmDialog
-            title="Exportar datos por hexágono"
-            confirmLabel="Generar imagen"
-            message={
-              <>
-                La selección tiene <b>{hexExportWarn.n.toLocaleString("es-CO")}</b>{" "}
-                hexágonos × <b>~{hexExportWarn.c}</b> columnas. Con muchos hexágonos
-                la imagen puede salir <b>muy pesada</b> y tardar; se recomienda
-                exportar con <b>pocos hexágonos</b>. ¿Generar la imagen?
-              </>
-            }
-            onConfirm={() => {
-              setHexExportWarn(null);
-              void handleDownloadHexTable();
-            }}
-            onCancel={() => setHexExportWarn(null)}
-          />
-        )}
-      </div>
       {error && (
         <p role="alert" className="text-xs text-red-600">
           {error}
@@ -2017,6 +2118,7 @@ export default function Report() {
   return (
     <>
       {inline}
+      {measureLayer}
       {builderOpen && (
         <ReportBuilder
           region={region}
@@ -2055,7 +2157,7 @@ export default function Report() {
                   style={{ width: exportPct != null ? `${exportPct}%` : "50%" }}
                 />
               </div>
-              <p className="text-center text-[11px] text-gray-400">
+              <p className="text-center text-[13px] text-gray-400">
                 {exportMsg || "Puede tardar unos segundos según el número de hojas."} No cierres la página.
               </p>
             </div>

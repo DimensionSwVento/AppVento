@@ -68,7 +68,13 @@ export async function GET(req: NextRequest) {
   const issuerInternal = issuerEnv.replace(/\/$/, "");
   const issuerPublic = issuerInternal.replace(/^http:\/\//, "https://");
 
-  const tokenUrl = `${issuerInternal}/protocol/openid-connect/token`;
+  // Intercambio de token SERVER-SIDE contra el issuer HTTPS público (igual que el
+  // provider de login y el logout de abajo). Antes usaba `issuerInternal` (HTTP):
+  // en AccuWeb ese POST HTTP plano al puerto HTTPS hacía que nginx devolviera
+  // HTML → `res.json()` fallaba → /?error=register_token_exchange ("config error"
+  // en la home). La cuenta YA quedaba creada en Keycloak, por eso al reintentar
+  // "Iniciar sesión" el usuario entraba. Mismo arreglo que el refresh y el login.
+  const tokenUrl = `${issuerPublic}/protocol/openid-connect/token`;
   const redirectUri = `${origin}/api/auth/register/callback`;
 
   let idToken: string | undefined;

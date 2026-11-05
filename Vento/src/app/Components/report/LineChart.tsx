@@ -64,7 +64,7 @@ export default function LineChart({
       {yTicks.map((t, i) => (
         <g key={i}>
           <line x1={padL} y1={y(t)} x2={width - padR} y2={y(t)} stroke="#eef2f5" strokeWidth={1} />
-          <text x={padL - 5} y={y(t)} fontSize={8} fill="#9ca3af" textAnchor="end" dominantBaseline="middle">
+          <text x={padL - 5} y={y(t)} fontSize={11} fill="#9ca3af" textAnchor="end" dominantBaseline="middle">
             {t}
           </text>
         </g>
@@ -74,7 +74,7 @@ export default function LineChart({
       {years
         .filter((_, i) => i % Math.ceil(years.length / 6) === 0 || i === years.length - 1)
         .map((yr) => (
-          <text key={yr} x={x(yr)} y={height - padB + 12} fontSize={8} fill="#9ca3af" textAnchor="middle">
+          <text key={yr} x={x(yr)} y={height - padB + 12} fontSize={11} fill="#9ca3af" textAnchor="middle">
             {yr}
           </text>
         ))}
@@ -100,7 +100,7 @@ export default function LineChart({
       {withData.map((s, i) => (
         <g key={`lg-${s.label}`} transform={`translate(${padL + i * (plotW / withData.length)}, ${height - 6})`}>
           <rect x={0} y={-7} width={9} height={9} rx={2} fill={s.color} />
-          <text x={12} y={0} fontSize={8} fill="#4b5563">
+          <text x={12} y={0} fontSize={11} fill="#4b5563">
             {s.label.length > 18 ? `${s.label.slice(0, 17)}…` : s.label}
           </text>
         </g>

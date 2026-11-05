@@ -171,24 +171,25 @@ function hashId(s: string): number {
  * variable tiene su propia mancha, distinguible por color/icono). Las `mar` se
  * empujan mar adentro. Solo TEMPLATE (demo); en backend se usa el dato real.
  */
-// TEMPLATE (pruebas de composición de capas): una zona CENTRAL donde TODAS las
-// capas se tocan + zonas de solape PARCIAL elegidas por seed (algunas comparten).
-// Solo afecta al placeholder (modo template) → para ver bandas concéntricas.
-const _TPL_ALL_TOUCH: [number, number] = [4.6, -74.1]; // centro (Cundinamarca)
-const _TPL_OVERLAP_ZONES: [number, number][] = [
-  [6.2, -75.6], // Antioquia
-  [10.9, -74.8], // Caribe
-  [3.4, -76.5], // Valle
-  [7.9, -72.5], // Norte de Santander
+// TEMPLATE (pruebas de composición de capas): zonas de CRUCE dispersas por el país
+// para ver solapes/bandas concéntricas. SIN una zona central "todas se tocan" (eso
+// amontonaba todas las capas en un punto) y EVITANDO las 6 zonas EXCLUIDAS
+// (Cundinamarca, Caribe, Antioquia, Valle, Guajira, Amazonía — ver
+// `PLACEHOLDER_EXCLUDED_ZONES`), que antes coincidían con los solapes. Cada variable
+// cruza SOLO en 2 de estas zonas (según su seed) → solapes PARCIALES y DISPERSOS.
+const _TPL_CROSS_ZONES: [number, number][] = [
+  [3.5, -73.0], // Meta / Llanos
+  [7.0, -73.1], // Santander
+  [5.5, -71.5], // Casanare
+  [2.5, -75.5], // Huila
+  [8.3, -75.9], // Córdoba
 ];
 function templateOverlapCells(seed: number, radius: number): string[] {
   const out: string[] = [];
-  const c0 = latLngToCell(_TPL_ALL_TOUCH[0], _TPL_ALL_TOUCH[1], MAP_LAYER_RES);
-  for (const h of gridDisk(c0, radius)) out.push(h); // zona "todas se tocan"
   for (let k = 0; k < 2; k++) {
-    const z = _TPL_OVERLAP_ZONES[(seed + k) % _TPL_OVERLAP_ZONES.length];
+    const z = _TPL_CROSS_ZONES[(seed + k) % _TPL_CROSS_ZONES.length];
     const c = latLngToCell(z[0], z[1], MAP_LAYER_RES);
-    for (const h of gridDisk(c, radius)) out.push(h); // solape parcial
+    for (const h of gridDisk(c, radius)) out.push(h); // solape parcial disperso
   }
   return out;
 }

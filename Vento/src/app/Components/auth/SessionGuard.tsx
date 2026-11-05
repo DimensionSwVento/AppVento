@@ -19,9 +19,11 @@ export default function SessionGuard({
 }>) {
   const { data: session } = useSession();
   // Derivado de la sesión — no necesita estado propio.
-  const expired =
-    session?.error === "RefreshTokenError" ||
-    session?.error === "NoRefreshToken";
+  // Solo se considera "expirada" si NO hay ni token de sesión (sub) ni refresh
+  // token ("NoSession"). Un refresh fallido YA NO cierra la sesión: es infinita
+  // hasta perder la cookie (cerrar sesión / borrarla / reiniciar). Se elimina el
+  // sign-out automático por RefreshTokenError y el corte a los ~30 min.
+  const expired = session?.error === "NoSession";
 
   useEffect(() => {
     if (!expired) return;

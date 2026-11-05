@@ -8,10 +8,14 @@ import HistorialList from "../Components/historial/HistorialList";
 import MapView from "../Components/map/Map";
 import OnboardingModal from "../Components/onboarding/OnboardingModal";
 import DisclaimerModal from "../Components/onboarding/DisclaimerModal";
+import ConnectionErrorOverlay from "../Components/ui/ConnectionErrorOverlay";
 import { useAprincipal } from "../Utils/contexts/AccionPrincipalContext";
+import { useBackendHealth } from "../Utils/contexts/BackendHealthContext";
+import { USE_BACKEND } from "../Utils/projectData";
 
 export default function AreaSelectionPage() {
   const { accion } = useAprincipal();
+  const { down, recheck } = useBackendHealth();
 
   // Onboarding: UNA VEZ POR SESIÓN activa (sessionStorage). No se repite en cada
   // recarga de la misma sesión; vuelve a salir en una sesión nueva.
@@ -39,7 +43,13 @@ export default function AreaSelectionPage() {
       case "caracteristicas":
         return <Caracteristicas />;
       case "informe":
-        return <Report />;
+        // Modo datos con backend caído: NO generar el informe con ceros (ruido);
+        // mostrar aviso de conexión flotante con "Reintentar" (feedback cliente).
+        return USE_BACKEND && down ? (
+          <ConnectionErrorOverlay onRetry={recheck} />
+        ) : (
+          <Report />
+        );
       case "historico":
         return <HistorialList />;
       default:

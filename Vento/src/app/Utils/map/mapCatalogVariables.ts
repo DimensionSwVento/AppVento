@@ -3,10 +3,38 @@ import {
   getVariableById,
   mapKindForVariable,
   variableAppliesToNature,
+  type MapKind,
   type Variable,
 } from "../variables/variablesCatalog";
+import { colorHexForVariable } from "../variables/dimensionColors";
 
 export type MapNature = "mar" | "tierra" | "mixta" | "vacia";
+
+/**
+ * FUENTE ÚNICA del DESCRIPTOR de una variable en el mapa: `{ icon, color, kind }`.
+ * La consumen el MAPA (capas/iconos), la MODAL de capas y el ADMIN, para que
+ * icono y color NO diverjan entre sí (antes: el mapa usaba `iconKey` del catálogo
+ * y la modal un glifo propio; el color salía de sitios distintos y a veces de un
+ * azul fijo). Los VALORES (hexes/series con los que se dibuja) van aparte, por
+ * modo (template/backend) — esto solo describe cómo se ve la variable.
+ *   - `icon`  = `iconKey` del catálogo (default `lucide:MapPin`).
+ *   - `color` = color PROPIO de la variable (hex) o, si no, el color por dimensión.
+ *   - `kind`  = `area` | `interconectado` | `calor`.
+ */
+export interface MapComponent {
+  icon: string;
+  color: string;
+  kind: MapKind;
+}
+
+export function mapComponent(id: string): MapComponent {
+  const v = getVariableById(id);
+  return {
+    icon: v?.iconKey || "lucide:MapPin",
+    color: v?.color || colorHexForVariable(id),
+    kind: v?.mapKind ?? mapKindForVariable(id),
+  };
+}
 
 /**
  * ¿La variable (por id) aplica a la naturaleza mar/tierra del área? Filtro ÚNICO

@@ -12,7 +12,6 @@ import {
   DimensionId,
   OPTIONAL_VARIABLES,
   getVariableById,
-  isHeatVariable,
   modelVariableIds,
   requiredVariableIds,
   optionalVariablesByDimension,
@@ -105,14 +104,13 @@ export function VariablesProvider({ children }: { children: React.ReactNode }) {
       if (next.has(id)) {
         next.delete(id);
       } else {
-        // UN solo mapa de calor a la vez: al activar una variable de calor, apaga
-        // las otras de calor (mantiene las de área/interconectado). Las demás se
-        // acumulan normal.
-        if (isHeatVariable(id)) {
-          for (const other of [...next]) {
-            if (other !== id && isHeatVariable(other)) next.delete(other);
-          }
-        }
+        // #7.3: la SELECCIÓN de variables es aditiva — se puede tener varias de
+        // calor activas a la vez (p.ej. velocidad + densidad del viento). Antes
+        // activar una de calor apagaba las otras, lo que las quitaba también del
+        // resumen/informe. La restricción de "un solo mapa de calor a la vez" NO
+        // va aquí: la impone el control de capas del mapa ("Visualización en el
+        // mapa", single-select), que pinta una sola capa aunque haya varias
+        // seleccionadas. Ver HeatmapDimensionSwitches.
         next.add(id);
       }
       return next;
