@@ -33,6 +33,8 @@ export default function Dimensions() {
   const [query, setQuery] = useState("");
   const [econOpen, setEconOpen] = useState(false);
   const [regOpen, setRegOpen] = useState(false);
+  // 10.3: "Conoce más sobre las variables" despliega el detalle de tipos.
+  const [showVarHelp, setShowVarHelp] = useState(false);
   const { selectedHexes } = useAprincipal();
 
   // Naturaleza mar/tierra de la selección (modo API emplazamiento): oculta las
@@ -136,18 +138,69 @@ export default function Dimensions() {
           Configura las variables de interés por cada dimensión
         </h2>
 
-        {/* Aviso PERSISTENTE (US-FB4): aclara que el toggle NO recalcula el
-            modelo — antes salía una sola vez y era poco visible. */}
-        <p className="flex items-start gap-2 rounded-md border-l-4 border-[#165170ff] bg-[#cce1eeff]/50 px-3 py-2.5 text-[12px] leading-snug text-gray-700">
-          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#165170ff]">
-            <path fillRule="evenodd" d="M18 10A8 8 0 11 2 10a8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-          </svg>
-          <span>
-            Activar o desactivar variables aquí <strong>no recalcula el modelo</strong> — el
-            puntaje de idoneidad ya viene calculado. Solo defines qué variables{" "}
-            <strong>se muestran en el informe</strong> (y en el mapa, las que apliquen).
-          </span>
-        </p>
+        {/* Aviso PERSISTENTE (10.3 / US-FB4): caja azul clara + BOMBILLA, mensaje
+            corto de la referencia y enlace "Conoce más" que DESPLIEGA el detalle de
+            los tipos de variable (aclara que las informativas no modifican el índice). */}
+        <div className="rounded-lg border border-[#bcdcee] bg-[#e8f2fb] px-3 py-2.5 text-[12px] leading-snug text-gray-700">
+          <div className="flex items-start gap-2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth={1.8} aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+            </svg>
+            <div>
+              <span>
+                Las variables puntuables de las dimensiones{" "}
+                <strong>ambiental, técnica y social</strong> se activan por defecto,
+                según la categoría de tu proyecto (tierra o mar).
+              </span>{" "}
+              <button
+                type="button"
+                onClick={() => setShowVarHelp((v) => !v)}
+                aria-expanded={showVarHelp}
+                className="font-semibold text-[#165170ff] underline underline-offset-2 hover:text-[#1e6a8c]"
+              >
+                Conoce más sobre las variables {showVarHelp ? "↑" : "→"}
+              </button>
+            </div>
+          </div>
+
+          {showVarHelp && (
+            <div className="mt-2.5 border-t border-[#bcdcee] pt-2.5">
+              <p className="mb-2 font-semibold text-[#165170ff]">
+                ¿Qué tipo de variables puedes activar?
+              </p>
+              <ul className="flex flex-col gap-2">
+                <li>
+                  <span className="font-semibold text-emerald-700">● Puntuables:</span>{" "}
+                  participan en el cálculo del índice de idoneidad. Están activas por
+                  defecto según la categoría de tu proyecto (tierra o mar).
+                </li>
+                <li>
+                  <span className="font-semibold text-violet-700">● Informativas:</span>{" "}
+                  complementan el análisis. Puedes incluirlas en el informe y visualizar
+                  algunas en el mapa; también activar las proyecciones económicas y el
+                  marco normativo.
+                </li>
+                <li>
+                  <span className="font-semibold text-red-700">● Excluyentes:</span>{" "}
+                  no se pueden seleccionar para el análisis, porque aplican restricciones
+                  al área.
+                </li>
+                <li>
+                  <span className="font-semibold text-gray-700">
+                    Ver detalle de una variable:
+                  </span>{" "}
+                  haz clic en el ícono de información para ver la definición, fuente,
+                  unidad y otros detalles.
+                </li>
+                <li className="rounded-md bg-emerald-50 px-2 py-1.5 text-emerald-800">
+                  <strong>Recuerda:</strong> las variables informativas{" "}
+                  <strong>no modifican el índice de idoneidad</strong>, pero te ayudan a
+                  tener un análisis más completo del territorio.
+                </li>
+              </ul>
+            </div>
+          )}
+        </div>
 
         <div className="relative">
           <input

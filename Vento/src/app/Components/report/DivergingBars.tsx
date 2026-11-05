@@ -25,7 +25,10 @@ export default function DivergingBars({
   const gap = 6;
   const padY = 6;
   const labelW = 150;
-  const half = (width - labelW) / 2 - 6; // ancho máx de cada lado
+  // -10 (antes -6): reserva sitio para la PUNTA de la flecha, que sobresale ~11px
+  // del final de la barra. Con -6 la flecha de una barra a magnitud máxima se
+  // salía del viewBox y se veía CORTADA en el PDF. Con -10 cabe con holgura.
+  const half = (width - labelW) / 2 - 10; // ancho máx de cada lado
   const cx = labelW + half + 6; // eje central
   const height = padY * 2 + bars.length * rowH + (bars.length - 1) * gap;
 
@@ -33,9 +36,11 @@ export default function DivergingBars({
     <svg
       viewBox={`0 0 ${width} ${height}`}
       className={className}
-      /* #4: hereda la fuente del informe (el texto SVG sin fontFamily usaba la
-         fuente por defecto del navegador → se veía en "otra fuente"). */
-      style={{ fontFamily: "inherit" }}
+      /* Fuente EXPLÍCITA (no "inherit"): svg2pdf lee "inherit" literal y, al no
+         resolverlo, caía a su fuente serif por defecto → las etiquetas del chart
+         salían en otra fuente en el PDF. Helvetica la mapea svg2pdf y coincide con
+         el cuerpo del informe (forzado a Helvetica/Arial en la captura). */
+      style={{ fontFamily: "Helvetica, Arial, sans-serif" }}
       role="img"
       aria-label={`Variables que más influyen: ${bars
         .map((b) => `${b.label} ${b.sube ? "suma" : "resta"}`)
@@ -53,7 +58,7 @@ export default function DivergingBars({
             <text
               x={labelW - 6}
               y={mid}
-              fontSize={9}
+              fontSize={12}
               fill="#4b5563"
               textAnchor="end"
               dominantBaseline="middle"

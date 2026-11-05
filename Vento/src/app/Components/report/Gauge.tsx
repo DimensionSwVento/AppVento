@@ -1,16 +1,16 @@
 /**
- * Gauge semicircular "Índice de viabilidad" (US06-03) en SVG puro. Muestra el
+ * Gauge semicircular "Índice de idoneidad" (US06-03) en SVG puro. Muestra el
  * score general (0–100) sobre un arco superior, con color por rango y etiqueta
  * ALTA/MEDIA/BAJA. Colores hex inline para capturarse limpio en el PDF.
  */
 const clamp = (v: number) => Math.max(0, Math.min(100, v));
 
-/** Color y etiqueta por rango de viabilidad. */
-export function viabilityBand(value: number): { color: string; label: string } {
+/** Color y etiqueta por rango de idoneidad. */
+export function idoneidadBand(value: number): { color: string; label: string } {
   const v = clamp(value);
-  if (v >= 66) return { color: "#16a34a", label: "VIABILIDAD ALTA" };
-  if (v >= 33) return { color: "#f59e0b", label: "VIABILIDAD MEDIA" };
-  return { color: "#dc2626", label: "VIABILIDAD BAJA" };
+  if (v >= 66) return { color: "#16a34a", label: "IDONEIDAD ALTA" };
+  if (v >= 33) return { color: "#f59e0b", label: "IDONEIDAD MEDIA" };
+  return { color: "#dc2626", label: "IDONEIDAD BAJA" };
 }
 
 export default function Gauge({
@@ -26,7 +26,7 @@ export default function Gauge({
   const cx = size / 2;
   const cy = size * 0.62;
   const r = size * 0.42;
-  const band = viabilityBand(v);
+  const band = idoneidadBand(v);
 
   // Punto sobre el arco superior en la fracción t (0 = izquierda, 1 = derecha).
   const pt = (t: number): [number, number] => {
@@ -45,9 +45,9 @@ export default function Gauge({
       className={className}
       /* #4: el número del score general hereda la fuente del informe (antes el
          texto SVG salía en otra fuente). */
-      style={{ fontFamily: "inherit" }}
+      style={{ fontFamily: "Helvetica, Arial, sans-serif" }}
       role="img"
-      aria-label={`Índice de viabilidad ${v.toFixed(0)} de 100, ${band.label}`}
+      aria-label={`Índice de idoneidad ${v.toFixed(0)} de 100, ${band.label}`}
     >
       {/* Arco base */}
       <path d={arc(0, 1)} fill="none" stroke="#e5e7eb" strokeWidth={size * 0.09} strokeLinecap="round" />

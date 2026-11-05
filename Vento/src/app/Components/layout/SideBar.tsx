@@ -357,7 +357,7 @@ export default function SideBar({
               >
                 <Image src="/user.png" alt="" width={15} height={15} className={iconCls} />
                 <p className={`${itemLabelCls} ${labelCls}`}>
-                  Gestión de usuarios
+                  Gestión admin
                 </p>
               </Link>
             )}

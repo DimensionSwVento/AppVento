@@ -58,7 +58,7 @@ export default function LineChartGrid({
       {groups.map((g, i) => (
         <div key={i} className="flex flex-col">
           {g.unit && (
-            <span className="mb-0.5 text-[9px] font-semibold uppercase tracking-wide text-gray-500">
+            <span className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
               {g.unit}
             </span>
           )}

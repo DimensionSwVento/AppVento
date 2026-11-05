@@ -32,7 +32,7 @@ function realmRolesFromOidcTokens(
 declare module "next-auth" {
   interface Session {
     roles?: string[];
-    error?: string; // para que SessionGuard detecte RefreshTokenError/NoRefreshToken
+    error?: string; // "NoSession" (sin sub ni refresh) → SessionGuard. Los RefreshTokenError/NoRefreshToken internos los absorbe el jwt callback (no cierran sesión).
     sub?: string; // id del usuario (Keycloak `sub`) — lo consume el BFF del histórico
   }
 }
@@ -53,7 +53,12 @@ async function refreshAccessToken(
     return { ...token, error: "NoRefreshToken" };
   }
 
-  const issuer = process.env.AUTH_KEYCLOAK_ISSUER!;
+  // Usa el `issuer` del MÓDULO (HTTPS reescrito en prod; HTTP tal cual en local),
+  // el MISMO que el token endpoint del provider. Antes se usaba
+  // process.env.AUTH_KEYCLOAK_ISSUER crudo (HTTP interno): mandaba un POST HTTP
+  // plano al puerto HTTPS → nginx devolvía HTML → el chequeo de content-type
+  // fallaba y el refresh SIEMPRE daba RefreshTokenError (sesión muerta a los
+  // ~30 min pese a tener refresh token válido). Mismo arreglo que el login.
   const tokenUrl = `${issuer}/protocol/openid-connect/token`;
 
   let response: Response;
@@ -280,6 +285,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       userinfo: `${issuer}/protocol/openid-connect/userinfo`,
     },
   ],
+  // Sesión "infinita": cookie de larga duración + rolling (el refetch del
+  // SessionProvider la re-emite mientras haya actividad). Un refresh fallido NO
+  // la cierra (ver jwt). Termina al cerrar sesión / borrar cookie / reiniciar.
+  session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 365 },
   callbacks: {
     async jwt({ token, account, profile }) {
       // Initial sign-in: persist tokens from the OIDC response
@@ -310,13 +319,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         };
       }
 
-      // Token still valid
+      // Access token aún vigente → nada que hacer.
       if (token.expiresAt && Date.now() / 1000 < token.expiresAt - 60) {
         return token;
       }
 
-      // Token expired — attempt refresh
-      return refreshAccessToken(token);
+      // Access token expiró → intentar refrescar. La app NO usa el access token
+      // (el BFF se identifica con sub/roles + secreto interno), así que un refresh
+      // FALLIDO **no cierra la sesión**: se conserva la identidad y se pospone el
+      // próximo intento ~30 min (no se reintenta en cada request). La sesión es
+      // "infinita" hasta perder la cookie (cerrar sesión / borrarla / reiniciar).
+      // Solo se marca "NoSession" —y entonces aparece el modal de expiración— si
+      // NO hay ni token de sesión (sub) ni refresh token.
+      const refreshed = await refreshAccessToken(token);
+      if (!refreshed.error) return refreshed;
+      const hasIdentity = Boolean(refreshed.sub) || Boolean(refreshed.refreshToken);
+      return {
+        ...refreshed,
+        expiresAt: Math.floor(Date.now() / 1000) + 1800,
+        error: hasIdentity ? undefined : "NoSession",
+      };
     },
 
     async session({ session, token }) {
@@ -324,7 +346,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // ni se persisten en el JWT cifrado (cookie > 4KB disparaba 400 nginx en AccuWeb).
       // Logout federado se hace con client_id + post_logout_redirect_uri (sin id_token_hint).
       session.roles = token.roles;  // necesario para RBAC en middleware y UI
-      session.error = token.error;  // SessionGuard detecta RefreshTokenError para sign-out automático
+      session.error = token.error;  // "NoSession" (sin sub ni refresh) → SessionGuard muestra el modal. Un refresh fallido ya NO cierra sesión.
       session.sub = token.sub;      // id de usuario para el BFF del histórico (ya está en la cookie)
       return session;
     },

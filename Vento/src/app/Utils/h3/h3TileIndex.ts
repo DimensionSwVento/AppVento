@@ -86,7 +86,7 @@ function getStringVal(variables: Record<string, string | number | null>, prefix:
   return null;
 }
 
-function calcTempViability(variables: Record<string, string | number | null>): number {
+function calcTempIdoneidad(variables: Record<string, string | number | null>): number {
   // Velocidad de viento (0.35) — positiva, floor 3 m/s, cap 12 m/s
   const wind = getNumericVal(variables, "001_velocidad_de_viento");
   const windNorm = wind !== null ? Math.max(0, Math.min(1, (wind - 3) / 9)) : 0.5;
@@ -132,7 +132,7 @@ export function initTileIndex(hexagons: H3HexagonData[], variableNames: string[]
   for (const h of hexagons) {
     const [lat, lng] = cellToLatLng(h.h3_index);
     if (!isPointInColombia(lat, lng)) continue;
-    const score = h.score_general > 0 ? h.score_general : calcTempViability(h.variables);
+    const score = h.score_general > 0 ? h.score_general : calcTempIdoneidad(h.variables);
     all.push({ h3_index: h.h3_index, score_general: score, tipo_celda: h.tipo_celda, lat, lng, variables: h.variables });
   }
   indexedData = all;

@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { MAP_SYMBOLS } from "../../Utils/map/mapSymbols";
-import { colorForVariable } from "../../Utils/variables/dimensionColors";
 import { modelVariableIds } from "../../Utils/variables/variablesCatalog";
 import { iconKeyToDataUri } from "../../Utils/map/iconRender";
 import {
   genericMapVariables,
+  mapComponent,
   variableAppliesToNatureById,
 } from "../../Utils/map/mapCatalogVariables";
 
@@ -48,6 +48,7 @@ export default function MapSymbolsLegend({
     variableId: string;
     label: string;
     icon: string;
+    color: string;
     descripcion?: string;
   }[] = [];
   for (const s of MAP_SYMBOLS) {
@@ -55,10 +56,14 @@ export default function MapSymbolsLegend({
     if (disabled?.has(s.variableId)) continue;
     if (selected && !selected.has(s.variableId)) continue;
     if (!applies(s.variableId)) continue; // filtro mar/tierra
+    const c = mapComponent(s.variableId);
     items.push({
       variableId: s.variableId,
       label: s.label,
-      icon: s.icon, // ícono estático del símbolo curado (glifo)
+      // Icono + color desde la FUENTE ÚNICA `mapComponent` (igual que el mapa y el
+      // admin): ya no usa el glifo propio de MAP_SYMBOLS ni un color aparte.
+      icon: iconKeyToDataUri(c.icon, c.color),
+      color: c.color,
       descripcion: s.descripcion,
     });
   }
@@ -72,12 +77,13 @@ export default function MapSymbolsLegend({
       nature,
       includeHeat,
     )) {
+      const c = mapComponent(id);
       items.push({
         variableId: id,
         label: v.label,
-        // MISMO icono que pinta el mapa (icono de admin + borde grueso del color).
-        // Si la variable no tiene `iconKey`, cae al pin/círculo con el borde de color.
-        icon: iconKeyToDataUri(v.iconKey || "lucide:MapPin", colorForVariable(id)),
+        // Icono + color desde la FUENTE ÚNICA `mapComponent` (igual que el mapa).
+        icon: iconKeyToDataUri(c.icon, c.color),
+        color: c.color,
         descripcion: v.description,
       });
     }
@@ -123,14 +129,11 @@ export default function MapSymbolsLegend({
             className={`h-3.5 w-3.5 shrink-0 rounded-full border ${
               on ? "" : "border-gray-300 bg-white"
             }`}
-            // #11: el punto on/off usa el COLOR ASIGNADO a la variable (no el azul
-            // Vento fijo) → coincide con el icono y con el relleno del hexágono.
+            // #11: el punto on/off usa el COLOR de la variable (fuente única
+            // `mapComponent`, guardado en el item) → coincide con el icono y el área.
             style={
               on
-                ? {
-                    backgroundColor: colorForVariable(s.variableId),
-                    borderColor: colorForVariable(s.variableId),
-                  }
+                ? { backgroundColor: s.color, borderColor: s.color }
                 : undefined
             }
           />

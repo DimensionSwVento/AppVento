@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cellArea } from "h3-js";
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
 import {
@@ -141,10 +141,20 @@ export default function Caracteristicas() {
   // El emplazamiento lo DICTA la zona: área en mar → offshore; en tierra →
   // onshore (no se puede mezclar). La opción contraria se deshabilita abajo.
   // Sólo cuando no hay área definida (`detectado === null`) el usuario elige.
+  // #7.1: al BORRAR el área (pasar de un tipo detectado a null) hay que limpiar
+  // el tipo residual — antes quedaba "onshore" pegado y al elegir offshore no
+  // cambiaba. Se guarda el `detectado` previo para distinguir "se borró el área"
+  // (había tipo → null) de "nunca hubo área" (null → null), y así NO pisar una
+  // elección MANUAL hecha sin área seleccionada.
+  const prevDetectado = useRef(detectado);
   useEffect(() => {
-    if (detectado && tipoEmplazamiento !== detectado) {
-      setTipoEmplazamiento(detectado);
+    if (detectado) {
+      if (tipoEmplazamiento !== detectado) setTipoEmplazamiento(detectado);
+    } else if (prevDetectado.current) {
+      // Se borró el área que dictaba el tipo → limpiar el residual.
+      setTipoEmplazamiento(null);
     }
+    prevDetectado.current = detectado;
   }, [detectado, tipoEmplazamiento, setTipoEmplazamiento]);
 
   // #12: Nº de aerogeneradores se DERIVA de categoría + área (ya no manual).

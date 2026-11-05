@@ -158,9 +158,26 @@ function isInSea(lat: number, lng: number): boolean {
   return false;
 }
 
-/** Devuelve `onshore` / `offshore` para un hex H3 dado. */
+/**
+ * Resolución BASE del emplazamiento mar/tierra: la máster y la columna
+ * `es_offshore` viven a res 8. La clasificación de un hex se decide SIEMPRE por
+ * su celda res-8 (el ancestro si el hex es más fino) y NO por el centroide del
+ * hijo de mayor resolución. Un res-8 costero de TIERRA tiene hijos res-9+ cuyo
+ * centroide cae en mar; clasificar por el hijo lo volvía "mar" al subir el zoom
+ * (bug mar/tierra por resolución). Normalizar a res-8 lo hace consistente a
+ * cualquier resolución y alineado con el dato.
+ */
+const EMPLAZAMIENTO_BASE_RES = 8;
+
+/** Devuelve `onshore` / `offshore` para un hex H3 dado (clasifica a su res-8). */
 export function hexType(h: string): HexType {
-  const [lat, lng] = cellToLatLng(h);
+  // Si el hex es MÁS FINO que res-8, se clasifica por su ancestro res-8 (no por
+  // el centroide del hijo, que cerca de la costa puede caer en mar).
+  const base =
+    getResolution(h) > EMPLAZAMIENTO_BASE_RES
+      ? cellToParent(h, EMPLAZAMIENTO_BASE_RES)
+      : h;
+  const [lat, lng] = cellToLatLng(base);
   if (isInLand(lat, lng)) return "onshore";
   if (isInSea(lat, lng)) return "offshore";
   return "onshore";
@@ -203,8 +220,16 @@ export function setEsOffshoreData(entries: Iterable<[string, boolean]>): void {
  */
 export function isOffshoreHex(hex: string): boolean {
   const fromData = esOffshoreStore.get(hex);
-  if (fromData !== undefined) return fromData; // dato real de la API
-  return hexType(hex) === "offshore"; // fallback geometría (modo template)
+  if (fromData !== undefined) return fromData; // dato real de la API (este hex)
+  // Hijo MÁS FINO que el dato (res-8): hereda del ancestro res-8 en el store,
+  // igual que `isHexBanned` — así no reclasifica por geometría del hijo costero.
+  if (getResolution(hex) > EMPLAZAMIENTO_BASE_RES) {
+    const fromParent = esOffshoreStore.get(
+      cellToParent(hex, EMPLAZAMIENTO_BASE_RES),
+    );
+    if (fromParent !== undefined) return fromParent;
+  }
+  return hexType(hex) === "offshore"; // fallback geometría (modo template, a res-8)
 }
 
 /** Naturaleza de una selección según mar/tierra. */
