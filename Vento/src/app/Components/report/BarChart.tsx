@@ -44,7 +44,7 @@ export default function BarChart({
             <text
               x={padL - 6}
               y={mid}
-              fontSize={10}
+              fontSize={13}
               fill="#4b5563"
               fontWeight={600}
               textAnchor="end"
@@ -59,7 +59,7 @@ export default function BarChart({
             <text
               x={padL + barW + 4}
               y={mid}
-              fontSize={10}
+              fontSize={13}
               fill="#165170"
               fontWeight={700}
               dominantBaseline="middle"

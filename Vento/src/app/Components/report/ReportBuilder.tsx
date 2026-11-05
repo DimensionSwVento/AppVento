@@ -1,6 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { useState } from "react";
 import type { ReactNode, RefObject } from "react";
 import ReportConfigPanel from "./ReportConfigPanel";
 import type { ReportConfig } from "../../Utils/report/reportConfig";
@@ -44,6 +45,52 @@ export default function ReportBuilder({
 }) {
   if (typeof document === "undefined") return null;
 
+  return <ReportBuilderInner
+    region={region} totalSheets={totalSheets} sheets={sheets} scale={scale}
+    mallaRef={mallaRef} config={config} scorableDims={scorableDims}
+    onPatch={onPatch} onToggleDim={onToggleDim} onCancel={onCancel}
+    onDownload={onDownload} isExporting={isExporting}
+  />;
+}
+
+// Zoom del preview: `scale` es el auto-fit; `zoom` lo multiplica. Al acercar, el
+// contenedor con overflow-auto permite DESPLAZAR (pan) — ya no es estático.
+const ZMIN = 0.5;
+const ZMAX = 3;
+const ZSTEP = 0.25;
+
+function ReportBuilderInner({
+  region,
+  totalSheets,
+  sheets,
+  scale,
+  mallaRef,
+  config,
+  scorableDims,
+  onPatch,
+  onToggleDim,
+  onCancel,
+  onDownload,
+  isExporting,
+}: {
+  region?: string | null;
+  totalSheets: number;
+  sheets: ReactNode[];
+  scale: number;
+  mallaRef: RefObject<HTMLDivElement | null>;
+  config: ReportConfig;
+  scorableDims: { id: string; label: string }[];
+  onPatch: (patch: Partial<ReportConfig>) => void;
+  onToggleDim: (id: string) => void;
+  onCancel: () => void;
+  onDownload: () => void;
+  isExporting: boolean;
+}) {
+  const [zoom, setZoom] = useState(1);
+  const eff = scale * zoom;
+  const btn =
+    "flex h-6 w-6 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-40";
+
   return createPortal(
     <div className="fixed inset-0 z-[100] flex flex-col bg-gray-100">
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[65%_35%]">
@@ -52,15 +99,46 @@ export default function ReportBuilder({
           <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-gray-400">
-                Informe de viabilidad
+                Informe de idoneidad
               </p>
               <h2 className="text-base font-bold text-[#165170ff]">
                 Idoneidad eólica{region ? ` — ${region}` : ""}
               </h2>
             </div>
-            <span className="text-xs text-gray-500">
-              {totalSheets} {totalSheets === 1 ? "hoja" : "hojas"}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-500">
+                {totalSheets} {totalSheets === 1 ? "hoja" : "hojas"}
+              </span>
+              {/* Zoom del preview (acercar/alejar; pan con el scroll). */}
+              <div className="flex items-center gap-0.5 rounded-full border border-gray-200 px-1 py-0.5">
+                <button
+                  type="button"
+                  aria-label="Alejar"
+                  className={btn}
+                  disabled={zoom <= ZMIN}
+                  onClick={() => setZoom((z) => Math.max(ZMIN, +(z - ZSTEP).toFixed(2)))}
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  title="Ajustar a la ventana"
+                  className="min-w-[44px] rounded-full px-1 text-center text-xs font-semibold text-gray-600 hover:bg-gray-100"
+                  onClick={() => setZoom(1)}
+                >
+                  {Math.round(eff * 100)}%
+                </button>
+                <button
+                  type="button"
+                  aria-label="Acercar"
+                  className={btn}
+                  disabled={zoom >= ZMAX}
+                  onClick={() => setZoom((z) => Math.min(ZMAX, +(z + ZSTEP).toFixed(2)))}
+                >
+                  +
+                </button>
+              </div>
+            </div>
           </header>
           <div className="flex-1 overflow-auto p-6">
             <div
@@ -71,13 +149,13 @@ export default function ReportBuilder({
                 <div
                   key={i}
                   className="shrink-0 overflow-hidden rounded-lg ring-1 ring-black/10"
-                  style={{ width: SHEET_W * scale, height: SHEET_H * scale }}
+                  style={{ width: SHEET_W * eff, height: SHEET_H * eff }}
                 >
                   <div
                     style={{
                       width: SHEET_W,
                       height: SHEET_H,
-                      transform: `scale(${scale})`,
+                      transform: `scale(${eff})`,
                       transformOrigin: "top left",
                     }}
                   >

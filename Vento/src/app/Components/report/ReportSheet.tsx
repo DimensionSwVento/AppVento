@@ -44,7 +44,10 @@ export default function ReportSheet({
       // Alto MÍNIMO A4 (794×1123 @96dpi) pero crece con el contenido en vez de
       // recortarlo (antes `height`+`overflow-hidden` cortaba lo que sobraba, #1).
       // El export corta en páginas A4 por altura (slicing multipágina).
-      style={{ width: 794, minHeight: 1123 }}
+      // Fuente única en toda la hoja (preview Y pdf): Helvetica/Arial, la misma
+      // que usan los charts (svg2pdf) → informe tipográficamente uniforme y sin la
+      // mezcla que causaba la fuente variable Geist al capturar.
+      style={{ width: 794, minHeight: 1123, fontFamily: "Helvetica, Arial, sans-serif" }}
     >
       {/* Cabecera: logo del aerogenerador + "Idoneidad eólica" en negrilla */}
       <div className="flex items-center justify-between border-b-2 border-[#165170ff] px-10 pb-3 pt-8">
@@ -54,7 +57,7 @@ export default function ReportSheet({
             Idoneidad eólica
           </span>
         </div>
-        <span className="text-[10px] text-gray-400">
+        <span className="text-[12px] text-gray-400">
           {region ? `Vento — ${region}` : "Vento"}
         </span>
       </div>
@@ -63,7 +66,7 @@ export default function ReportSheet({
       <div className="flex-1 px-10 py-6">{children}</div>
 
       {/* Pie con número de página */}
-      <div className="flex items-center justify-between border-t border-gray-200 px-10 pb-6 pt-2 text-[9px] text-gray-400">
+      <div className="flex items-center justify-between border-t border-gray-200 px-10 pb-6 pt-2 text-[11px] text-gray-400">
         <span className="font-bold text-[#165170ff]">Vento</span>
         <span>
           Página {index + 1} de {total}

@@ -26,6 +26,7 @@ import {
   cellToParent,
   cellToChildren,
   getResolution,
+  gridDisk,
 } from "h3-js";
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
 import { useVariables } from "../../Utils/contexts/VariablesContext";
@@ -50,7 +51,6 @@ import { useAreaHexData } from "../../Utils/report/useAreaHexData";
 import {
   MAP_SYMBOLS,
   symbolPaths,
-  type MapSymbolPoint,
   type SymbolPath,
 } from "../../Utils/map/mapSymbols";
 import MapSymbolsLegend from "./MapSymbolsLegend";
@@ -67,11 +67,11 @@ import {
   type MapLayerCell,
 } from "../../Utils/map/mapLayerData";
 import { viridis } from "../../Utils/report/heatmapPalette";
-import { getVariableById } from "../../Utils/variables/variablesCatalog";
-import { colorForVariable } from "../../Utils/variables/dimensionColors";
-import { iconKeyToDataUri } from "../../Utils/map/iconRender";
+import { getVariableById, isHeatVariable } from "../../Utils/variables/variablesCatalog";
+import { compositePin } from "../../Utils/map/iconRender";
 import {
   genericMapVariables,
+  mapComponent,
   variableAppliesToNatureById,
 } from "../../Utils/map/mapCatalogVariables";
 import { AUDIT_DB } from "../../Utils/audit";
@@ -107,9 +107,80 @@ function safeColor(hex: string): string {
   return r + g + b < 60 ? "#2563eb" : hex;
 }
 
-// Máx de capas que PINTAN hexágonos a la vez (área/conexión). El resto de las
-// activas solo muestran su icono. El calor es aparte (máx 1, colorea la rejilla).
-const MAX_PAINTING_LAYERS = 3;
+// RESUMEN por resolución de las CAPAS DE ÁREA: cada hex más FINO que `displayRes`
+// se agrega a su ANCESTRO a esa resolución (resumen res mayor→menor), y se
+// deduplica. Es la MISMA lógica que el grid y la selección (`selectedArr`) → así
+// las áreas de variable siguen el zoom en vez de quedarse siempre en res 8
+// (hexágonos chicos) al alejar. Al acercar (displayRes ≥ res del dato) se dejan
+// como están (no se subdividen: el dato es res8 y expandir sería caro).
+function summarizeCells(hexes: string[], displayRes: number): string[] {
+  const out = new Set<string>();
+  for (const h of hexes) {
+    const r = getResolution(h);
+    out.add(r > displayRes ? cellToParent(h, displayRes) : h);
+  }
+  return [...out];
+}
+
+// Agrupa hexes en ÁREAS = componentes CONEXAS (hexágonos contiguos por adyacencia
+// H3 `gridDisk`). Se usa para poner UN icono por área (no uno por hexágono). BFS.
+function areaClusters(hexes: string[]): string[][] {
+  const set = new Set(hexes);
+  const seen = new Set<string>();
+  const out: string[][] = [];
+  for (const start of hexes) {
+    if (seen.has(start)) continue;
+    const comp: string[] = [];
+    const stack = [start];
+    seen.add(start);
+    while (stack.length) {
+      const h = stack.pop()!;
+      comp.push(h);
+      for (const n of gridDisk(h, 1)) {
+        if (n !== h && set.has(n) && !seen.has(n)) {
+          seen.add(n);
+          stack.push(n);
+        }
+      }
+    }
+    out.push(comp);
+  }
+  return out;
+}
+
+// Hex más cercano al CENTROIDE de un clúster → coloca el icono "al centro" del área.
+function clusterAnchor(comp: string[]): string {
+  if (comp.length === 1) return comp[0];
+  let sLat = 0;
+  let sLng = 0;
+  for (const h of comp) {
+    const [la, lo] = cellToLatLng(h);
+    sLat += la;
+    sLng += lo;
+  }
+  const cLat = sLat / comp.length;
+  const cLng = sLng / comp.length;
+  let best = comp[0];
+  let bestD = Infinity;
+  for (const h of comp) {
+    const [la, lo] = cellToLatLng(h);
+    const d = (la - cLat) ** 2 + (lo - cLng) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = h;
+    }
+  }
+  return best;
+}
+
+// (Sin tope de capas que pintan: se pintan TODAS las áreas activas. La limitación
+// por RENDIMIENTO se definirá más adelante — ver memoria map-layers-rework.)
+
+// ANIDADO CONCÉNTRICO de áreas que se SOLAPAN en un mismo hex: la 1ª (rank 0) pinta
+// el hex completo; las siguientes se dibujan MÁS PEQUEÑAS y centradas (como la yema
+// de un huevo) vía `coverage` de H3HexagonLayer → cada capa superpuesta queda
+// visible dentro de la anterior. Índice = rank de la capa en ese hex (0..4).
+const AREA_COVERAGE = [1, 0.68, 0.46, 0.3, 0.19];
 
 /**
  * Aristas de RED para capas `interconectado`: conecta cada punto con el MÁS
@@ -728,21 +799,31 @@ export default function MapView() {
   // multi-selección). El viento ya no se togglea aquí (vive en el desplegable
   // del Informe), así que este handler solo enciende/apaga símbolos.
   const handleSymbolToggle = toggleSymbol;
-  // En DIMENSIONES el menú de capas controla la VISIBILIDAD en el mapa, NO el
-  // estado de la variable: apagar una capa la oculta del mapa pero NUNCA apaga su
-  // switch (las de modelo son obligatorias y no deben romperse). Set de capas
-  // ocultas (override de visibilidad); vacío = todas las activas se ven.
-  // #7: las capas de variable arrancan APAGADAS en dimensiones (o se amontonan).
-  // Se siembra `hiddenLayers` con las capas curadas no-calor; el usuario las
-  // enciende desde "Capas del mapa". (Informe ya arranca off vía `activeSymbols`.)
-  const [hiddenLayers, setHiddenLayers] = useState<Set<string>>(
-    () => new Set(MAP_SYMBOLS.filter((s) => s.kind !== "heat").map((s) => s.variableId)),
-  );
+  // En DIMENSIONES el menú "Capas del mapa" controla la VISIBILIDAD en el mapa,
+  // NO el estado de la variable: mostrar/ocultar una capa NUNCA toca su switch
+  // (las de modelo son obligatorias y no deben romperse).
+  // Modelo OPT-IN: TODAS las capas arrancan APAGADAS (set vacío) y el usuario
+  // enciende las que quiera. Antes se sembraba un set de "ocultas" solo con las
+  // curadas no-calor → las variables GENÉRICAS de catálogo y las de CALOR se
+  // colaban ENCENDIDAS por defecto (bug: deben estar inactivas). Ahora `shownLayers`
+  // guarda SOLO las que el usuario prendió. (Informe también arranca off vía
+  // `activeSymbols`.)
+  const [shownLayers, setShownLayers] = useState<Set<string>>(() => new Set());
   const toggleDimLayer = useCallback((id: string) => {
-    setHiddenLayers((prev) => {
+    setShownLayers((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id); // ocultar esta capa
+      } else {
+        // #7.3: una sola CAPA DE CALOR a la vez en el MAPA (radio). Al prender una
+        // de calor, apaga del mapa las otras de calor (siguen SELECCIONADAS como
+        // variables → en resumen/informe; aquí solo se controla visibilidad). Las
+        // de área/punto se acumulan normal (multi-selección).
+        if (isHeatVariable(id)) {
+          for (const other of [...next]) if (isHeatVariable(other)) next.delete(other);
+        }
+        next.add(id); // mostrar esta capa
+      }
       return next;
     });
   }, []);
@@ -782,16 +863,15 @@ export default function MapView() {
   // opacidad los iconos se veían "negros". Ahora opacidad constante (ver IconLayer).
   // Capas de variable EFECTIVAS (las que se pintan):
   //  - Informe: las controla el menú "Capas del mapa" (`activeSymbols`).
-  //  - Dimensiones: las manda el SWITCH de la card (`activeVariables`), MENOS las
-  //    ocultadas desde el menú de capas (`hiddenLayers`). Así apagar una capa en el
-  //    menú la oculta del mapa sin tocar el switch de la variable (no rompe las
-  //    obligatorias).
+  //  - Dimensiones: una capa se pinta solo si la variable está activa (switch) Y
+  //    el usuario la PRENDIÓ en el menú de capas (`shownLayers`, opt-in). Así nada
+  //    arranca encendido y mostrar/ocultar no toca el switch (no rompe obligatorias).
   const effectiveSymbols = useMemo(
     () =>
       accion === "dimensiones"
-        ? new Set([...activeVariables].filter((id) => !hiddenLayers.has(id)))
+        ? new Set([...activeVariables].filter((id) => shownLayers.has(id)))
         : activeSymbols,
-    [accion, activeVariables, hiddenLayers, activeSymbols],
+    [accion, activeVariables, shownLayers, activeSymbols],
   );
   useEffect(() => {
     let alive = true;
@@ -861,116 +941,37 @@ export default function MapView() {
 
   // Orden GLOBAL de las capas de variable que pintan hex (zonas de símbolo primero,
   // luego catálogo) → cada una un ANILLO concéntrico (coverage decreciente). Así, en
-  // un mismo hex, varias variables se ven como bordes anidados de su color en vez de
-  // rellenos semitransparentes apilados que ennegrecen. El excluido queda como el
-  // ORDEN GLOBAL de las variables que PINTAN el hexágono (zonas de símbolo primero,
-  // luego catálogo). Solo las primeras MAX_PAINTING_LAYERS pintan; el resto activas
-  // solo muestran icono. Al desactivar una, las demás corren su turno.
-  const activeZoneIds = useMemo(
-    () =>
-      MAP_SYMBOLS.filter(
-        (s) =>
-          s.kind === "zone" &&
-          effectiveSymbols.has(s.variableId) &&
-          !mapDisabledIds.has(s.variableId) &&
-          variableAppliesToNatureById(s.variableId, mapNature),
-      ).map((s) => s.variableId),
-    [effectiveSymbols, mapDisabledIds, mapNature],
-  );
-
+  // `symbolLayers` ahora SOLO trae las REDES de puntos curadas (`point`). El ÁREA
+  // (anidada) y los ICONOS (pines) de TODAS las capas (curadas + genéricas) se arman
+  // en `catalogLayers` (UNIFICADO) → todas usan el mismo mecanismo y se funden entre
+  // sí (nada queda con el "mecanismo viejo").
   const symbolLayers = useMemo(() => {
-    const active = MAP_SYMBOLS.filter(
+    const bands = MAP_SYMBOLS.filter(
       (s) =>
+        s.kind === "point" &&
         effectiveSymbols.has(s.variableId) &&
         !mapDisabledIds.has(s.variableId) &&
-        variableAppliesToNatureById(s.variableId, mapNature), // filtro mar/tierra
-    );
-    // Capas de ÁREA (protegidas, resguardos, nodos…): hex de cobertura con
-    // relleno SUAVE del color de la variable. (El viento NO va aquí: es un mapa
-    // de calor que colorea los hex del grid — ver `getFillColor` de gridTileLayer.)
-    const polys = active
-      // Solo las PRIMERAS 3 (orden global: zonas de símbolo primero) PINTAN el
-      // hexágono; las demás activas solo muestran su icono (ver bloque de iconos).
-      .filter(
-        (s) =>
-          s.kind === "zone" &&
-          activeZoneIds.indexOf(s.variableId) < MAX_PAINTING_LAYERS,
-      )
-      .map((s) => {
-        const cells = symbolCells[s.variableId] ?? [];
-        const [br, bg, bb] = hexToRgb(safeColor(s.color));
-        // Relleno SEMI-transparente (como el heatmap) + borde. El área pinta el hex.
-        return new H3HexagonLayer<MapLayerCell>({
-          id: `map-hexlayer-${s.variableId}`,
-          data: cells,
-          getHexagon: (d) => d.h,
-          extruded: false,
-          stroked: true,
-          filled: true,
-          getFillColor: () => [br, bg, bb, 51],
-          getLineColor: () => [br, bg, bb, 180],
-          getLineWidth: 1,
-          lineWidthUnits: "pixels",
-          lineWidthMinPixels: 1,
+        variableAppliesToNatureById(s.variableId, mapNature),
+    ).map(
+      (s) =>
+        new PathLayer<SymbolPath>({
+          id: `map-net-${s.variableId}`,
+          data: symbolPaths(s),
+          getPath: (d) => d.path,
+          getColor: (d) => d.color,
+          getWidth: 2,
+          widthUnits: "pixels",
+          capRounded: true,
+          jointRounded: true,
           pickable: false,
-          updateTriggers: { getFillColor: [s.color], getLineColor: [s.color] },
-        });
-      });
-    // Redes de puntos: conecta los puntos de cada capa `point` con una línea.
-    const paths = active
-      .filter((s) => s.kind === "point")
-      .map(
-        (s) =>
-          new PathLayer<SymbolPath>({
-            id: `map-net-${s.variableId}`,
-            data: symbolPaths(s),
-            getPath: (d) => d.path,
-            getColor: (d) => d.color,
-            getWidth: 2,
-            widthUnits: "pixels",
-            capRounded: true,
-            jointRounded: true,
-            pickable: false,
-            parameters: { depthCompare: "always" },
-          }),
-      );
-    // Iconos encima: un marcador por capa de zona/punto. Las de CALOR (`heat`,
-    // viento) NO llevan icono: se representan coloreando la rejilla (viridis, ver
-    // `activeHeatVarId`), igual que el heatmap del informe → sin marcador redundante.
-    const icons = active.filter((s) => s.kind !== "heat").map((s) => {
-      // Icono ASIGNADO EN ADMIN (iconKey del catálogo, hidratado de BD) renderizado
-      // a data-URI con el color de la variable. Fallback al icono estático de
-      // `MAP_SYMBOLS` si el catálogo no tiene iconKey.
-      // #16: SIEMPRE por iconKeyToDataUri (círculo blanco + BORDE GRUESO del color).
-      // Antes, si la variable no tenía `icon_key` ingerido (modo backend), caía a
-      // `s.icon` (circleIcon) que lleva borde BLANCO → el icono salía sin el borde de
-      // color (le pasaba a resguardos indígenas y a toda var sin icon_key en BD). El
-      // fallback de iconKeyToDataUri también pinta el borde de color.
-      const iconKey = getVariableById(s.variableId)?.iconKey || "lucide:MapPin";
-      const iconUrl = iconKeyToDataUri(iconKey, s.color);
-      return (
-        new IconLayer<MapSymbolPoint>({
-          id: `map-symbol-${s.variableId}`,
-          data: s.points,
-          getPosition: (d) => [d.lng, d.lat],
-          // `id` incluye el iconKey: al cambiarlo en admin, deck.gl re-empaca el
-          // atlas (sin él cachearía el icono viejo). Único por capa → sin colisión.
-          getIcon: () => ({ id: `${s.variableId}|${iconKey ?? "static"}`, url: iconUrl, width: 48, height: 48, anchorY: 24, mask: false }),
-          getSize: 30,
-          sizeUnits: "pixels",
-          opacity: 1, // #6: sin blink (el parpadeo hacía ver los iconos "negros")
-          pickable: false,
-          // Los polígonos (zonas/heat) escriben profundidad a z=0 y ocultarían el
-          // icono que cae encima. `depthCompare: "always"` (luma.gl v9) hace que
-          // el test de profundidad siempre pase → el icono SIEMPRE se dibuja.
           parameters: { depthCompare: "always" },
-        })
-      );
-    });
-    // bands (hex + redes) e icons por separado → los iconos se dibujan encima de
-    // TODAS las bandas (evita que las bandas opacas de otras capas los tapen).
-    return { bands: [...polys, ...paths], icons };
-  }, [effectiveSymbols, mapDisabledIds, symbolCells, mapNature, activeZoneIds]);
+        }),
+    );
+    return {
+      bands,
+      icons: [] as IconLayer<{ lng: number; lat: number }>[],
+    };
+  }, [effectiveSymbols, mapDisabledIds, mapNature]);
 
   // ── N1a-mapa 2b: capas GENÉRICAS de catálogo ────────────────────────────────
   // Variables enMapa (área/interconectado, NO calor) que NO están en la lista
@@ -1106,115 +1107,207 @@ export default function MapView() {
     return { lat: sLat / selectedHexes.size, lng: sLng / selectedHexes.size };
   }, [selectedHexes]);
 
+  // PINTADO UNIFICADO de todas las capas de variable (CURADAS + GENÉRICAS): mismo
+  // mecanismo para todas → nada usa "el viejo". Áreas con ANIDADO concéntrico
+  // (coverByHex global), iconos = PIN por área FUNDIDOS por hex (compuesto si varias
+  // coinciden), y redes `interconectado`. Así curadas y genéricas también anidan y
+  // sus pines se funden entre sí. (`symbolLayers` ya solo trae las redes de puntos.)
   const catalogLayers = useMemo(() => {
-    // Bandas (hex + redes) e ICONOS por separado: los iconos se dibujan DESPUÉS de
-    // TODAS las bandas (opacas) para que no queden tapados (bug del icono perdido).
+    type Area = {
+      id: string;
+      color: string;
+      hexes: string[];
+      interconnect: boolean;
+    };
+    const areas: Area[] = [];
+    // Curadas de tipo `zone`.
+    for (const s of MAP_SYMBOLS) {
+      if (s.kind !== "zone") continue;
+      if (!effectiveSymbols.has(s.variableId) || mapDisabledIds.has(s.variableId))
+        continue;
+      if (!variableAppliesToNatureById(s.variableId, mapNature)) continue;
+      const hexes = summarizeCells(
+        (symbolCells[s.variableId] ?? []).map((c) => c.h),
+        displayRes,
+      );
+      if (hexes.length)
+        areas.push({
+          id: s.variableId,
+          color: safeColor(mapComponent(s.variableId).color),
+          hexes,
+          interconnect: false,
+        });
+    }
+    // Genéricas de catálogo (area/interconectado; el calor va por el grid).
+    for (const { id, kind } of extraMapVars) {
+      if (kind === "calor") continue;
+      const hexes = summarizeCells(extraCells[id] ?? [], displayRes);
+      if (hexes.length)
+        areas.push({
+          id,
+          color: safeColor(mapComponent(id).color),
+          hexes,
+          interconnect: kind === "interconectado",
+        });
+    }
+
+    // hex → áreas que lo cubren (orden de pintado) → RANK para el anidado.
+    const coverByHex = new Map<string, string[]>();
+    for (const a of areas)
+      for (const h of a.hexes) {
+        const arr = coverByHex.get(h);
+        if (arr) arr.push(a.id);
+        else coverByHex.set(h, [a.id]);
+      }
+
     const bands: (
       | H3HexagonLayer<{ h: string }>
       | PathLayer<{ path: [number, number][] }>
     )[] = [];
-    const icons: IconLayer<{ lng: number; lat: number }>[] = [];
-    // Índice de anillo del catálogo: va DESPUÉS de las zonas de símbolo para que
-    // los anillos concéntricos no colisionen entre ambos grupos.
-    // Índice de "pintado" del catálogo: va DESPUÉS de las zonas de símbolo. Solo
-    // los primeros (junto con las zonas) hasta MAX_PAINTING_LAYERS pintan hexágono.
-    let catPaintIdx = 0;
-    for (const { id, kind } of extraMapVars) {
-      const cells = extraCells[id] ?? [];
-      if (cells.length === 0) continue;
-      const color = safeColor(colorForVariable(id));
-      const [r, g, b] = hexToRgb(color);
-
-      // CALOR: NO se pinta aquí. Colorea la REJILLA del grid (`gridTileLayer`,
-      // resumen de padres por zoom) con `viridis` → ver `activeHeatVarId`.
-      if (kind === "calor") continue;
-
-      // ÁREA / INTERCONECTADO: el área PINTA el hexágono (relleno SEMI + borde),
-      // pero solo si cabe en el cupo global de MAX_PAINTING_LAYERS (zonas primero).
-      // Si no cabe, la variable solo mostrará su icono (abajo), no pinta.
-      const paints = activeZoneIds.length + catPaintIdx < MAX_PAINTING_LAYERS;
-      catPaintIdx += 1;
-      if (paints) {
+    // FILL anidado (transparente + borde del color fuerte → la yema se ve por el
+    // contorno concéntrico sin ennegrecer al apilar).
+    for (const a of areas) {
+      const [br, bg, bb] = hexToRgb(a.color);
+      const byRank = new Map<number, string[]>();
+      for (const h of a.hexes) {
+        const rank = Math.min(
+          coverByHex.get(h)?.indexOf(a.id) ?? 0,
+          AREA_COVERAGE.length - 1,
+        );
+        const g = byRank.get(rank);
+        if (g) g.push(h);
+        else byRank.set(rank, [h]);
+      }
+      for (const [rank, hexes] of byRank) {
         bands.push(
           new H3HexagonLayer<{ h: string }>({
-            id: `catalog-hex-${id}`,
-            data: cells.map((h) => ({ h })),
+            id: `area-${a.id}-r${rank}`,
+            data: hexes.map((h) => ({ h })),
             getHexagon: (d) => d.h,
+            coverage: AREA_COVERAGE[rank],
             extruded: false,
             stroked: true,
             filled: true,
-            getFillColor: () => [r, g, b, 51],
-            getLineColor: () => [r, g, b, 180],
-            getLineWidth: 1,
+            getFillColor: [br, bg, bb, rank === 0 ? 45 : 70],
+            getLineColor: [br, bg, bb, 255],
+            getLineWidth: 1.8,
             lineWidthUnits: "pixels",
-            lineWidthMinPixels: 1,
+            lineWidthMinPixels: 1.5,
             pickable: false,
+            updateTriggers: {
+              getFillColor: [a.color, rank],
+              getLineColor: [a.color],
+            },
           }),
         );
       }
-      // Icono (asignado en admin) en una MUESTRA de hexes (≤12) para no saturar.
-      const iconKey = getVariableById(id)?.iconKey ?? "lucide:MapPin";
-      const iconUrl = iconKeyToDataUri(iconKey, color);
-      const step = Math.max(1, Math.ceil(cells.length / 12));
-      const points = cells
+    }
+    // `interconectado`: red vecino-más-cercano + línea al centro del área.
+    for (const a of areas) {
+      if (!a.interconnect) continue;
+      const step = Math.max(1, Math.ceil(a.hexes.length / 12));
+      const pts = a.hexes
         .filter((_, i) => i % step === 0)
         .slice(0, 12)
         .map((h) => {
           const [lat, lng] = cellToLatLng(h);
           return { lng, lat };
         });
-      icons.push(
-        new IconLayer<{ lng: number; lat: number }>({
-          id: `catalog-icon-${id}`,
-          data: points,
-          getPosition: (d) => [d.lng, d.lat],
-          getIcon: () => ({
-            id: `${id}|${iconKey}`,
-            url: iconUrl,
-            width: 48,
-            height: 48,
-            anchorY: 24,
-            mask: false,
-          }),
-          getSize: 26,
-          sizeUnits: "pixels",
-          opacity: 1, // #6: sin blink (el parpadeo hacía ver los iconos "negros")
+      if (pts.length < 2) continue;
+      const [br, bg, bb] = hexToRgb(a.color);
+      const edges = nearestNeighborEdges(pts);
+      if (selectionCenter)
+        for (const p of pts)
+          edges.push({
+            path: [
+              [selectionCenter.lng, selectionCenter.lat],
+              [p.lng, p.lat],
+            ],
+          });
+      bands.push(
+        new PathLayer<{ path: [number, number][] }>({
+          id: `net-${a.id}`,
+          data: edges,
+          getPath: (d) => d.path,
+          getColor: () => [br, bg, bb, 170],
+          getWidth: 2,
+          widthUnits: "pixels",
+          capRounded: true,
+          jointRounded: true,
           pickable: false,
           parameters: { depthCompare: "always" },
         }),
       );
-      // `interconectado`: red vecino-más-cercano entre los puntos + una línea
-      // desde el CENTRO del área seleccionada a cada punto (petición cliente).
-      if (paints && kind === "interconectado" && points.length >= 2) {
-        const edges = nearestNeighborEdges(points);
-        if (selectionCenter) {
-          for (const p of points) {
-            edges.push({
-              path: [
-                [selectionCenter.lng, selectionCenter.lat],
-                [p.lng, p.lat],
-              ],
-            });
-          }
-        }
-        bands.push(
-          new PathLayer<{ path: [number, number][] }>({
-            id: `catalog-net-${id}`,
-            data: edges,
-            getPath: (d) => d.path,
-            getColor: () => [r, g, b, 170],
-            getWidth: 2,
-            widthUnits: "pixels",
-            capRounded: true,
-            jointRounded: true,
-            pickable: false,
-            parameters: { depthCompare: "always" },
-          }),
-        );
-      }
     }
+
+    // ICONOS: pin por ÁREA (clúster), FUNDIDOS por hex (curadas + genéricas + las
+    // curadas `point`). Un pin simple o de cabeza ancha (varias) por hex. Una sola
+    // IconLayer con icono compuesto por dato.
+    const iconByHex = new Map<string, string[]>();
+    const addIconsFor = (variableId: string, hexes: string[]) => {
+      for (const comp of areaClusters(hexes)) {
+        const h = clusterAnchor(comp);
+        const arr = iconByHex.get(h);
+        if (arr) arr.push(variableId);
+        else iconByHex.set(h, [variableId]);
+      }
+    };
+    for (const a of areas) addIconsFor(a.id, a.hexes);
+    // Curadas `point` (nodos, vial, portuaria): también llevan icono (pin).
+    for (const s of MAP_SYMBOLS) {
+      if (s.kind !== "point") continue;
+      if (!effectiveSymbols.has(s.variableId) || mapDisabledIds.has(s.variableId))
+        continue;
+      if (!variableAppliesToNatureById(s.variableId, mapNature)) continue;
+      const hexes = summarizeCells(
+        (symbolCells[s.variableId] ?? []).map((c) => c.h),
+        displayRes,
+      );
+      if (hexes.length) addIconsFor(s.variableId, hexes);
+    }
+    const iconData = [...iconByHex.entries()].map(([h, ids]) => {
+      const [lat, lng] = cellToLatLng(h);
+      const spec = compositePin(
+        ids.map((id) => {
+          const c = mapComponent(id);
+          return { iconKey: c.icon, color: c.color };
+        }),
+      );
+      return { lng, lat, ...spec };
+    });
+    const icons = [
+      new IconLayer<(typeof iconData)[number]>({
+        id: "map-pins",
+        data: iconData,
+        getPosition: (d) => [d.lng, d.lat],
+        getIcon: (d) => ({
+          id: d.id,
+          url: d.url,
+          width: d.width,
+          height: d.height,
+          anchorX: d.anchorX,
+          anchorY: d.anchorY,
+          mask: false,
+        }),
+        getSize: (d) => d.height,
+        sizeUnits: "pixels",
+        opacity: 1,
+        pickable: false,
+        parameters: { depthCompare: "always" },
+      }),
+    ];
+
     return { bands, icons };
-  }, [extraMapVars, extraCells, selectionCenter, activeZoneIds]);
+  }, [
+    extraMapVars,
+    extraCells,
+    selectionCenter,
+    displayRes,
+    effectiveSymbols,
+    mapDisabledIds,
+    mapNature,
+    symbolCells,
+  ]);
 
   // Dibujo del POLÍGONO en curso (US03-04): vértices (puntos) + contorno. Se
   // materializa en hexágonos al "Aplicar" (ver `applyPolygon`).
@@ -1709,8 +1802,9 @@ export default function MapView() {
 
       {/* Capas del mapa en DIMENSIONES (petición cliente): a la IZQUIERDA. Lista
           solo las variables seleccionadas (switches) con representación en el mapa.
-          Togglear aquí controla la VISIBILIDAD de la capa (`hiddenLayers`), NO el
-          switch de la variable → no rompe las obligatorias del modelo. */}
+          Togglear aquí controla la VISIBILIDAD de la capa (`shownLayers`, opt-in:
+          todo apagado por defecto), NO el switch de la variable → no rompe las
+          obligatorias del modelo. */}
       {accion === "dimensiones" && (
         <div className="absolute top-3 left-3 z-10 w-44">
           <MapSymbolsLegend

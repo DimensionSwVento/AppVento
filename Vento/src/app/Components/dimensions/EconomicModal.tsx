@@ -5,7 +5,7 @@
  * el menú (dimensión Económica → "Análisis prospectivo"). Permite elegir la
  * capacidad nominal, el escenario y el horizonte, agregar/quitar variables de la
  * gráfica, comparar escenarios y decidir si la sección económica entra al
- * informe PDF. Deja claro que esta dimensión NO puntúa el índice de viabilidad.
+ * informe PDF. Deja claro que esta dimensión NO puntúa el índice de idoneidad.
  */
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -64,6 +64,47 @@ export default function EconomicModal({ onClose }: { onClose: () => void }) {
     };
   }, []);
   const escList = escenarios.length ? escenarios : ECONOMIC_SCENARIOS;
+
+  // Opciones de CAPACIDAD NOMINAL = MW REALES del bundle económico en BD (unión de
+  // los escenarios de todos los paneles), en vez del hardcode con tope 100 MW. Así
+  // el modal refleja los casos reales (p.ej. hasta 1k–2k MW). Fallback a
+  // `CAPACIDADES_NOMINALES` (modo template o bundle económico aún no ingerido).
+  const [capacityOptions, setCapacityOptions] =
+    useState<number[]>(CAPACIDADES_NOMINALES);
+  useEffect(() => {
+    let alive = true;
+    const panels = Array.from(
+      new Set(Object.values(ECO_ID_TO_SERIES).map((m) => m.panel)),
+    );
+    (async () => {
+      const all = new Set<number>();
+      for (const panel of panels) {
+        for (const mw of await fetchEconomicScenarios(panel)) all.add(mw);
+      }
+      if (alive && all.size > 0) {
+        setCapacityOptions([...all].sort((a, b) => a - b));
+      }
+    })().catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Si la capacidad seleccionada no está entre las opciones reales (p.ej. el
+  // default del contexto no existe en BD), se ajusta a la más cercana para que un
+  // botón quede marcado y la serie use una capacidad válida. Corre al LLEGAR las
+  // opciones de BD; no en cada clic (los botones ya salen de `capacityOptions`).
+  useEffect(() => {
+    if (capacityOptions.length === 0 || capacityOptions.includes(capacidadNominal))
+      return;
+    const closest = capacityOptions.reduce((best, mw) =>
+      Math.abs(mw - capacidadNominal) < Math.abs(best - capacidadNominal) ? mw : best,
+    );
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCapacidadNominal(closest);
+    // Intencional: depende solo de las opciones (al venir de BD), no de la selección.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [capacityOptions]);
 
   // Series REALES del bundle económico (Fase 3). Clave = `panel|cat1`. Vacío en
   // template o si aún no se ingirió el bundle → el gráfico cae al template.
@@ -151,7 +192,7 @@ export default function EconomicModal({ onClose }: { onClose: () => void }) {
               Dimensión económica – Escenarios de mercado
             </h3>
             <p className="text-[11px] text-gray-500">
-              Análisis prospectivo (no puntúa en el índice de viabilidad).
+              Análisis prospectivo (no puntúa en el índice de idoneidad).
             </p>
           </div>
           <button
@@ -180,7 +221,7 @@ export default function EconomicModal({ onClose }: { onClose: () => void }) {
                   1. Escenario de capacidad nominal
                 </p>
                 <div className="flex flex-wrap gap-1.5">
-                  {CAPACIDADES_NOMINALES.map((mw) => (
+                  {capacityOptions.map((mw) => (
                     <button
                       key={mw}
                       type="button"

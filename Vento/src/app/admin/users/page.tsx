@@ -229,8 +229,9 @@ export default function AdminUsersPage() {
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-2xl font-semibold text-gray-800">
-              Administrar usuarios
+              Administración
             </h1>
+            <h2 className="mt-2 text-lg font-semibold text-gray-800">Usuarios</h2>
             <p className="mt-1 text-sm text-gray-900">
               Gestiona los diferentes usuarios que tienen acceso a la
               plataforma, y sus diferentes privilegios.
