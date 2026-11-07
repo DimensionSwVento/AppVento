@@ -1,6 +1,6 @@
 # Vento
 
-**Herramienta web para identificar dónde tiene sentido instalar parques eólicos en Colombia.**
+**Plataforma geoespacial eólica-Herramienta web para evaluar la idoneidad de un área para instalación de parques eólicos en Colombia.**
 
 Un convenio entre la **ANH** (Agencia Nacional de Hidrocarburos) y la **Universidad EAFIT**, desarrollado por **Mavalan Software**, para acelerar la transición energética del país.
 
