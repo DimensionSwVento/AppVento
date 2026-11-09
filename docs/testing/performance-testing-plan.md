@@ -177,13 +177,55 @@ secretos de CI estén configurados. Si no hay URL de test, la ejecución se omit
 
 ## 8. Evidencia y reportes
 
-Cada corrida deja:
+### 8.1 Salidas por herramienta
 
-- `perf/results/<fecha>_<test>_<perfil>_<entorno>.md` y `.json` (k6).
-- `Vento/perf-results/<run>_<test>.json` y el resumen de medianas (Playwright).
+Cada corrida de k6 deja:
+
+- `perf/results/<fecha>_<test>_<perfil>_<entorno>.md`: tabla legible con p50/p95/p99, SLO y estado.
+- `perf/results/<fecha>_<test>_<perfil>_<entorno>.json`: metadatos + todas las métricas.
 - Metadatos: entorno, URL, commit, perfil, modo (medición o gate) y fecha.
 
-Para comparar:
+Cada corrida de Playwright deja:
+
+- `Vento/perf-results/<run>_<test>.json`: métricas y peticiones por test.
+- `Vento/perf-results/summary.md`: medianas de varias corridas, generado con
+  `npm run perf:report`.
+
+### 8.2 Dónde se consultan
+
+| Canal | Uso | Retención |
+|---|---|---|
+| Local (`perf/results`, `perf-results`) | desarrollo y comparación relativa | mientras dure la máquina |
+| GitHub Actions **job summary** | resultado legible de cada corrida CI | queda con el run |
+| Rama `perf-reports` (fase 4) | índice y resúmenes de corridas oficiales | permanente |
+| PR/issue de la medición | evidencia de un antes/después | permanente |
+
+La rama `perf-reports` se propone como canal estable porque la política de
+Actions de la organización no permite actions de marketplace para subir
+artifacts. En esa rama se publicarían solo resúmenes y métricas, nunca
+credenciales ni cookies.
+
+### 8.3 Cómo ejecuta el equipo
+
+- **Local:** comandos de `perf/README.md` y `Vento/e2e-perf/README.md`.
+- **Sin entorno local:** workflow manual de GitHub Actions con `target`, `profile`
+  y `run_frontend`; el resultado queda en el job summary.
+- **Credenciales:** se pasan por variables de entorno (`PERF_USER`,
+  `PERF_PASSWORD`) o secretos de GitHub. Nunca se versionan en el repositorio.
+- **Comparación:** repetir al menos 3 veces en la misma máquina/entorno y usar
+  medianas; no comparar una corrida aislada.
+
+### 8.4 Integridad de la evidencia
+
+- Solo se reporta como oficial una corrida en test con TLS válido, commit
+  identificado y fecha.
+- No se sobrescriben corridas: cada archivo lleva timestamp.
+- Los resultados locales se usan para detectar regresiones, no para el informe
+  oficial.
+- Una corrida con TLS inseguro o bypass se marca explícitamente como **no
+  oficial**.
+
+### 8.5 Comparación antes/después
 
 1. Repetir la corrida al menos 3 veces en la misma máquina y entorno.
 2. Comparar medianas, no una corrida aislada.

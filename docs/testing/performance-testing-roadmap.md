@@ -168,7 +168,9 @@
 
 - Workflow manual + programado.
 - Login con Playwright, ejecución de frontend y k6, resumen en job summary.
-- Sin artifacts por la política de Actions de la organización.
+- Publicación de resúmenes oficiales en la rama `perf-reports` con un índice
+  (`runs/YYYY-MM-DD/...`), sin credenciales ni cookies.
+- Sin artifacts de marketplace por la política de Actions de la organización.
 
 **Criterio de salida**
 
@@ -177,6 +179,8 @@
 - Se ejecuta manualmente contra test.
 - Si no hay URL de test, el job se omite sin fallar.
 - `strict=true` funciona como gate opcional.
+- El equipo puede ver el último resultado desde el job summary o desde
+  `perf-reports/README.md`.
 
 **Rollback:** eliminar el workflow y las variables/secretos.
 
