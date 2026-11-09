@@ -106,14 +106,21 @@ La fuente única de los SLO del backend será `perf/k6/lib/slo.js`; la del front
 ### Estado de partida
 
 - Producción responde; el dashboard está protegido por autenticación.
-- A la fecha no hay un entorno de test operativo con URL y usuario de prueba
-  documentados en el repositorio.
+- URL de test identificada: `https://test-vento.mavalansoftware.com/`.
+  El entorno responde, pero a la fecha el certificado TLS está vencido
+  (`notAfter 2026-10-30`); la suite de navegador no debe ejecutarse hasta que se
+  renueve.
+- Keycloak de test: `https://test-vento.mavalansoftware.com/identity/realms/vento`.
+- Usuario de prueba y ventana de ejecución: pendientes de confirmar.
+- El equipo de producto está aplicando mejoras de rendimiento del sprint 4; la
+  línea base oficial se tomará cuando estén desplegadas y con el commit
+  identificado.
 - La línea base existente es local y preliminar; no sustituye la medición en
   test.
 
-**Consecuencia:** sin entorno de test no se puede producir la cifra oficial ni
-ejecutar carga con seguridad. La fase de validación en test queda condicionada a
-su disponibilidad.
+**Consecuencia:** con el certificado vencido no se puede validar el flujo de
+navegador ni ejecutar Playwright de forma confiable; y sin usuario de prueba no se
+puede autenticar. La medición oficial queda condicionada a ambos.
 
 ## 7. Ejecución
 
