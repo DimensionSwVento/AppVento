@@ -128,6 +128,11 @@
 - Reenvío de `Cache-Control` desde el BFF.
 - Validación con la prueba `@cache`.
 
+> El sprint 4 tiene pendiente la caché de capas del mapa (7.4). Antes de
+> implementar este PR, confirmar el alcance con el equipo para no duplicar
+> trabajo. Si la caché de capas ya está resuelta, 2C se limita a validar y medir
+> la caché del catálogo/BFF.
+
 **Criterio de salida**
 
 - La primera carga reduce las llamadas repetidas al catálogo.
