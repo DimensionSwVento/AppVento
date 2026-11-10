@@ -24,9 +24,12 @@ export default function RadarChart({
   const R = size * 0.3;
   const labelR = R + 20;
   const levels = [0.25, 0.5, 0.75, 1];
-  // Padding horizontal del viewBox: da aire para etiquetas largas (ej.
-  // "económica" / "Socioeconómica") que antes se cortaban en el borde.
-  const padX = 76;
+  // Padding horizontal del viewBox: da aire para etiquetas largas que antes se
+  // cortaban en el borde. Las etiquetas muy largas (subcriterios/variables del
+  // desglose #36) además se TRUNCAN (el nombre completo va en el tooltip del
+  // vértice y en la lista de origen del informe).
+  const padX = 94;
+  const shortLabel = (s: string) => (s.length > 16 ? s.slice(0, 15) + "…" : s);
 
   const angleFor = (i: number) => (-90 + (360 / n) * i) * (Math.PI / 180);
   const point = (i: number, radius: number): [number, number] => {
@@ -57,6 +60,22 @@ export default function RadarChart({
           stroke="#475569"
           strokeWidth={1}
         />
+      ))}
+
+      {/* ESCALA: valor (0–100) de cada aro, sobre el eje vertical (hacia arriba),
+          para leer qué significa cada anillo. */}
+      {levels.map((lv) => (
+        <text
+          key={`scale-${lv}`}
+          x={cx + 3}
+          y={cy - R * lv}
+          fontSize={9}
+          fill="#111827"
+          fontWeight={700}
+          dominantBaseline="middle"
+        >
+          {Math.round(lv * 100)}
+        </text>
       ))}
 
       {/* Ejes radiales — cada uno en el color de su dimensión */}
@@ -127,7 +146,8 @@ export default function RadarChart({
             fontSize={13}
             fontWeight={700}
           >
-            {a.label}
+            {shortLabel(a.label)}
+            <title>{a.label}</title>
           </text>
         );
       })}
