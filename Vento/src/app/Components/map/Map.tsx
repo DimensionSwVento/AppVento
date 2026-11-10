@@ -33,9 +33,9 @@ import { useVariables } from "../../Utils/contexts/VariablesContext";
 import { useHeatmapDimension } from "../../Utils/contexts/HeatmapDimensionContext";
 import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS, SNAPSHOT_KEY } from "../../Utils/h3/h3Resolution";
 import { useCachedImage } from "../../Utils/useCachedImage";
-import { zoomToH3Res, tileToBBox, isInColombia } from "../../Utils/h3/mapGeo";
+import { zoomToH3Res, tileToBBox, isInColombia, resForHexBudget, snapBboxOutward } from "../../Utils/h3/mapGeo";
 import { isHexBanned, bannedReason, setBannedData, selectionNature } from "../../Utils/h3/hexClassification";
-import { MAX_SELECTION_GAP_KM, MIN_SELECTION_H3_RES, USE_BACKEND, USE_API_EMPLAZAMIENTO } from "../../Utils/projectData";
+import { MAX_SELECTION_GAP_KM, MIN_SELECTION_H3_RES, USE_BACKEND, USE_API_EMPLAZAMIENTO, FIXED_MAP_LAYER_IDS } from "../../Utils/projectData";
 import { useToast } from "../ui/Toast";
 import HexValuesTooltip from "./HexValuesTooltip";
 import HeatmapDimensionSwitches from "./HeatmapDimensionSwitches";
@@ -523,9 +523,11 @@ export default function MapView() {
   // capa de cuadrícula con tiles — solo renderiza lo visible, cachea por tile.
   // Cuando el heatmap del informe está activo, oculto la malla entera para
   // no superponer bordes de hexágonos sobre el mapa de calor.
-  // isFlyingRef se lee dentro de callbacks de deck.gl (onViewportLoad) que
-  // corren DESPUÉS del render; el linter no distingue el momento de ejecución.
-  // eslint-disable-next-line react-hooks/refs
+  // Fase B2: a zoom alejado hay miles de hexágonos pequeños en pantalla; dibujar
+  // el borde de cada uno es costo de GPU/vértices que no aporta legibilidad a esa
+  // escala. Umbral (no el zoom continuo) para que el memo de abajo solo recalcule
+  // al CRUZAR el nivel, no en cada frame de zoom.
+  const showHexBorders = viewState.zoom >= 7;
   const gridTileLayer = useMemo(() => new TileLayer<HexCell>({
     // El id incluye `heatVersion`: al cambiar la variable de calor, el TileLayer se
     // remonta y refetchea los tiles con los nuevos valores (viridis).
@@ -534,7 +536,9 @@ export default function MapView() {
     minZoom: 2,
     maxZoom: 14,
     tileSize: 512,
-    maxCacheSize: 64,
+    // Más tiles retenidos en memoria del NAVEGADOR (no del servidor): menos
+    // recomputar `polygonToCells`/`cellToBoundary` al volver a una zona ya vista.
+    maxCacheSize: 128,
     maxRequests: 4,
     refinementStrategy: "best-available",
     onViewportLoad: () => {
@@ -650,7 +654,9 @@ export default function MapView() {
         getLineWidth: (d) => (d.banned ? 2 : 1),
         lineWidthMinPixels: 1,
         filled: true,
-        stroked: true,
+        // Fase B2: sin bordes a zoom alejado (umbral `showHexBorders`) — menos
+        // vértices de línea cuando hay miles de hexágonos chicos en pantalla.
+        stroked: showHexBorders,
         // En informe SOLO el heatmap debe ser pickable. El grid usa resolución
         // por zoom (hexágonos grandes) y sus sublayers no heredan el
         // visible:false del TileLayer para el picking → el hover enganchaba un
@@ -658,7 +664,10 @@ export default function MapView() {
         pickable: !heatmapActive,
       });
     },
-  }), [heatmapActive, isFlyingRef, heatVersion]);
+    // isFlyingRef NO va en deps: un ref tiene identidad estable y su `.current`
+    // se lee dentro de callbacks de deck.gl (onViewportLoad), que corren tras el
+    // render — listarlo aquí dispara react-hooks/refs ("ref durante el render").
+  }), [heatmapActive, heatVersion, showHexBorders]);
 
   // Capa de borde del territorio colombiano (continente + archipiélago).
   // Pasa los polígonos sin relleno, solo contorno, para que el usuario vea hasta
@@ -683,12 +692,6 @@ export default function MapView() {
   // "persiste" al cambiar de escala). NO toca el grid (rendimiento intacto) ni el
   // set real `selectedHexes` (la consulta al backend sigue igual): solo el relleno.
   const displayRes = Math.max(0, Math.min(15, zoomToH3Res(viewState.zoom)));
-  // Res de las CAPAS de variable (símbolos/catálogo) y del heatmap del informe: la
-  // MISMA que usa el grid (zoomToH3Res, tope 8 = res del dato) → todas las capas se
-  // resumen igual por zoom y quedan ALINEADAS (antes, capadas a 7 mientras el grid
-  // iba a 8, se veía desfase/"rendija"). El bbox del viewport ya acota el res8, así
-  // que no vuelve el escaneo país. Entero → los effects solo re-piden al cruzar nivel.
-  const layerRes = Math.min(8, displayRes);
   // Bbox del VIEWPORT (debounced) para acotar las capas de variable a lo VISIBLE →
   // el backend escanea el viewport, no el país entero (mató los scans de ~5 min que
   // apilaban los hilos). Se actualiza 400ms tras asentarse el paneo/zoom; las capas
@@ -702,22 +705,41 @@ export default function MapView() {
     const t = setTimeout(() => {
       const b = mapRef.current?.getMap?.()?.getBounds?.();
       if (!b) return;
-      const box = {
+      // Redondea HACIA AFUERA a una grilla fija de 0.15° (nunca recorta el
+      // viewport real, solo lo extiende hasta el borde de la celda): paneos
+      // cortos dentro de la misma celda producen el MISMO bbox exacto →
+      // cache-hit 100% en el store de capas (`_layerStore`/`bboxKey`) sin
+      // refetch, en vez de depender de que el bbox crudo coincida al redondear
+      // (antes: Fase B1).
+      const box = snapBboxOutward({
         west: b.getWest(),
         south: b.getSouth(),
         east: b.getEast(),
         north: b.getNorth(),
-      };
-      // Redondea a ~0.5°: paneos pequeños NO disparan refetch/re-render (mata el
-      // parpadeo de re-renderizado constante de las capas al mover el mapa).
-      const r = (n: number) => Math.round(n * 2);
-      const k = `${r(box.west)},${r(box.south)},${r(box.east)},${r(box.north)}`;
+      });
+      const k = `${box.west},${box.south},${box.east},${box.north}`;
       if (k === lastBoxKeyRef.current) return;
       lastBoxKeyRef.current = k;
       setViewBox(box);
     }, 400);
     return () => clearTimeout(t);
   }, [viewState]);
+  // Presupuesto de hexágonos en pantalla (N): el mapa SIEMPRE pide ~N hexágonos
+  // por petición de capas de variable, sin importar el zoom. Reemplaza la tabla
+  // fija zoom→res para las consultas al backend (`/tiles/variable[s-bulk]`):
+  // antes el área leída dependía solo del zoom, no de cuántos hexágonos caían
+  // realmente en el viewport — eso permitía escaneos de cientos de miles de
+  // filas y tumbaba `variables-bulk` a partir de ~10 peticiones concurrentes
+  // (ver benchmark-carga-h3). Calibrar con `tools/loadtest.py` por servidor.
+  const HEX_SCREEN_BUDGET = 2000;
+  // Res de las CAPAS de variable (símbolos/catálogo) y del heatmap del informe:
+  // se deriva del ÁREA REAL del viewport (viewBox), no del zoom — así una misma
+  // resolución nunca escanea más de ~N hexágonos, independientemente de qué tan
+  // alejado esté el zoom. Antes de tener el primer viewBox, cae a `displayRes`
+  // (tabla por zoom) para no bloquear la primera carga.
+  const layerRes = viewBox
+    ? Math.min(8, resForHexBudget(viewBox, HEX_SCREEN_BUDGET))
+    : Math.min(8, displayRes);
   // Contador de cargas de capas en vuelo → pill "Cargando capas del mapa…" (no
   // bloquea la vista, solo avisa arriba). >0 = hay un fetch de capas activo.
   const [layersLoading, setLayersLoading] = useState(0);
@@ -808,7 +830,12 @@ export default function MapView() {
   // colaban ENCENDIDAS por defecto (bug: deben estar inactivas). Ahora `shownLayers`
   // guarda SOLO las que el usuario prendió. (Informe también arranca off vía
   // `activeSymbols`.)
-  const [shownLayers, setShownLayers] = useState<Set<string>>(() => new Set());
+  // FB5: las capas listadas en FIXED_MAP_LAYER_IDS arrancan prendidas (el resto
+  // sigue opt-in). Vacía por defecto → sin cambio de comportamiento hasta que
+  // se decida cuáles son esas capas (editar la constante en projectData.ts).
+  const [shownLayers, setShownLayers] = useState<Set<string>>(
+    () => new Set(FIXED_MAP_LAYER_IDS),
+  );
   const toggleDimLayer = useCallback((id: string) => {
     setShownLayers((prev) => {
       const next = new Set(prev);
