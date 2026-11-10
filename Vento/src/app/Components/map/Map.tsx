@@ -528,6 +528,13 @@ export default function MapView() {
   // escala. Umbral (no el zoom continuo) para que el memo de abajo solo recalcule
   // al CRUZAR el nivel, no en cada frame de zoom.
   const showHexBorders = viewState.zoom >= 7;
+  // isFlyingRef.current SOLO se lee dentro de onViewportLoad (callback de deck.gl
+  // que corre DESPUÉS del render), no durante el render; el plugin react-hooks no
+  // distingue el momento de ejecución y marca tanto el acceso como el ref en deps.
+  // Se mantiene en deps por identidad estable (satisface exhaustive-deps) y se
+  // desactiva react-hooks/refs en bloque (el disable de una línea no casa con el
+  // punto donde el plugin reporta).
+  /* eslint-disable react-hooks/refs */
   const gridTileLayer = useMemo(() => new TileLayer<HexCell>({
     // El id incluye `heatVersion`: al cambiar la variable de calor, el TileLayer se
     // remonta y refetchea los tiles con los nuevos valores (viridis).
@@ -664,10 +671,8 @@ export default function MapView() {
         pickable: !heatmapActive,
       });
     },
-    // isFlyingRef NO va en deps: un ref tiene identidad estable y su `.current`
-    // se lee dentro de callbacks de deck.gl (onViewportLoad), que corren tras el
-    // render — listarlo aquí dispara react-hooks/refs ("ref durante el render").
-  }), [heatmapActive, heatVersion, showHexBorders]);
+  }), [heatmapActive, isFlyingRef, heatVersion, showHexBorders]);
+  /* eslint-enable react-hooks/refs */
 
   // Capa de borde del territorio colombiano (continente + archipiélago).
   // Pasa los polígonos sin relleno, solo contorno, para que el usuario vea hasta
