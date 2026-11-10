@@ -13,12 +13,13 @@ import {
   type AdminVariable,
   type VariableTipo,
 } from "../../Utils/admin/catalogApi";
-import { DIMENSIONS, type MapKind } from "../../Utils/variables/variablesCatalog";
+import { DIMENSIONS, iconForVariable, type MapKind } from "../../Utils/variables/variablesCatalog";
 import {
   IconByKey,
   MAP_ICON_CHOICES,
   randomMapIconKey,
 } from "../../Utils/variables/variableIcons";
+import { colorHexForVariable } from "../../Utils/variables/dimensionColors";
 
 export default function AdminVariablesPage() {
   const toast = useToast();
@@ -162,12 +163,28 @@ export default function AdminVariablesPage() {
                             }`}
                           >
                         <td className="px-3 py-2.5">
-                          <p className="font-medium text-gray-800">{v.label}</p>
-                          {v.excluyente && (
-                            <span className="text-[10px] font-semibold text-red-600">
-                              Excluyente
+                          <div className="flex items-center gap-2.5">
+                            {/* Chip icono + color ASIGNADOS a la variable (los mismos
+                                del mapa/modal) → señala que se editan aquí. */}
+                            <span
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 bg-white"
+                              style={{
+                                borderColor: colorHexForVariable(v.id),
+                                color: colorHexForVariable(v.id),
+                              }}
+                              title={`Icono y color de mapa (editables aquí): ${v.iconKey}`}
+                            >
+                              <IconByKey iconKey={v.iconKey || iconForVariable(v.id)} className="h-4 w-4" strokeWidth={2.2} />
                             </span>
-                          )}
+                            <div className="min-w-0">
+                              <p className="font-medium text-gray-800">{v.label}</p>
+                              {v.excluyente && (
+                                <span className="text-[10px] font-semibold text-red-600">
+                                  Excluyente
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </td>
                         <td className="px-3 py-2.5">
                           <span
