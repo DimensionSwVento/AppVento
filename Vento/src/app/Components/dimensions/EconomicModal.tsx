@@ -100,7 +100,6 @@ export default function EconomicModal({ onClose }: { onClose: () => void }) {
     const closest = capacityOptions.reduce((best, mw) =>
       Math.abs(mw - capacidadNominal) < Math.abs(best - capacidadNominal) ? mw : best,
     );
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCapacidadNominal(closest);
     // Intencional: depende solo de las opciones (al venir de BD), no de la selección.
     // eslint-disable-next-line react-hooks/exhaustive-deps

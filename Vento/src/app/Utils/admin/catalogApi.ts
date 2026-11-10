@@ -86,7 +86,7 @@ export interface AdminVariable {
   subcriterioId?: string;
   /** "Cómo se calcula" (método/fórmula, texto libre). Editable + ingestable. */
   metodoCalculo?: string;
-  /** Ícono de la capa de mapa (`lucide:Name` / `tabler:key`). Asignable en admin. */
+  /** Ícono de la capa de mapa (`lucide:Name`). Asignable en admin. */
   iconKey?: string;
 }
 

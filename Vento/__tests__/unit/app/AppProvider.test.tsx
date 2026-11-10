@@ -15,6 +15,11 @@ vi.mock("@/app/Utils/contexts/AccionPrincipalContext", () => ({
   ),
 }));
 
+// AppProvider monta <FlowDraftSync /> (autoguardado de borrador), que consume
+// useAprincipal/useVariables/useCaracteristicas. Este test solo verifica el
+// anidado de providers, así que se stubea para no arrastrar esos contextos.
+vi.mock("@/app/Utils/draft/FlowDraftSync", () => ({ default: () => null }));
+
 import AppProvider from "@/app/AppProvider";
 
 describe("AppProvider", () => {

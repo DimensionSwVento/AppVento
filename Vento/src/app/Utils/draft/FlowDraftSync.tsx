@@ -103,9 +103,7 @@ export default function FlowDraftSync() {
     prevSelSize.current = selectedHexes.size;
     if (!armed.current) return;
     if (was > 0 && selectedHexes.size === 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       clearNonRequired();
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       caract.reset();
     }
   }, [selectedHexes, clearNonRequired, caract]);

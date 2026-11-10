@@ -29,8 +29,10 @@ describe("HeatmapDimensionSwitches", () => {
     const select = screen.getByLabelText("Visualización en el mapa");
     expect(select).toBeInTheDocument();
     const options = screen.getAllByRole("option");
+    // El select solo lista el optgroup "Dimensiones puntuables" (scorable); las
+    // informativas (económica/regulatoria) no son seleccionables como heatmap.
     expect(options.map((o) => o.textContent)).toEqual(
-      HEATMAP_DIMENSIONS.map((d) => d.label),
+      HEATMAP_DIMENSIONS.filter((d) => d.scorable).map((d) => d.label),
     );
   });
 

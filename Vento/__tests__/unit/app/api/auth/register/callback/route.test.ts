@@ -81,7 +81,7 @@ describe("GET /api/auth/register/callback", () => {
     expect(loc).toContain("id_token_hint=id-token-value");
   });
 
-  it("hace fetch al token endpoint INTERNO (HTTP, sin rewrite) con grant_type=authorization_code", async () => {
+  it("hace fetch al token endpoint PÚBLICO (http→https rewrite) con grant_type=authorization_code", async () => {
     const fetchMock = vi.fn(async () =>
       ({
         ok: true,
@@ -108,7 +108,9 @@ describe("GET /api/auth/register/callback", () => {
       string,
       RequestInit,
     ];
-    expect(url).toBe("http://localhost:8080/realms/vento/protocol/openid-connect/token");
+    // El intercambio server-side usa el issuer PÚBLICO (http→https rewrite),
+    // igual que el provider de login y el logout (ver route.ts).
+    expect(url).toBe("https://localhost:8080/realms/vento/protocol/openid-connect/token");
     expect(init.method).toBe("POST");
     expect(init.headers).toMatchObject({
       "Content-Type": "application/x-www-form-urlencoded",
