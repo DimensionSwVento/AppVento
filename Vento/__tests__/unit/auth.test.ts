@@ -149,7 +149,10 @@ describe("auth.ts — jwt callback", () => {
     fetchSpy.mockRestore();
   });
 
-  it("returns RefreshTokenError when refresh fails", async () => {
+  // Fix sesión S4: un refresh FALLIDO ya NO cierra la sesión. Si el token aún
+  // tiene identidad (sub o refreshToken), el error se absorbe (queda undefined)
+  // y se pospone el próximo intento; solo se marca "NoSession" si NO hay identidad.
+  it("refresh fallido CON identidad (refreshToken) NO cierra sesión: error undefined", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ error: "invalid_grant" }), { status: 400 }),
     );
@@ -161,15 +164,15 @@ describe("auth.ts — jwt callback", () => {
     };
 
     const result = await jwtCb({ token, account: null });
-    expect(result.error).toBe("RefreshTokenError");
+    expect(result.error).toBeUndefined();
 
     fetchSpy.mockRestore();
   });
 
-  it("returns NoRefreshToken error when refreshToken is missing", async () => {
+  it("sin refreshToken ni sub (sin identidad) marca 'NoSession'", async () => {
     const token = { expiresAt: 0 };
     const result = await jwtCb({ token, account: null });
-    expect(result.error).toBe("NoRefreshToken");
+    expect(result.error).toBe("NoSession");
   });
 
   it("extracts roles from id_token when access_token has none", async () => {

@@ -37,9 +37,12 @@ describe("SessionGuard", () => {
     expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 
-  it("muestra modal amigable inmediatamente cuando session.error === 'RefreshTokenError'", () => {
+  // Fix sesión S4: SessionGuard solo reacciona a "NoSession" (sin sub ni refresh
+  // token). Un refresh fallido (RefreshTokenError/NoRefreshToken) ya NO cierra la
+  // sesión — por eso el callback jwt los absorbe a "NoSession" o undefined.
+  it("muestra modal amigable inmediatamente cuando session.error === 'NoSession'", () => {
     useSessionMock.mockReturnValue({
-      data: { error: "RefreshTokenError" },
+      data: { error: "NoSession" },
       status: "authenticated",
     });
     render(<SessionGuard>child</SessionGuard>);
@@ -51,7 +54,7 @@ describe("SessionGuard", () => {
 
   it("tras 3s dispara sign-out + redirige a /?expired=true", async () => {
     useSessionMock.mockReturnValue({
-      data: { error: "RefreshTokenError" },
+      data: { error: "NoSession" },
       status: "authenticated",
     });
     render(<SessionGuard>child</SessionGuard>);
@@ -62,15 +65,15 @@ describe("SessionGuard", () => {
     expect(globalThis.location.href).toBe("/?expired=true");
   });
 
-  it("también reacciona a 'NoRefreshToken'", async () => {
+  it("NO reacciona a 'RefreshTokenError' (un refresh fallido ya no cierra la sesión)", async () => {
     useSessionMock.mockReturnValue({
-      data: { error: "NoRefreshToken" },
+      data: { error: "RefreshTokenError" },
       status: "authenticated",
     });
     render(<SessionGuard>child</SessionGuard>);
-    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     await vi.advanceTimersByTimeAsync(3000);
-    expect(signOutMock).toHaveBeenCalled();
+    expect(signOutMock).not.toHaveBeenCalled();
   });
 
   it("renderiza children independientemente del estado de sesión", () => {
