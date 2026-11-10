@@ -167,7 +167,7 @@ describe("SideBar — Navegación", () => {
       },
     });
     renderSideBar();
-    expect(screen.getByText("Gestión de usuarios")).toBeInTheDocument();
+    expect(screen.getByText("Gestión admin")).toBeInTheDocument();
   });
 
   it("no muestra link de Gestión de usuarios si no es admin", () => {
@@ -179,6 +179,6 @@ describe("SideBar — Navegación", () => {
       },
     });
     renderSideBar();
-    expect(screen.queryByText("Gestión de usuarios")).not.toBeInTheDocument();
+    expect(screen.queryByText("Gestión admin")).not.toBeInTheDocument();
   });
 });

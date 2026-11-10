@@ -38,13 +38,27 @@ vi.mock("@deck.gl/geo-layers", () => ({
   TileLayer: vi.fn(function (this: object, props: object) {
     Object.assign(this, props);
   }),
+  H3HexagonLayer: vi.fn(function (this: object, props: object) {
+    Object.assign(this, props);
+  }),
 }));
 
+// El rework de capas (US sprint 4) añadió IconLayer/PathLayer/ScatterplotLayer a
+// MapView; el mock debe exportarlas todas o `new Layer()` sería `new undefined()`.
 vi.mock("@deck.gl/layers", () => ({
   PolygonLayer: vi.fn(function (this: object, props: object) {
     Object.assign(this, props);
   }),
   TextLayer: vi.fn(function (this: object, props: object) {
+    Object.assign(this, props);
+  }),
+  IconLayer: vi.fn(function (this: object, props: object) {
+    Object.assign(this, props);
+  }),
+  PathLayer: vi.fn(function (this: object, props: object) {
+    Object.assign(this, props);
+  }),
+  ScatterplotLayer: vi.fn(function (this: object, props: object) {
     Object.assign(this, props);
   }),
 }));

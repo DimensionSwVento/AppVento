@@ -25,16 +25,14 @@ describe("HexValuesTooltip", () => {
     }
   });
 
-  // Dimensiones INFORMATIVAS (no puntúan) aparte, cada una marcada "informativa":
-  // hoy son económica y regulatoria (scorable:false en HEATMAP_DIMENSIONS).
-  it("muestra las dimensiones informativas aparte, marcadas como informativa", () => {
+  // #17: las dimensiones INFORMATIVAS (económica/regulatoria, scorable:false) YA
+  // NO se muestran entre los puntajes de idoneidad del hex — su valor vive en la
+  // sección "Variables informativas" y en el informe, no aquí.
+  it("ya NO muestra las dimensiones informativas (económica/regulatoria) entre los puntajes", () => {
     render(<HexValuesTooltip hex={HEX} x={100} y={50} />);
-    const informativas = HEATMAP_DIMENSIONS.filter((d) => !d.scorable);
-    for (const d of informativas) {
-      expect(screen.getByText(d.label)).toBeInTheDocument();
+    for (const d of HEATMAP_DIMENSIONS.filter((d) => !d.scorable)) {
+      expect(screen.queryByText(d.label)).not.toBeInTheDocument();
     }
-    expect(screen.getByText("Regulatoria")).toBeInTheDocument();
-    expect(screen.getAllByText("informativa")).toHaveLength(informativas.length);
   });
 
   it("se ancla al cursor con offset de 12px", () => {

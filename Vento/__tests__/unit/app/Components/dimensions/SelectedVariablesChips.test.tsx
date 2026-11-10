@@ -138,20 +138,23 @@ describe("SelectedVariablesChips (US04-AC4) — panel default, pill al colapsar"
     }
   });
 
-  it("variables no obligatorias muestran ✕ que las deselecciona", () => {
-    // uso-suelo (modelo, no obligatoria) está activa por defecto → su ✕ la quita.
+  it("variables no obligatorias (opcionales) muestran ✕ que las deselecciona", () => {
+    // Las del MODELO son obligatorias (sin ✕). Para ejercitar el deselect se
+    // activa una OPCIONAL, que sí es deseleccionable.
+    const opt = OPTIONAL_VARIABLES[0];
     render(
       <VariablesProvider>
+        <Seeder ids={[opt.id]} />
         <SelectedVariablesChips />
       </VariablesProvider>,
     );
     const dialog = screen.getByRole("dialog");
     fireEvent.click(
       within(dialog).getByRole("button", {
-        name: new RegExp(`Deseleccionar ${ambientalA.label}`),
+        name: `Deseleccionar ${opt.label}`,
       }),
     );
-    expect(within(dialog).queryByText(ambientalA.label)).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(opt.label)).not.toBeInTheDocument();
   });
 
   it("click sobre el header del panel lo colapsa a la pill compacta", () => {
@@ -169,9 +172,10 @@ describe("SelectedVariablesChips (US04-AC4) — panel default, pill al colapsar"
   });
 
   it("click sobre 'Limpiar' NO colapsa el panel (stopPropagation)", () => {
+    // 'Limpiar' solo aparece si hay una opcional activa (hasClearable).
     render(
       <VariablesProvider>
-        <Seeder ids={[ambientalA.id]} />
+        <Seeder ids={[OPTIONAL_VARIABLES[0].id]} />
         <SelectedVariablesChips />
       </VariablesProvider>,
     );
