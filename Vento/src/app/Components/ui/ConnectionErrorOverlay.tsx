@@ -1,17 +1,24 @@
 "use client";
 
+import { createPortal } from "react-dom";
+
 /**
  * Aviso FLOTANTE de problemas de conexión (modo datos). Reemplaza al informe
  * cuando el backend está caído: en vez de generar el informe con datos en CERO
  * (que genera ruido), se muestra este aviso con una ilustración 404 y un botón
  * "Reintentar". Fondo semitransparente → se ve el mapa por detrás.
+ *
+ * Se renderiza con PORTAL a `document.body`: así cubre TODA la pantalla y no
+ * queda "encerrado" dentro del panel/subpágina (sidebar de 25rem), aunque algún
+ * ancestro cree un containing block (transform/filter/overflow).
  */
 export default function ConnectionErrorOverlay({
   onRetry,
 }: {
   onRetry: () => void;
 }) {
-  return (
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div
       role="alertdialog"
       aria-labelledby="conn-err-title"
@@ -74,6 +81,7 @@ export default function ConnectionErrorOverlay({
           Reintentar
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

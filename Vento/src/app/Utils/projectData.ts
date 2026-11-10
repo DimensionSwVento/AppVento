@@ -137,6 +137,16 @@ export const MAX_HISTORIAL_ENTRIES = 100;
 export const MIN_SELECTION_H3_RES = 7;
 
 /**
+ * Capas FIJAS del mapa (FB5): IDs de variable que arrancan ENCENDIDAS por
+ * defecto en el menú "Capas del mapa" de Dimensiones, a diferencia del resto
+ * (modelo opt-in: todo apagado hasta que el usuario las prenda). Editar esta
+ * lista para definir qué capas deben verse siempre sin que el usuario tenga
+ * que buscarlas y activarlas manualmente. Vacía por defecto (ningún cambio de
+ * comportamiento hasta que se decida cuáles son esas capas).
+ */
+export const FIXED_MAP_LAYER_IDS: readonly string[] = [];
+
+/**
  * Hexágonos PROHIBIDOS / vetados — zonas totalmente inviables para el proyecto.
  * Se pintan en gris sólido y NO son seleccionables.
  *

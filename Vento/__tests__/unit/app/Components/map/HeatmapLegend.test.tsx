@@ -8,18 +8,12 @@ describe("HeatmapLegend", () => {
     expect(screen.getByText("Idoneidad (%)")).toBeInTheDocument();
   });
 
-  it("renderiza los 5 rangos con sus etiquetas", () => {
+  it("renderiza los 5 ticks numéricos (100/75/50/25/0)", () => {
+    // #19: se quitaron las etiquetas cualitativas y los rangos; la leyenda ahora
+    // son solo los ticks numéricos alineados a la barra de gradiente.
     render(<HeatmapLegend />);
-    const buckets = [
-      ["90 – 100", "Muy alta"],
-      ["75 – 90", "Alta"],
-      ["50 – 75", "Media"],
-      ["25 – 50", "Baja"],
-      ["0 – 25", "Muy baja"],
-    ];
-    for (const [range, label] of buckets) {
-      expect(screen.getByText(range)).toBeInTheDocument();
-      expect(screen.getByText(label)).toBeInTheDocument();
+    for (const tick of ["100", "75", "50", "25", "0"]) {
+      expect(screen.getByText(tick)).toBeInTheDocument();
     }
     expect(screen.getAllByRole("listitem")).toHaveLength(5);
   });

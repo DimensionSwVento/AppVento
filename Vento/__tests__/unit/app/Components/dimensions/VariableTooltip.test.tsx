@@ -10,7 +10,7 @@ const additive: Variable = {
   criterio: "Recurso eólico",
   label: "Densidad de potencia WPD",
   description: "Wind Power Density a la altura del rotor",
-  iconKey: "tabler:windmill",
+  iconKey: "lucide:Wind",
 };
 
 const penalizing: Variable = {

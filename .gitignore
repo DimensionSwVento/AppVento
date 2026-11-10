@@ -7,3 +7,7 @@ node_modules
 # Backend separado (repo propio)
 AppVento---Backend/
 AppVento---Backend
+
+# Basura de LibreOffice / MS Office (archivos de bloqueo y temporales)
+.~lock.*#
+~$*

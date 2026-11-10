@@ -7,6 +7,28 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+// Librerías de generación de PDF (Fase 1 PDF nativo): se importan al tope de
+// Report.tsx y revientan al CARGAR el módulo bajo jsdom (svg2pdf.js/fonts.ts
+// referencia jsPDF; jsPDF/html2canvas tocan Canvas/WebGL inexistentes). Nunca
+// se ejercitan en unit tests (el PDF se genera por acción del usuario), así que
+// se stubean globalmente para que cualquier test que importe Report colecte.
+vi.mock("svg2pdf.js", () => ({ svg2pdf: vi.fn() }));
+vi.mock("html2canvas-pro", () => ({
+  default: vi.fn(async () => ({ toDataURL: () => "", width: 0, height: 0 })),
+}));
+vi.mock("jspdf", () => ({
+  default: vi.fn(() => ({
+    addImage: vi.fn(),
+    addPage: vi.fn(),
+    addSvgAsImage: vi.fn(),
+    setPage: vi.fn(),
+    setFontSize: vi.fn(),
+    text: vi.fn(),
+    save: vi.fn(),
+    internal: { pageSize: { getWidth: () => 210, getHeight: () => 297 } },
+  })),
+}));
+
 if (typeof window !== "undefined") {
   Object.defineProperty(window, "matchMedia", {
     writable: true,

@@ -43,13 +43,10 @@ export default function AreaSelectionPage() {
       case "caracteristicas":
         return <Caracteristicas />;
       case "informe":
-        // Modo datos con backend caído: NO generar el informe con ceros (ruido);
-        // mostrar aviso de conexión flotante con "Reintentar" (feedback cliente).
-        return USE_BACKEND && down ? (
-          <ConnectionErrorOverlay onRetry={recheck} />
-        ) : (
-          <Report />
-        );
+        // Modo datos con backend caído: NO generar el informe con ceros (ruido).
+        // El aviso de conexión se renderiza FUERA del panel (ver abajo, portal a
+        // body) para que no quede encerrado en la sidebar de 25rem.
+        return USE_BACKEND && down ? null : <Report />;
       case "historico":
         return <HistorialList />;
       default:
@@ -78,6 +75,12 @@ export default function AreaSelectionPage() {
           <MapView />
         </div>
       </div>
+
+      {/* Aviso de conexión a PANTALLA COMPLETA (portal a body): backend caído en
+          fase Informe → fuera del panel de 25rem, cubre todo. */}
+      {accion === "informe" && USE_BACKEND && down && (
+        <ConnectionErrorOverlay onRetry={recheck} />
+      )}
       <OnboardingModal
         open={showOnboarding}
         onClose={() => {

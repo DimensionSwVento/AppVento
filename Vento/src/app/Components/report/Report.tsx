@@ -58,7 +58,6 @@ import { dimensionScore } from "../../Utils/report/heatmapPalette";
 import { useAreaScores } from "../../Utils/report/useAreaScores";
 import {
   areaVariableAverage,
-  normCode,
   useAreaHexData,
 } from "../../Utils/report/useAreaHexData";
 import {
@@ -98,7 +97,6 @@ import {
   type ReportSourceLink,
 } from "../../Utils/report/reportSources";
 import { compactHexes } from "../../Utils/historial/hexCodec";
-import { cellToChildren, cellToParent, getResolution } from "h3-js";
 import { useToast } from "../ui/Toast";
 import {
   useCaracteristicas,
@@ -535,6 +533,35 @@ export default function Report() {
     }));
   };
 
+  // #36: DESGLOSE del radar por SUBCRITERIO de la dimensión. Cada eje = un
+  // subcriterio (promedio del puntaje de sus variables puntuables); se adjunta el
+  // ORIGEN (las variables que lo componen) para ver el panorama amplio. Usa el
+  // mismo `puntaje` por variable que la tabla/diverging bars (dato ya consumido).
+  const dimSubcriterioAxes = (dimId: string) => {
+    const color = RADAR_DIM_HEX[dimId] ?? "#165170";
+    const groups = new Map<string, { vals: number[]; vars: string[] }>();
+    for (const r of dimTable(dimId)) {
+      if (r.tipo !== "Puntúa" || r.puntaje == null) continue;
+      const key = r.criterio; // "Criterio › Subcriterio" (o solo "Criterio")
+      const g = groups.get(key) ?? { vals: [], vars: [] };
+      g.vals.push(r.puntaje);
+      g.vars.push(r.label);
+      groups.set(key, g);
+    }
+    // Etiqueta corta del eje = último segmento (el subcriterio) para no saturar.
+    const short = (label: string) => {
+      const parts = label.split("›");
+      return (parts[parts.length - 1] || label).trim();
+    };
+    return [...groups.entries()].map(([full, g]) => ({
+      label: short(full),
+      full,
+      value: g.vals.reduce((a, b) => a + b, 0) / g.vals.length,
+      color,
+      vars: g.vars,
+    }));
+  };
+
   // Variables informativas activas con su valor sobre el área.
   const informativeRows = useMemo(() => {
     const rows: {
@@ -904,6 +931,74 @@ export default function Report() {
             </div>,
           );
         });
+
+        // #36: DESGLOSE por SUBCRITERIO — un radar COMPACTO + la lista de ORIGEN
+        // (qué variables componen cada subcriterio). Ejes del radar: subcriterios si
+        // hay ≥3; si no, las variables puntuables (cap 8) para que SIGA siendo radar
+        // y no barras. Chart pequeño (max-w acotado) para que las fuentes no se
+        // disparen ni crezca la hoja. Solo si hay ≥2 subcriterios con dato.
+        const subcrit = dimSubcriterioAxes(d.id);
+        if (config.showScoreDetail && subcrit.length >= 2) {
+          const subColor = subcrit[0].color;
+          const varAxes = dimTable(d.id)
+            .filter((r) => r.tipo === "Puntúa" && r.puntaje != null)
+            .slice(0, 8)
+            .map((r) => ({ label: r.label, value: r.puntaje as number, color: subColor }));
+          const axes = subcrit.length >= 3 ? subcrit : varAxes;
+          dimBlocks.push(
+            <div key="subradar" className="text-[12px]">
+              <h4 className="text-[11px] font-bold uppercase tracking-wide text-gray-500">
+                Desglose por subcriterio
+              </h4>
+              {/* Regla de escala: eje vertical azul Vento + líneas horizontales
+                  SUAVES (pero contrastantes) a TODO el ancho de la hoja + números
+                  en NEGRO. El radar/barras va centrado ENCIMA. */}
+              <div className="relative mt-2">
+                <div className="pointer-events-none absolute inset-y-3 left-0 right-0">
+                  {[100, 75, 50, 25, 0].map((val, i) => (
+                    <div
+                      key={val}
+                      className="absolute left-0 right-0 flex items-center gap-1"
+                      style={{ top: `${(i / 4) * 100}%` }}
+                    >
+                      <span className="w-6 shrink-0 text-right text-[9px] font-bold text-black">
+                        {val}
+                      </span>
+                      <div
+                        className="h-px flex-1"
+                        style={{ backgroundColor: "rgba(22,81,112,0.18)" }}
+                      />
+                    </div>
+                  ))}
+                  {/* eje vertical azul Vento */}
+                  <div
+                    className="absolute inset-y-0"
+                    style={{ left: 26, width: 2, backgroundColor: "#165170" }}
+                  />
+                </div>
+                <div className="relative flex justify-center">
+                  {axes.length >= 3 ? (
+                    <RadarChart axes={axes} size={280} className="w-full max-w-[440px]" />
+                  ) : (
+                    <BarChart data={axes} width={360} className="w-full max-w-[420px]" />
+                  )}
+                </div>
+              </div>
+              {/* Origen: lista (viñetas) por subcriterio con sus variables debajo. */}
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                {subcrit.map((s) => (
+                  <li key={s.full} className="text-[11px] leading-snug text-gray-700">
+                    <b style={{ color: s.color }}>{s.full}</b>{" "}
+                    <span className="tabular-nums text-gray-500">
+                      ({s.value.toFixed(0)} / 100)
+                    </span>
+                    <div className="text-gray-500">{s.vars.join(" · ")}</div>
+                  </li>
+                ))}
+              </ul>
+            </div>,
+          );
+        }
 
         // Variables EXCLUYENTES (bloque propio, troceado si la lista es larga).
         if (config.showExcluyentes && excl.length > 0) {
@@ -1462,6 +1557,10 @@ export default function Report() {
   // abierto, pero sólo hace setState si el empaquetado CAMBIA → converge en 1-2
   // renders, sin bucle. Al cambiar la config (bloques distintos) se re-mide solo.
   const blockCount = bodyContents.length;
+  // Sin deps A PROPÓSITO (ver arriba): debe re-medir en cada commit, también
+  // cuando un bloque cambia de alto sin cambiar `blockCount`. El guard de setState
+  // evita el bucle; fijar deps rompería la re-medición.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     if (!builderOpen) return;
     const els = measureRefs.current;
@@ -1789,7 +1888,11 @@ export default function Report() {
       // (width/height=0) + se cede un tick antes de la siguiente, el pico es de ~1
       // canvas → podemos subir a 2 para informes normales (≤12 hojas) y solo caer a
       // 1.5 en informes muy largos (defensa de memoria).
-      const CAPTURE_SCALE = totalSheets <= 20 ? 2 : 1.5;
+      // Cada hoja se captura por separado (A4 ≈ 1588×2246 px a escala 2, muy por
+      // debajo del límite de canvas), así que escala 2 aguanta muchas hojas sin
+      // pixelar. Antes bajaba a 1.5 pasadas 20 hojas y el desglose por dimensión
+      // (#36) cruzaba ese umbral → pixelado. Umbral subido a 40.
+      const CAPTURE_SCALE = totalSheets <= 40 ? 2 : 1.5;
       const SLICE_EPS_MM = 2; // franja mínima sobrante: no añade página casi vacía
 
       // Rasteriza una hoja a JPEG y LIBERA el canvas. `hideCharts` = oculta los
