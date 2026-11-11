@@ -55,11 +55,19 @@ export function useVariableMapLayer({
 }: VariableMapLayerArgs) {
   const [cells, setCells] = useState<Map<string, number> | null>(null);
 
+  // Reset en RENDER (no dentro del effect) al cambiar de variable/res o al ocultarse:
+  // evita setState SÍNCRONO en el cuerpo del effect (react-hooks/set-state-in-effect).
+  // Mismo patrón que `useInformeHeatmapLayer` con `prevWindId`. El setState async del
+  // fetch (`.then`/`.catch`) sí está permitido (corre en callback, no en el cuerpo).
+  const resetKey = `${variableId}:${res}:${visible}`;
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey);
+    setCells(null);
+  }
+
   useEffect(() => {
-    if (!visible) {
-      setCells(null);
-      return;
-    }
+    if (!visible) return;
     let alive = true;
     fetchWindCells(variableId, bbox, res)
       .then((m) => alive && setCells(m))
