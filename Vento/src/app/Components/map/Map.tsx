@@ -742,9 +742,17 @@ export default function MapView() {
   // resolución nunca escanea más de ~N hexágonos, independientemente de qué tan
   // alejado esté el zoom. Antes de tener el primer viewBox, cae a `displayRes`
   // (tabla por zoom) para no bloquear la primera carga.
+  // Piso de resolución = 5: las vistas materializadas (resumen por parent) solo
+  // existen para res 5 y 6. Si el presupuesto pide algo MÁS GRUESO (zoom muy
+  // alejado → res 1–4), no hay MV y el backend caería al `stream_bbox` del país
+  // entero (cientos de miles de filas) → el bulk se abortaba al seguir moviendo y
+  // quedaba pintada la capa vieja (hex res8 "en medio de la nada"). Forzamos la MV
+  // de res5 (≈5k hex, tabla chica, instantánea). El zoom-in (res 7/8, bbox chico)
+  // no se toca: ahí el `stream_bbox` es liviano.
+  const MV_MIN_RES = 5;
   const layerRes = viewBox
-    ? Math.min(8, resForHexBudget(viewBox, HEX_SCREEN_BUDGET))
-    : Math.min(8, displayRes);
+    ? Math.max(MV_MIN_RES, Math.min(8, resForHexBudget(viewBox, HEX_SCREEN_BUDGET)))
+    : Math.max(MV_MIN_RES, Math.min(8, displayRes));
   // Contador de cargas de capas en vuelo → pill "Cargando capas del mapa…" (no
   // bloquea la vista, solo avisa arriba). >0 = hay un fetch de capas activo.
   const [layersLoading, setLayersLoading] = useState(0);
