@@ -736,20 +736,22 @@ export default function MapView() {
   // realmente en el viewport — eso permitía escaneos de cientos de miles de
   // filas y tumbaba `variables-bulk` a partir de ~10 peticiones concurrentes
   // (ver benchmark-carga-h3). Calibrar con `tools/loadtest.py` por servidor.
-  const HEX_SCREEN_BUDGET = 2000;
+  // N = hexágonos resumidos en pantalla (cliente): ~50. El zoom pasa a la res
+  // inferior fija en cuanto se superan → se ven siempre ~50 hex, más área a menor
+  // resolución (la capa padre resume). Bulk responde normal con ~50 por vista.
+  const HEX_SCREEN_BUDGET = 50;
   // Res de las CAPAS de variable (símbolos/catálogo) y del heatmap del informe:
   // se deriva del ÁREA REAL del viewport (viewBox), no del zoom — así una misma
   // resolución nunca escanea más de ~N hexágonos, independientemente de qué tan
   // alejado esté el zoom. Antes de tener el primer viewBox, cae a `displayRes`
   // (tabla por zoom) para no bloquear la primera carga.
-  // Piso de resolución = 5: las vistas materializadas (resumen por parent) solo
-  // existen para res 5 y 6. Si el presupuesto pide algo MÁS GRUESO (zoom muy
-  // alejado → res 1–4), no hay MV y el backend caería al `stream_bbox` del país
-  // entero (cientos de miles de filas) → el bulk se abortaba al seguir moviendo y
-  // quedaba pintada la capa vieja (hex res8 "en medio de la nada"). Forzamos la MV
-  // de res5 (≈5k hex, tabla chica, instantánea). El zoom-in (res 7/8, bbox chico)
-  // no se toca: ahí el `stream_bbox` es liviano.
-  const MV_MIN_RES = 5;
+  // Piso de resolución = 2: las vistas materializadas (resumen por parent) cubren
+  // la escalera res2..res6 (migraciones 0019/0020). Por debajo de res2 no hay MV,
+  // pero a ese zoom ya se ve toda Colombia (minZoom 2) → nunca se pide más grueso.
+  // Sin este piso, el presupuesto podía pedir res1 → sin MV → `stream_bbox` del país
+  // entero → el bulk se abortaba y quedaba la capa vieja (hex "en medio de la nada").
+  // El zoom-in (res 7/8, bbox chico) no se toca: ahí el `stream_bbox` es liviano.
+  const MV_MIN_RES = 2;
   const layerRes = viewBox
     ? Math.max(MV_MIN_RES, Math.min(8, resForHexBudget(viewBox, HEX_SCREEN_BUDGET)))
     : Math.max(MV_MIN_RES, Math.min(8, displayRes));
