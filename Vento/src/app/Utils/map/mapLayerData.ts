@@ -124,6 +124,43 @@ export async function fetchExcludedCells(): Promise<string[]> {
   }
 }
 
+// Cortes de cuantil por variable (GLOBAL, no por bbox): se cachea por sesión.
+const _quantilesCache = new Map<
+  string,
+  Promise<{ cuts: number[]; min: number; max: number } | null>
+>();
+
+/**
+ * Cortes de CUANTIL + min/max de una variable sobre TODA Colombia, para la ESCALA
+ * DE COLOR choropleth (bandas claro→oscuro). Fijo por variable → cacheado. Usa el
+ * mismo camino que el calor (sin `variables-bulk`): `GET /tiles/variable-quantiles`.
+ */
+export async function fetchVariableQuantiles(
+  variableId: string,
+  bands = 5,
+): Promise<{ cuts: number[]; min: number; max: number } | null> {
+  if (!USE_BACKEND) return null;
+  const key = `${variableId}:${bands}`;
+  let p = _quantilesCache.get(key);
+  if (!p) {
+    p = (async () => {
+      try {
+        const resp = await fetch(
+          `/api/tiles/variable-quantiles?var=${encodeURIComponent(
+            masterIdFor(variableId),
+          )}&bands=${bands}`,
+        );
+        if (!resp.ok) return null;
+        return (await resp.json()) as { cuts: number[]; min: number; max: number };
+      } catch {
+        return null;
+      }
+    })();
+    _quantilesCache.set(key, p);
+  }
+  return p;
+}
+
 /**
  * Valores (0–1) de una variable ACOTADOS a un bbox — para colorear la rejilla del
  * mapa como heatmap por zoom. Pasa `resolution` (zoom→res) para que el backend

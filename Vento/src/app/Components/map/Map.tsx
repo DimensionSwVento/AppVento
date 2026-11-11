@@ -62,10 +62,13 @@ import {
   fetchVariableCellsBBox,
   fetchVariableLayersBulk,
   fetchExcludedCells,
+  fetchWindCells,
+  fetchVariableQuantiles,
   windValueForHex,
   WIND_THRESHOLD,
   type MapLayerCell,
 } from "../../Utils/map/mapLayerData";
+import { colorForQuantile } from "../../Utils/map/colorScale";
 import { viridis } from "../../Utils/report/heatmapPalette";
 import { getVariableById, isHeatVariable } from "../../Utils/variables/variablesCatalog";
 import { compositePin } from "../../Utils/map/iconRender";
@@ -1085,6 +1088,80 @@ export default function MapView() {
     };
   }, [extraMapVars, layerRes, viewBox]);
 
+  // ── ESCALA DE COLOR (choropleth por cuantiles) — informativas continuas ──────
+  // Capa SEPARADA y ADITIVA: NO toca el render de `area`/`calor`. Trae valores por
+  // `/tiles/variable` (como el calor, SIN variables-bulk) y los cortes de cuantil
+  // del backend (`/tiles/variable-quantiles`). En template, campo placeholder
+  // (`windValueForHex`) + cortes uniformes. Las `escala` se EXCLUYEN del path de
+  // `area` de abajo (no se dibujan dos veces).
+  const [escalaData, setEscalaData] = useState<Record<string, Map<string, number>>>({});
+  const [escalaCuts, setEscalaCuts] = useState<Record<string, number[]>>({});
+  useEffect(() => {
+    let alive = true;
+    if (USE_BACKEND && !viewBox) return;
+    const vars = extraMapVars.filter((x) => x.kind === "escala");
+    if (vars.length === 0) return;
+    if (USE_BACKEND) {
+      Promise.all(
+        vars.map(async (x) => [x.id, (await fetchWindCells(x.id, viewBox ?? undefined, layerRes)) ?? new Map<string, number>()] as const),
+      )
+        .then((pairs) => alive && setEscalaData(Object.fromEntries(pairs)))
+        .catch(() => {});
+      for (const x of vars) {
+        fetchVariableQuantiles(x.id).then(
+          (q) => alive && q && setEscalaCuts((prev) => ({ ...prev, [x.id]: q.cuts })),
+        );
+      }
+    }
+    return () => {
+      alive = false;
+    };
+  }, [extraMapVars, layerRes, viewBox]);
+
+  const escalaLayers = useMemo(() => {
+    const out: PolygonLayer<{ h: string; value: number }>[] = [];
+    for (const x of extraMapVars) {
+      if (x.kind !== "escala") continue;
+      const color = safeColor(mapComponent(x.id).color);
+      let data: { h: string; value: number }[] = [];
+      if (USE_BACKEND) {
+        const m = escalaData[x.id];
+        if (m) data = [...m.entries()].map(([h, value]) => ({ h, value }));
+      } else if (viewBox) {
+        const poly: [number, number][] = [
+          [viewBox.west, viewBox.south],
+          [viewBox.east, viewBox.south],
+          [viewBox.east, viewBox.north],
+          [viewBox.west, viewBox.north],
+        ];
+        for (const h of polygonToCells(poly, layerRes, true)) {
+          const [lat, lng] = cellToLatLng(h);
+          if (!isInColombia(lat, lng)) continue;
+          const v = windValueForHex(x.id, h, null);
+          if (v != null) data.push({ h, value: v });
+        }
+      }
+      if (!data.length) continue;
+      const cuts = escalaCuts[x.id] ?? [0.2, 0.4, 0.6, 0.8];
+      out.push(
+        new PolygonLayer<{ h: string; value: number }>({
+          id: `escala-${x.id}`,
+          data,
+          getPolygon: (d) => cellToBoundary(d.h, true),
+          getFillColor: (d) => {
+            const c = colorForQuantile(d.value, cuts, color);
+            return c ? [c[0], c[1], c[2], 180] : [0, 0, 0, 0];
+          },
+          filled: true,
+          stroked: false,
+          pickable: false,
+          updateTriggers: { getFillColor: [cuts, color] },
+        }),
+      );
+    }
+    return out;
+  }, [extraMapVars, escalaData, escalaCuts, viewBox, layerRes]);
+
   // Sets de hex por variable activa (símbolos + catálogo) para lookup O(1) en el
   // hover → tooltip de variable (nombre+descripción). Se recalcula solo al cambiar
   // las celdas (no en cada hover).
@@ -1182,7 +1259,7 @@ export default function MapView() {
     }
     // Genéricas de catálogo (area/interconectado; el calor va por el grid).
     for (const { id, kind } of extraMapVars) {
-      if (kind === "calor") continue;
+      if (kind === "calor" || kind === "escala") continue; // escala → capa aparte (choropleth)
       const hexes = summarizeCells(extraCells[id] ?? [], displayRes);
       if (hexes.length)
         areas.push({
@@ -1955,7 +2032,7 @@ export default function MapView() {
         // Las capas de símbolo (área/punto) se pintan en Informe Y en Dimensiones
         // (petición cliente): en Informe las controla el menú "Capas del mapa";
         // en Dimensiones, los switches de las cards. En las demás fases no.
-        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer, ...(accion === "informe" || accion === "dimensiones" ? [...symbolLayers.bands, ...catalogLayers.bands, ...symbolLayers.icons, ...catalogLayers.icons] : []), ...polygonDrawLayers]}
+        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer, ...(accion === "informe" || accion === "dimensiones" ? [...escalaLayers, ...symbolLayers.bands, ...catalogLayers.bands, ...symbolLayers.icons, ...catalogLayers.icons] : []), ...polygonDrawLayers]}
         // US-FB3-03 (feedback item 8): nunca "not-allowed". Fuera de la fase de
         // selección el hex NO es inerte — en el informe se consulta con el
         // tooltip —, y el cursor de "prohibido" (muy marcado en Firefox/Windows)
