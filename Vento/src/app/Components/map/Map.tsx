@@ -60,7 +60,6 @@ import {
   fetchMapLayerCells,
   fetchCatalogCells,
   fetchVariableCellsBBox,
-  fetchVariableLayersBulk,
   fetchExcludedCells,
   fetchWindCells,
   fetchVariableQuantiles,
@@ -748,13 +747,11 @@ export default function MapView() {
   // resolución nunca escanea más de ~N hexágonos, independientemente de qué tan
   // alejado esté el zoom. Antes de tener el primer viewBox, cae a `displayRes`
   // (tabla por zoom) para no bloquear la primera carga.
-  // Piso de resolución = 2: las vistas materializadas (resumen por parent) cubren
-  // la escalera res2..res6 (migraciones 0019/0020). Por debajo de res2 no hay MV,
-  // pero a ese zoom ya se ve toda Colombia (minZoom 2) → nunca se pide más grueso.
-  // Sin este piso, el presupuesto podía pedir res1 → sin MV → `stream_bbox` del país
-  // entero → el bulk se abortaba y quedaba la capa vieja (hex "en medio de la nada").
-  // El zoom-in (res 7/8, bbox chico) no se toca: ahí el `stream_bbox` es liviano.
-  const MV_MIN_RES = 2;
+  // Piso de resolución = 4: las vistas materializadas (resumen por parent) cubren
+  // la escalera res4..res7 (migraciones 0019/0020); res4 es la resolución MÍNIMA que
+  // usa el mapa (más alejado). Por debajo no hay MV ni se pide. El zoom-in (res 8,
+  // bbox chico) cae a `stream_bbox` del dato nativo (liviano).
+  const MV_MIN_RES = 4;
   const layerRes = viewBox
     ? Math.max(MV_MIN_RES, Math.min(8, resForHexBudget(viewBox, HEX_SCREEN_BUDGET)))
     : Math.max(MV_MIN_RES, Math.min(8, displayRes));
@@ -953,17 +950,17 @@ export default function MapView() {
       if (counted) setLayersLoading((n) => Math.max(0, n - 1));
     };
     if (USE_BACKEND) {
-      // BULK: una sola petición para TODAS las variables de símbolo (1 scan) →
-      // acota el bbox y no apila peticiones (era el cuello).
-      fetchVariableLayersBulk(wanted.map((s) => s.variableId), layerRes, viewBox ?? undefined, ctrl.signal)
-        .then((m) => {
-          if (!alive) return;
-          const obj: Record<string, MapLayerCell[]> = {};
-          for (const s of wanted) {
-            const cm = m.get(s.variableId);
-            obj[s.variableId] = cm ? Array.from(cm, ([h, value]) => ({ h, value })) : [];
-          }
-          setSymbolCells(obj);
+      // Por variable vía `/tiles/variable` (el camino del CALOR, que sí funciona) —
+      // ya NO `variables-bulk`. Cada petición acota el bbox+res; `fetchWindCells`
+      // cachea por scope, así no se apilan scans.
+      Promise.all(
+        wanted.map(async (s) => {
+          const cm = await fetchWindCells(s.variableId, viewBox ?? undefined, layerRes);
+          return [s.variableId, cm ? Array.from(cm, ([h, value]) => ({ h, value })) : []] as const;
+        }),
+      )
+        .then((pairs) => {
+          if (alive) setSymbolCells(Object.fromEntries(pairs));
         })
         .catch(() => {})
         .finally(done);
@@ -1066,12 +1063,16 @@ export default function MapView() {
     };
     if (USE_BACKEND) {
       // BULK: una sola petición para todas las capas de catálogo (1 scan del bbox).
-      fetchVariableLayersBulk(vars.map((x) => x.id), layerRes, viewBox ?? undefined, ctrl.signal)
-        .then((m) => {
-          if (!alive) return;
-          const obj: Record<string, string[]> = {};
-          for (const x of vars) obj[x.id] = [...(m.get(x.id)?.keys() ?? [])];
-          setExtraCells(obj);
+      // Por variable vía `/tiles/variable` (camino del calor), NO `variables-bulk`.
+      // Para `area` solo interesa la PRESENCIA (claves del mapa de valores).
+      Promise.all(
+        vars.map(async (x) => {
+          const m = await fetchWindCells(x.id, viewBox ?? undefined, layerRes);
+          return [x.id, [...(m?.keys() ?? [])]] as const;
+        }),
+      )
+        .then((pairs) => {
+          if (alive) setExtraCells(Object.fromEntries(pairs));
         })
         .catch(() => {})
         .finally(done);
@@ -1247,7 +1248,7 @@ export default function MapView() {
       if (!variableAppliesToNatureById(s.variableId, mapNature)) continue;
       const hexes = summarizeCells(
         (symbolCells[s.variableId] ?? []).map((c) => c.h),
-        displayRes,
+        layerRes,
       );
       if (hexes.length)
         areas.push({
@@ -1260,7 +1261,7 @@ export default function MapView() {
     // Genéricas de catálogo (area/interconectado; el calor va por el grid).
     for (const { id, kind } of extraMapVars) {
       if (kind === "calor" || kind === "escala") continue; // escala → capa aparte (choropleth)
-      const hexes = summarizeCells(extraCells[id] ?? [], displayRes);
+      const hexes = summarizeCells(extraCells[id] ?? [], layerRes);
       if (hexes.length)
         areas.push({
           id,
@@ -1380,7 +1381,7 @@ export default function MapView() {
       if (!variableAppliesToNatureById(s.variableId, mapNature)) continue;
       const hexes = summarizeCells(
         (symbolCells[s.variableId] ?? []).map((c) => c.h),
-        displayRes,
+        layerRes,
       );
       if (hexes.length) addIconsFor(s.variableId, hexes);
     }
