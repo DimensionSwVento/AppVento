@@ -56,7 +56,7 @@ export interface GenericMapVariable {
   variable: Variable;
   /** Método de representación. `calor` solo se incluye con `includeHeat` (en
    *  Dimensiones); en Informe el calor va por su desplegable, no aquí. */
-  kind: "area" | "interconectado" | "calor";
+  kind: "area" | "escala" | "interconectado" | "calor";
 }
 
 /**
@@ -95,6 +95,7 @@ export function genericMapVariables(
     // calor se controla desde su desplegable, no desde la modal de capas.
     const allowed =
       kind === "area" ||
+      kind === "escala" ||
       kind === "interconectado" ||
       (kind === "calor" && includeHeat);
     if (!allowed) continue;
