@@ -67,7 +67,9 @@ import {
   WIND_THRESHOLD,
   type MapLayerCell,
 } from "../../Utils/map/mapLayerData";
-import { colorForQuantile } from "../../Utils/map/colorScale";
+import { colorForQuantile, regionalTemplateValue } from "../../Utils/map/colorScale";
+import MapScaleLegend from "./MapScaleLegend";
+import MiniMap from "./MiniMap";
 import { viridis } from "../../Utils/report/heatmapPalette";
 import { getVariableById, isHeatVariable } from "../../Utils/variables/variablesCatalog";
 import { compositePin } from "../../Utils/map/iconRender";
@@ -1096,7 +1098,9 @@ export default function MapView() {
   // (`windValueForHex`) + cortes uniformes. Las `escala` se EXCLUYEN del path de
   // `area` de abajo (no se dibujan dos veces).
   const [escalaData, setEscalaData] = useState<Record<string, Map<string, number>>>({});
-  const [escalaCuts, setEscalaCuts] = useState<Record<string, number[]>>({});
+  const [escalaMeta, setEscalaMeta] = useState<
+    Record<string, { cuts: number[]; min: number; max: number }>
+  >({});
   useEffect(() => {
     let alive = true;
     if (USE_BACKEND && !viewBox) return;
@@ -1110,7 +1114,7 @@ export default function MapView() {
         .catch(() => {});
       for (const x of vars) {
         fetchVariableQuantiles(x.id).then(
-          (q) => alive && q && setEscalaCuts((prev) => ({ ...prev, [x.id]: q.cuts })),
+          (q) => alive && q && setEscalaMeta((prev) => ({ ...prev, [x.id]: q })),
         );
       }
     }
@@ -1138,12 +1142,13 @@ export default function MapView() {
         for (const h of polygonToCells(poly, layerRes, true)) {
           const [lat, lng] = cellToLatLng(h);
           if (!isInColombia(lat, lng)) continue;
-          const v = windValueForHex(x.id, h, null);
-          if (v != null) data.push({ h, value: v });
+          // Campo REGIONAL (no corredores de viento): divide Colombia por zonas de
+          // color, como el choropleth real (mapasocial). Ver `regionalTemplateValue`.
+          data.push({ h, value: regionalTemplateValue(lat, lng) });
         }
       }
       if (!data.length) continue;
-      const cuts = escalaCuts[x.id] ?? [0.2, 0.4, 0.6, 0.8];
+      const cuts = escalaMeta[x.id]?.cuts ?? [0.2, 0.4, 0.6, 0.8];
       out.push(
         new PolygonLayer<{ h: string; value: number }>({
           id: `escala-${x.id}`,
@@ -1161,7 +1166,13 @@ export default function MapView() {
       );
     }
     return out;
-  }, [extraMapVars, escalaData, escalaCuts, viewBox, layerRes]);
+  }, [extraMapVars, escalaData, escalaMeta, viewBox, layerRes]);
+
+  // ids de las variables de ESCALA activas → leyenda (bandas + rangos por cuantiles).
+  const escalaVarIds = useMemo(
+    () => extraMapVars.filter((x) => x.kind === "escala").map((x) => x.id),
+    [extraMapVars],
+  );
 
   // Sets de hex por variable activa (símbolos + catálogo) para lookup O(1) en el
   // hover → tooltip de variable (nombre+descripción). Se recalcula solo al cambiar
@@ -1997,6 +2008,22 @@ export default function MapView() {
         // ocupa arriba-izquierda; antes se superponían.
         <div className="absolute bottom-3 left-3 z-10">
           <HeatmapLegend title="Valor (%)" />
+        </div>
+      )}
+
+      {/* Leyenda de la ESCALA DE COLOR (choropleth por cuantiles): bandas + rangos
+          por variable informativa activa. */}
+      {(accion === "informe" || accion === "dimensiones") && escalaVarIds.length > 0 && (
+        <div className="absolute bottom-3 right-3 z-10">
+          <MapScaleLegend escalaVarIds={escalaVarIds} meta={escalaMeta} />
+        </div>
+      )}
+
+      {/* Mini-mapa locator (izquierda, bajo "Capas del mapa"): silueta de Colombia +
+          marcador del centro; sigue el deslizamiento, no el zoom (instrucción cliente). */}
+      {(accion === "informe" || accion === "dimensiones") && (
+        <div className="absolute left-3 top-20 z-[8] max-md:hidden">
+          <MiniMap center={{ lng: viewState.longitude, lat: viewState.latitude }} />
         </div>
       )}
 

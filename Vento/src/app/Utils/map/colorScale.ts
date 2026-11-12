@@ -21,6 +21,19 @@ export type QuantileCuts = readonly number[];
 /** #bandas por defecto (el ejemplo del cliente mostraba 5 intervalos). */
 export const DEFAULT_QUANTILE_BANDS = 5;
 
+/**
+ * Valor TEMPLATE (0–1) REGIONAL para la escala de color sin backend: campo suave de
+ * BAJA frecuencia en lat/lng → celdas vecinas comparten valor ⇒ al colorear por
+ * cuantiles se forman REGIONES (como el choropleth de mapasocial), no los corredores
+ * finos del viento (`windValueForHex`, alta frecuencia). Determinista por posición.
+ */
+export function regionalTemplateValue(lat: number, lng: number): number {
+  const a = Math.sin((lat - 4) * 0.33) + Math.cos((lng + 74) * 0.28);
+  const b = Math.sin((lat + lng) * 0.16);
+  const v = (a + b + 3) / 6; // ~0..1
+  return Math.max(0, Math.min(1, v));
+}
+
 function hexToRgb(hex: string): [number, number, number] {
   const h = hex.replace("#", "");
   const n =
