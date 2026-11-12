@@ -67,7 +67,12 @@ import {
   WIND_THRESHOLD,
   type MapLayerCell,
 } from "../../Utils/map/mapLayerData";
-import { colorForQuantile, regionalTemplateValue } from "../../Utils/map/colorScale";
+import {
+  regionalTemplateValue,
+  contrastBorder,
+  rampForColor,
+  quantileBandIndex,
+} from "../../Utils/map/colorScale";
 import MapScaleLegend from "./MapScaleLegend";
 import MiniMap from "./MiniMap";
 import { viridis } from "../../Utils/report/heatmapPalette";
@@ -1124,7 +1129,10 @@ export default function MapView() {
   }, [extraMapVars, layerRes, viewBox]);
 
   const escalaLayers = useMemo(() => {
-    const out: PolygonLayer<{ h: string; value: number }>[] = [];
+    const out: (
+      | PolygonLayer<{ h: string; value: number }>
+      | PolygonLayer<{ rings: number[][][] }>
+    )[] = [];
     for (const x of extraMapVars) {
       if (x.kind !== "escala") continue;
       const color = safeColor(mapComponent(x.id).color);
@@ -1149,14 +1157,19 @@ export default function MapView() {
       }
       if (!data.length) continue;
       const cuts = escalaMeta[x.id]?.cuts ?? [0.2, 0.4, 0.6, 0.8];
+      const ramp = rampForColor(color, 5);
+      const bandOf = (v: number) => Math.min(quantileBandIndex(v, cuts), ramp.length - 1);
+      const bandByHex = new Map(data.map((d) => [d.h, bandOf(d.value)]));
+
+      // Relleno OPACO por banda (muy diferenciable; sin la transparencia del calor).
       out.push(
         new PolygonLayer<{ h: string; value: number }>({
           id: `escala-${x.id}`,
           data,
           getPolygon: (d) => cellToBoundary(d.h, true),
           getFillColor: (d) => {
-            const c = colorForQuantile(d.value, cuts, color);
-            return c ? [c[0], c[1], c[2], 180] : [0, 0, 0, 0];
+            const c = ramp[bandByHex.get(d.h) ?? 0];
+            return [c[0], c[1], c[2], 205];
           },
           filled: true,
           stroked: false,
@@ -1164,6 +1177,36 @@ export default function MapView() {
           updateTriggers: { getFillColor: [cuts, color] },
         }),
       );
+
+      // BORDE POR ÁREA: disuelve los hexes de CADA cuartil en el contorno de su UNIÓN
+      // (cellsToMultiPolygon) y dibuja solo esa frontera → una línea alrededor de TODA
+      // la zona del cuartil, no cada hexágono. Color contrastante con el relleno.
+      for (let b = 0; b < ramp.length; b++) {
+        const bandHexes = data.filter((d) => bandByHex.get(d.h) === b).map((d) => d.h);
+        if (bandHexes.length === 0) continue;
+        let polys: number[][][][];
+        try {
+          polys = cellsToMultiPolygon(bandHexes, true) as number[][][][];
+        } catch {
+          continue;
+        }
+        const bc = contrastBorder(ramp[b]);
+        out.push(
+          new PolygonLayer<{ rings: number[][][] }>({
+            id: `escala-${x.id}-border-b${b}`,
+            data: polys.map((p) => ({ rings: p })),
+            getPolygon: (d) => d.rings,
+            filled: false,
+            stroked: true,
+            getLineColor: [bc[0], bc[1], bc[2], 235],
+            getLineWidth: 1.6,
+            lineWidthUnits: "pixels",
+            lineWidthMinPixels: 1,
+            pickable: false,
+            parameters: { depthCompare: "always" },
+          }),
+        );
+      }
     }
     return out;
   }, [extraMapVars, escalaData, escalaMeta, viewBox, layerRes]);

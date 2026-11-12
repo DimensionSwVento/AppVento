@@ -27,20 +27,24 @@ export default function MapScaleLegend({ escalaVarIds, meta }: Props) {
   return (
     <div className="pointer-events-auto max-w-[220px] rounded-2xl bg-white/95 p-2.5 shadow-sm backdrop-blur">
       <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-        Escala de color · cuantiles
+        Escala de color
       </h3>
       <div className="flex flex-col gap-2.5">
         {escalaVarIds.map((id) => {
+          const v = getVariableById(id);
           const color = mapComponent(id).color;
           const ramp = rampForColor(color, DEFAULT_QUANTILE_BANDS);
-          const m = meta[id];
-          const labels = m
-            ? quantileRangeLabels(m.cuts, m.min, m.max)
-            : ramp.map((_, i) => `Cuantil ${i + 1}`);
+          // Etiqueta = INTERVALO DE VALOR por banda ("Desde a hasta b"), con unidad.
+          // Backend: cortes/min/max reales; template: 0–1 con cortes uniformes.
+          const unit = v?.unidad ? ` ${v.unidad}` : "";
+          const fmt = (n: number) =>
+            `${Number.isInteger(n) ? n : n.toFixed(1)}${unit}`;
+          const m = meta[id] ?? { cuts: [0.2, 0.4, 0.6, 0.8], min: 0, max: 1 };
+          const labels = quantileRangeLabels(m.cuts, m.min, m.max, fmt);
           return (
             <div key={id}>
               <p className="mb-1 text-[11px] font-medium text-gray-800">
-                {getVariableById(id)?.label ?? id}
+                {v?.label ?? id}
               </p>
               <ul className="flex flex-col gap-0.5">
                 {ramp.map((c, i) => (

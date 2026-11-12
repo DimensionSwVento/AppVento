@@ -58,8 +58,10 @@ export function quantileBandIndex(value: number, cuts: QuantileCuts): number {
 }
 
 /**
- * Rampa de `bands` colores del `baseHex`, de CLARO a PLENO (ascendente). La banda
- * más baja es un tinte claro (mezcla con blanco); la más alta, el color pleno.
+ * Rampa de `bands` colores del `baseHex`, ASCENDENTE y con ALTO CONTRASTE: de un
+ * tinte CLARO (banda baja) pasando por el color pleno (banda media) a una sombra
+ * OSCURA (banda alta). Span claro→pleno→oscuro para que las bandas se diferencien
+ * bien (antes solo claro→pleno, se veían muy parecidas).
  */
 export function rampForColor(
   baseHex: string,
@@ -67,19 +69,39 @@ export function rampForColor(
 ): [number, number, number][] {
   const [br, bg, bb] = hexToRgb(baseHex);
   const n = Math.max(1, bands);
-  // t de 0.18 (claro) a 1 (pleno): evita el blanco puro en la banda más baja para
-  // que igual se distinga del fondo (el ejemplo arranca en rosa claro, no blanco).
-  const tMin = 0.18;
+  // L va de +0.62 (claro, mezcla con blanco) a -0.46 (oscuro, mezcla con negro).
+  const Lmax = 0.62;
+  const Lmin = -0.46;
+  const mix = (ch: number, L: number) =>
+    L >= 0 ? Math.round(ch + (255 - ch) * L) : Math.round(ch * (1 + L));
   const out: [number, number, number][] = [];
   for (let i = 0; i < n; i++) {
-    const t = n === 1 ? 1 : tMin + (1 - tMin) * (i / (n - 1));
-    out.push([
-      Math.round(255 + (br - 255) * t),
-      Math.round(255 + (bg - 255) * t),
-      Math.round(255 + (bb - 255) * t),
-    ]);
+    const L = n === 1 ? 0 : Lmax + (Lmin - Lmax) * (i / (n - 1));
+    out.push([mix(br, L), mix(bg, L), mix(bb, L)]);
   }
   return out;
+}
+
+/**
+ * Color de BORDE que contrasta con un relleno `[r,g,b]`: oscuro sobre rellenos
+ * claros, claro sobre rellenos oscuros (luminancia relativa). Para separar las
+ * áreas del choropleth (líneas entre bandas), como pidió el cliente.
+ */
+export function contrastBorder(
+  rgb: [number, number, number],
+): [number, number, number] {
+  const [r, g, b] = rgb;
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255; // 0..1
+  if (lum > 0.55) {
+    // relleno claro → borde oscuro (mezcla hacia negro)
+    return [Math.round(r * 0.45), Math.round(g * 0.45), Math.round(b * 0.45)];
+  }
+  // relleno oscuro → borde claro (mezcla hacia blanco)
+  return [
+    Math.round(r + (255 - r) * 0.55),
+    Math.round(g + (255 - g) * 0.55),
+    Math.round(b + (255 - b) * 0.55),
+  ];
 }
 
 /**
