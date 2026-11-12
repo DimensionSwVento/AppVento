@@ -2046,26 +2046,23 @@ export default function MapView() {
 
       {/* #19: leyenda viridis también en DIMENSIONES cuando hay un mapa de calor de
           variable activo (ahí es el valor de la variable, no idoneidad → sin muesca). */}
-      {accion === "dimensiones" && activeHeatVarId && (
-        // #2: abajo-izquierda — el control "Capas del mapa" (MapSymbolsLegend) ya
-        // ocupa arriba-izquierda; antes se superponían.
-        <div className="absolute bottom-3 left-3 z-10">
-          <HeatmapLegend title="Valor (%)" />
-        </div>
-      )}
+      {/* Leyendas apiladas ABAJO-DERECHA: calor de dimensiones (valor %) + escala de
+          color (bandas + rangos por cuantil). Juntas para liberar la esquina izquierda. */}
+      {(accion === "informe" || accion === "dimensiones") &&
+        ((accion === "dimensiones" && activeHeatVarId) || escalaVarIds.length > 0) && (
+          <div className="pointer-events-none absolute bottom-3 right-3 z-10 flex flex-col items-end gap-2">
+            {accion === "dimensiones" && activeHeatVarId && <HeatmapLegend title="Valor (%)" />}
+            {escalaVarIds.length > 0 && (
+              <MapScaleLegend escalaVarIds={escalaVarIds} meta={escalaMeta} />
+            )}
+          </div>
+        )}
 
-      {/* Leyenda de la ESCALA DE COLOR (choropleth por cuantiles): bandas + rangos
-          por variable informativa activa. */}
-      {(accion === "informe" || accion === "dimensiones") && escalaVarIds.length > 0 && (
-        <div className="absolute bottom-3 right-3 z-10">
-          <MapScaleLegend escalaVarIds={escalaVarIds} meta={escalaMeta} />
-        </div>
-      )}
-
-      {/* Mini-mapa locator (izquierda, bajo "Capas del mapa"): silueta de Colombia +
-          marcador del centro; sigue el deslizamiento, no el zoom (instrucción cliente). */}
+      {/* Mini-mapa locator (modal flotante) ABAJO-IZQUIERDA: sincronizado con el mapa
+          grande EXCEPTO el zoom (marco fijo de Colombia + marcador que sigue el paneo)
+          → el usuario se ubica mientras ve el grande en calor / escala de color. */}
       {(accion === "informe" || accion === "dimensiones") && (
-        <div className="absolute left-3 top-20 z-[8] max-md:hidden">
+        <div className="absolute bottom-3 left-3 z-[8] max-md:hidden">
           <MiniMap center={{ lng: viewState.longitude, lat: viewState.latitude }} />
         </div>
       )}
