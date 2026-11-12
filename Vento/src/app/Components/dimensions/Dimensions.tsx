@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import DimensionCard from "./DimensionCard";
+import { InfoPopover } from "./SelectedVariablesChips";
 import EconomicModal from "./EconomicModal";
 import RegulatoryModal from "./RegulatoryModal";
 import { fetchMenuVariables, fetchNormas } from "../../Utils/admin/catalogApi";
@@ -31,6 +32,9 @@ function matches(query: string, v: Variable): boolean {
 
 export default function Dimensions() {
   const [query, setQuery] = useState("");
+  // Detalle de variable (lo que abría la modal "Variables seleccionadas"): se abre
+  // al hacer click sobre una variable en la lista de su dimensión.
+  const [infoVarId, setInfoVarId] = useState<string | null>(null);
   const [econOpen, setEconOpen] = useState(false);
   const [regOpen, setRegOpen] = useState(false);
   // 10.3: "Conoce más sobre las variables" despliega el detalle de tipos.
@@ -271,6 +275,7 @@ export default function Dimensions() {
                 variables={vars}
                 defaultOpen
                 footer={footer}
+                onOpenDetail={setInfoVarId}
               />
             );
           })}
@@ -279,6 +284,16 @@ export default function Dimensions() {
 
       {econOpen && <EconomicModal onClose={() => setEconOpen(false)} />}
       {regOpen && <RegulatoryModal onClose={() => setRegOpen(false)} />}
+
+      {/* Detalle de variable (ex-modal "Variables seleccionadas"): navegable. */}
+      {infoVarId && (
+        <InfoPopover
+          variableId={infoVarId}
+          variables={[...filteredByDimension.values()].flat()}
+          onNavigate={setInfoVarId}
+          onClose={() => setInfoVarId(null)}
+        />
+      )}
 
       {/* Botón Siguiente paso fijo al fondo, sin bordes redondeados, sin padding/margen */}
       <div className="shrink-0">

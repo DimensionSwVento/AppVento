@@ -42,10 +42,10 @@ export default function MiniMap({ center }: Props) {
   const cy = Math.max(0, Math.min(VH, projY(center.lat)));
 
   return (
-    <div className="pointer-events-none rounded-xl bg-white/90 p-1 shadow-sm backdrop-blur">
+    <div className="pointer-events-none rounded-xl border-2 border-[#165170] bg-white/90 p-1 shadow-md backdrop-blur">
       <svg
         viewBox={`0 0 ${VW} ${VH.toFixed(1)}`}
-        className="h-24 w-[72px]"
+        className="h-36 w-28"
         role="img"
         aria-label="Mini-mapa: ubicación en Colombia"
       >

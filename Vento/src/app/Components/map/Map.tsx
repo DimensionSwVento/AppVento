@@ -2036,11 +2036,11 @@ export default function MapView() {
           </div>
         )}
 
-      {/* Mini-mapa locator (modal flotante) ABAJO-IZQUIERDA: sincronizado con el mapa
+      {/* Mini-mapa locator (modal flotante) ARRIBA-DERECHA: sincronizado con el mapa
           grande EXCEPTO el zoom (marco fijo de Colombia + marcador que sigue el paneo)
           → el usuario se ubica mientras ve el grande en calor / escala de color. */}
       {(accion === "informe" || accion === "dimensiones") && (
-        <div className="absolute bottom-3 left-3 z-[8] max-md:hidden">
+        <div className="absolute top-3 right-3 z-[9] max-md:hidden">
           <MiniMap center={{ lng: viewState.longitude, lat: viewState.latitude }} />
         </div>
       )}

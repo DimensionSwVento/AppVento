@@ -20,6 +20,8 @@ interface DimensionCardProps {
   /** Acción extra dentro de la card (bajo los switches): p.ej. el botón que abre
    *  el modal de económica/regulatoria. Va DENTRO de la card, no como fila aparte. */
   footer?: React.ReactNode;
+  /** Abre el detalle de una variable (click sobre su nombre en la lista). */
+  onOpenDetail?: (id: string) => void;
 }
 
 export default function DimensionCard({
@@ -27,6 +29,7 @@ export default function DimensionCard({
   variables,
   defaultOpen = false,
   footer,
+  onOpenDetail,
 }: DimensionCardProps) {
   const [open, setOpen] = useState(defaultOpen);
   // Sincroniza con `defaultOpen` SIN effect (patrón "ajustar estado en render"
@@ -78,7 +81,7 @@ export default function DimensionCard({
             )}
             <div className="divide-y divide-gray-100">
               {sg.variables.map((v) => (
-                <VariableSwitch key={v.id} variable={v} />
+                <VariableSwitch key={v.id} variable={v} onOpenDetail={onOpenDetail} />
               ))}
             </div>
           </div>
