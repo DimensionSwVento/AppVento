@@ -41,7 +41,6 @@ import HexValuesTooltip from "./HexValuesTooltip";
 import HeatmapDimensionSwitches from "./HeatmapDimensionSwitches";
 import HeatmapLegend from "./HeatmapLegend";
 import InformativeVariablesList from "./InformativeVariablesList";
-import SelectedVariablesChips from "../dimensions/SelectedVariablesChips";
 import AreaDisplay from "./AreaDisplay";
 import MapSearchBox from "./MapSearchBox";
 import NextStepFloatingCard from "./NextStepFloatingCard";
@@ -1969,10 +1968,6 @@ export default function MapView() {
           </div>
         );
       })()}
-
-      {accion === "dimensiones" && activeVariables.size > 0 && (
-        <SelectedVariablesChips />
-      )}
 
       {/* Capas del mapa en DIMENSIONES (petición cliente): a la IZQUIERDA. Lista
           solo las variables seleccionadas (switches) con representación en el mapa.
