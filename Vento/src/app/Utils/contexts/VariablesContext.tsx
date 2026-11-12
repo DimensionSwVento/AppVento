@@ -12,6 +12,7 @@ import {
   DimensionId,
   OPTIONAL_VARIABLES,
   getVariableById,
+  isHeatVariable,
   modelVariableIds,
   requiredVariableIds,
   optionalVariablesByDimension,
@@ -24,6 +25,11 @@ interface VariablesContextValue {
   activeVariables: Set<string>;
   toggleVariable: (id: string) => void;
   isActive: (id: string) => boolean;
+  /** IDs que el usuario eligió VER EN EL MAPA (opt-in, independiente de la selección
+   *  del modelo). Incluye variables del modelo (no se esconden: se pueden mostrar). */
+  shownOnMap: Set<string>;
+  toggleShownOnMap: (id: string) => void;
+  isShownOnMap: (id: string) => boolean;
   activeCountByDimension: (dim: DimensionId) => number;
   totalByDimension: (dim: DimensionId) => number;
   totalActive: number;
@@ -42,6 +48,9 @@ const noopContext: VariablesContextValue = {
   activeVariables: new Set(),
   toggleVariable: () => {},
   isActive: () => false,
+  shownOnMap: new Set(),
+  toggleShownOnMap: () => {},
+  isShownOnMap: () => false,
   activeCountByDimension: () => 0,
   totalByDimension: (dim) => optionalVariablesByDimension(dim).length,
   totalActive: 0,
@@ -65,6 +74,10 @@ export function VariablesProvider({ children }: { children: React.ReactNode }) {
   // Se pone true cuando el catálogo VIVO del DB ya reemplazó al estático → fuerza
   // un re-render para que informe/menú/mapa lean la lista real (no la hardcodeada).
   const [catalogReady, setCatalogReady] = useState(false);
+  // "Ver en el mapa": opt-in por variable, INDEPENDIENTE de la selección del modelo.
+  // Arranca vacío (nada encendido por defecto). Las del modelo también pueden
+  // mostrarse en el mapa (no se esconden). Lo lee el mapa (capas de variable).
+  const [shownOnMap, setShownOnMap] = useState<Set<string>>(() => new Set());
 
   // Hidrata el CATÁLOGO real desde BD (modo backend): reconstruye la lista de
   // variables (modelo + informativas) con sus códigos/pesos reales; el estático
@@ -135,6 +148,28 @@ export function VariablesProvider({ children }: { children: React.ReactNode }) {
     [activeVariables],
   );
 
+  // "Ver en el mapa": togglea libremente (también variables del modelo). Una sola
+  // CAPA DE CALOR a la vez en el mapa (radio): al prender una de calor, apaga las
+  // otras de calor (las de área/escala se acumulan). Era la lógica de `toggleDimLayer`.
+  const toggleShownOnMap = useCallback((id: string) => {
+    setShownOnMap((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+        return next;
+      }
+      if (isHeatVariable(id)) {
+        for (const other of [...next]) if (isHeatVariable(other)) next.delete(other);
+      }
+      next.add(id);
+      return next;
+    });
+  }, []);
+  const isShownOnMap = useCallback(
+    (id: string) => shownOnMap.has(id),
+    [shownOnMap],
+  );
+
   const activeCountByDimension = useCallback(
     (dim: DimensionId) =>
       optionalVariablesByDimension(dim).reduce(
@@ -149,6 +184,9 @@ export function VariablesProvider({ children }: { children: React.ReactNode }) {
       activeVariables,
       toggleVariable,
       isActive,
+      shownOnMap,
+      toggleShownOnMap,
+      isShownOnMap,
       activeCountByDimension,
       totalByDimension: (dim) => optionalVariablesByDimension(dim).length,
       totalActive: activeVariables.size,
@@ -161,6 +199,9 @@ export function VariablesProvider({ children }: { children: React.ReactNode }) {
       activeVariables,
       toggleVariable,
       isActive,
+      shownOnMap,
+      toggleShownOnMap,
+      isShownOnMap,
       activeCountByDimension,
       clearNonRequired,
       replaceActiveVariables,

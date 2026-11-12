@@ -35,7 +35,7 @@ import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS, SNAPSHOT_KEY } from 
 import { useCachedImage } from "../../Utils/useCachedImage";
 import { zoomToH3Res, tileToBBox, isInColombia, resForHexBudget, snapBboxOutward } from "../../Utils/h3/mapGeo";
 import { isHexBanned, bannedReason, setBannedData, selectionNature } from "../../Utils/h3/hexClassification";
-import { MAX_SELECTION_GAP_KM, MIN_SELECTION_H3_RES, USE_BACKEND, USE_API_EMPLAZAMIENTO, FIXED_MAP_LAYER_IDS } from "../../Utils/projectData";
+import { MAX_SELECTION_GAP_KM, MIN_SELECTION_H3_RES, USE_BACKEND, USE_API_EMPLAZAMIENTO } from "../../Utils/projectData";
 import { useToast } from "../ui/Toast";
 import HexValuesTooltip from "./HexValuesTooltip";
 import HeatmapDimensionSwitches from "./HeatmapDimensionSwitches";
@@ -75,7 +75,7 @@ import {
 import MapScaleLegend from "./MapScaleLegend";
 import MiniMap from "./MiniMap";
 import { viridis } from "../../Utils/report/heatmapPalette";
-import { getVariableById, isHeatVariable } from "../../Utils/variables/variablesCatalog";
+import { getVariableById } from "../../Utils/variables/variablesCatalog";
 import { compositePin } from "../../Utils/map/iconRender";
 import {
   genericMapVariables,
@@ -270,7 +270,7 @@ export default function MapView() {
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const { accion, selectedHexes, setSelectedHexes, focusNonce } =
     useAprincipal();
-  const { activeVariables } = useVariables();
+  const { activeVariables, shownOnMap, toggleShownOnMap } = useVariables();
   const { activeDimension, setActiveDimension } = useHeatmapDimension();
   const toast = useToast();
   const canSelect = accion === "seleccion-area";
@@ -851,30 +851,13 @@ export default function MapView() {
   // colaban ENCENDIDAS por defecto (bug: deben estar inactivas). Ahora `shownLayers`
   // guarda SOLO las que el usuario prendió. (Informe también arranca off vía
   // `activeSymbols`.)
-  // FB5: las capas listadas en FIXED_MAP_LAYER_IDS arrancan prendidas (el resto
-  // sigue opt-in). Vacía por defecto → sin cambio de comportamiento hasta que
-  // se decida cuáles son esas capas (editar la constante en projectData.ts).
-  const [shownLayers, setShownLayers] = useState<Set<string>>(
-    () => new Set(FIXED_MAP_LAYER_IDS),
-  );
-  const toggleDimLayer = useCallback((id: string) => {
-    setShownLayers((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id); // ocultar esta capa
-      } else {
-        // #7.3: una sola CAPA DE CALOR a la vez en el MAPA (radio). Al prender una
-        // de calor, apaga del mapa las otras de calor (siguen SELECCIONADAS como
-        // variables → en resumen/informe; aquí solo se controla visibilidad). Las
-        // de área/punto se acumulan normal (multi-selección).
-        if (isHeatVariable(id)) {
-          for (const other of [...next]) if (isHeatVariable(other)) next.delete(other);
-        }
-        next.add(id); // mostrar esta capa
-      }
-      return next;
-    });
-  }, []);
+  // "Ver en el mapa" vive en VariablesContext (`shownOnMap`/`toggleShownOnMap`): lo
+  // controla el 2º switch de cada variable en la card de Dimensiones (y el menú de
+  // capas). Opt-in, independiente de la selección del modelo (las obligatorias
+  // también se pueden mostrar). La lógica de "un solo calor a la vez" vive en el
+  // contexto. `shownLayers` es un alias local para no renombrar todos los usos.
+  const shownLayers = shownOnMap;
+  const toggleDimLayer = toggleShownOnMap;
   // Variables con "ver en mapa" desactivado en admin (US08-01): sus símbolos se
   // ocultan de la leyenda y del mapa. Semilla vacía → nada oculto por defecto.
   const [mapDisabledIds, setMapDisabledIds] = useState<Set<string>>(new Set());
