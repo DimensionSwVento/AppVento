@@ -94,7 +94,6 @@ const MAX_ZOOM = 14;
 const SELECTED_FILL: [number, number, number, number] = [224, 215, 221, 100];
 const SELECTED_BORDER: [number, number, number, number] = [22, 81, 112, 200]; // brand #165170
 // Grid de la cuadrícula H3 — alpha reducido para que no sature offshore.
-const GRID_BORDER: [number, number, number, number] = [180, 175, 190, 55];
 // Borde territorio colombiano — distintivo pero no invasivo
 const TERRITORY_BORDER: [number, number, number, number] = [22, 81, 112, 160];
 // hover — misma familia que selected pero más tenue (alpha bajo) para distinguirse
@@ -665,12 +664,16 @@ export default function MapView() {
           }
           return [0, 0, 0, 0];
         },
-        getLineColor: (d) => (d.banned ? BANNED_BORDER : GRID_BORDER),
-        getLineWidth: (d) => (d.banned ? 2 : 1),
+        // Sin malla hexagonal gris (petición cliente): las celdas normales NO llevan
+        // borde. Solo las EXCLUIDAS conservan su borde (marca las zonas vetadas); el
+        // resto se distingue por el relleno. (Las excluidas igual se ven por su
+        // relleno morado a cualquier zoom.)
+        getLineColor: (d) => (d.banned ? BANNED_BORDER : [0, 0, 0, 0]),
+        getLineWidth: (d) => (d.banned ? 2 : 0),
         lineWidthMinPixels: 1,
         filled: true,
-        // Fase B2: sin bordes a zoom alejado (umbral `showHexBorders`) — menos
-        // vértices de línea cuando hay miles de hexágonos chicos en pantalla.
+        // Fase B2: el trazo solo corre a zoom cercano (perf); ahí solo pinta el
+        // borde de las excluidas (el resto es transparente → sin malla gris).
         stroked: showHexBorders,
         // En informe SOLO el heatmap debe ser pickable. El grid usa resolución
         // por zoom (hexágonos grandes) y sus sublayers no heredan el
