@@ -22,14 +22,10 @@ export default function VariableSwitch({
   /** Click sobre el NOMBRE abre el detalle (ex-modal "Variables seleccionadas"). */
   onOpenDetail?: (id: string) => void;
 }) {
-  const { isActive, toggleVariable, isShownOnMap, toggleShownOnMap } = useVariables();
+  const { isActive, toggleVariable } = useVariables();
   const active = isActive(variable.id);
   const required = Boolean(variable.required);
   const color = colorForVariable(variable.id);
-  // 2º switch "VER EN EL MAPA": opt-in, solo para variables representables (enMapa).
-  // Independiente de la selección del modelo → las obligatorias también se pueden
-  // mostrar (no se esconden). Ver `VariablesContext.shownOnMap`.
-  const onMap = isShownOnMap(variable.id);
 
   return (
     <div className="flex items-start gap-3 py-2">
@@ -73,27 +69,9 @@ export default function VariableSwitch({
           </svg>
         </span>
       )}
-      {/* 2º switch: VER EN EL MAPA (solo variables representables). Azul = "mapa",
-          para distinguir del switch verde/teal de selección. */}
-      {variable.enMapa && (
-        <button
-          type="button"
-          role="switch"
-          aria-checked={onMap}
-          aria-label={`Ver ${variable.label} en el mapa`}
-          title="Ver en el mapa"
-          onClick={() => toggleShownOnMap(variable.id)}
-          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
-            onMap ? "cursor-pointer bg-[#165170]" : "cursor-pointer bg-gray-300"
-          }`}
-        >
-          <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-              onMap ? "translate-x-[18px]" : "translate-x-[2px]"
-            }`}
-          />
-        </button>
-      )}
+      {/* 2º switch "ver en el mapa" retirado temporalmente (petición cliente): la
+          representación en el mapa se controla desde la modal de variables. El click
+          en el nombre sigue abriendo el detalle (`onOpenDetail`). */}
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-1">
           <p className="text-sm font-semibold leading-tight">

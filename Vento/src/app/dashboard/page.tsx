@@ -65,7 +65,9 @@ export default function AreaSelectionPage() {
             En mobile: absolute al fondo, pt-2 transparente deja ver mapa detrás */}
         {subpage && (
           <div className="absolute bottom-0 left-0 w-full h-[50%] pt-2 z-10 md:static md:w-[25rem] md:h-full md:pt-0 md:z-0">
-            <div className="w-full h-full overflow-y-auto bg-[#cce1eeff] rounded-t-2xl md:rounded-none border-t-2 border-[#165170ff] md:border-0">
+            {/* Azul claro SEMITRANSPARENTE + desenfoque: deja ver el mapa detrás de la
+                banda de subpágina (petición cliente) sin perder legibilidad del texto. */}
+            <div className="w-full h-full overflow-y-auto bg-[#cce1ee]/75 backdrop-blur-md rounded-t-2xl md:rounded-none border-t-2 border-[#165170ff] md:border-0">
               {subpage}
             </div>
           </div>

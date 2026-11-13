@@ -68,7 +68,7 @@ import {
 } from "../../Utils/map/mapLayerData";
 import {
   regionalTemplateValue,
-  contrastBorder,
+  vividBorder,
   rampForColor,
   quantileBandIndex,
 } from "../../Utils/map/colorScale";
@@ -94,6 +94,14 @@ const MAX_ZOOM = 14;
 const SELECTED_FILL: [number, number, number, number] = [224, 215, 221, 100];
 const SELECTED_BORDER: [number, number, number, number] = [22, 81, 112, 200]; // brand #165170
 // Grid de la cuadrícula H3 — alpha reducido para que no sature offshore.
+// Transparencia COMPARTIDA del relleno de datos: el calor (viridis) y la escala de
+// color usan el MISMO alpha para que se vean igual de tenues sobre el basemap
+// (petición cliente: la escala "ligeramente más transparente, misma que el calor").
+const HEAT_FILL_ALPHA = 51;
+// Malla hexagonal GRIS del grid: solo se dibuja en la fase de SELECCIÓN DE ÁREA
+// (para ver las celdas que se pueden clicar). En las demás fases (dimensiones,
+// informe, características) va transparente (petición cliente). Alpha moderado.
+const GRID_BORDER: [number, number, number, number] = [130, 130, 130, 110];
 // Borde territorio colombiano — distintivo pero no invasivo
 const TERRITORY_BORDER: [number, number, number, number] = [22, 81, 112, 160];
 // hover — misma familia que selected pero más tenue (alpha bajo) para distinguirse
@@ -535,6 +543,11 @@ export default function MapView() {
   // escala. Umbral (no el zoom continuo) para que el memo de abajo solo recalcule
   // al CRUZAR el nivel, no en cada frame de zoom.
   const showHexBorders = viewState.zoom >= 7;
+  // Malla gris CLICABLE: solo en selección de área y SOLO cuando ya se está lo bastante
+  // cerca para seleccionar (res ≥ MIN_SELECTION_H3_RES, i.e. no `selectionZoomTooFar`).
+  // Respeta la regla de "acércate para seleccionar" y las escalas de resolución: el
+  // grid ya se dibuja a la res del zoom, así que la malla sale a la res correcta.
+  const gridMeshVisible = canSelect && !selectionZoomTooFar;
   // isFlyingRef.current SOLO se lee dentro de onViewportLoad (callback de deck.gl
   // que corre DESPUÉS del render), no durante el render; el plugin react-hooks no
   // distingue el momento de ejecución y marca tanto el acceso como el ref en deps.
@@ -660,21 +673,22 @@ export default function MapView() {
           if (d.banned) return BANNED_FILL;
           if (d.value != null && d.owned) {
             const c = viridis(Math.max(0, Math.min(1, d.value)));
-            return [c[0], c[1], c[2], 51];
+            return [c[0], c[1], c[2], HEAT_FILL_ALPHA];
           }
           return [0, 0, 0, 0];
         },
-        // Sin malla hexagonal gris (petición cliente): las celdas normales NO llevan
-        // borde. Solo las EXCLUIDAS conservan su borde (marca las zonas vetadas); el
-        // resto se distingue por el relleno. (Las excluidas igual se ven por su
-        // relleno morado a cualquier zoom.)
-        getLineColor: (d) => (d.banned ? BANNED_BORDER : [0, 0, 0, 0]),
-        getLineWidth: (d) => (d.banned ? 2 : 0),
+        // Malla hexagonal gris: SOLO cuando se puede seleccionar área y ya estás cerca
+        // (`gridMeshVisible` = canSelect && res ≥ MIN_SELECTION_H3_RES) → ver las celdas
+        // clicables a la res del zoom; en las demás fases/lejos las celdas normales NO
+        // llevan borde (solo las EXCLUIDAS conservan su borde siempre). Petición cliente.
+        getLineColor: (d) =>
+          d.banned ? BANNED_BORDER : gridMeshVisible ? GRID_BORDER : [0, 0, 0, 0],
+        getLineWidth: (d) => (d.banned ? 2 : gridMeshVisible ? 1 : 0),
         lineWidthMinPixels: 1,
         filled: true,
         // Fase B2: el trazo solo corre a zoom cercano (perf); ahí solo pinta el
         // borde de las excluidas (el resto es transparente → sin malla gris).
-        stroked: showHexBorders,
+        stroked: showHexBorders || gridMeshVisible,
         // En informe SOLO el heatmap debe ser pickable. El grid usa resolución
         // por zoom (hexágonos grandes) y sus sublayers no heredan el
         // visible:false del TileLayer para el picking → el hover enganchaba un
@@ -682,7 +696,7 @@ export default function MapView() {
         pickable: !heatmapActive,
       });
     },
-  }), [heatmapActive, isFlyingRef, heatVersion, showHexBorders]);
+  }), [heatmapActive, isFlyingRef, heatVersion, showHexBorders, gridMeshVisible]);
   /* eslint-enable react-hooks/refs */
 
   // Capa de borde del territorio colombiano (continente + archipiélago).
@@ -1146,7 +1160,9 @@ export default function MapView() {
       const bandOf = (v: number) => Math.min(quantileBandIndex(v, cuts), ramp.length - 1);
       const bandByHex = new Map(data.map((d) => [d.h, bandOf(d.value)]));
 
-      // Relleno OPACO por banda (muy diferenciable; sin la transparencia del calor).
+      // Relleno con la MISMA transparencia que el calor (HEAT_FILL_ALPHA): lo que
+      // diferencia las bandas ahora son los TONOS distintos de la ramp + el borde por
+      // área, no la opacidad (petición cliente: "ligeramente más transparente").
       out.push(
         new PolygonLayer<{ h: string; value: number }>({
           id: `escala-${x.id}`,
@@ -1154,7 +1170,7 @@ export default function MapView() {
           getPolygon: (d) => cellToBoundary(d.h, true),
           getFillColor: (d) => {
             const c = ramp[bandByHex.get(d.h) ?? 0];
-            return [c[0], c[1], c[2], 205];
+            return [c[0], c[1], c[2], HEAT_FILL_ALPHA];
           },
           filled: true,
           stroked: false,
@@ -1175,7 +1191,9 @@ export default function MapView() {
         } catch {
           continue;
         }
-        const bc = contrastBorder(ramp[b]);
+        // Borde SÓLIDO y MUY BRILLANTE (tono puro, opaco) → los límites de cada área
+        // contrastan nítido sobre el relleno semitransparente (petición cliente).
+        const bc = vividBorder(ramp[b]);
         out.push(
           new PolygonLayer<{ rings: number[][][] }>({
             id: `escala-${x.id}-border-b${b}`,
@@ -1183,10 +1201,10 @@ export default function MapView() {
             getPolygon: (d) => d.rings,
             filled: false,
             stroked: true,
-            getLineColor: [bc[0], bc[1], bc[2], 235],
-            getLineWidth: 1.6,
+            getLineColor: [bc[0], bc[1], bc[2], 255],
+            getLineWidth: 2.2,
             lineWidthUnits: "pixels",
-            lineWidthMinPixels: 1,
+            lineWidthMinPixels: 1.5,
             pickable: false,
             parameters: { depthCompare: "always" },
           }),
