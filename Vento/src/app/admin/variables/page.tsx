@@ -226,6 +226,7 @@ export default function AdminVariablesPage() {
                               className="rounded border border-gray-200 bg-white px-1.5 py-1 text-[11px] text-gray-700 disabled:opacity-40"
                             >
                               <option value="area">Área</option>
+                              <option value="escala">Escala de color</option>
                               <option value="interconectado">Conexión</option>
                               <option value="calor">Calor</option>
                             </select>
@@ -554,7 +555,8 @@ function EditVarModal({
             onChange={(e) => setMapKind(e.target.value as MapKind)}
             className={inputCls}
           >
-            <option value="area">Normal por área — icono + hexágonos del color</option>
+            <option value="area">Normal por área — icono + hexágonos del color (presencia)</option>
+            <option value="escala">Escala de color — choropleth por cuantiles (informativas)</option>
             <option value="interconectado">Interconectado — nodos al más cercano</option>
             <option value="calor">Mapa de calor — viridis (viento/WPD)</option>
           </select>

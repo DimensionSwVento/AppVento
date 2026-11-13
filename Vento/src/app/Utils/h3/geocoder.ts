@@ -16,6 +16,8 @@
  * - `accept-language=es` — labels en español cuando estén disponibles
  */
 
+import { USE_BACKEND } from "../projectData";
+
 export interface Place {
   /** Nombre principal del lugar (p. ej. "El Porvenir") */
   name: string;
@@ -34,7 +36,15 @@ export interface Place {
   polygons: Array<[number, number][]>;
 }
 
-const NOMINATIM_BASE = "https://nominatim.openstreetmap.org/search";
+// Proveedor CONFIGURABLE (uso comercial): por defecto Nominatim público, que NO es
+// apto para producción (máx 1 req/s para TODA la app, sin autocompletado, exige
+// identificar la app). Para producción apuntar `NEXT_PUBLIC_GEOCODER_URL` a un
+// Nominatim SELF-HOSTEADO (misma API → drop-in) o a un proxy propio del backend.
+// Para Photon o una búsqueda DIVIPOLA del DANE la respuesta difiere → habría que
+// adaptar el parseo (ver `extractPolygons`/el map de abajo).
+const NOMINATIM_BASE =
+  process.env.NEXT_PUBLIC_GEOCODER_URL ||
+  "https://nominatim.openstreetmap.org/search";
 
 interface NominatimRaw {
   display_name: string;
@@ -78,12 +88,79 @@ function extractPolygons(
  *
  * Lanza si el fetch falla. El llamador debe manejar errores y loading state.
  */
+// Radio (km) del área que se auto-selecciona al elegir un lugar, según su tipo.
+// OSM entrega los lugares como PUNTOS (no polígonos administrativos), así que
+// derivamos un área circular alrededor del punto para replicar el auto-select que
+// Nominatim hacía con su polígono. El tamaño aproxima la huella típica del tipo.
+const _RADIUS_KM: Record<string, number> = {
+  city: 9,
+  municipality: 9,
+  county: 9,
+  town: 5,
+  village: 3,
+  suburb: 2.5,
+  hamlet: 2,
+};
+
+/**
+ * Anillo (círculo aproximado por `steps` vértices) alrededor de un punto, en
+ * formato GeoJSON `[lng, lat][]` — el mismo que consume `polygonToCells(ring,res,true)`.
+ */
+function ringAround(
+  lat: number,
+  lng: number,
+  radiusKm: number,
+  steps = 24,
+): [number, number][] {
+  const dLat = radiusKm / 111; // 1° lat ≈ 111 km
+  const dLng = radiusKm / (111 * Math.cos((lat * Math.PI) / 180) || 1);
+  const ring: [number, number][] = [];
+  for (let i = 0; i < steps; i++) {
+    const a = (i / steps) * 2 * Math.PI;
+    ring.push([lng + dLng * Math.cos(a), lat + dLat * Math.sin(a)]);
+  }
+  ring.push(ring[0]); // cerrar el anillo
+  return ring;
+}
+
+/**
+ * Búsqueda PROPIA (sin Nominatim) contra nuestro backend (`/api/tiles/geocode`),
+ * que lee `geo/geocodes-colombia.json` (lugares de Colombia desde OpenStreetMap).
+ * El backend devuelve puntos; derivamos un área circular por tipo (`ringAround`)
+ * para que al elegir un resultado se auto-seleccione la zona, igual que antes.
+ */
+async function searchPlaceBackend(
+  q: string,
+  signal?: AbortSignal,
+): Promise<Place[]> {
+  const res = await fetch(
+    `/api/tiles/geocode?q=${encodeURIComponent(q)}&limit=7`,
+    { signal },
+  );
+  if (!res.ok) throw new Error(`geocode ${res.status}`);
+  const data = (await res.json()) as {
+    results: { name: string; lat: number; lng: number; type: string }[];
+  };
+  return data.results.map((r) => ({
+    name: r.name,
+    displayName: r.name,
+    lat: r.lat,
+    lng: r.lng,
+    category: "place",
+    type: r.type,
+    polygons: [ringAround(r.lat, r.lng, _RADIUS_KM[r.type] ?? 5)],
+  }));
+}
+
 export async function searchPlace(
   query: string,
   signal?: AbortSignal,
 ): Promise<Place[]> {
   const q = query.trim();
   if (q.length < 2) return [];
+
+  // Producción: búsqueda propia en el backend (sin Nominatim). Template/dev: Nominatim.
+  if (USE_BACKEND) return searchPlaceBackend(q, signal);
 
   const url = new URL(NOMINATIM_BASE);
   url.searchParams.set("q", q);

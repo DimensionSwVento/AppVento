@@ -339,7 +339,7 @@ const INFO_TABS: { id: InfoTab; label: string }[] = [
   { id: "rango", label: "Rango e interpretación" },
 ];
 
-function InfoPopover({
+export function InfoPopover({
   variableId,
   variables,
   onNavigate,

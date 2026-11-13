@@ -489,13 +489,22 @@ export default function Report() {
   // Ejes del gráfico por dimensión, filtrados por la config.
   const chartAxes = useMemo(
     () =>
-      RADAR_DIMS.filter((id) => config.dims[id]).map((id) => ({
-        label: HEATMAP_DIMENSIONS.find((d) => d.id === id)?.label ?? id,
-        value: scores.byDim[id] ?? 0,
-        // Color por dimensión (hex PDF-safe; svg2pdf no siempre resuelve hsl).
-        // Cada dimensión del radar se pinta con su propio color.
-        color: RADAR_DIM_HEX[id] ?? "#165170",
-      })),
+      RADAR_DIMS
+        // `config.dims` solo tiene llaves para las dimensiones PUNTUABLES (técnica,
+        // ambiental, social). `macroeconomica` NO está en `config.dims` (scorable:false)
+        // → el filtro truthy anterior la descartaba SIEMPRE, dejando el radar con 3
+        // ejes y, si el usuario desactivaba otra, con <3 → caía a BARRAS. Ahora se
+        // incluye toda dimensión que NO esté explícitamente desactivada (!== false) y
+        // que tenga dato real en el área (byDim) → vuelve la económica y el radar se
+        // mantiene como radar (petición cliente: "radar que aparecen como barras").
+        .filter((id) => config.dims[id] !== false && scores.byDim[id] != null)
+        .map((id) => ({
+          label: HEATMAP_DIMENSIONS.find((d) => d.id === id)?.label ?? id,
+          value: scores.byDim[id] ?? 0,
+          // Color por dimensión (hex PDF-safe; svg2pdf no siempre resuelve hsl).
+          // Cada dimensión del radar se pinta con su propio color.
+          color: RADAR_DIM_HEX[id] ?? "#165170",
+        })),
     [scores, config.dims],
   );
 

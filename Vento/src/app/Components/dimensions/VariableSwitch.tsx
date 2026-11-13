@@ -14,7 +14,14 @@ import type { Variable } from "../../Utils/variables/variablesCatalog";
  * - Badge de color con el ícono encima (color de dimensión + ícono Figura 3)
  *   a la derecha en lugar del antiguo dot
  */
-export default function VariableSwitch({ variable }: { variable: Variable }) {
+export default function VariableSwitch({
+  variable,
+  onOpenDetail,
+}: {
+  variable: Variable;
+  /** Click sobre el NOMBRE abre el detalle (ex-modal "Variables seleccionadas"). */
+  onOpenDetail?: (id: string) => void;
+}) {
   const { isActive, toggleVariable } = useVariables();
   const active = isActive(variable.id);
   const required = Boolean(variable.required);
@@ -62,10 +69,20 @@ export default function VariableSwitch({ variable }: { variable: Variable }) {
           </svg>
         </span>
       )}
+      {/* 2º switch "ver en el mapa" retirado temporalmente (petición cliente): la
+          representación en el mapa se controla desde la modal de variables. El click
+          en el nombre sigue abriendo el detalle (`onOpenDetail`). */}
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-1">
-          <p className="text-sm font-semibold text-[#393939ff] leading-tight">
-            {variable.label}
+          <p className="text-sm font-semibold leading-tight">
+            <button
+              type="button"
+              onClick={() => onOpenDetail?.(variable.id)}
+              title="Ver detalles de la variable"
+              className="text-left text-[#393939ff] hover:text-[#165170] hover:underline"
+            >
+              {variable.label}
+            </button>
             {required && (
               <span className="ml-1 text-[10px] font-normal text-gray-400 uppercase tracking-wide">
                 obligatoria
