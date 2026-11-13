@@ -31,7 +31,7 @@ import {
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
 import { useVariables } from "../../Utils/contexts/VariablesContext";
 import { useHeatmapDimension } from "../../Utils/contexts/HeatmapDimensionContext";
-import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS, SNAPSHOT_KEY } from "../../Utils/h3/h3Resolution";
+import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS, SNAPSHOT_KEY, MAP_STYLE } from "../../Utils/h3/h3Resolution";
 import { useCachedImage } from "../../Utils/useCachedImage";
 import { zoomToH3Res, tileToBBox, isInColombia, resForHexBudget, snapBboxOutward } from "../../Utils/h3/mapGeo";
 import { isHexBanned, bannedReason, setBannedData, selectionNature } from "../../Utils/h3/hexClassification";
@@ -2138,7 +2138,7 @@ export default function MapView() {
       >
         <MapGL
           ref={mapRef}
-          mapStyle="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
+          mapStyle={MAP_STYLE}
           canvasContextAttributes={{ preserveDrawingBuffer: true }}
           // Atribución sin el toggle "ⓘ" (que parecía botón muerto): texto fijo.
           attributionControl={{ compact: false }}

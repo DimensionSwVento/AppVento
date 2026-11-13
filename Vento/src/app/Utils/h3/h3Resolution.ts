@@ -19,7 +19,12 @@ const igacArtifact = igacBoundary as unknown as IgacBoundaryArtifact;
 
 // --- constantes del mapa ---
 
-export const MAP_STYLE = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
+// Basemap: OpenFreeMap (Positron) — gratis, SIN clave de API y apto para uso
+// COMERCIAL (self-hosteable). Reemplaza CARTO Voyager (gratis solo hasta 1M
+// req/mes y ya exige API key). Positron es claro/gris → no mezcla el verde de
+// bosques con las capas de datos. Atribución: "OpenFreeMap © OpenMapTiles ·
+// Data from OpenStreetMap". FUENTE ÚNICA del estilo (antes duplicado en Map.tsx).
+export const MAP_STYLE = "https://tiles.openfreemap.org/styles/positron";
 
 export const INITIAL_VIEW_STATE = {
   longitude: -73.5,
