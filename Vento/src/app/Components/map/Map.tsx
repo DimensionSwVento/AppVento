@@ -971,7 +971,7 @@ export default function MapView() {
       Promise.all(
         wanted.map(async (s) => {
           const cm = await fetchWindCells(s.variableId, viewBox ?? undefined, layerRes);
-          return [s.variableId, cm ? Array.from(cm, ([h, value]) => ({ h, value })) : []] as const;
+          return [s.variableId, cm ? Array.from(cm, ([h, value]) => ({ h, value })) : []] as [string, MapLayerCell[]];
         }),
       )
         .then((pairs) => {
@@ -982,7 +982,7 @@ export default function MapView() {
     } else {
       // Template: placeholder por variable (síncrono, sin servidor).
       Promise.all(
-        wanted.map(async (s) => [s.variableId, await fetchMapLayerCells(s)] as const),
+        wanted.map(async (s) => [s.variableId, await fetchMapLayerCells(s)] as [string, MapLayerCell[]]),
       )
         .then((pairs) => {
           if (alive) setSymbolCells(Object.fromEntries(pairs));
@@ -1083,7 +1083,7 @@ export default function MapView() {
       Promise.all(
         vars.map(async (x) => {
           const m = await fetchWindCells(x.id, viewBox ?? undefined, layerRes);
-          return [x.id, [...(m?.keys() ?? [])]] as const;
+          return [x.id, [...(m?.keys() ?? [])]] as [string, string[]];
         }),
       )
         .then((pairs) => {
@@ -1093,7 +1093,7 @@ export default function MapView() {
         .finally(done);
     } else {
       // Template: placeholder por variable.
-      Promise.all(vars.map(async (x) => [x.id, await fetchCatalogCells(x.id)] as const))
+      Promise.all(vars.map(async (x) => [x.id, await fetchCatalogCells(x.id)] as [string, string[]]))
         .then((pairs) => alive && setExtraCells(Object.fromEntries(pairs)))
         .catch(() => {})
         .finally(done);
