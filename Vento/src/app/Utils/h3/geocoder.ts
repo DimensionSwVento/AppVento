@@ -88,11 +88,46 @@ function extractPolygons(
  *
  * Lanza si el fetch falla. El llamador debe manejar errores y loading state.
  */
+// Radio (km) del área que se auto-selecciona al elegir un lugar, según su tipo.
+// OSM entrega los lugares como PUNTOS (no polígonos administrativos), así que
+// derivamos un área circular alrededor del punto para replicar el auto-select que
+// Nominatim hacía con su polígono. El tamaño aproxima la huella típica del tipo.
+const _RADIUS_KM: Record<string, number> = {
+  city: 9,
+  municipality: 9,
+  county: 9,
+  town: 5,
+  village: 3,
+  suburb: 2.5,
+  hamlet: 2,
+};
+
+/**
+ * Anillo (círculo aproximado por `steps` vértices) alrededor de un punto, en
+ * formato GeoJSON `[lng, lat][]` — el mismo que consume `polygonToCells(ring,res,true)`.
+ */
+function ringAround(
+  lat: number,
+  lng: number,
+  radiusKm: number,
+  steps = 24,
+): [number, number][] {
+  const dLat = radiusKm / 111; // 1° lat ≈ 111 km
+  const dLng = radiusKm / (111 * Math.cos((lat * Math.PI) / 180) || 1);
+  const ring: [number, number][] = [];
+  for (let i = 0; i < steps; i++) {
+    const a = (i / steps) * 2 * Math.PI;
+    ring.push([lng + dLng * Math.cos(a), lat + dLat * Math.sin(a)]);
+  }
+  ring.push(ring[0]); // cerrar el anillo
+  return ring;
+}
+
 /**
  * Búsqueda PROPIA (sin Nominatim) contra nuestro backend (`/api/tiles/geocode`),
  * que lee `geo/geocodes-colombia.json` (lugares de Colombia desde OpenStreetMap).
- * Devuelve puntos (sin polígono) → centra el mapa; el auto-seleccionar área por
- * polígono no aplica (se puede derivar un área alrededor del punto si se quiere).
+ * El backend devuelve puntos; derivamos un área circular por tipo (`ringAround`)
+ * para que al elegir un resultado se auto-seleccione la zona, igual que antes.
  */
 async function searchPlaceBackend(
   q: string,
@@ -113,7 +148,7 @@ async function searchPlaceBackend(
     lng: r.lng,
     category: "place",
     type: r.type,
-    polygons: [],
+    polygons: [ringAround(r.lat, r.lng, _RADIUS_KM[r.type] ?? 5)],
   }));
 }
 
