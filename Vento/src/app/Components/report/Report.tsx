@@ -22,6 +22,7 @@ import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
 import { svg2pdf } from "svg2pdf.js"; // Fase 1 PDF nativo: charts SVG → vector
 import ReportSheet from "./ReportSheet";
+import GeocodesDownloadButton from "./GeocodesDownloadButton";
 import { useIsAdmin } from "../../Utils/useIsAdmin";
 import { fetchMasterStatus, fetchEscenarios, fetchNormas, fetchVariableRanges, fetchReportCalcText, fetchReportContent, type AdminEscenario } from "../../Utils/admin/catalogApi";
 import { dbField, AuditDataLabel } from "../../Utils/audit";
@@ -2145,6 +2146,9 @@ export default function Report() {
           {fmtKm2.format(area)} km² · {totalSheets}{" "}
           {totalSheets === 1 ? "hoja" : "hojas"}
         </p>
+
+        {/* Modo template: herramienta de generación de la guía de geocodes (OSM). */}
+        {USE_PLACEHOLDER_FALLBACK && <GeocodesDownloadButton />}
 
         {/* #34: acciones en la CABECERA del informe (antes estaban al final). */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
