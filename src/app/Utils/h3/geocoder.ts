@@ -1,0 +1,203 @@
+/**
+ * Geocoder client — usa Nominatim (OpenStreetMap) para buscar lugares en Colombia.
+ *
+ * **Política de uso de Nominatim** (https://operations.osmfoundation.org/policies/nominatim/):
+ * - Máximo 1 request por segundo. El debounce del search box (300ms) más el
+ *   typing humano normal lo respetan; igualmente debouncear si se hace lotes.
+ * - Es obligatorio un `User-Agent` o `Referer` identificable. El fetch del
+ *   browser envía `Referer` por defecto, lo que cumple el requisito.
+ * - Para producción a escala se debería self-hostear o migrar a servicio comercial.
+ *
+ * **Parámetros usados**:
+ * - `countrycodes=co` — limita resultados a Colombia
+ * - `format=jsonv2` — respuesta JSON enriquecida
+ * - `polygon_geojson=1` — incluye el polígono del lugar (necesario para auto-select)
+ * - `limit=7` — máximo 7 resultados
+ * - `accept-language=es` — labels en español cuando estén disponibles
+ */
+
+import { USE_BACKEND } from "../projectData";
+
+export interface Place {
+  /** Nombre principal del lugar (p. ej. "El Porvenir") */
+  name: string;
+  /** Texto completo del lugar (incluye contexto: "El Porvenir, Cauca, Colombia") */
+  displayName: string;
+  lat: number;
+  lng: number;
+  /** Categoría OSM cruda: "boundary", "place", etc. */
+  category: string;
+  /** Tipo específico OSM: "administrative", "village", "municipality", etc. */
+  type: string;
+  /**
+   * Polígono GeoJSON del lugar como anillos en formato [lng, lat].
+   * Vacío si Nominatim no entregó polígono (algunos puntos no lo tienen).
+   */
+  polygons: Array<[number, number][]>;
+}
+
+// Proveedor CONFIGURABLE (uso comercial): por defecto Nominatim público, que NO es
+// apto para producción (máx 1 req/s para TODA la app, sin autocompletado, exige
+// identificar la app). Para producción apuntar `NEXT_PUBLIC_GEOCODER_URL` a un
+// Nominatim SELF-HOSTEADO (misma API → drop-in) o a un proxy propio del backend.
+// Para Photon o una búsqueda DIVIPOLA del DANE la respuesta difiere → habría que
+// adaptar el parseo (ver `extractPolygons`/el map de abajo).
+const NOMINATIM_BASE =
+  process.env.NEXT_PUBLIC_GEOCODER_URL ||
+  "https://nominatim.openstreetmap.org/search";
+
+interface NominatimRaw {
+  display_name: string;
+  name?: string;
+  lat: string;
+  lon: string;
+  class: string;
+  type: string;
+  geojson?: {
+    type: "Polygon" | "MultiPolygon" | string;
+    coordinates: unknown;
+  };
+}
+
+/**
+ * Aplana un GeoJSON Polygon/MultiPolygon a una lista de anillos en formato
+ * `[lng, lat][]`. Soporta los dos tipos; ignora huecos (sólo outer ring por polígono).
+ */
+function extractPolygons(
+  geojson: NominatimRaw["geojson"],
+): Array<[number, number][]> {
+  if (!geojson) return [];
+  if (geojson.type === "Polygon") {
+    const coords = geojson.coordinates as number[][][];
+    if (!coords.length) return [];
+    return [coords[0] as [number, number][]];
+  }
+  if (geojson.type === "MultiPolygon") {
+    const coords = geojson.coordinates as number[][][][];
+    return coords.map((poly) => poly[0] as [number, number][]);
+  }
+  return [];
+}
+
+/**
+ * Busca lugares en Colombia que coincidan con la query.
+ *
+ * Devuelve un array (posiblemente vacío) con hasta 7 lugares. Cada lugar
+ * incluye su centroide y, cuando Nominatim lo entrega, el polígono outer del
+ * lugar para auto-seleccionar hexes después.
+ *
+ * Lanza si el fetch falla. El llamador debe manejar errores y loading state.
+ */
+// Radio (km) del área que se auto-selecciona al elegir un lugar, según su tipo.
+// OSM entrega los lugares como PUNTOS (no polígonos administrativos), así que
+// derivamos un área circular alrededor del punto para replicar el auto-select que
+// Nominatim hacía con su polígono. El tamaño aproxima la huella típica del tipo.
+const _RADIUS_KM: Record<string, number> = {
+  city: 9,
+  municipality: 9,
+  county: 9,
+  town: 5,
+  village: 3,
+  suburb: 2.5,
+  hamlet: 2,
+};
+
+/**
+ * Anillo (círculo aproximado por `steps` vértices) alrededor de un punto, en
+ * formato GeoJSON `[lng, lat][]` — el mismo que consume `polygonToCells(ring,res,true)`.
+ */
+function ringAround(
+  lat: number,
+  lng: number,
+  radiusKm: number,
+  steps = 24,
+): [number, number][] {
+  const dLat = radiusKm / 111; // 1° lat ≈ 111 km
+  const dLng = radiusKm / (111 * Math.cos((lat * Math.PI) / 180) || 1);
+  const ring: [number, number][] = [];
+  for (let i = 0; i < steps; i++) {
+    const a = (i / steps) * 2 * Math.PI;
+    ring.push([lng + dLng * Math.cos(a), lat + dLat * Math.sin(a)]);
+  }
+  ring.push(ring[0]); // cerrar el anillo
+  return ring;
+}
+
+/**
+ * Búsqueda PROPIA (sin Nominatim) contra nuestro backend (`/api/tiles/geocode`),
+ * que lee `geo/geocodes-colombia.json` (lugares de Colombia desde OpenStreetMap).
+ * El backend devuelve puntos; derivamos un área circular por tipo (`ringAround`)
+ * para que al elegir un resultado se auto-seleccione la zona, igual que antes.
+ */
+async function searchPlaceBackend(
+  q: string,
+  signal?: AbortSignal,
+): Promise<Place[]> {
+  const res = await fetch(
+    `/api/tiles/geocode?q=${encodeURIComponent(q)}&limit=7`,
+    { signal },
+  );
+  if (!res.ok) throw new Error(`geocode ${res.status}`);
+  const data = (await res.json()) as {
+    results: { name: string; lat: number; lng: number; type: string }[];
+  };
+  return data.results.map((r) => ({
+    name: r.name,
+    displayName: r.name,
+    lat: r.lat,
+    lng: r.lng,
+    category: "place",
+    type: r.type,
+    polygons: [ringAround(r.lat, r.lng, _RADIUS_KM[r.type] ?? 5)],
+  }));
+}
+
+export async function searchPlace(
+  query: string,
+  signal?: AbortSignal,
+): Promise<Place[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  // Producción: búsqueda propia en el backend (sin Nominatim). Template/dev: Nominatim.
+  if (USE_BACKEND) return searchPlaceBackend(q, signal);
+
+  const url = new URL(NOMINATIM_BASE);
+  url.searchParams.set("q", q);
+  url.searchParams.set("countrycodes", "co");
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("polygon_geojson", "1");
+  url.searchParams.set("limit", "7");
+  url.searchParams.set("accept-language", "es");
+
+  const res = await fetch(url.toString(), { signal });
+  if (!res.ok) throw new Error(`Nominatim ${res.status}`);
+
+  const raw = (await res.json()) as NominatimRaw[];
+  return raw.map((r) => ({
+    name: r.name ?? r.display_name.split(",")[0],
+    displayName: r.display_name,
+    lat: Number(r.lat),
+    lng: Number(r.lon),
+    category: r.class,
+    type: r.type,
+    polygons: extractPolygons(r.geojson),
+  }));
+}
+
+/**
+ * Centroide simple (promedio de vértices) de un anillo de polígono.
+ * Útil cuando hay polígono pero queremos un único punto para centrar el mapa.
+ */
+export function polygonCentroid(
+  ring: [number, number][],
+): { lat: number; lng: number } | null {
+  if (ring.length === 0) return null;
+  let sumLat = 0;
+  let sumLng = 0;
+  for (const [lng, lat] of ring) {
+    sumLat += lat;
+    sumLng += lng;
+  }
+  return { lat: sumLat / ring.length, lng: sumLng / ring.length };
+}
