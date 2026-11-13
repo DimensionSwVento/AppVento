@@ -694,6 +694,15 @@ export default function MapView() {
         // visible:false del TileLayer para el picking → el hover enganchaba un
         // hex enorme del grid en vez del hex fino pintado en el heatmap.
         pickable: !heatmapActive,
+        // IMPRESCINDIBLE: el TileLayer CACHEA los sublayers por tile. Sin estos
+        // updateTriggers, al pasar de "seleccion-area" a dimensiones/informe el
+        // getLineColor/Width no se recalcula y la MALLA GRIS se queda pegada en los
+        // tiles ya renderizados. Al depender de `gridMeshVisible`, se refresca.
+        updateTriggers: {
+          getFillColor: [heatmapActive, heatVersion],
+          getLineColor: [gridMeshVisible],
+          getLineWidth: [gridMeshVisible],
+        },
       });
     },
   }), [heatmapActive, isFlyingRef, heatVersion, showHexBorders, gridMeshVisible]);
