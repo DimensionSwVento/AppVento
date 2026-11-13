@@ -16,6 +16,8 @@
  * - `accept-language=es` — labels en español cuando estén disponibles
  */
 
+import { USE_BACKEND } from "../projectData";
+
 export interface Place {
   /** Nombre principal del lugar (p. ej. "El Porvenir") */
   name: string;
@@ -86,12 +88,44 @@ function extractPolygons(
  *
  * Lanza si el fetch falla. El llamador debe manejar errores y loading state.
  */
+/**
+ * Búsqueda PROPIA (sin Nominatim) contra nuestro backend (`/api/tiles/geocode`),
+ * que lee `geo/geocodes-colombia.json` (lugares de Colombia desde OpenStreetMap).
+ * Devuelve puntos (sin polígono) → centra el mapa; el auto-seleccionar área por
+ * polígono no aplica (se puede derivar un área alrededor del punto si se quiere).
+ */
+async function searchPlaceBackend(
+  q: string,
+  signal?: AbortSignal,
+): Promise<Place[]> {
+  const res = await fetch(
+    `/api/tiles/geocode?q=${encodeURIComponent(q)}&limit=7`,
+    { signal },
+  );
+  if (!res.ok) throw new Error(`geocode ${res.status}`);
+  const data = (await res.json()) as {
+    results: { name: string; lat: number; lng: number; type: string }[];
+  };
+  return data.results.map((r) => ({
+    name: r.name,
+    displayName: r.name,
+    lat: r.lat,
+    lng: r.lng,
+    category: "place",
+    type: r.type,
+    polygons: [],
+  }));
+}
+
 export async function searchPlace(
   query: string,
   signal?: AbortSignal,
 ): Promise<Place[]> {
   const q = query.trim();
   if (q.length < 2) return [];
+
+  // Producción: búsqueda propia en el backend (sin Nominatim). Template/dev: Nominatim.
+  if (USE_BACKEND) return searchPlaceBackend(q, signal);
 
   const url = new URL(NOMINATIM_BASE);
   url.searchParams.set("q", q);
