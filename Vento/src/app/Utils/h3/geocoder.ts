@@ -34,7 +34,15 @@ export interface Place {
   polygons: Array<[number, number][]>;
 }
 
-const NOMINATIM_BASE = "https://nominatim.openstreetmap.org/search";
+// Proveedor CONFIGURABLE (uso comercial): por defecto Nominatim público, que NO es
+// apto para producción (máx 1 req/s para TODA la app, sin autocompletado, exige
+// identificar la app). Para producción apuntar `NEXT_PUBLIC_GEOCODER_URL` a un
+// Nominatim SELF-HOSTEADO (misma API → drop-in) o a un proxy propio del backend.
+// Para Photon o una búsqueda DIVIPOLA del DANE la respuesta difiere → habría que
+// adaptar el parseo (ver `extractPolygons`/el map de abajo).
+const NOMINATIM_BASE =
+  process.env.NEXT_PUBLIC_GEOCODER_URL ||
+  "https://nominatim.openstreetmap.org/search";
 
 interface NominatimRaw {
   display_name: string;
