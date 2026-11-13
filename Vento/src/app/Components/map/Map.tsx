@@ -31,17 +31,16 @@ import {
 import { useAprincipal } from "../../Utils/contexts/AccionPrincipalContext";
 import { useVariables } from "../../Utils/contexts/VariablesContext";
 import { useHeatmapDimension } from "../../Utils/contexts/HeatmapDimensionContext";
-import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS, SNAPSHOT_KEY } from "../../Utils/h3/h3Resolution";
+import { INITIAL_VIEW_STATE, MAX_BOUNDS, COLOMBIA_POLYGONS, SNAPSHOT_KEY, MAP_STYLE } from "../../Utils/h3/h3Resolution";
 import { useCachedImage } from "../../Utils/useCachedImage";
 import { zoomToH3Res, tileToBBox, isInColombia, resForHexBudget, snapBboxOutward } from "../../Utils/h3/mapGeo";
 import { isHexBanned, bannedReason, setBannedData, selectionNature } from "../../Utils/h3/hexClassification";
-import { MAX_SELECTION_GAP_KM, MIN_SELECTION_H3_RES, USE_BACKEND, USE_API_EMPLAZAMIENTO, FIXED_MAP_LAYER_IDS } from "../../Utils/projectData";
+import { MAX_SELECTION_GAP_KM, MIN_SELECTION_H3_RES, USE_BACKEND, USE_API_EMPLAZAMIENTO } from "../../Utils/projectData";
 import { useToast } from "../ui/Toast";
 import HexValuesTooltip from "./HexValuesTooltip";
 import HeatmapDimensionSwitches from "./HeatmapDimensionSwitches";
 import HeatmapLegend from "./HeatmapLegend";
 import InformativeVariablesList from "./InformativeVariablesList";
-import SelectedVariablesChips from "../dimensions/SelectedVariablesChips";
 import AreaDisplay from "./AreaDisplay";
 import MapSearchBox from "./MapSearchBox";
 import NextStepFloatingCard from "./NextStepFloatingCard";
@@ -60,14 +59,23 @@ import {
   fetchMapLayerCells,
   fetchCatalogCells,
   fetchVariableCellsBBox,
-  fetchVariableLayersBulk,
   fetchExcludedCells,
+  fetchWindCells,
+  fetchVariableQuantiles,
   windValueForHex,
   WIND_THRESHOLD,
   type MapLayerCell,
 } from "../../Utils/map/mapLayerData";
+import {
+  regionalTemplateValue,
+  vividBorder,
+  rampForColor,
+  quantileBandIndex,
+} from "../../Utils/map/colorScale";
+import MapScaleLegend from "./MapScaleLegend";
+import MiniMap from "./MiniMap";
 import { viridis } from "../../Utils/report/heatmapPalette";
-import { getVariableById, isHeatVariable } from "../../Utils/variables/variablesCatalog";
+import { getVariableById } from "../../Utils/variables/variablesCatalog";
 import { compositePin } from "../../Utils/map/iconRender";
 import {
   genericMapVariables,
@@ -86,7 +94,14 @@ const MAX_ZOOM = 14;
 const SELECTED_FILL: [number, number, number, number] = [224, 215, 221, 100];
 const SELECTED_BORDER: [number, number, number, number] = [22, 81, 112, 200]; // brand #165170
 // Grid de la cuadrícula H3 — alpha reducido para que no sature offshore.
-const GRID_BORDER: [number, number, number, number] = [180, 175, 190, 55];
+// Transparencia COMPARTIDA del relleno de datos: el calor (viridis) y la escala de
+// color usan el MISMO alpha para que se vean igual de tenues sobre el basemap
+// (petición cliente: la escala "ligeramente más transparente, misma que el calor").
+const HEAT_FILL_ALPHA = 51;
+// Malla hexagonal GRIS del grid: solo se dibuja en la fase de SELECCIÓN DE ÁREA
+// (para ver las celdas que se pueden clicar). En las demás fases (dimensiones,
+// informe, características) va transparente (petición cliente). Alpha moderado.
+const GRID_BORDER: [number, number, number, number] = [130, 130, 130, 110];
 // Borde territorio colombiano — distintivo pero no invasivo
 const TERRITORY_BORDER: [number, number, number, number] = [22, 81, 112, 160];
 // hover — misma familia que selected pero más tenue (alpha bajo) para distinguirse
@@ -262,7 +277,7 @@ export default function MapView() {
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const { accion, selectedHexes, setSelectedHexes, focusNonce } =
     useAprincipal();
-  const { activeVariables } = useVariables();
+  const { activeVariables, shownOnMap, toggleShownOnMap } = useVariables();
   const { activeDimension, setActiveDimension } = useHeatmapDimension();
   const toast = useToast();
   const canSelect = accion === "seleccion-area";
@@ -528,6 +543,11 @@ export default function MapView() {
   // escala. Umbral (no el zoom continuo) para que el memo de abajo solo recalcule
   // al CRUZAR el nivel, no en cada frame de zoom.
   const showHexBorders = viewState.zoom >= 7;
+  // Malla gris CLICABLE: solo en selección de área y SOLO cuando ya se está lo bastante
+  // cerca para seleccionar (res ≥ MIN_SELECTION_H3_RES, i.e. no `selectionZoomTooFar`).
+  // Respeta la regla de "acércate para seleccionar" y las escalas de resolución: el
+  // grid ya se dibuja a la res del zoom, así que la malla sale a la res correcta.
+  const gridMeshVisible = canSelect && !selectionZoomTooFar;
   // isFlyingRef.current SOLO se lee dentro de onViewportLoad (callback de deck.gl
   // que corre DESPUÉS del render), no durante el render; el plugin react-hooks no
   // distingue el momento de ejecución y marca tanto el acceso como el ref en deps.
@@ -653,25 +673,39 @@ export default function MapView() {
           if (d.banned) return BANNED_FILL;
           if (d.value != null && d.owned) {
             const c = viridis(Math.max(0, Math.min(1, d.value)));
-            return [c[0], c[1], c[2], 51];
+            return [c[0], c[1], c[2], HEAT_FILL_ALPHA];
           }
           return [0, 0, 0, 0];
         },
-        getLineColor: (d) => (d.banned ? BANNED_BORDER : GRID_BORDER),
-        getLineWidth: (d) => (d.banned ? 2 : 1),
+        // Malla hexagonal gris: SOLO cuando se puede seleccionar área y ya estás cerca
+        // (`gridMeshVisible` = canSelect && res ≥ MIN_SELECTION_H3_RES) → ver las celdas
+        // clicables a la res del zoom; en las demás fases/lejos las celdas normales NO
+        // llevan borde (solo las EXCLUIDAS conservan su borde siempre). Petición cliente.
+        getLineColor: (d) =>
+          d.banned ? BANNED_BORDER : gridMeshVisible ? GRID_BORDER : [0, 0, 0, 0],
+        getLineWidth: (d) => (d.banned ? 2 : gridMeshVisible ? 1 : 0),
         lineWidthMinPixels: 1,
         filled: true,
-        // Fase B2: sin bordes a zoom alejado (umbral `showHexBorders`) — menos
-        // vértices de línea cuando hay miles de hexágonos chicos en pantalla.
-        stroked: showHexBorders,
+        // Fase B2: el trazo solo corre a zoom cercano (perf); ahí solo pinta el
+        // borde de las excluidas (el resto es transparente → sin malla gris).
+        stroked: showHexBorders || gridMeshVisible,
         // En informe SOLO el heatmap debe ser pickable. El grid usa resolución
         // por zoom (hexágonos grandes) y sus sublayers no heredan el
         // visible:false del TileLayer para el picking → el hover enganchaba un
         // hex enorme del grid en vez del hex fino pintado en el heatmap.
         pickable: !heatmapActive,
+        // IMPRESCINDIBLE: el TileLayer CACHEA los sublayers por tile. Sin estos
+        // updateTriggers, al pasar de "seleccion-area" a dimensiones/informe el
+        // getLineColor/Width no se recalcula y la MALLA GRIS se queda pegada en los
+        // tiles ya renderizados. Al depender de `gridMeshVisible`, se refresca.
+        updateTriggers: {
+          getFillColor: [heatmapActive, heatVersion],
+          getLineColor: [gridMeshVisible],
+          getLineWidth: [gridMeshVisible],
+        },
       });
     },
-  }), [heatmapActive, isFlyingRef, heatVersion, showHexBorders]);
+  }), [heatmapActive, isFlyingRef, heatVersion, showHexBorders, gridMeshVisible]);
   /* eslint-enable react-hooks/refs */
 
   // Capa de borde del territorio colombiano (continente + archipiélago).
@@ -736,15 +770,23 @@ export default function MapView() {
   // realmente en el viewport — eso permitía escaneos de cientos de miles de
   // filas y tumbaba `variables-bulk` a partir de ~10 peticiones concurrentes
   // (ver benchmark-carga-h3). Calibrar con `tools/loadtest.py` por servidor.
-  const HEX_SCREEN_BUDGET = 2000;
+  // N = hexágonos resumidos en pantalla (cliente): ~50. El zoom pasa a la res
+  // inferior fija en cuanto se superan → se ven siempre ~50 hex, más área a menor
+  // resolución (la capa padre resume). Bulk responde normal con ~50 por vista.
+  const HEX_SCREEN_BUDGET = 50;
   // Res de las CAPAS de variable (símbolos/catálogo) y del heatmap del informe:
   // se deriva del ÁREA REAL del viewport (viewBox), no del zoom — así una misma
   // resolución nunca escanea más de ~N hexágonos, independientemente de qué tan
   // alejado esté el zoom. Antes de tener el primer viewBox, cae a `displayRes`
   // (tabla por zoom) para no bloquear la primera carga.
+  // Piso de resolución = 4: las vistas materializadas (resumen por parent) cubren
+  // la escalera res4..res7 (migraciones 0019/0020); res4 es la resolución MÍNIMA que
+  // usa el mapa (más alejado). Por debajo no hay MV ni se pide. El zoom-in (res 8,
+  // bbox chico) cae a `stream_bbox` del dato nativo (liviano).
+  const MV_MIN_RES = 4;
   const layerRes = viewBox
-    ? Math.min(8, resForHexBudget(viewBox, HEX_SCREEN_BUDGET))
-    : Math.min(8, displayRes);
+    ? Math.max(MV_MIN_RES, Math.min(8, resForHexBudget(viewBox, HEX_SCREEN_BUDGET)))
+    : Math.max(MV_MIN_RES, Math.min(8, displayRes));
   // Contador de cargas de capas en vuelo → pill "Cargando capas del mapa…" (no
   // bloquea la vista, solo avisa arriba). >0 = hay un fetch de capas activo.
   const [layersLoading, setLayersLoading] = useState(0);
@@ -835,30 +877,13 @@ export default function MapView() {
   // colaban ENCENDIDAS por defecto (bug: deben estar inactivas). Ahora `shownLayers`
   // guarda SOLO las que el usuario prendió. (Informe también arranca off vía
   // `activeSymbols`.)
-  // FB5: las capas listadas en FIXED_MAP_LAYER_IDS arrancan prendidas (el resto
-  // sigue opt-in). Vacía por defecto → sin cambio de comportamiento hasta que
-  // se decida cuáles son esas capas (editar la constante en projectData.ts).
-  const [shownLayers, setShownLayers] = useState<Set<string>>(
-    () => new Set(FIXED_MAP_LAYER_IDS),
-  );
-  const toggleDimLayer = useCallback((id: string) => {
-    setShownLayers((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id); // ocultar esta capa
-      } else {
-        // #7.3: una sola CAPA DE CALOR a la vez en el MAPA (radio). Al prender una
-        // de calor, apaga del mapa las otras de calor (siguen SELECCIONADAS como
-        // variables → en resumen/informe; aquí solo se controla visibilidad). Las
-        // de área/punto se acumulan normal (multi-selección).
-        if (isHeatVariable(id)) {
-          for (const other of [...next]) if (isHeatVariable(other)) next.delete(other);
-        }
-        next.add(id); // mostrar esta capa
-      }
-      return next;
-    });
-  }, []);
+  // "Ver en el mapa" vive en VariablesContext (`shownOnMap`/`toggleShownOnMap`): lo
+  // controla el 2º switch de cada variable en la card de Dimensiones (y el menú de
+  // capas). Opt-in, independiente de la selección del modelo (las obligatorias
+  // también se pueden mostrar). La lógica de "un solo calor a la vez" vive en el
+  // contexto. `shownLayers` es un alias local para no renombrar todos los usos.
+  const shownLayers = shownOnMap;
+  const toggleDimLayer = toggleShownOnMap;
   // Variables con "ver en mapa" desactivado en admin (US08-01): sus símbolos se
   // ocultan de la leyenda y del mapa. Semilla vacía → nada oculto por defecto.
   const [mapDisabledIds, setMapDisabledIds] = useState<Set<string>>(new Set());
@@ -940,24 +965,24 @@ export default function MapView() {
       if (counted) setLayersLoading((n) => Math.max(0, n - 1));
     };
     if (USE_BACKEND) {
-      // BULK: una sola petición para TODAS las variables de símbolo (1 scan) →
-      // acota el bbox y no apila peticiones (era el cuello).
-      fetchVariableLayersBulk(wanted.map((s) => s.variableId), layerRes, viewBox ?? undefined, ctrl.signal)
-        .then((m) => {
-          if (!alive) return;
-          const obj: Record<string, MapLayerCell[]> = {};
-          for (const s of wanted) {
-            const cm = m.get(s.variableId);
-            obj[s.variableId] = cm ? Array.from(cm, ([h, value]) => ({ h, value })) : [];
-          }
-          setSymbolCells(obj);
+      // Por variable vía `/tiles/variable` (el camino del CALOR, que sí funciona) —
+      // ya NO `variables-bulk`. Cada petición acota el bbox+res; `fetchWindCells`
+      // cachea por scope, así no se apilan scans.
+      Promise.all(
+        wanted.map(async (s) => {
+          const cm = await fetchWindCells(s.variableId, viewBox ?? undefined, layerRes);
+          return [s.variableId, cm ? Array.from(cm, ([h, value]) => ({ h, value })) : []] as [string, MapLayerCell[]];
+        }),
+      )
+        .then((pairs) => {
+          if (alive) setSymbolCells(Object.fromEntries(pairs));
         })
         .catch(() => {})
         .finally(done);
     } else {
       // Template: placeholder por variable (síncrono, sin servidor).
       Promise.all(
-        wanted.map(async (s) => [s.variableId, await fetchMapLayerCells(s)] as const),
+        wanted.map(async (s) => [s.variableId, await fetchMapLayerCells(s)] as [string, MapLayerCell[]]),
       )
         .then((pairs) => {
           if (alive) setSymbolCells(Object.fromEntries(pairs));
@@ -1053,18 +1078,22 @@ export default function MapView() {
     };
     if (USE_BACKEND) {
       // BULK: una sola petición para todas las capas de catálogo (1 scan del bbox).
-      fetchVariableLayersBulk(vars.map((x) => x.id), layerRes, viewBox ?? undefined, ctrl.signal)
-        .then((m) => {
-          if (!alive) return;
-          const obj: Record<string, string[]> = {};
-          for (const x of vars) obj[x.id] = [...(m.get(x.id)?.keys() ?? [])];
-          setExtraCells(obj);
+      // Por variable vía `/tiles/variable` (camino del calor), NO `variables-bulk`.
+      // Para `area` solo interesa la PRESENCIA (claves del mapa de valores).
+      Promise.all(
+        vars.map(async (x) => {
+          const m = await fetchWindCells(x.id, viewBox ?? undefined, layerRes);
+          return [x.id, [...(m?.keys() ?? [])]] as [string, string[]];
+        }),
+      )
+        .then((pairs) => {
+          if (alive) setExtraCells(Object.fromEntries(pairs));
         })
         .catch(() => {})
         .finally(done);
     } else {
       // Template: placeholder por variable.
-      Promise.all(vars.map(async (x) => [x.id, await fetchCatalogCells(x.id)] as const))
+      Promise.all(vars.map(async (x) => [x.id, await fetchCatalogCells(x.id)] as [string, string[]]))
         .then((pairs) => alive && setExtraCells(Object.fromEntries(pairs)))
         .catch(() => {})
         .finally(done);
@@ -1074,6 +1103,131 @@ export default function MapView() {
       ctrl.abort(); // mata el bulk en vuelo (no apilar scans; respiro al back)
     };
   }, [extraMapVars, layerRes, viewBox]);
+
+  // ── ESCALA DE COLOR (choropleth por cuantiles) — informativas continuas ──────
+  // Capa SEPARADA y ADITIVA: NO toca el render de `area`/`calor`. Trae valores por
+  // `/tiles/variable` (como el calor, SIN variables-bulk) y los cortes de cuantil
+  // del backend (`/tiles/variable-quantiles`). En template, campo placeholder
+  // (`windValueForHex`) + cortes uniformes. Las `escala` se EXCLUYEN del path de
+  // `area` de abajo (no se dibujan dos veces).
+  const [escalaData, setEscalaData] = useState<Record<string, Map<string, number>>>({});
+  const [escalaMeta, setEscalaMeta] = useState<
+    Record<string, { cuts: number[]; min: number; max: number }>
+  >({});
+  useEffect(() => {
+    let alive = true;
+    if (USE_BACKEND && !viewBox) return;
+    const vars = extraMapVars.filter((x) => x.kind === "escala");
+    if (vars.length === 0) return;
+    if (USE_BACKEND) {
+      Promise.all(
+        vars.map(async (x) => [x.id, (await fetchWindCells(x.id, viewBox ?? undefined, layerRes)) ?? new Map<string, number>()] as const),
+      )
+        .then((pairs) => alive && setEscalaData(Object.fromEntries(pairs)))
+        .catch(() => {});
+      for (const x of vars) {
+        fetchVariableQuantiles(x.id).then(
+          (q) => alive && q && setEscalaMeta((prev) => ({ ...prev, [x.id]: q })),
+        );
+      }
+    }
+    return () => {
+      alive = false;
+    };
+  }, [extraMapVars, layerRes, viewBox]);
+
+  const escalaLayers = useMemo(() => {
+    const out: (
+      | PolygonLayer<{ h: string; value: number }>
+      | PolygonLayer<{ rings: number[][][] }>
+    )[] = [];
+    for (const x of extraMapVars) {
+      if (x.kind !== "escala") continue;
+      const color = safeColor(mapComponent(x.id).color);
+      let data: { h: string; value: number }[] = [];
+      if (USE_BACKEND) {
+        const m = escalaData[x.id];
+        if (m) data = [...m.entries()].map(([h, value]) => ({ h, value }));
+      } else if (viewBox) {
+        const poly: [number, number][] = [
+          [viewBox.west, viewBox.south],
+          [viewBox.east, viewBox.south],
+          [viewBox.east, viewBox.north],
+          [viewBox.west, viewBox.north],
+        ];
+        for (const h of polygonToCells(poly, layerRes, true)) {
+          const [lat, lng] = cellToLatLng(h);
+          if (!isInColombia(lat, lng)) continue;
+          // Campo REGIONAL (no corredores de viento): divide Colombia por zonas de
+          // color, como el choropleth real (mapasocial). Ver `regionalTemplateValue`.
+          data.push({ h, value: regionalTemplateValue(lat, lng) });
+        }
+      }
+      if (!data.length) continue;
+      const cuts = escalaMeta[x.id]?.cuts ?? [0.2, 0.4, 0.6, 0.8];
+      const ramp = rampForColor(color, 5);
+      const bandOf = (v: number) => Math.min(quantileBandIndex(v, cuts), ramp.length - 1);
+      const bandByHex = new Map(data.map((d) => [d.h, bandOf(d.value)]));
+
+      // Relleno con la MISMA transparencia que el calor (HEAT_FILL_ALPHA): lo que
+      // diferencia las bandas ahora son los TONOS distintos de la ramp + el borde por
+      // área, no la opacidad (petición cliente: "ligeramente más transparente").
+      out.push(
+        new PolygonLayer<{ h: string; value: number }>({
+          id: `escala-${x.id}`,
+          data,
+          getPolygon: (d) => cellToBoundary(d.h, true),
+          getFillColor: (d) => {
+            const c = ramp[bandByHex.get(d.h) ?? 0];
+            return [c[0], c[1], c[2], HEAT_FILL_ALPHA];
+          },
+          filled: true,
+          stroked: false,
+          pickable: false,
+          updateTriggers: { getFillColor: [cuts, color] },
+        }),
+      );
+
+      // BORDE POR ÁREA: disuelve los hexes de CADA cuartil en el contorno de su UNIÓN
+      // (cellsToMultiPolygon) y dibuja solo esa frontera → una línea alrededor de TODA
+      // la zona del cuartil, no cada hexágono. Color contrastante con el relleno.
+      for (let b = 0; b < ramp.length; b++) {
+        const bandHexes = data.filter((d) => bandByHex.get(d.h) === b).map((d) => d.h);
+        if (bandHexes.length === 0) continue;
+        let polys: number[][][][];
+        try {
+          polys = cellsToMultiPolygon(bandHexes, true) as number[][][][];
+        } catch {
+          continue;
+        }
+        // Borde SÓLIDO y MUY BRILLANTE (tono puro, opaco) → los límites de cada área
+        // contrastan nítido sobre el relleno semitransparente (petición cliente).
+        const bc = vividBorder(ramp[b]);
+        out.push(
+          new PolygonLayer<{ rings: number[][][] }>({
+            id: `escala-${x.id}-border-b${b}`,
+            data: polys.map((p) => ({ rings: p })),
+            getPolygon: (d) => d.rings,
+            filled: false,
+            stroked: true,
+            getLineColor: [bc[0], bc[1], bc[2], 255],
+            getLineWidth: 2.2,
+            lineWidthUnits: "pixels",
+            lineWidthMinPixels: 1.5,
+            pickable: false,
+            parameters: { depthCompare: "always" },
+          }),
+        );
+      }
+    }
+    return out;
+  }, [extraMapVars, escalaData, escalaMeta, viewBox, layerRes]);
+
+  // ids de las variables de ESCALA activas → leyenda (bandas + rangos por cuantiles).
+  const escalaVarIds = useMemo(
+    () => extraMapVars.filter((x) => x.kind === "escala").map((x) => x.id),
+    [extraMapVars],
+  );
 
   // Sets de hex por variable activa (símbolos + catálogo) para lookup O(1) en el
   // hover → tooltip de variable (nombre+descripción). Se recalcula solo al cambiar
@@ -1160,7 +1314,7 @@ export default function MapView() {
       if (!variableAppliesToNatureById(s.variableId, mapNature)) continue;
       const hexes = summarizeCells(
         (symbolCells[s.variableId] ?? []).map((c) => c.h),
-        displayRes,
+        layerRes,
       );
       if (hexes.length)
         areas.push({
@@ -1172,8 +1326,8 @@ export default function MapView() {
     }
     // Genéricas de catálogo (area/interconectado; el calor va por el grid).
     for (const { id, kind } of extraMapVars) {
-      if (kind === "calor") continue;
-      const hexes = summarizeCells(extraCells[id] ?? [], displayRes);
+      if (kind === "calor" || kind === "escala") continue; // escala → capa aparte (choropleth)
+      const hexes = summarizeCells(extraCells[id] ?? [], layerRes);
       if (hexes.length)
         areas.push({
           id,
@@ -1293,7 +1447,7 @@ export default function MapView() {
       if (!variableAppliesToNatureById(s.variableId, mapNature)) continue;
       const hexes = summarizeCells(
         (symbolCells[s.variableId] ?? []).map((c) => c.h),
-        displayRes,
+        layerRes,
       );
       if (hexes.length) addIconsFor(s.variableId, hexes);
     }
@@ -1828,10 +1982,6 @@ export default function MapView() {
         );
       })()}
 
-      {accion === "dimensiones" && activeVariables.size > 0 && (
-        <SelectedVariablesChips />
-      )}
-
       {/* Capas del mapa en DIMENSIONES (petición cliente): a la IZQUIERDA. Lista
           solo las variables seleccionadas (switches) con representación en el mapa.
           Togglear aquí controla la VISIBILIDAD de la capa (`shownLayers`, opt-in:
@@ -1904,11 +2054,24 @@ export default function MapView() {
 
       {/* #19: leyenda viridis también en DIMENSIONES cuando hay un mapa de calor de
           variable activo (ahí es el valor de la variable, no idoneidad → sin muesca). */}
-      {accion === "dimensiones" && activeHeatVarId && (
-        // #2: abajo-izquierda — el control "Capas del mapa" (MapSymbolsLegend) ya
-        // ocupa arriba-izquierda; antes se superponían.
-        <div className="absolute bottom-3 left-3 z-10">
-          <HeatmapLegend title="Valor (%)" />
+      {/* Leyendas apiladas ABAJO-DERECHA: calor de dimensiones (valor %) + escala de
+          color (bandas + rangos por cuantil). Juntas para liberar la esquina izquierda. */}
+      {(accion === "informe" || accion === "dimensiones") &&
+        ((accion === "dimensiones" && activeHeatVarId) || escalaVarIds.length > 0) && (
+          <div className="pointer-events-none absolute bottom-3 right-3 z-10 flex flex-col items-end gap-2">
+            {accion === "dimensiones" && activeHeatVarId && <HeatmapLegend title="Valor (%)" />}
+            {escalaVarIds.length > 0 && (
+              <MapScaleLegend escalaVarIds={escalaVarIds} meta={escalaMeta} />
+            )}
+          </div>
+        )}
+
+      {/* Mini-mapa locator (modal flotante) ARRIBA-DERECHA: sincronizado con el mapa
+          grande EXCEPTO el zoom (marco fijo de Colombia + marcador que sigue el paneo)
+          → el usuario se ubica mientras ve el grande en calor / escala de color. */}
+      {(accion === "informe" || accion === "dimensiones") && (
+        <div className="absolute top-3 right-3 z-[9] max-md:hidden">
+          <MiniMap center={{ lng: viewState.longitude, lat: viewState.latitude }} />
         </div>
       )}
 
@@ -1945,7 +2108,7 @@ export default function MapView() {
         // Las capas de símbolo (área/punto) se pintan en Informe Y en Dimensiones
         // (petición cliente): en Informe las controla el menú "Capas del mapa";
         // en Dimensiones, los switches de las cards. En las demás fases no.
-        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer, ...(accion === "informe" || accion === "dimensiones" ? [...symbolLayers.bands, ...catalogLayers.bands, ...symbolLayers.icons, ...catalogLayers.icons] : []), ...polygonDrawLayers]}
+        layers={[gridTileLayer, territoryBorderLayer, informeHeatmapLayer, selectedLayer, selectedBordersLayer, hoverFillLayer, ...(accion === "informe" || accion === "dimensiones" ? [...escalaLayers, ...symbolLayers.bands, ...catalogLayers.bands, ...symbolLayers.icons, ...catalogLayers.icons] : []), ...polygonDrawLayers]}
         // US-FB3-03 (feedback item 8): nunca "not-allowed". Fuera de la fase de
         // selección el hex NO es inerte — en el informe se consulta con el
         // tooltip —, y el cursor de "prohibido" (muy marcado en Firefox/Windows)
@@ -2002,7 +2165,7 @@ export default function MapView() {
       >
         <MapGL
           ref={mapRef}
-          mapStyle="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
+          mapStyle={MAP_STYLE}
           canvasContextAttributes={{ preserveDrawingBuffer: true }}
           // Atribución sin el toggle "ⓘ" (que parecía botón muerto): texto fijo.
           attributionControl={{ compact: false }}

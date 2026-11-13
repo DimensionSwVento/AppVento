@@ -101,7 +101,7 @@ export interface Variable {
   mapKind?: MapKind;
 }
 
-export type MapKind = "calor" | "interconectado" | "area";
+export type MapKind = "calor" | "escala" | "interconectado" | "area";
 
 /**
  * IDs de variables EXCLUYENTES (template — hasta que la API entregue el flag).
@@ -248,32 +248,32 @@ export const VARIABLES: Variable[] = [
   { id: "pastos-marinos", masterId: "AMB-020-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Especies bióticas", label: "Pastos marinos", description: "Zonas con ecosistemas de pastos marinos.", fuente: "INVEMAR", aplicaEn: "mar", iconKey: "lucide:Leaf" },
 
   // ─── AMBIENTAL · Bióticas · Áreas protegidas (5) · todas en mapa ─────────
-  { id: "reproduccion-aves", masterId: "AMB-034-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Áreas protegidas", label: "Zonas de reproducción de aves", description: "Sitios identificados para reproducción de aves.", fuente: "INVEMAR", enMapa: true, aplicaEn: "tierra", iconKey: "lucide:Egg" },
+  { id: "reproduccion-aves", masterId: "AMB-034-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Áreas protegidas", label: "Zonas de reproducción de aves", description: "Sitios identificados para reproducción de aves.", fuente: "INVEMAR", aplicaEn: "tierra", iconKey: "lucide:Egg" },
   { id: "biodiversidad", masterId: "AMB-033-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Áreas protegidas", label: "Áreas clave para la biodiversidad", description: "Zonas legalmente designadas para la conservación de la biodiversidad.", fuente: "KBA", url: "https://www.keybiodiversityareas.org/en", iconKey: "lucide:Flower2" },
-  { id: "humedales-ramsar", masterId: "AMB-012-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Áreas protegidas", label: "Humedales RAMSAR", description: "Ubicación de los humedales RAMSAR en Colombia.", fuente: "IGAC", enMapa: true, aplicaEn: "tierra", iconKey: "lucide:Droplets" },
-  { id: "mares-coralinos", masterId: "AMB-021-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Áreas protegidas", label: "Áreas coralinas", description: "Áreas con presencia de arrecifes coralinos.", fuente: "INVEMAR", enMapa: true, iconKey: "lucide:Shrub" },
+  { id: "humedales-ramsar", masterId: "AMB-012-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Áreas protegidas", label: "Humedales RAMSAR", description: "Ubicación de los humedales RAMSAR en Colombia.", fuente: "IGAC", aplicaEn: "tierra", iconKey: "lucide:Droplets" },
+  { id: "mares-coralinos", masterId: "AMB-021-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Áreas protegidas", label: "Áreas coralinas", description: "Áreas con presencia de arrecifes coralinos.", fuente: "INVEMAR", iconKey: "lucide:Shrub" },
   { id: "playas-tortugas", masterId: "AMB-036-A", dimension: "ambiental", criterio: "Variables bióticas", subcriterio: "Áreas protegidas", label: "Playas de anidación de tortugas", description: "Sitios documentados de anidación de tortugas marinas.", fuente: "INVEMAR", iconKey: "lucide:Turtle" },
 
   // ─── AMBIENTAL · Abióticas · Amenazas (2) ───────────────────────────────
   { id: "riesgo-fisico", masterId: "AMB-040", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Amenazas", label: "Riesgo físico relativo", description: "Índice de riesgo de la UNGRD para estimar amenaza y vulnerabilidad municipal a inundaciones, sismos, tsunamis y huracanes. También referenciado como TEC-015.", fuente: "UNGRD", url: "https://www.sgc.gov.co/", aplicaEn: "tierra", iconKey: "lucide:TriangleAlert" },
-  { id: "amenaza-volcanica", masterId: "AMB-041", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Amenazas", label: "Amenaza volcánica", description: "Escala de riesgo por caída de ceniza, flujos piroclásticos, lahares y ondas de choque.", fuente: "SGC", url: "https://www.sgc.gov.co/", aplicaEn: "tierra", iconKey: "lucide:Flame" },
+  { id: "amenaza-volcanica", masterId: "AMB-041", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Amenazas", label: "Amenaza volcánica", description: "Escala de riesgo por caída de ceniza, flujos piroclásticos, lahares y ondas de choque.", fuente: "SGC", url: "https://www.sgc.gov.co/", aplicaEn: "tierra", enMapa: true, iconKey: "lucide:Flame" },
 
   // ─── AMBIENTAL · Abióticas · Condiciones geológicas y geotécnicas (6) ────
   { id: "uso-suelo", masterId: "AMB-006-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Uso y cobertura del suelo", description: "Distribución de las coberturas del suelo (Corine Land Cover) en Colombia.", fuente: "IGAC", enMapa: true, aplicaEn: "tierra", iconKey: "lucide:Grid2x2" },
   { id: "fallas-sismicidad", masterId: "AMB-031-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Fallas y sismicidad", description: "Presencia de zonas de fallas.", fuente: "SGC", aplicaEn: "tierra", iconKey: "lucide:Activity" },
   { id: "batimetria-offshore", masterId: "AMB-030-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Batimetría para cimentación offshore", description: "Profundidad del lecho marino para cimentación costa afuera.", fuente: "NOAA", enMapa: true, aplicaEn: "mar", iconKey: "lucide:Radar" },
-  { id: "pendiente-terreno", masterId: "AMB-007-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Pendiente del terreno", description: "Inclinación del terreno; factor de estabilidad ecológica.", fuente: "Elaboración propia", enMapa: true, aplicaEn: "tierra", iconKey: "lucide:Triangle" },
+  { id: "pendiente-terreno", masterId: "AMB-007-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Pendiente del terreno", description: "Inclinación del terreno; factor de estabilidad ecológica.", fuente: "Elaboración propia", aplicaEn: "tierra", iconKey: "lucide:Triangle" },
   { id: "litologia", masterId: "AMB-028-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Litología", description: "Composición litológica del suelo.", fuente: "SGC", aplicaEn: "tierra", iconKey: "lucide:Layers" },
   { id: "fondos-marinos", masterId: "AMB-029-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Fondos marinos", description: "Composición y características del fondo marino para cimentación costa afuera.", fuente: "INVEMAR", aplicaEn: "mar", iconKey: "lucide:Waves" },
   { id: "elevacion", masterId: "AMB-008-A", dimension: "ambiental", criterio: "Variables abióticas", subcriterio: "Condiciones geológicas y geotécnicas", label: "Elevación", description: "Altitud media sobre el nivel del mar.", fuente: "IGAC", enMapa: true, aplicaEn: "tierra", iconKey: "lucide:MountainSnow" },
 
   // ─── TÉCNICA · Recurso eólico (1) ───────────────────────────────────────
-  { id: "wpd", masterId: "TEC-004-T", dimension: "tecnica", criterio: "Recurso eólico", label: "Densidad de potencia WPD", description: "Medida cualitativa de la energía del viento en un punto, calculada a las mismas alturas que la velocidad.", fuente: "GWA", enMapa: true, iconKey: "lucide:Fan", required: true },
+  { id: "wpd", masterId: "TEC-004-T", dimension: "tecnica", criterio: "Recurso eólico", label: "Densidad de potencia WPD", description: "Medida cualitativa de la energía del viento en un punto, calculada a las mismas alturas que la velocidad.", fuente: "GWA", iconKey: "lucide:Fan", required: true },
 
   // ─── TÉCNICA · Infraestructura y red (3) · las 3 en mapa ─────────────────
-  { id: "nodos-conexion", masterId: "TEC-023-T", dimension: "tecnica", criterio: "Infraestructura y red", label: "Distancia a nodos de conexión", description: "Distancia lineal (m) a nodos del SIN.", fuente: "UPME", enMapa: true, iconKey: "lucide:MapPin" },
-  { id: "distancia-vial", masterId: "TEC-032-T", dimension: "tecnica", criterio: "Infraestructura y red", label: "Distancia a infraestructura vial", description: "Distancia lineal (m) a vías principales (escala 1 a 5).", fuente: "Invias", enMapa: true, aplicaEn: "tierra", iconKey: "lucide:Route" },
-  { id: "distancia-portuaria", masterId: "TEC-031-T", dimension: "tecnica", criterio: "Infraestructura y red", label: "Distancia a infraestructura portuaria", description: "Distancia lineal (m) a grandes centros portuarios.", fuente: "POFPA", enMapa: true, aplicaEn: "mar", iconKey: "lucide:Anchor" },
+  { id: "nodos-conexion", masterId: "TEC-023-T", dimension: "tecnica", criterio: "Infraestructura y red", label: "Distancia a nodos de conexión", description: "Distancia lineal (m) a nodos del SIN.", fuente: "UPME", iconKey: "lucide:MapPin" },
+  { id: "distancia-vial", masterId: "TEC-032-T", dimension: "tecnica", criterio: "Infraestructura y red", label: "Distancia a infraestructura vial", description: "Distancia lineal (m) a vías principales (escala 1 a 5).", fuente: "Invias", aplicaEn: "tierra", iconKey: "lucide:Route" },
+  { id: "distancia-portuaria", masterId: "TEC-031-T", dimension: "tecnica", criterio: "Infraestructura y red", label: "Distancia a infraestructura portuaria", description: "Distancia lineal (m) a grandes centros portuarios.", fuente: "POFPA", aplicaEn: "mar", iconKey: "lucide:Anchor" },
 
   // ─── SOCIAL · Económico · Distancia a puntos de interés (2) ──────────────
   { id: "dist-atractivo-turistico", masterId: "SOE-001", dimension: "social", criterio: "Económico", subcriterio: "Distancia a puntos de interés", label: "Distancia al primer atractivo turístico", description: "Distancia mínima al primer atractivo turístico.", fuente: "Ministerio de Comercio, Industria y Turismo", aplicaEn: "tierra", iconKey: "lucide:Camera" },
@@ -289,23 +289,23 @@ export const VARIABLES: Variable[] = [
 
   // ─── SOCIAL · Social · Vulnerabilidad social (8) ────────────────────────
   { id: "desocupados", masterId: "SOC-001-SE", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Tasa de desocupados", description: "Porcentaje de la población económicamente activa sin empleo; valores altos sugieren mayor vulnerabilidad laboral.", fuente: "DANE", iconKey: "lucide:UserX" },
-  { id: "densidad-poblacional", masterId: "SOC-002-S", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Proyección de densidad poblacional", description: "Estimación de habitantes por unidad de área; identifica presión demográfica y concentración poblacional.", fuente: "DANE", enMapa: true, iconKey: "lucide:Users" },
-  { id: "distancia-viviendas", masterId: "SOC-007-S", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Distancia de viviendas a centros urbanos", description: "Distancia relativa de viviendas a cabeceras y centros urbanos; valores altos indican menor accesibilidad.", fuente: "DANE", enMapa: true, iconKey: "lucide:House" },
-  { id: "ipm", masterId: "SOC-008-SE", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Índice de pobreza multidimensional (IPM)", description: "Indicador que sintetiza privaciones en educación, salud, vivienda, trabajo y condiciones de vida.", fuente: "DANE", enMapa: true, iconKey: "lucide:Boxes" },
+  { id: "densidad-poblacional", masterId: "SOC-002-S", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Proyección de densidad poblacional", description: "Estimación de habitantes por unidad de área; identifica presión demográfica y concentración poblacional.", fuente: "DANE", iconKey: "lucide:Users" },
+  { id: "distancia-viviendas", masterId: "SOC-007-S", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Distancia de viviendas a centros urbanos", description: "Distancia relativa de viviendas a cabeceras y centros urbanos; valores altos indican menor accesibilidad.", fuente: "DANE", iconKey: "lucide:House" },
+  { id: "ipm", masterId: "SOC-035-SE", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Índice de pobreza multidimensional (IPM)", description: "Indicador que sintetiza privaciones en educación, salud, vivienda, trabajo y condiciones de vida.", fuente: "DANE", enMapa: true, iconKey: "lucide:Boxes" },
   { id: "analfabetismo", masterId: "SOC-012-S", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Tasa de analfabetismo", description: "Proporción de población que no sabe leer ni escribir; valores altos reflejan mayores barreras educativas.", fuente: "Datos Abiertos", iconKey: "lucide:Book" },
   { id: "hogares-municipio", masterId: "SOC-034-S", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Hogares por municipio", description: "Número de hogares registrados en el municipio; aproxima escala social y demanda potencial de atención.", fuente: "DANE", iconKey: "lucide:Home" },
   { id: "pobreza-monetaria", masterId: "SOC-035-SE", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Índice de pobreza monetaria", description: "Proporción de población con ingresos por debajo de la línea de pobreza monetaria.", fuente: "DANE", iconKey: "lucide:CircleDollarSign" },
   { id: "tipologia-territorial", masterId: "SOC-036-SE", dimension: "social", criterio: "Social", subcriterio: "Vulnerabilidad social", label: "Tipología territorial", description: "Clasificación del municipio según características territoriales, funcionales o de desarrollo.", fuente: "DNP", iconKey: "lucide:LayoutGrid" },
 
   // ─── SOCIAL · Social · Brecha energética y asequibilidad (3) ────────────
-  { id: "tarifa-energia", masterId: "SOC-010-TSE", dimension: "social", criterio: "Social", subcriterio: "Brecha energética y asequibilidad", label: "Tarifa de energía por comercializador", description: "Costo de la energía eléctrica cobrado por el comercializador; permite estimar la asequibilidad del servicio.", fuente: "Datos Abiertos", enMapa: true, iconKey: "lucide:ReceiptText" },
-  { id: "ipm-energetica", masterId: "SOC-038-TSE", dimension: "social", criterio: "Social", subcriterio: "Brecha energética y asequibilidad", label: "IPM energética", description: "Indicador de privaciones relacionadas con acceso, calidad, uso y asequibilidad de la energía.", fuente: "UPME", enMapa: true, iconKey: "lucide:ZapOff" },
-  { id: "zni", masterId: "SOC-009-TS", dimension: "social", criterio: "Social", subcriterio: "Brecha energética y asequibilidad", label: "Zona no interconectada", description: "Identifica municipios o áreas sin conexión al Sistema Interconectado Nacional.", fuente: "Datos Abiertos", enMapa: true, iconKey: "lucide:PlugZap" },
+  { id: "tarifa-energia", masterId: "SOC-010-TSE", dimension: "social", criterio: "Social", subcriterio: "Brecha energética y asequibilidad", label: "Tarifa de energía por comercializador", description: "Costo de la energía eléctrica cobrado por el comercializador; permite estimar la asequibilidad del servicio.", fuente: "Datos Abiertos", iconKey: "lucide:ReceiptText" },
+  { id: "ipm-energetica", masterId: "SOC-038-TSE", dimension: "social", criterio: "Social", subcriterio: "Brecha energética y asequibilidad", label: "IPM energética", description: "Indicador de privaciones relacionadas con acceso, calidad, uso y asequibilidad de la energía.", fuente: "UPME", iconKey: "lucide:ZapOff" },
+  { id: "zni", masterId: "SOC-009-TS", dimension: "social", criterio: "Social", subcriterio: "Brecha energética y asequibilidad", label: "Zona no interconectada", description: "Identifica municipios o áreas sin conexión al Sistema Interconectado Nacional.", fuente: "Datos Abiertos", iconKey: "lucide:PlugZap" },
 
   // ─── SOCIAL · Social · Riesgo en seguridad, delictividad y conflicto (5) ─
-  { id: "grupos-beligerantes", masterId: "SOC-011-S", dimension: "social", criterio: "Social", subcriterio: "Riesgo en seguridad, delictividad y conflicto armado", label: "Presencia de grupos beligerantes", description: "Señala presencia o influencia de actores armados o grupos ilegales en el territorio.", fuente: "Arcgis", enMapa: true, iconKey: "lucide:Swords" },
-  { id: "cultivos-coca", masterId: "SOC-015-SR", dimension: "social", criterio: "Social", subcriterio: "Riesgo en seguridad, delictividad y conflicto armado", label: "Densidad de cultivos de coca", description: "Medida de concentración de cultivos de coca; aproxima exposición a economías ilegales.", fuente: "Datos Abiertos", enMapa: true, iconKey: "lucide:Sprout" },
-  { id: "mineria-ilegal", masterId: "SOC-018-AE", dimension: "social", criterio: "Social", subcriterio: "Riesgo en seguridad, delictividad y conflicto armado", label: "Minería ilegal", description: "Identifica presencia o afectación asociada a minería ilegal.", fuente: "Arcgis", enMapa: true, iconKey: "lucide:Pickaxe" },
+  { id: "grupos-beligerantes", masterId: "SOC-011-S", dimension: "social", criterio: "Social", subcriterio: "Riesgo en seguridad, delictividad y conflicto armado", label: "Presencia de grupos beligerantes", description: "Señala presencia o influencia de actores armados o grupos ilegales en el territorio.", fuente: "Arcgis", iconKey: "lucide:Swords" },
+  { id: "cultivos-coca", masterId: "SOC-015-SR", dimension: "social", criterio: "Social", subcriterio: "Riesgo en seguridad, delictividad y conflicto armado", label: "Densidad de cultivos de coca", description: "Medida de concentración de cultivos de coca; aproxima exposición a economías ilegales.", fuente: "Datos Abiertos", iconKey: "lucide:Sprout" },
+  { id: "mineria-ilegal", masterId: "SOC-018-AE", dimension: "social", criterio: "Social", subcriterio: "Riesgo en seguridad, delictividad y conflicto armado", label: "Minería ilegal", description: "Identifica presencia o afectación asociada a minería ilegal.", fuente: "Arcgis", iconKey: "lucide:Pickaxe" },
   { id: "reclutamiento-menores", masterId: "SOC-031-S", dimension: "social", criterio: "Social", subcriterio: "Riesgo en seguridad, delictividad y conflicto armado", label: "Reclutamiento de menores de 18", description: "Registra eventos o riesgo de reclutamiento de niños, niñas y adolescentes.", fuente: "Colombia en Mapas", iconKey: "lucide:UserMinus" },
   { id: "incidencia-delictiva", masterId: "SOC-041-S", dimension: "social", criterio: "Social", subcriterio: "Riesgo en seguridad, delictividad y conflicto armado", label: "Índice de incidencia delictiva", description: "Sintetiza la ocurrencia relativa de delitos relevantes para el análisis de seguridad.", fuente: "Creado por nosotros", iconKey: "lucide:ShieldAlert" },
 
@@ -317,9 +317,9 @@ export const VARIABLES: Variable[] = [
   { id: "tipologia-territorial-gob", masterId: "SOC-036-SE", dimension: "social", criterio: "Social", subcriterio: "Falta de gobernanza, institucionalidad y riesgo político", label: "Tipología territorial", description: "Clasificación territorial para aproximar capacidades, ruralidad, centralidad o rezagos institucionales.", fuente: "DNP", iconKey: "lucide:LayoutGrid" },
 
   // ─── SOCIAL · Social · Sensibilidad sociocultural, étnica y territorial (5) ─
-  { id: "resguardos-indigenas", masterId: "SOC-013-SR", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "Resguardos indígenas", description: "Identifica presencia de resguardos indígenas y posibles necesidades de consulta, coordinación y enfoque diferencial.", fuente: "Colombia en Mapas", enMapa: true, iconKey: "lucide:Tent" },
-  { id: "reservas-campesinas", masterId: "SOC-016-SR", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "Zonas de reserva campesina", description: "Señala territorios con figura de reserva campesina y dinámicas organizativas rurales.", fuente: "Colombia en Mapas", enMapa: true, iconKey: "lucide:Wheat" },
-  { id: "comunidades-negras", masterId: "SOC-032-S", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "Territorios de comunidades negras", description: "Identifica territorios colectivos de comunidades negras y posibles procesos de participación diferenciada.", fuente: "Colombia en Mapas", enMapa: true, iconKey: "lucide:UsersRound" },
+  { id: "resguardos-indigenas", masterId: "SOC-013-SR", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "Resguardos indígenas", description: "Identifica presencia de resguardos indígenas y posibles necesidades de consulta, coordinación y enfoque diferencial.", fuente: "Colombia en Mapas", iconKey: "lucide:Tent" },
+  { id: "reservas-campesinas", masterId: "SOC-016-SR", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "Zonas de reserva campesina", description: "Señala territorios con figura de reserva campesina y dinámicas organizativas rurales.", fuente: "Colombia en Mapas", iconKey: "lucide:Wheat" },
+  { id: "comunidades-negras", masterId: "SOC-032-S", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "Territorios de comunidades negras", description: "Identifica territorios colectivos de comunidades negras y posibles procesos de participación diferenciada.", fuente: "Colombia en Mapas", iconKey: "lucide:UsersRound" },
   { id: "zomac", masterId: "SOC-039-SR", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "ZOMAC", description: "Municipios definidos como Zonas Más Afectadas por el Conflicto Armado.", fuente: "Agencia de Renovación del Territorio", iconKey: "lucide:MapPinned" },
   { id: "pdet", masterId: "SOC-040-SER", dimension: "social", criterio: "Social", subcriterio: "Sensibilidad sociocultural, étnica y territorial", label: "PDET", description: "Municipios con Programas de Desarrollo con Enfoque Territorial; refleja condiciones históricas de conflicto y necesidades de articulación.", fuente: "FINAGRO", iconKey: "lucide:Flag" },
 
@@ -572,15 +572,19 @@ export function modelVariableIds(): string[] {
 
 /** Variables de CALOR (heatmap viridis) — recurso eólico continuo. */
 const _CALOR_IDS = new Set(["velocidad-viento", "densidad-viento", "wpd"]);
+/** Variables de ESCALA DE COLOR (choropleth por cuantiles) — informativas continuas. */
+const _ESCALA_IDS = new Set(["ipm", "elevacion", "batimetria", "batimetria-offshore"]);
 /** Variables de red (nodos conectados al más cercano). */
 const _INTERCONECTADO_IDS = new Set(["nodos-conexion"]);
 
 /**
  * Método de mapa por defecto de una variable (fallback del snapshot; BD manda).
- * `calor` viento/WPD; `interconectado` nodos; `area` el resto.
+ * `calor` viento/WPD; `escala` informativas continuas (choropleth por cuantiles);
+ * `interconectado` nodos; `area` el resto (presencia).
  */
 export function mapKindForVariable(id: string): MapKind {
   if (_CALOR_IDS.has(id)) return "calor";
+  if (_ESCALA_IDS.has(id)) return "escala";
   if (_INTERCONECTADO_IDS.has(id)) return "interconectado";
   return "area";
 }

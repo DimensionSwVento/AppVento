@@ -124,6 +124,43 @@ export async function fetchExcludedCells(): Promise<string[]> {
   }
 }
 
+// Cortes de cuantil por variable (GLOBAL, no por bbox): se cachea por sesión.
+const _quantilesCache = new Map<
+  string,
+  Promise<{ cuts: number[]; min: number; max: number } | null>
+>();
+
+/**
+ * Cortes de CUANTIL + min/max de una variable sobre TODA Colombia, para la ESCALA
+ * DE COLOR choropleth (bandas claro→oscuro). Fijo por variable → cacheado. Usa el
+ * mismo camino que el calor (sin `variables-bulk`): `GET /tiles/variable-quantiles`.
+ */
+export async function fetchVariableQuantiles(
+  variableId: string,
+  bands = 5,
+): Promise<{ cuts: number[]; min: number; max: number } | null> {
+  if (!USE_BACKEND) return null;
+  const key = `${variableId}:${bands}`;
+  let p = _quantilesCache.get(key);
+  if (!p) {
+    p = (async () => {
+      try {
+        const resp = await fetch(
+          `/api/tiles/variable-quantiles?var=${encodeURIComponent(
+            masterIdFor(variableId),
+          )}&bands=${bands}`,
+        );
+        if (!resp.ok) return null;
+        return (await resp.json()) as { cuts: number[]; min: number; max: number };
+      } catch {
+        return null;
+      }
+    })();
+    _quantilesCache.set(key, p);
+  }
+  return p;
+}
+
 /**
  * Valores (0–1) de una variable ACOTADOS a un bbox — para colorear la rejilla del
  * mapa como heatmap por zoom. Pasa `resolution` (zoom→res) para que el backend
@@ -337,89 +374,6 @@ export async function fetchMapLayerCells(
   return p;
 }
 
-// Caché por ÁMBITO (res + bbox): acumula las celdas de TODAS las variables ya
-// traídas en ese ámbito. Así, QUITAR una capa NO re-pide (se sirve del acumulado)
-// y AÑADIR una solo pide las que faltan. Antes la caché era por el SET exacto de
-// variables → togglear una capa cambiaba la llave y RE-ESCANEABA el bbox (apilaba
-// peticiones a /variables-bulk y tumbaba el back). Ver feedback #24.
-const _layerStore = new Map<string, Map<string, Map<string, number>>>();
-
-function _scopeKey(res?: number, bbox?: BBox): string {
-  return `${res ?? "-"}:${bboxKey(bbox)}`;
-}
-
-/**
- * BULK: valores de VARIAS variables en UNA sola petición (`POST /tiles/variables-bulk`)
- * → el backend escanea el bbox UNA vez y resuelve todos los códigos. Devuelve
- * `Map<variableId, Map<h3, valor>>`.
- *
- * Caché ACUMULATIVA por (res, bbox): solo pide las variables que faltan en ese
- * ámbito; ocultar una capa se sirve del acumulado sin red. `signal` permite
- * ABORTAR la petición en vuelo (al salir de la subpágina o cambiar de capas), para
- * no apilar scans y dar respiro al back (feedback #24/#23).
- */
-export async function fetchVariableLayersBulk(
-  variableIds: string[],
-  res?: number,
-  bbox?: BBox,
-  signal?: AbortSignal,
-): Promise<Map<string, Map<string, number>>> {
-  if (!USE_BACKEND || variableIds.length === 0) return new Map();
-  const ids = [...new Set(variableIds)];
-  const scope = _scopeKey(res, bbox);
-  let store = _layerStore.get(scope);
-  if (!store) {
-    store = new Map();
-    _layerStore.set(scope, store);
-  }
-  // Solo lo que aún no está en el acumulado de este ámbito.
-  const missing = ids.filter((id) => !store!.has(id));
-  if (missing.length > 0) {
-    // code → variableIds (la respuesta viene por code; varios ids pueden mapear
-    // al mismo code).
-    const codeToIds = new Map<string, string[]>();
-    for (const id of missing) {
-      const code = masterIdFor(id);
-      const arr = codeToIds.get(code);
-      if (arr) arr.push(id);
-      else codeToIds.set(code, [id]);
-    }
-    try {
-      const resp = await fetch(`/api/tiles/variables-bulk`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          codes: [...codeToIds.keys()],
-          ...(bbox ? { bbox } : {}),
-          ...(res != null ? { res } : {}),
-        }),
-        signal,
-      });
-      if (resp.ok) {
-        const data = (await resp.json()) as Record<
-          string,
-          { h3_index: string; value: number }[]
-        >;
-        for (const [code, rows] of Object.entries(data)) {
-          const cellMap = new Map(rows.map((r) => [r.h3_index, r.value]));
-          for (const id of codeToIds.get(code) ?? [code]) store.set(id, cellMap);
-        }
-      }
-      // Sin fallback: en backend es bulk o VACÍO (nunca valores falsos). El modo
-      // template pinta su placeholder aparte. Si aborta/falla, esos ids quedan
-      // fuera del acumulado → se reintentan en la próxima (no se cachea el fallo).
-    } catch {
-      /* backend caído o petición ABORTADA → no se acumula nada para esos ids */
-    }
-  }
-  // Devuelve SOLO lo pedido, recortado del acumulado.
-  const out = new Map<string, Map<string, number>>();
-  for (const id of ids) {
-    const cm = store.get(id);
-    if (cm) out.set(id, cm);
-  }
-  return out;
-}
 
 /** Metadatos de capa (kind/color) sin cargar los hex. */
 export function mapLayerMeta(variableId: string): {
