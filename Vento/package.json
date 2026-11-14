@@ -16,7 +16,11 @@
     "test:ci": "vitest run --project unit",
     "test:coverage": "vitest run --project unit --coverage",
     "e2e": "playwright test",
-    "e2e:ui": "playwright test --ui"
+    "e2e:ui": "playwright test --ui",
+    "perf:e2e": "playwright test --config playwright.perf.config.ts",
+    "perf:e2e:smoke": "playwright test --config playwright.perf.config.ts --grep @smoke",
+    "perf:e2e:flow": "playwright test --config playwright.perf.config.ts --grep @flow",
+    "perf:report": "node e2e-perf/report.mjs"
   },
   "dependencies": {
     "@deck.gl/core": "~9.2.11",
